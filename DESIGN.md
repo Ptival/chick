@@ -1,6 +1,11 @@
 Design goals for Chick
 ======================
 
+Favor users, abandon hopes for efficiency
+-----------------------------------------
+
+I guess the major goal is to make the programming/proving experience much more easy/rich, by exposing a lot more of the internals and keeping track of as much information as possible. This will most likely result in excruciating performance, but this is part of the exercise.
+
 Uniquely-indexable subterms
 ---------------------------
 
@@ -84,3 +89,16 @@ Dependency tracking
 - Terms should know what other terms they depend on
 
 - Terms should know what terms have dependended on them last!? (for refactoring purposes)
+
+Multi-tier tactic language
+--------------------------
+
+- Tactics are either atomic, or built by composing atomic tactics.
+
+- When a complex tactic runs, the script may only contain the tactic call, but the system should know:
+  
+  - what concrete atomic tactics were called
+  
+  - what variables were referenced or dependended upon
+  
+  - what subgoals were solved by what atomic tactics
