@@ -102,3 +102,9 @@ Multi-tier tactic language
   - what variables were referenced or dependended upon
   
   - what subgoals were solved by what atomic tactics
+
+Statelessness
+-------------
+
+There should not be a "current" state of the system.
+Each operation should consume a "current state" and optionally produce a "new state".
