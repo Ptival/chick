@@ -70,6 +70,15 @@ type ForallX2 (φ :: * -> * -> Constraint) ξ ψ =
   , φ (X_Var   ξ) (X_Var   ψ)
   )
 
+-- The arguments are flipped so that I can write:
+-- ForallX (ConvertTo TargetType) ξ
+-- Since there seems to be no way to do either:
+-- ForallX (\ Source -> Convert Source Target) ξ
+-- or:
+-- type ConvertTo b a = Convert a b
+-- The latter works, but you cannot partially-apply it:
+-- ForallX (ConvertTo TargetType) ξ
+--         ^^^^^^^^^^^^^^^^^^^^^^ Haskell will complain about this
 class ConvertTo b a where
   convert :: a -> b
 
@@ -86,3 +95,14 @@ convertMap = \case
 
 instance ForallX Show ξ => PrintfArg (TermX ξ) where
   formatArg t = formatString (show t)
+
+annotationOf :: ForallX ((~) a) ξ => TermX ξ -> a
+annotationOf = \case
+  Annot a _ _   -> a
+  App   a _ _   -> a
+  Hole  a       -> a
+  Lam   a _ _   -> a
+  Let   a _ _ _ -> a
+  Pi    a _ _ _ -> a
+  Type  a       -> a
+  Var   a _     -> a

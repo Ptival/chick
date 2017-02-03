@@ -16,6 +16,7 @@ import Control.Monad.Trans.Free
 import Prelude                  hiding (or)
 import Text.Printf
 
+import Context
 import RawTerm
 import Term
 import TypeCheckedTerm
@@ -25,13 +26,14 @@ import TypeErroredTerm
 type TypeCheckingTerm = Either TypeErroredTerm TypeCheckedTerm
 
 data TypeCheckerF k
-  = Check RawTerm RawType (TypeCheckingTerm -> k)
-  | Synth RawTerm         (TypeCheckingTerm -> k)
+  = Check (Context Raw) RawTerm RawType (TypeCheckingTerm -> k)
+  | Synth (Context Raw) RawTerm         (TypeCheckingTerm -> k)
   | Failure TypeErroredTerm
   | Success TypeCheckedTerm
   deriving (Functor)
 
-tcTrace :: (TypeCheckerF k -> TypeCheckerF k) -> TypeCheckerF k -> [TypeCheckerF k]
+tcTrace ::
+  (TypeCheckerF k -> TypeCheckerF k) -> TypeCheckerF k -> [TypeCheckerF k]
 tcTrace _    (Failure f) = [Failure f]
 tcTrace _    (Success s) = [Success s]
 tcTrace step w           = w : tcTrace step (step w)
@@ -51,9 +53,18 @@ tcStep magic t =
     beep
 -}
 
+showContext :: Bool
+showContext = False
+
 instance Show (TypeCheckerF k) where
-  show (Check t τ _) = printf "Check %v %v" t τ
-  show (Synth t _)   = printf "Synth %v" t
+  show (Check γ t τ _) =
+    "\n  Check\n  "
+    ++ if showContext then show γ else ""
+    ++ printf "%v\n  %v\n" t τ
+  show (Synth γ t _)   =
+    "\n  Synth\n  "
+    ++ if showContext then show γ else ""
+    ++ printf "%v\n" t
   show (Failure t)   = printf "Failure %v" t
   show (Success t)   = printf "Success %v" t
 
@@ -71,15 +82,21 @@ type MonadTypeCheck m =
   , MonadFree TypeCheckerF m
   )
 
-check :: MonadTypeCheck m =>
-        TermX ξ -> TypeX ψ -> (TypeErroredTerm -> TypeErroredTerm) ->
-        m TypeCheckedTerm
-check t τ h = wrap $ Check (raw t) (raw τ) (either (throwError . h) return)
+checkF :: MonadError e m =>
+         Context Raw -> TermX ξ -> TermX ψ -> (TypeErroredTerm -> e) ->
+         TypeCheckerF (m TypeCheckedTerm)
+checkF γ t τ h = Check γ (raw t) (raw τ) (either (throwError . h) return)
+
+checkM :: MonadTypeCheck m =>
+         Context Raw -> TermX ξ -> TypeX ψ ->
+         (TypeErroredTerm -> TypeErroredTerm) ->
+         m TypeCheckedTerm
+checkM γ t τ h = wrap $ checkF γ t τ h
 
 synth :: MonadTypeCheck m =>
-        TermX ξ -> (TypeErroredTerm -> TypeErroredTerm) ->
+        Context Raw -> TermX ξ -> (TypeErroredTerm -> TypeErroredTerm) ->
         m TypeCheckedTerm
-synth t h = wrap $ Synth (raw t) (either (throwError . h) return)
+synth γ t h = wrap $ Synth γ (raw t) (either (throwError . h) return)
 
 failure :: MonadTypeCheck m => TypeErroredTerm -> m TypeCheckedTerm
 failure t = wrap $ Failure t
@@ -120,157 +137,21 @@ isPiOtherwise _              e = throwError e
 (!->) :: TypeCheckedTerm -> TypeErroredTerm
 (!->) = fromChecked
 
-synthApp ::
-  ( MonadTypeCheck m
-    -- not sure we'll ever need this modularity, but:
-  , ForallX (ConvertTo TypeError) ξ
-  , ForallX (ConvertTo TypeError) ψ
-  ) =>
-  TermX ξ -> TermX ψ -> m TypeCheckedTerm
-synthApp fun arg = do
-  -- synthesize a type for fun
-  sFun <- synth fun
-         (\ fFun -> App (Right AppFunctionFailed) fFun ((~!) arg))
-  -- check that this type is a π-type : (binder : τIn) -> τOut binder
-  Pi _ binder τIn τOut <-
-    sFun `isPiOtherwise`
-    (App (Right (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
-  -- check that arg has the type τIn
-  sArg <- check arg τIn
-        (\ fArg -> App (Right AppArgumentFailed) ((!->) sFun) fArg)
-  -- perform substitution if needed
-  case binder of
-    Just _name ->
-      let τOut' = τOut in -- substitute name arg τOut
-      return $ App (raw τOut') sFun sArg
-    Nothing ->
-      return $ App (raw τOut) sFun sArg
-
-{-
-runSynth :: RawTerm -> TypeCheckingTerm
-runSynth = \case
-  App () fun arg -> _ $ (synthApp fun arg :: TypeCheckMonad TypeCheckedTerm)
-  t -> Left (unchecked t)
-
-interpret :: Monad m => TypeCheckerT m TypeCheckingTerm -> m TypeCheckingTerm
-interpret thing = do
-  foo <- runFreeT thing
-  case foo of
-    Pure p -> return p
-    Free t ->
-      case t of
-      Failure f -> return (Left f)
-      Success s -> return (Right s)
-      Synth t k ->
-        interpret (k (_ t))
-
--}
-
-steppy ::
-  ( MonadError TypeErroredTerm m
-  , MonadFree TypeCheckerF m
-  ) =>
-  TypeCheckerF TypeCheckedTerm -> m TypeCheckedTerm
-steppy = \case
-  Success s -> return s
-  Failure f -> throwError f
-  Synth (App _ fun arg) k -> k . Right <$> synthApp fun arg
-  _ -> undefined
-
-{-
-doIt :: TypeCheckerF TypeCheckedTerm -> TypeCheckingTerm
-doIt = \case
-  Success s -> Right s
-  Failure f -> Left f
-  Synth (App _ fun arg) k ->
-    let x = _ $ runExceptT $
-            --(synthApp fun arg) in
-            (synthApp fun arg :: ExceptT TypeErroredTerm (Free TypeCheckerF) TypeCheckedTerm) in
-    let y = runFree x in
-    case y of
-    Pure p -> Right $ k p
-    Free f ->
-      _
-  _ -> undefined
--}
-
 runFreeTypeCheckerT :: TypeCheckerT m a ->
                       m (FreeF TypeCheckerF a (TypeCheckerT m a))
 runFreeTypeCheckerT = runFreeT
 
-
--- runFreeT :: FreeT TypeCheckerF m a ->
---             m (FreeF TypeCheckerF a (FreeT TypeCheckerF m a))
-
--- runExceptT :: ExceptT e m a -> m (Either e a)
-
-{-
-runSynthApp1 ::
-  ( ForallX (ConvertTo TypeError) ξ
-  , ForallX (ConvertTo TypeError) ψ
-  ) =>
-  TermX ξ -> TermX ψ ->
-  FreeF TypeCheckerF
-  (Either TypeErroredTerm TypeCheckedTerm)
-  (TypeCheckerT Identity (Either TypeErroredTerm TypeCheckedTerm))
-runSynthApp1 a b = runIdentity . runFreeT . runExceptT $ synthApp a b
--}
-
-{-
-type TypeCheckMonad a = ExceptT TypeErroredTerm (Free TypeCheckerF) a
--- is equivalent to:
---type TypeCheckMonad a = ExceptT TypeErroredTerm (TypeCheckerT Identity) a
--- since:
--- TypeCheckerT = FreeT TypeCheckerF
--- and:
--- Free f = FreeT f Identity
-runTypeCheck ::
-  TypeCheckMonad a ->
-  FreeF TypeCheckerF (Either TypeErroredTerm a)
-  (TypeCheckerT Identity (Either TypeErroredTerm a))
-runTypeCheck = runIdentity . runFreeT . runExceptT
--}
-
-
-
-{-
-typeCheck :: TypeCheckMonad TypeCheckedTerm ->
-            Either TypeErroredTerm TypeCheckedTerm
-typeCheck tc =
-  case runTypeCheck tc of
-  Pure result -> result
-  Free task ->
-    -- task   :: TypeCheckerF (TypeCheckerT Identity TypeCheckingTerm)
-    -- steppy :: TypeCheckerF TypeCheckedTerm                          -> ...
-    let _ = steppy task in
-    _
--}
-
-
-
-
-
-
-type TypeCheckMonad2 = TypeCheckerT (ExceptT TypeErroredTerm Identity)
-
-runSynthApp2 ::
-  ( ForallX (ConvertTo TypeError) ξ
-  , ForallX (ConvertTo TypeError) ψ
-  ) =>
-  TermX ξ -> TermX ψ ->
-  Either TypeErroredTerm (FreeF TypeCheckerF TypeCheckedTerm
-                          (TypeCheckMonad2 TypeCheckedTerm))
-runSynthApp2 a b = runIdentity . runExceptT . runFreeT $ synthApp a b
+type TCMonad = TypeCheckerT (ExceptT TypeErroredTerm Identity)
 
 runTypeCheck2 ::
-  TypeCheckMonad2 a ->
+  TCMonad a ->
   Either TypeErroredTerm
-  (FreeF TypeCheckerF a (TypeCheckMonad2 a))
+  (FreeF TypeCheckerF a (TCMonad a))
 runTypeCheck2 = runIdentity . runExceptT . runFreeT
 
 
 {-
-hole :: TypeCheckMonad2 TypeCheckedTerm -> TypeCheckingTerm
+hole :: TCMonad TypeCheckedTerm -> TypeCheckingTerm
 hole m =
   case runTypeCheck2 m of
   Left l -> Left l
@@ -283,7 +164,7 @@ hole m =
 
 runSynth :: RawTerm -> TypeCheckingTerm
 runSynth = \case
-  App () fun arg -> hole $ (synthApp fun arg) -- :: TypeCheckMonad2 TypeCheckedTerm)
+  App () fun arg -> hole $ (synthApp fun arg) -- :: TCMonad TypeCheckedTerm)
   t -> Left (unchecked t)
 
 interpret :: Monad m => TypeCheckerT m TypeCheckingTerm -> m TypeCheckingTerm
@@ -315,24 +196,28 @@ maybeFailWith :: MonadError e m => Maybe s -> e -> m s
 (Just s) `maybeFailWith` _ = return s
 Nothing  `maybeFailWith` e = throwError e
 
+ifFalseFailWith :: MonadError e m => Bool -> e -> m ()
+True  `ifFalseFailWith` _ = return ()
+False `ifFalseFailWith` e = throwError e
+
 runSynth' ::
   ( MonadTypeCheck m
     -- not sure we'll ever need this modularity, but:
   , ForallX (ConvertTo TypeError) ξ
   ) =>
-  TermX ξ -> m TypeCheckedTerm
-runSynth' t = case t of
+  Context Raw -> TermX ξ -> m TypeCheckedTerm
+runSynth' γ t = case t of
 
   App _ fun arg -> do
     -- synthesize a type for fun
-    sFun <- synth fun
+    sFun <- synth γ fun
            (\ fFun -> App (Right AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
     Pi _ binder τIn τOut <-
-      sFun `isPiOtherwise`
+      typeOf sFun `isPiOtherwise`
       (App (Right (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
     -- check that arg has the type τIn
-    sArg <- check arg τIn
+    sArg <- checkM γ arg τIn
            (\ fArg -> App (Right AppArgumentFailed) ((!->) sFun) fArg)
     -- perform substitution if needed
     case binder of
@@ -342,6 +227,21 @@ runSynth' t = case t of
       Nothing ->
         return $ App (raw τOut) sFun sArg
 
+  Var _ name ->
+    case lookup name γ of
+    Nothing -> throwError $ Var (error "TODEEDOO") name
+    Just τ -> return $ Var τ name
+
+  Pi _ binderPi τIn τOut -> do
+    τIn' <- checkM γ τIn (Type () :: RawTerm)
+           (\ _τIn' -> error "TODO qwer")
+    let γ' = (binderPi, raw τIn') +: γ
+    τOut' <- checkM γ' τOut (Type () :: RawTerm)
+            (\ _τOut' -> error "TODO adsf")
+    return $ Pi (Type ()) binderPi τIn' τOut'
+
+  Type _ -> return $ Type (Type ())
+
   _ -> error "TODO: runSynth'"
 
 runCheck' ::
@@ -350,33 +250,33 @@ runCheck' ::
   , ForallX (ConvertTo TypeError) ξ
   , ForallX (ConvertTo TypeError) ψ
   ) =>
-  TermX ξ -> TermX ψ -> m TypeCheckedTerm
-runCheck' t τ = case t of
+  Context Raw -> TermX ξ -> TermX ψ -> m TypeCheckedTerm
+runCheck' γ t τ = case t of
 
   Lam _ binderLam bodyLam -> do
-    τ' <- check τ (Type () :: RawType)
-         (\ τ' -> annotateError (Right NotAType) t)
+    τ' <- checkM γ τ (Type () :: RawType)
+         (\ _τ' -> annotateError (Right NotAType) t)
     Pi _ binderPi τIn τOut <-
       redβ τ' `isPiOtherwise`
-      annotateError (Right TODO) t
-    mn <- matchBinders binderLam binderPi
-         `maybeFailWith` annotateError (Right TODO) t
-    -- let γ' = (n, σ) +: γ
-    bodyLam' <- check bodyLam τ'
-        (\ t' -> error "TODO")
+      annotateError (Right (error "YOLO")) t
+    _ <- matchBinders binderLam binderPi
+        `maybeFailWith` annotateError (Right (error . show $ binderPi)) t
+    let γ' = (binderLam, raw τIn) +: γ
+    bodyLam' <- checkM γ' bodyLam τOut
+        (\ _t' -> error "TODOCACA")
     return $ Lam (raw τ') binderLam bodyLam'
 
   Hole _ -> error "runCheck Hole"
 
   -- conversion rule
   _ -> do
-    sτ <- synth t id
-    if sτ `eqβ` τ
-      then error "conversion true" --undefined t sτ
-      else throwError $ annotateError (Right IncompatibleTypes) t
+    t' <- synth γ t (\ t' -> t')
+    () <- (typeOf t' `eqβ` τ) `ifFalseFailWith`
+        annotateError (Right IncompatibleTypes) t
+    return t'
 
 {-
-runSynth' :: RawTerm -> TypeCheckMonad2 TypeCheckedTerm
+runSynth' :: RawTerm -> TCMonad TypeCheckedTerm
 runSynth' = \case
   App () fun arg -> do
     x <- runExceptT $ synthApp fun arg
@@ -386,214 +286,54 @@ runSynth' = \case
   t -> throwError $ unchecked t
 -}
 
-interpret' :: TypeCheckerT TypeCheckMonad2 TypeCheckedTerm ->
-             TypeCheckMonad2 TypeCheckedTerm
-interpret' thing = do
-  runFreeT thing >>= \case
-    Pure pp -> return pp
-    Free ff ->
-      case ff of
-      Failure f   -> throwError f
-      Success s   -> return s
-      Synth t k   -> join $ interpret' . k . Right <$> runSynth' t
-      Check t τ k -> join $ interpret' . k . Right <$> runCheck' t τ
+runTypeCheckerF ::
+  TypeCheckerF (TypeCheckerT TCMonad TypeCheckedTerm) ->
+  TCMonad TypeCheckedTerm
+runTypeCheckerF ff = case ff of
+  Failure f     -> throwError f
+  Success s     -> return s
+  Synth γ t k   -> join $ runTypeCheckerT . k . Right <$> runSynth' γ t
+  Check γ t τ k -> join $ runTypeCheckerT . k . Right <$> runCheck' γ t τ
 
+runFreeF ::
+  FreeF TypeCheckerF TypeCheckedTerm
+  (TypeCheckerT TCMonad TypeCheckedTerm) ->
+  TCMonad TypeCheckedTerm
+runFreeF = \case
+  Pure pp -> return pp
+  Free ff -> runTypeCheckerF ff
 
---foo = runTypeCheck2 $ runSynth' rawType
+runTypeCheckerT ::
+  TypeCheckerT TCMonad TypeCheckedTerm ->
+  TCMonad TypeCheckedTerm
+runTypeCheckerT = runFreeT >=> runFreeF
 
+runTypeCheckerF' ::
+  TypeCheckerF (TCMonad TypeCheckedTerm) ->
+  TCMonad TypeCheckedTerm
+runTypeCheckerF' ff = case ff of
+  Failure f     -> throwError f
+  Success s     -> return s
+  Synth γ t k   -> join $ k . Right <$> runSynth' γ t
+  Check γ t τ k -> join $ k . Right <$> runCheck' γ t τ
 
+runFreeF' ::
+  FreeF TypeCheckerF TypeCheckedTerm
+  (TCMonad TypeCheckedTerm) ->
+  TCMonad TypeCheckedTerm
+runFreeF' = \case
+  Pure pp -> return pp
+  Free ff -> runTypeCheckerF' ff
 
-steppy2 :: MonadTypeCheck m =>
-          TypeCheckerF TypeCheckedTerm -> m TypeCheckedTerm
-steppy2 = \case
-  Success s -> return s
-  Failure f -> throwError f
-  Synth (App _ fun arg) k -> k . Right <$> synthApp fun arg
-  _ -> undefined
-
-{-
-steppy :: MonadTypeCheck m =>
-         TypeCheckerF TypeCheckingTerm -> m TypeCheckingTerm
-steppy = \case
-
-  Synth (App _ fun arg) k ->
-    let free = runExceptT (synthApp fun arg)
-          :: Free TypeCheckerF TypeCheckingTerm in
-    case runFree free of
-    Pure p -> return p
---    Free f -> do
-      --let foo = steppy _
-  --    return . k $ _
-    --let foo = (runExceptT (synthApp fun arg) :: Free TypeCheckerF TypeCheckingTerm) in
-    --return . k $ _
--}
-
-    {-do
-    fun' <- synth fun
-    arg' <- check arg arg
-    _-}
-
-{-
-stepTC
-  :: Monad m =>
-    TypeCheckerF (TypeCheckerT m) -> TypeCheckerT m
-stepTC = \case
-
-  Success t -> done d
-
-  Synth (App _ fun arg) k ->
-    let bad a b c = k . Left $ App a b c in
-    flip runCont id $ do
-      -- synthesize a type for fun
-      fun' <- synth fun `or` (\ fun' ->
-                               bad (Right AppFunctionFailed) fun' ((~!) arg))
-      -- check that this type is a π-type : (binder : τIn) -> τOut binder
-      Pi _ binder τIn τOut <-
-        tryEither (assertPi fun')
-        (\ () -> bad (Right $ AppFunctionTypeFailed (raw fun'))
-               (fromChecked fun') (unchecked arg))
-      -- check that arg has the type τIn
-      arg' <- tryEither (check (raw arg) (raw τIn))
-             (\arg' -> bad (Right AppArgumentFailed) (fromChecked fun') arg')
-      -- return τOut [ binder <- arg ]
-      return $ case binder of
-        Just _name ->
-          let τOut' = τOut in -- substitute name arg τOut
-          k . Right $ App (raw τOut') fun' arg'
-        Nothing ->
-          k . Right $ App (raw τOut) fun' arg'
--}
-
-{-
-              Right arg' ->
-                case binder of
-                Just _name ->
-                  let τOut' = τOut in -- substitute name arg τOut
-                  k . Right $ App (raw τOut') fun' arg'
-                Nothing ->
-                  k . Right $ App (raw τOut) fun' arg'
-              Left arg' ->
-                k . Left $ App (Right AppArgumentFailed) (fromChecked fun') arg'
-          _ -> k . Left $ App (Right $ AppFunctionTypeFailed (raw fun')) (fromChecked fun') (unchecked arg)
-      Left fun' -> k . Left $ App (Right AppFunctionFailed) fun' (unchecked arg)
--}
-
-{-
-  -- synthesize a type for fun
-  -- check that this type is a π-type : (binder : τIn) -> τOut binder
-  -- check that arg has the type τIn
-  -- return τOut [ binder <- arg ]
-  Synth (App _ fun arg) k -> do
-    synth fun >>= \case
-      Right fun' -> do
-        case fun' of
-          Pi _ binder τIn τOut -> do
-            check (raw arg) (raw τIn) >>= \case
-              Right arg' ->
-                case binder of
-                Just _name ->
-                  let τOut' = τOut in -- substitute name arg τOut
-                  k . Right $ App (raw τOut') fun' arg'
-                Nothing ->
-                  k . Right $ App (raw τOut) fun' arg'
-              Left arg' ->
-                k . Left $ App (Right AppArgumentFailed) (fromChecked fun') arg'
-          _ -> k . Left $ App (Right $ AppFunctionTypeFailed (raw fun')) (fromChecked fun') (unchecked arg)
-      Left fun' -> k . Left $ App (Right AppFunctionFailed) fun' (unchecked arg)
--}
-{-
-stepTC
-  :: Monad m =>
-    TypeCheckerF (TypeCheckerT m) ->
-    m (Work (TypeCheckerT m) TypeCheckingTerm)
-stepTC = \case
-
-  -- synthesize a type for fun
-  -- check that this type is a π-type : (binder : τIn) -> τOut binder
-  -- check that arg has the type τIn
-  -- return τOut [ binder <- arg ]
-  Synth (App _ fun arg) k ->
-    return . Work $ do
-      synth fun >>= \case
-        Right fun' -> do
-          case fun' of
-            Pi _ binder τIn τOut -> do
-              check (raw arg) (raw τIn) >>= \case
-                Right arg' ->
-                  case binder of
-                  Just _name ->
-                    let τOut' = τOut in -- substitute name arg τOut
-                    k . Right $ App (raw τOut') fun' arg'
-                  Nothing ->
-                    k . Right $ App (raw τOut) fun' arg'
-                Left arg' ->
-                  k . Left $ App (Right AppArgumentFailed) (fromChecked fun') arg'
-            _ -> k . Left $ App (Right $ AppFunctionTypeFailed (raw fun')) (fromChecked fun') (unchecked arg)
-        Left fun' -> k . Left $ App (Right AppFunctionFailed) fun' (unchecked arg)
--}
-{-
-  Synth t k -> do
-    --c1 <- check t t
-    return . Work $ do
-      k $ annotateWith (Left TODO) t
-
-  Check t _τ k -> do
-    return . Work $ do
-      k $ annotateWith (Left TODO) t
--}
-
-{-
-  _ -> undefined
--}
-{-
-stepTC
-  :: Monad m =>
-    TypeCheckerF (TypeCheckerT m) ->
-    m (Work (TypeCheckerT m) TypeAnnotatedTerm)
-stepTC = \case
-
-  Synth (Pi _ name τIn τOut) ->
-    return . Work $ do
-      aτIn <- check τIn set
-      case getTypeAnnotation aτIn of
-        Right (_, aτIn')
-
-  Synth (App _ fun arg) k ->
-    return . Work $ do
-      aFun <- synth fun
-      case getTypeAnnotation aFun of
-        Right (_, τFun) -> do
-          case τFun of
-            Pi _ binder τIn τOut -> do
-              aArg <- check arg τIn
-              case getTypeAnnotation aArg of
-                Right (_, _) ->
-                  case binder of
-                  Just _name ->
-                    let τOut' = τOut in -- substitute name arg τOut
-                    k $ App (Right (Nothing, τOut')) aFun aArg
-                  Nothing ->
-                    k $ App (Right (Nothing, τOut)) aFun aArg
-                Left _ -> k $ App (Left AppArgumentFailed) aFun aArg
-            _ -> k $ App (Left $ AppFunctionTypeFailed τFun) aFun (unchecked arg)
-        Left _ -> k $ App (Left AppFunctionFailed) aFun (unchecked arg)
-
-  Synth t k -> do
-    --c1 <- check t t
-    return . Work $ do
-      k $ annotateWith (Left TODO) t
-
-  Check t _τ k -> do
-    return . Work $ do
-      k $ annotateWith (Left TODO) t
--}
-
-{-
-tc
-  :: Monad m =>
-    TypeCheckerT m -> m (Work (TypeCheckerT m) TypeAnnotatedTerm)
-tc mFreeTask = do
-  runFreeT mFreeTask >>= \case
-    Pure res -> return $ Done res
-    Free task -> stepTC task
--}
+stepTypeCheckerF ::
+  TypeCheckerF (TCMonad TypeCheckedTerm) ->
+  TypeCheckerF (TCMonad TypeCheckedTerm)
+stepTypeCheckerF input =
+  let frist = runTypeCheckerF' input in
+  let snecod = runTypeCheck2 frist in
+  case snecod of
+  Left  l -> Failure l
+  Right r ->
+    case r of
+    Pure p -> Success p
+    Free f -> f

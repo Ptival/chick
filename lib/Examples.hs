@@ -8,6 +8,7 @@ import Data.Default
 import Context
 import RawTerm
 import Term
+import TypeCheckedTerm
 import TypeErroredTerm
 import Work
 
@@ -42,7 +43,18 @@ tFlip :: RawTerm
 tFlip = lam ["A", "B", "C", "f", "b", "a"] $
         var "f" $$ var "a" $$ var "b"
 
-test :: Either TypeErroredTerm
-       (FreeF TypeCheckerF TypeCheckingTerm
-        (TypeCheckMonad2 TypeCheckingTerm))
-test = runTypeCheck2 $ runCheck' tFlip τFlip
+test ::
+  Either
+  TypeErroredTerm
+  (FreeF TypeCheckerF TypeCheckedTerm (TCMonad TypeCheckedTerm))
+test = runTypeCheck2 $ runCheck' [] tFlip τFlip
+
+{-
+test2 =
+  case test of
+  Left  l -> error "NOPE"
+  Right r -> runTypeCheck2 $ runFreeF' r
+-}
+
+trace :: [TypeCheckerF (TCMonad TypeCheckedTerm)]
+trace = tcTrace stepTypeCheckerF $ checkF [] tFlip τFlip id

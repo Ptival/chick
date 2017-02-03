@@ -25,3 +25,6 @@ type instance X_Let   TypeChecked = TypeAnnotation
 type instance X_Pi    TypeChecked = TypeAnnotation
 type instance X_Type  TypeChecked = TypeAnnotation
 type instance X_Var   TypeChecked = TypeAnnotation
+
+typeOf :: TypeCheckedTerm -> RawType
+typeOf = annotationOf
