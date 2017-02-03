@@ -1,0 +1,6 @@
+*.hi
+*.ho
+*.o
+chick.nix
+dist/
+Main

@@ -1,0 +1,48 @@
+Name:                chick
+Version:             0.1
+Synopsis:            Coq's little brother
+Description:         Coq's little brother
+License:             MIT
+License-file:        LICENSE
+Author:              Valentin Robert
+Maintainer:          vrobert@cs.ucsd.edu
+Stability:           Experimental
+Category:            Web
+Build-type:          Simple
+Cabal-version:       >=1.22
+
+Source-repository head
+  type:     git
+  location: https://github.com/Ptival/chick
+
+Library
+  default-language: Haskell2010
+  ghc-options:      -Wall -Wno-orphans
+  hs-source-dirs:   lib
+  build-depends:
+                --aeson                     >= 0.11  && < 0.12,
+                --alex                      >= 3.2   && < 3.3,
+                base                      >= 4.9   && < 4.10,
+                --base-orphans              >= 0.5   && < 0.6,
+                --constraints               >= 0.8   && < 0.9,
+                data-default              >= 0.7   && < 0.8,
+                free                      >= 4.12  && < 4.13,
+                --ghc-prim                  >= 0.5   && < 0.6,
+                --bytestring                >= 0.10  && < 0.11,
+                --ghcjs-base                >= 0.2   && < 0.3,
+                --happy                     >= 1.19  && < 1.20,
+                mtl                       >= 2.2   && < 2.3
+                --utf8-string               >= 1.0   && < 1.1
+  exposed-modules:
+    Language
+    Work
+  other-modules:
+
+Executable chick
+  default-language: Haskell2010
+  ghc-options:      -Wall
+  hs-source-dirs:   exec
+  main-is:          Main.hs
+  build-depends:
+    base,
+    chick
