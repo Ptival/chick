@@ -131,7 +131,7 @@ isPiOtherwise :: MonadTypeCheck m =>
 isPiOtherwise t@(Pi _ _ _ _) _ = return t
 isPiOtherwise _              e = throwError e
 
-(~!) :: ForallX (ConvertTo TypeError) ξ => TermX ξ -> TypeErroredTerm
+(~!) :: TermX ξ -> TypeErroredTerm
 (~!) = unchecked
 
 (!->) :: TypeCheckedTerm -> TypeErroredTerm
@@ -201,10 +201,7 @@ True  `ifFalseFailWith` _ = return ()
 False `ifFalseFailWith` e = throwError e
 
 runSynth' ::
-  ( MonadTypeCheck m
-    -- not sure we'll ever need this modularity, but:
-  , ForallX (ConvertTo TypeError) ξ
-  ) =>
+  (MonadTypeCheck m) =>
   Context Raw -> TermX ξ -> m TypeCheckedTerm
 runSynth' γ t = case t of
 
@@ -245,11 +242,7 @@ runSynth' γ t = case t of
   _ -> error "TODO: runSynth'"
 
 runCheck' ::
-  ( MonadTypeCheck m
-    -- not sure we'll ever need this modularity, but:
-  , ForallX (ConvertTo TypeError) ξ
-  , ForallX (ConvertTo TypeError) ψ
-  ) =>
+  (MonadTypeCheck m) =>
   Context Raw -> TermX ξ -> TermX ψ -> m TypeCheckedTerm
 runCheck' γ t τ = case t of
 

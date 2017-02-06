@@ -6,6 +6,7 @@ import Control.Monad.Trans.Free
 import Data.Default
 
 import Context
+import NumberedTerm
 import RawTerm
 import Term
 import TypeCheckedTerm
@@ -49,12 +50,8 @@ test ::
   (FreeF TypeCheckerF TypeCheckedTerm (TCMonad TypeCheckedTerm))
 test = runTypeCheck2 $ runCheck' [] tFlip τFlip
 
-{-
-test2 =
-  case test of
-  Left  l -> error "NOPE"
-  Right r -> runTypeCheck2 $ runFreeF' r
--}
-
 trace :: [TypeCheckerF (TCMonad TypeCheckedTerm)]
 trace = tcTrace stepTypeCheckerF $ checkF [] tFlip τFlip id
+
+testNumberize :: NumberedTerm
+testNumberize = numberize tFlip

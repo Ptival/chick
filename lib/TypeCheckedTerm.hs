@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
---{-# language LambdaCase #-}
 {-# language TypeFamilies #-}
 
 module TypeCheckedTerm where
