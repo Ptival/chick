@@ -1,9 +1,13 @@
+{-# language DeriveAnyClass #-}
 {-# language FlexibleContexts #-}
+{-# language StandaloneDeriving #-}
+{-# language UndecidableInstances #-}
 
 module Examples where
 
 import Control.Monad.Trans.Free
 import Data.Default
+import Text.PrettyPrint.GenericPretty (pp)
 
 import Context
 import NumberedTerm
@@ -44,14 +48,19 @@ tFlip :: RawTerm
 tFlip = lam ["A", "B", "C", "f", "b", "a"] $
         var "f" $$ var "a" $$ var "b"
 
-test ::
+testing ::
   Either
   TypeErroredTerm
   (FreeF TypeCheckerF TypeCheckedTerm (TCMonad TypeCheckedTerm))
-test = runTypeCheck2 $ runCheck' [] tFlip τFlip
+testing = runTypeCheck2 $ runCheck' [] tFlip τFlip
 
 trace :: [TypeCheckerF (TCMonad TypeCheckedTerm)]
 trace = tcTrace stepTypeCheckerF $ checkF [] tFlip τFlip id
 
 testNumberize :: NumberedTerm
 testNumberize = numberize tFlip
+
+mainy :: IO ()
+mainy = do
+  print testNumberize
+  pp testNumberize

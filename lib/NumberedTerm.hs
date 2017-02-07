@@ -5,8 +5,7 @@
 
 module NumberedTerm where
 
---import Control.Lens
-
+import DictMetaMap
 import RawTerm
 import Term
 
@@ -29,10 +28,5 @@ type instance X_Var   Numbered = Numbering
 numberOf :: NumberedTerm -> Int
 numberOf = annotationOf
 
-{-
-metaFold ::
-forall ξ ψ a. DictMetaFold ξ ((,) a) ψ ((,) a) -> a -> TermX ξ -> TermX ψ
--}
-
 numberize :: RawTerm -> NumberedTerm
-numberize = metaFold (dictMetaFold' (\ (acc, ()) -> (acc + 1, acc))) 0
+numberize = metaMap (dictMetaMap' (\ (acc, ()) -> (acc + 1, acc))) 0

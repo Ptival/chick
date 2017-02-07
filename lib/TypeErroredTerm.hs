@@ -7,6 +7,8 @@
 
 module TypeErroredTerm where
 
+import DictMetaId
+import DictMetaMapId
 import RawTerm
 import Term
 import TypeCheckedTerm
@@ -29,10 +31,10 @@ type instance X_Type  TypeErrored = TypeError
 type instance X_Var   TypeErrored = TypeError
 
 unchecked :: TermX ξ -> TypeErroredTerm
-unchecked = meta' (Right Unchecked)
+unchecked = metaId' (Right Unchecked)
 
 fromChecked :: TypeCheckedTerm -> TypeErroredTerm
-fromChecked = metaMap' Left
+fromChecked = metaMapId' Left
 
 {-
 `annotateError e term` marks the entire `term` unchecked, and marks its head
@@ -40,4 +42,4 @@ with the error `e`
 -}
 annotateError :: TypeError -> TermX ξ -> TypeErroredTerm
 annotateError e term =
-  metaHead' e $ unchecked term
+  metaIdHead' e $ unchecked term
