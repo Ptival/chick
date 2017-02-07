@@ -7,10 +7,12 @@ module Examples where
 
 import Control.Monad.Trans.Free
 import Data.Default
+import Text.Megaparsec
 import Text.PrettyPrint.GenericPretty (pp)
 
 import Context
 import NumberedTerm
+import ParseTerm
 import RawTerm
 import Term
 import TypeCheckedTerm
@@ -62,5 +64,11 @@ testNumberize = numberize tFlip
 
 mainy :: IO ()
 mainy = do
-  print testNumberize
-  pp testNumberize
+  --print testNumberize
+  --pp testNumberize
+  pp $ parseMaybe termP "A B C"
+  pp $ parseMaybe termP "(A B) C"
+  pp $ parseMaybe termP "A (B C)"
+  pp $ parseMaybe termP "A → B → C"
+  pp $ parseMaybe termP "(A → B) → C"
+  pp $ parseMaybe termP "A → (B → C)"

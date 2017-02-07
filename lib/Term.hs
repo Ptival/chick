@@ -27,7 +27,6 @@ type family X_Pi    ξ
 type family X_Type  ξ
 type family X_Var   ξ
 
-{- This is NOT a functor -}
 data TermX ξ
   = Annot (X_Annot ξ) (TermX ξ) (TypeX ξ)
   | App   (X_App   ξ) (TermX ξ) (TermX ξ)
@@ -39,9 +38,10 @@ data TermX ξ
   | Var   (X_Var   ξ) Name
   deriving (Generic, Typeable)
 
-deriving instance ForallX Out ξ => Out (TermX ξ)
-
 type TypeX = TermX
+
+deriving instance ForallX Eq  ξ => Eq  (TermX ξ)
+deriving instance ForallX Out ξ => Out (TermX ξ)
 
 type ForallX (φ :: * -> Constraint) ξ =
   ( φ (X_Annot ξ)
