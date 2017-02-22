@@ -8,47 +8,28 @@ module Examples where
 import Control.Monad.Trans.Free
 import Data.Default
 import Text.Megaparsec
+import Text.PrettyPrint.Annotated.WL
 import Text.PrettyPrint.GenericPretty (pp)
 
-import Context
-import NumberedTerm
-import ParseTerm
+--import Context
+import Notations
+import Parsing
+import PrettyPrinting
 import RawTerm
-import Term
-import TypeCheckedTerm
-import TypeErroredTerm
+--import Term
+import Term.NumberedTerm
+import Term.TypeCheckedTerm
+import Term.TypeErroredTerm
 import Work
 
-infixr 1 -->
-(-->) :: ForallX Default ξ => TypeX ξ -> TermX ξ -> TermX ξ
-τ --> t = Pi def Nothing τ t
-
-infixl 9 $$
-($$) :: ForallX Default ξ => TermX ξ -> TermX ξ -> TermX ξ
-t1 $$ t2 = App def t1 t2
-
-lam :: ForallX Default ξ => [Name] -> TermX ξ -> TermX ξ
-lam []       t = t
-lam (n : ns) t = Lam def (Just n) (lam ns t)
-
-π :: ForallX Default ξ => Context ξ -> TermX ξ -> TermX ξ
-π []             t = t
-π ((n, τ) : nτs) t = Pi def (Just n) τ (π nτs t)
-
-var :: ForallX Default ξ => Name -> TermX ξ
-var = Var def
-
-set :: ForallX Default ξ => TypeX ξ
-set = Type def
-
 τFlip :: RawType
-τFlip = π [ ("A", set), ("B", set), ("C", set) ] $
-     (var "A" --> var "B" --> var "C") -->
-     (var "B" --> var "A" --> var "C")
+τFlip = π [ ("A", type'), ("B", type'), ("C", type') ] $
+     (var "A" ^-> var "B" ^-> var "C") ^->
+     (var "B" ^-> var "A" ^-> var "C")
 
 tFlip :: RawTerm
-tFlip = lam ["A", "B", "C", "f", "b", "a"] $
-        var "f" $$ var "a" $$ var "b"
+tFlip = (^\) ["A", "B", "C", "f", "b", "a"] $
+        var "f" ^$ var "a" ^$ var "b"
 
 testing ::
   Either
@@ -62,13 +43,40 @@ trace = tcTrace stepTypeCheckerF $ checkF [] tFlip τFlip id
 testNumberize :: NumberedTerm
 testNumberize = numberize tFlip
 
+manyRightApps :: Int -> RawTerm
+manyRightApps 0 = var "x"
+manyRightApps n = var "x" ^$ manyRightApps (n - 1)
+
+manyLeftApps :: Int -> RawTerm
+manyLeftApps 0 = var "x"
+manyLeftApps n = manyLeftApps (n - 1) ^$ var "x"
+
+testPretty :: IO ()
+testPretty = do
+  let p = (putStrLn . display . renderPrettyDefault . prettyTerm def :: RawTerm -> IO ())
+  p $ var "a" ^$ (var "b" ^$ (var "c" ^$ var "d"))
+  p $ ((var "a" ^$ var "b") ^$ var "c") ^$ var "d"
+  p $ manyLeftApps 40
+  p $ manyRightApps 40
+  p tFlip
+  p τFlip
+
 mainy :: IO ()
 mainy = do
   --print testNumberize
   --pp testNumberize
-  pp $ parseMaybe termP "A B C"
-  pp $ parseMaybe termP "(A B) C"
-  pp $ parseMaybe termP "A (B C)"
-  pp $ parseMaybe termP "A → B → C"
-  pp $ parseMaybe termP "(A → B) → C"
-  pp $ parseMaybe termP "A → (B → C)"
+
+  pp $ parseMaybe termP " A  B  C " -- this should parse as:
+  pp $ parseMaybe termP "(A  B) C " -- this
+  pp $ parseMaybe termP " A (B  C)"
+
+  pp $ parseMaybe termP " A →  B  → C " -- this should parse as:
+  pp $ parseMaybe termP "(A →  B) → C "
+  pp $ parseMaybe termP " A → (B  → C)" -- this
+
+  pp $ parseMaybe termP " (x : A) →  B  → C " -- this should parse as:
+  pp $ parseMaybe termP "((x : A) →  B) → C "
+  pp $ parseMaybe termP " (x : A) → (B  → C)" -- this
+
+  pp $ parseMaybe termP "(_ : A) →  B" -- this should parse as:
+  pp $ parseMaybe termP "     A  →  B" -- this

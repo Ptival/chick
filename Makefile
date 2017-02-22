@@ -4,7 +4,7 @@ COMPILER=ghc
 #COMPILER=ghcjs
 
 # TODO: Make this better once it builds
-all: chick.nix Main.jsexe
+all: chick.nix # Main.jsexe
 
 Main.jsexe: Main.hs # Lexer.hs Parser.hs
 	$(COMPILER) Main.hs

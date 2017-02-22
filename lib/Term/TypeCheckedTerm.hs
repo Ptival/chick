@@ -1,6 +1,6 @@
 {-# language TypeFamilies #-}
 
-module TypeCheckedTerm where
+module Term.TypeCheckedTerm where
 
 import RawTerm
 import Term

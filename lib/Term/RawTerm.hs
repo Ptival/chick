@@ -1,7 +1,7 @@
 {-# language LambdaCase #-}
 {-# language TypeFamilies #-}
 
-module RawTerm where
+module Term.RawTerm where
 
 import Term
 

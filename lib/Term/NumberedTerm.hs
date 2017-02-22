@@ -3,7 +3,7 @@
 {-# language ScopedTypeVariables #-}
 {-# language TypeFamilies #-}
 
-module NumberedTerm where
+module Term.NumberedTerm where
 
 import DictMetaMap
 import RawTerm

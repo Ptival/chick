@@ -19,9 +19,9 @@ import Text.Printf
 import Context
 import RawTerm
 import Term
-import TypeCheckedTerm
+import Term.TypeCheckedTerm
 import TypeCheckingFailure
-import TypeErroredTerm
+import Term.TypeErroredTerm
 
 type TypeCheckingTerm = Either TypeErroredTerm TypeCheckedTerm
 
@@ -141,12 +141,12 @@ runFreeTypeCheckerT :: TypeCheckerT m a ->
                       m (FreeF TypeCheckerF a (TypeCheckerT m a))
 runFreeTypeCheckerT = runFreeT
 
+-- TypeCheckerT = FreeT TypeCheckerF
 type TCMonad = TypeCheckerT (ExceptT TypeErroredTerm Identity)
 
 runTypeCheck2 ::
   TCMonad a ->
-  Either TypeErroredTerm
-  (FreeF TypeCheckerF a (TCMonad a))
+  Either TypeErroredTerm (FreeF TypeCheckerF a (TCMonad a))
 runTypeCheck2 = runIdentity . runExceptT . runFreeT
 
 
@@ -185,12 +185,12 @@ _ `eqβ` _ = True -- TODO
 redβ :: TermX ξ -> TermX ξ
 redβ = id
 
-matchBinders :: Maybe Name -> Maybe Name -> Maybe (Maybe Name)
-matchBinders Nothing  Nothing  = Just Nothing
-matchBinders a        Nothing  = Just $ a
-matchBinders Nothing  b        = Just $ b
-matchBinders (Just a) (Just b) =
-  if a == b then Just $ Just a else Nothing
+matchBinders :: Binder -> Binder -> Maybe Binder
+matchBinders (Binder a) (Binder b) = case (a, b) of
+  (Nothing, Nothing) -> Just (Binder Nothing)
+  (Just  _, Nothing) -> Just (Binder a)
+  (Nothing, Just  _) -> Just (Binder b)
+  (Just va, Just vb) -> if va == vb then Just (Binder a) else Nothing
 
 maybeFailWith :: MonadError e m => Maybe s -> e -> m s
 (Just s) `maybeFailWith` _ = return s
@@ -210,7 +210,7 @@ runSynth' γ t = case t of
     sFun <- synth γ fun
            (\ fFun -> App (Right AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
-    Pi _ binder τIn τOut <-
+    Pi _ (Binder binder) τIn τOut <-
       typeOf sFun `isPiOtherwise`
       (App (Right (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
     -- check that arg has the type τIn
@@ -268,17 +268,6 @@ runCheck' γ t τ = case t of
         annotateError (Right IncompatibleTypes) t
     return t'
 
-{-
-runSynth' :: RawTerm -> TCMonad TypeCheckedTerm
-runSynth' = \case
-  App () fun arg -> do
-    x <- runExceptT $ synthApp fun arg
-    case x of
-      Left l  -> throwError l
-      Right r -> return r
-  t -> throwError $ unchecked t
--}
-
 runTypeCheckerF ::
   TypeCheckerF (TypeCheckerT TCMonad TypeCheckedTerm) ->
   TCMonad TypeCheckedTerm
@@ -322,11 +311,15 @@ stepTypeCheckerF ::
   TypeCheckerF (TCMonad TypeCheckedTerm) ->
   TypeCheckerF (TCMonad TypeCheckedTerm)
 stepTypeCheckerF input =
-  let frist = runTypeCheckerF' input in
-  let snecod = runTypeCheck2 frist in
-  case snecod of
+  case runTypeCheck2 . runTypeCheckerF' $ input of
   Left  l -> Failure l
   Right r ->
     case r of
     Pure p -> Success p
     Free f -> f
+
+{-
+ExceptT ... FreeT ... Identity
+
+
+-}

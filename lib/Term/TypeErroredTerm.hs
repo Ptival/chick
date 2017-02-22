@@ -5,13 +5,13 @@
 {-# language TypeFamilies #-}
 {-# language TypeSynonymInstances #-}
 
-module TypeErroredTerm where
+module Term.TypeErroredTerm where
 
 import DictMetaId
 import DictMetaMapId
 import RawTerm
 import Term
-import TypeCheckedTerm
+import Term.TypeCheckedTerm
 import TypeCheckingFailure
 
 data TypeErrored

@@ -1,7 +1,9 @@
 {-# language ConstraintKinds #-}
 {-# language DeriveAnyClass #-}
 {-# language DeriveGeneric #-}
+{-# language FlexibleInstances #-}
 {-# language LambdaCase #-}
+{-# language MultiParamTypeClasses #-}
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
 {-# language TypeFamilies #-}
@@ -9,14 +11,33 @@
 
 module Term where
 
-import Data.List
 import Data.Typeable
 import GHC.Exts                       (Constraint)
 import GHC.Generics
+import Test.QuickCheck.Arbitrary
+import Test.QuickCheck.Gen
+import Test.SmallCheck.Series
 import Text.PrettyPrint.GenericPretty (Out)
 import Text.Printf
 
-type Name = String
+type Variable = String
+
+newtype Binder
+  = Binder (Maybe Variable)
+  deriving (Eq, Generic, Out, Serial m, Show)
+
+arbitraryVariable :: Gen Variable
+arbitraryVariable = listOf1 $ oneof [choose ('A','Z'), choose ('a','z')]
+
+instance Arbitrary Binder where
+  arbitrary =
+    frequency
+    [ (1, return . Binder $ Nothing)
+    , (9, Binder . Just <$> arbitraryVariable)
+    ]
+  shrink (Binder b) = case b of
+    Nothing -> []
+    Just v  -> [Binder Nothing] ++ [Binder (Just v') | v' <- shrink v]
 
 type family X_Annot ξ
 type family X_App   ξ
@@ -31,17 +52,14 @@ data TermX ξ
   = Annot (X_Annot ξ) (TermX ξ) (TypeX ξ)
   | App   (X_App   ξ) (TermX ξ) (TermX ξ)
   | Hole  (X_Hole  ξ)
-  | Lam   (X_Lam   ξ) (Maybe Name) (TermX ξ)
-  | Let   (X_Let   ξ) (Maybe Name) (TermX ξ) (TermX ξ)
-  | Pi    (X_Pi    ξ) (Maybe Name) (TypeX ξ) (TermX ξ)
+  | Lam   (X_Lam   ξ) Binder (TermX ξ)
+  | Let   (X_Let   ξ) Binder (TermX ξ) (TermX ξ)
+  | Pi    (X_Pi    ξ) Binder (TypeX ξ) (TermX ξ)
   | Type  (X_Type  ξ)
-  | Var   (X_Var   ξ) Name
+  | Var   (X_Var   ξ) Variable
   deriving (Generic, Typeable)
 
 type TypeX = TermX
-
-deriving instance ForallX Eq  ξ => Eq  (TermX ξ)
-deriving instance ForallX Out ξ => Out (TermX ξ)
 
 type ForallX (φ :: * -> Constraint) ξ =
   ( φ (X_Annot ξ)
@@ -54,28 +72,50 @@ type ForallX (φ :: * -> Constraint) ξ =
   , φ (X_Var   ξ)
   )
 
-instance Show (TermX ξ) where
-  show (Annot _ t τ) = printf "%s @ %s" (show t) (show τ)
-  show (App   _ t1 t2) = printf "%s %s" (show t1) (show t2)
-  show (Hole  _) = "_"
-  show t@(Lam   _ _ _) = showLams [] t
-  show (Let   _ Nothing  t1 t2) =
-    printf "let _ = %s in %s" (show t1) (show t2)
-  show (Let   _ (Just n) t1 t2) =
-    printf "let %s = %s in %s" n (show t1) (show t2)
-  show (Pi    _ Nothing  τ t) = printf "%s → %s" (show τ) (show t)
-  show (Pi    _ (Just n) τ t) =
-    printf "(%s : %s) → %s" n (show τ) (show t)
-  show (Type  _) = "Type"
-  show (Var   _ n) = n
+deriving instance  ForallX Eq         ξ           => Eq        (TermX ξ)
+deriving instance (ForallX (Serial m) ξ, Monad m) => Serial m  (TermX ξ)
+deriving instance  ForallX Out        ξ           => Out       (TermX ξ)
 
-showLams :: [String] -> TermX ξ -> String
-showLams l (Lam _ Nothing  t) = showLams ("_" : l) t
-showLams l (Lam _ (Just n) t) = showLams (n   : l) t
-showLams l t =
-  printf "λ %s . %s" (concat . intersperse " " . reverse $ l) (show t)
+instance ForallX Arbitrary ξ => Arbitrary (TermX ξ) where
 
---deriving instance ForallX Show ξ => Show (TermX ξ)
+  arbitrary =
+    let b = 30 in -- frequency for base cases
+    sized $ \ s -> frequency
+    [ (s, Annot <$> arbitrary <*> arbitrary <*> arbitrary)
+    , (s, App   <$> arbitrary <*> arbitrary <*> arbitrary)
+    , (b, Hole  <$> arbitrary)
+    , (s, Lam   <$> arbitrary <*> arbitrary <*> arbitrary)
+    , (s, Let   <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary)
+    , (s, Pi    <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary)
+    , (b, Type  <$> arbitrary)
+    , (b, Var   <$> arbitrary <*> arbitraryVariable)
+    ]
+
+  shrink = \case
+
+    Annot a t τ ->
+      [t, τ] ++ [Annot a' t' τ' | (a', t', τ') <- shrink (a, t, τ)]
+
+    App a t1 t2 ->
+      [t1, t2] ++ [App a' t1' t2' | (a', t1', t2') <- shrink (a, t1, t2)]
+
+    Hole _ -> []
+
+    Lam a b t ->
+      [t] ++ [Lam a' b' t' | (a', b', t') <- shrink (a, b, t)]
+
+    Let a b t1 t2 ->
+      [t1, t2] ++ [Let a' b' t1' t2' | (a', b', t1', t2') <- shrink (a, b, t1, t2)]
+
+    Pi a b τ t ->
+      [τ, t] ++ [Pi a' b' τ' t' | (a', b', τ', t') <- shrink (a, b, τ, t)]
+
+    Type _ -> []
+
+    Var a (c : _ : _ ) -> [Var a [c]]
+    Var _ _            -> []
+
+deriving instance ForallX Show ξ => Show (TermX ξ)
 
 type ForallX2 (φ :: * -> * -> Constraint) ξ ψ =
   ( φ (X_Annot ξ) (X_Annot ψ)
