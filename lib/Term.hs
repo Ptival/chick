@@ -1,6 +1,7 @@
 {-# language ConstraintKinds #-}
 {-# language DeriveAnyClass #-}
 {-# language DeriveGeneric #-}
+{-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
 {-# language LambdaCase #-}
 {-# language MultiParamTypeClasses #-}
@@ -76,20 +77,29 @@ deriving instance  ForallX Eq         ξ           => Eq        (TermX ξ)
 deriving instance (ForallX (Serial m) ξ, Monad m) => Serial m  (TermX ξ)
 deriving instance  ForallX Out        ξ           => Out       (TermX ξ)
 
+genTerm :: ForallX Arbitrary ξ => Int -> Gen (TermX ξ)
+genTerm 0 =
+  oneof
+  [ Hole <$> arbitrary
+  , Type <$> arbitrary
+  , Var  <$> arbitrary <*> arbitraryVariable
+  ]
+genTerm n =
+  let arbitrary' = choose (0, n-1) >>= genTerm in
+  oneof
+  [ Annot <$> arbitrary <*> arbitrary' <*> arbitrary'
+  , App   <$> arbitrary <*> arbitrary' <*> arbitrary'
+  --, Hole  <$> arbitrary
+  , Lam   <$> arbitrary <*> arbitrary <*> arbitrary'
+  , Let   <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary'
+  , Pi    <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary'
+  --, Type  <$> arbitrary
+  , Var   <$> arbitrary <*> arbitraryVariable
+  ]
+
 instance ForallX Arbitrary ξ => Arbitrary (TermX ξ) where
 
-  arbitrary =
-    let b = 30 in -- frequency for base cases
-    sized $ \ s -> frequency
-    [ (s, Annot <$> arbitrary <*> arbitrary <*> arbitrary)
-    , (s, App   <$> arbitrary <*> arbitrary <*> arbitrary)
-    , (b, Hole  <$> arbitrary)
-    , (s, Lam   <$> arbitrary <*> arbitrary <*> arbitrary)
-    , (s, Let   <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary)
-    , (s, Pi    <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary)
-    , (b, Type  <$> arbitrary)
-    , (b, Var   <$> arbitrary <*> arbitraryVariable)
-    ]
+  arbitrary = sized genTerm
 
   shrink = \case
 

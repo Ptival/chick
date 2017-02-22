@@ -56,8 +56,10 @@ unitTestTerms =
 
 unitTests :: TestTree
 unitTests =
+
   let isTolerable' = isTolerable (tableToOrdering def) in
   let isNotTolerable' c p = not (isTolerable' c p) in
+
   testGroup "Unit tests" $
 
   [ testCase ("parsing " ++ s) $ parseMaybeRaw s @?= Just t | (t, s) <- unitTestTerms ]
@@ -80,9 +82,12 @@ unitTests =
 
 scProps :: TestTree
 scProps =
+
   let isTolerable' = isTolerable (tableToOrdering def) in
+
   localOption (SmallCheckDepth 3) $
-  testGroup "(checked by SmallCheck)"
+
+  testGroup "(checked by SmallCheck)" $
 
   [ SC.testProperty
     "isTolerable' p (q, TolerateAny)" $
@@ -104,12 +109,14 @@ scProps =
 
 qcProps :: TestTree
 qcProps =
-  localOption (QuickCheckMaxSize 15) $
-  localOption (QuickCheckTests 100) $
+
+  localOption (QuickCheckMaxSize 30) $
+  localOption (QuickCheckTests 500) $
   localOption (QuickCheckReplay Nothing) $
   localOption (QuickCheckShowReplay True) $
   --localOption (QuickCheckVerbose True) $
-  testGroup "(checked by QuickCheck)"
+
+  testGroup "(checked by QuickCheck)" $
 
   [ QC.testProperty
     "parseMaybeRaw . prettyRaw == Just" $
