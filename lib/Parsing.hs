@@ -13,54 +13,67 @@ import           Text.Printf
 import           Term.RawTerm
 import           Term
 
-type SelfNextParser a = Parser a -> Parser a -> Parser a
+type Parser1 a = Parser a -> Parser  a
+type Parser2 a = Parser a -> Parser1 a
 
-parser :: [[SelfNextParser RawTerm]]
+data Associativity = LeftAssociative | RightAssociative | NonAssociative
+
+data ModularParser a
+  = SelfNextParser (Parser2 a)
+  | BinaryOpParser Associativity String (a -> a -> a)
+  | AtomParser (Parser a)
+
+binOpL, binOpR, binOpN :: String -> (a -> a -> a) -> ModularParser a
+binOpL = BinaryOpParser LeftAssociative
+binOpR = BinaryOpParser RightAssociative
+binOpN = BinaryOpParser NonAssociative
+
+parser :: [[ModularParser RawTerm]]
 parser =
   -- low precedence
-  [ [letP, lamP]
-  , [annotP]
-  , [namedPiP, anonymousPiP]
-  , [appP]
-  , [atomP]
+  [ [SelfNextParser letP, SelfNextParser lamP]
+  , [binOpN "∷" (Annot ())]
+  , [SelfNextParser namedPiP, binOpR "→" (Pi () (Binder Nothing))]
+  , [binOpL "" (App ())]
+  , [AtomParser holeP, AtomParser typeP, AtomParser varP]
   ]
   -- high precedence
 
-choiceP :: [SelfNextParser a] -> Parser a -> Parser a
-choiceP ps nextP =
-  fix $ \ selfP -> choice $ map (\ p -> p selfP nextP) ps ++ [nextP]
+unModularP :: ModularParser a -> Parser2 a
+unModularP (SelfNextParser p) = p
+unModularP (BinaryOpParser LeftAssociative  s p) = binOpLP s p
+unModularP (BinaryOpParser RightAssociative s p) = binOpRP s p
+unModularP (BinaryOpParser NonAssociative   s p) = binOpNP s p
+unModularP (AtomParser p) = \ _selfP _nextP -> p
 
-foldP :: [[SelfNextParser a]] -> Parser a
-foldP ps = fix $ \ self -> foldr ($) (parens self) (map choiceP ps)
+choiceOrNextP :: [ModularParser a] -> Parser1 a
+choiceOrNextP ps nextP =
+  fix $ \ selfP -> choice $ map (\ p -> unModularP p selfP nextP) ps ++ [nextP]
+
+foldP :: [[ModularParser a]] -> Parser a
+foldP ps = fix $ \ self -> foldr ($) (parens self) (map choiceOrNextP ps)
 
 termP :: Parser RawTerm
 termP = foldP parser
 
--- Individual parsers
+-- Binary operator parsers
 
-annotP :: SelfNextParser RawTerm
-annotP _selfP nextP = do
-  t <- try $ do
-    t <- nextP
-    symbol "∷"
-    return t
-  τ <- nextP
-  return $ Annot () t τ
+binOpLP :: String -> (a -> a -> a) -> Parser2 a
+binOpLP s k _selfP nextP = chainl1 nextP (symbol s *> return k)
 
-anonymousPiP :: SelfNextParser RawTerm
-anonymousPiP selfP nextP = do
-  τ1 <- try $ do
-    τ1 <- nextP
-    symbol "→"
-    return τ1
-  τ2 <- selfP
-  return $ Pi () (Binder Nothing) τ1 τ2
+binOpRP :: String -> (a -> a -> a) -> Parser2 a
+binOpRP s k selfP nextP = do
+  l <- try $ do
+    l <- nextP
+    symbol s
+    return l
+  r <- selfP
+  return $ k l r
 
-appP :: SelfNextParser RawTerm
-appP _selfP nextP = chainl1 nextP (space *> return (App ()))
+binOpNP :: String -> (a -> a -> a) -> Parser2 a
+binOpNP s k _selfP nextP = binOpRP s k nextP nextP
 
-atomP :: SelfNextParser RawTerm
-atomP _selfP _nextP = choice [holeP, typeP, varP]
+-- Individual parsers (alphabetically)
 
 binderP :: Parser Binder
 binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> identifier))
@@ -68,7 +81,7 @@ binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> identifier))
 holeP :: Parser RawTerm
 holeP = Hole () <$ symbol "_"
 
-lamP :: SelfNextParser RawTerm
+lamP :: Parser2 RawTerm
 lamP selfP _nextP = do
   try $ do
     symbol "λ"
@@ -81,7 +94,7 @@ lamP selfP _nextP = do
     lams []       t = t
     lams (b : bs) t = Lam () b $ lams bs t
 
-letP :: SelfNextParser RawTerm
+letP :: Parser2 RawTerm
 letP selfP _nextP = do
   try $ do
     rword "let"
@@ -92,7 +105,7 @@ letP selfP _nextP = do
   t2 <- selfP
   return $ Let () b t1 t2
 
-namedPiP :: SelfNextParser RawTerm
+namedPiP :: Parser2 RawTerm
 namedPiP selfP _nextP = do
   (x, τ1) <- try $ do
     symbol "("
@@ -113,11 +126,14 @@ varP = Var () <$> identifier
 
 -- Running parsers
 
+langP :: Parser RawTerm
+langP = termP <* eof
+
 runParserTerm :: String -> Either (ParseError Char Dec) RawTerm
-runParserTerm = runParser (termP <* eof) "runParserTerm"
+runParserTerm = runParser langP "runParserTerm"
 
 parseMaybeTerm :: String -> Maybe RawTerm
-parseMaybeTerm = parseMaybe termP
+parseMaybeTerm = parseMaybe langP
 
 -- Utilities
 
