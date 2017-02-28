@@ -62,6 +62,10 @@ binOpLP :: String -> (a -> a -> a) -> Parser2 a
 binOpLP s k _selfP nextP = chainl1 nextP (symbol s *> return k)
 
 binOpRP :: String -> (a -> a -> a) -> Parser2 a
+binOpRP s k selfP nextP = k <$> try (nextP <* symbol s) <*> selfP
+
+{-
+-- short for:
 binOpRP s k selfP nextP = do
   l <- try $ do
     l <- nextP
@@ -69,6 +73,7 @@ binOpRP s k selfP nextP = do
     return l
   r <- selfP
   return $ k l r
+-}
 
 binOpNP :: String -> (a -> a -> a) -> Parser2 a
 binOpNP s k _selfP nextP = binOpRP s k nextP nextP
@@ -82,20 +87,33 @@ holeP :: Parser RawTerm
 holeP = Hole () <$ symbol "_"
 
 lamP :: Parser2 RawTerm
-lamP selfP _nextP = do
+lamP selfP _nextP =
+  lams
+  <$> (try (symbol "λ") *> some binderP)
+  <*> (symbol "." *> selfP)
+{-
+-- was:
   try $ do
     symbol "λ"
   bs <- some binderP
   symbol "."
   t <- selfP
   return $ lams bs t
+-}
   where
     lams :: [Binder] -> RawTerm -> RawTerm
     lams []       t = t
     lams (b : bs) t = Lam () b $ lams bs t
 
 letP :: Parser2 RawTerm
-letP selfP _nextP = do
+letP selfP _nextP =
+  Let ()
+  <$> (try (rword "let") *> binderP)
+  <*> (symbol "=" *> termP)
+  <*> (rword "in" *> selfP)
+
+{-
+-- was:
   try $ do
     rword "let"
   b <- binderP
@@ -104,6 +122,7 @@ letP selfP _nextP = do
   rword "in"
   t2 <- selfP
   return $ Let () b t1 t2
+-}
 
 namedPiP :: Parser2 RawTerm
 namedPiP selfP _nextP = do
@@ -113,7 +132,7 @@ namedPiP selfP _nextP = do
     symbol ":"
     τ1 <- termP
     symbol ")"
-    symbol "→"
+    symbol "→" -- I don't think we can commit prior to this, unfortunately
     return (x, τ1)
   τ2 <- selfP
   return $ Pi () (Binder (Just x)) τ1 τ2
