@@ -1,10 +1,23 @@
+{-# language FlexibleContexts #-}
+{-# language StandaloneDeriving #-}
+{-# language UndecidableInstances #-}
+
 module Tactic where
+
+import Control.Monad.Fail
+import Prelude hiding (fail)
 
 import Term
 
 data Declaration ξ
-  = LocalAssum Binder (TypeX ξ)
-  | LocalDef   Binder (TypeX ξ) (TermX ξ)
+  = LocalAssum Variable (TypeX ξ)
+  | LocalDef   Variable (TypeX ξ) (TermX ξ)
+
+deriving instance ForallX Eq ξ => Eq (Declaration ξ)
+
+nameOf :: Declaration ξ -> Variable
+nameOf (LocalAssum v _)   = v
+nameOf (LocalDef   v _ _) = v
 
 data Goal ξ = Goal
   { hyps  :: [Declaration ξ]
@@ -35,4 +48,15 @@ focus n (Goals f u) =
 data Atomic
   = Intro Binder
 
---runAtomic :: Atomic -> Goals ξ -> Maybe (Goals ξ)
+addHyp :: MonadFail m => Declaration ξ -> [Declaration ξ] -> m [Declaration ξ]
+addHyp hyp hyps
+  | nameOf hyp `elem` map nameOf hyps = fail "addHyp: name conflict"
+  | otherwise = return $ hyp:hyps
+
+-- runAtomic :: MonadFail m => Atomic -> Goal ξ -> m (Goal ξ)
+-- runAtomic a (Goal hyps concl) =
+--   case a of
+--     Intro i ->
+--       case concl of
+--         Pi _ b τ1 τ2 ->
+--           Goal <$> addHyp (LocalAssum s τ1) hyps <*> _
