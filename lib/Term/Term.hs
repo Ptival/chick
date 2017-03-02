@@ -51,7 +51,10 @@ newtype Binder
   deriving (Eq, Generic, Out, Serial m, Show)
 
 arbitraryVariable :: Gen Variable
-arbitraryVariable = listOf1 $ oneof [choose ('A','Z'), choose ('a','z')]
+arbitraryVariable = do
+  c <- choose ('a', 'e')
+  return [c]
+  --take 2 <$> (listOf1 $ oneof [choose ('a', 'z')])
 
 instance Arbitrary Binder where
   arbitrary =
@@ -102,10 +105,10 @@ deriving instance  ForallX Out        ξ           => Out       (TermX ξ)
 
 genTerm :: ForallX Arbitrary ξ => Int -> Gen (TermX ξ)
 genTerm 0 =
-  oneof
-  [ Hole <$> arbitrary
-  , Type <$> arbitrary
-  , Var  <$> arbitrary <*> arbitraryVariable
+  frequency
+  [ (1, Hole <$> arbitrary)
+  , (1, Type <$> arbitrary)
+  , (3, Var  <$> arbitrary <*> arbitraryVariable)
   ]
 genTerm n =
   let arbitrary' = choose (0, n-1) >>= genTerm in
