@@ -4,16 +4,18 @@ module Main where
 
 import Data.Default
 import Test.Tasty
-import Test.Tasty.SmallCheck as SC
-import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck as QC
+import Test.Tasty.SmallCheck as SC
 import Text.Megaparsec
+import Text.Printf
 
 import Notations
 import Parsing
 import Precedence
 import PrettyPrinting
 import Term.RawTerm
+import Term.Term
 import WellFormed
 
 main :: IO ()
@@ -79,6 +81,12 @@ unitTests =
       isNotTolerable' PrecAnnot (PrecApp, TolerateEqual) @? ":("
 
   ]
+
+  ++
+
+  [ testCase ("can't parse a : b : c") $
+    parseMaybeRaw "a : b : c" @?= Nothing ]
+
 
 scProps :: TestTree
 scProps =
