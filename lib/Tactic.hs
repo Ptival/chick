@@ -1,19 +1,43 @@
+{-# language DeriveAnyClass #-}
+{-# language DeriveGeneric #-}
 {-# language FlexibleContexts #-}
+{-# language LambdaCase #-}
 {-# language StandaloneDeriving #-}
+{-# language TypeFamilies #-}
 {-# language UndecidableInstances #-}
 
 module Tactic where
 
-import Control.Monad.Fail
-import Prelude hiding (fail)
+import Control.Monad.Except
+import GHC.Generics
+import Prelude
+import Test.QuickCheck
+import Text.PrettyPrint.Annotated.WL
 
+import Precedence
+import PrettyPrinting
+import Term.Substitution
 import Term.Term
 
 data Declaration ξ
   = LocalAssum Variable (TypeX ξ)
   | LocalDef   Variable (TypeX ξ) (TermX ξ)
 
-deriving instance ForallX Eq ξ => Eq (Declaration ξ)
+deriving instance (ForallX Eq   ξ) => Eq   (Declaration ξ)
+deriving instance (ForallX Show ξ) => Show (Declaration ξ)
+
+instance (ForallX Arbitrary ξ) => Arbitrary (Declaration ξ) where
+  arbitrary =
+    oneof
+    [ LocalAssum <$> arbitraryVariable <*> genTerm 2
+    , LocalDef   <$> arbitraryVariable <*> genTerm 2 <*> genTerm 2
+    ]
+
+prettyDeclaration :: ForallX ((~) a) ξ => PrecedenceTable -> Declaration ξ -> Doc a
+prettyDeclaration precs (LocalAssum v τ) =
+  sep [text v, char ':', prettyTerm precs τ]
+prettyDeclaration precs (LocalDef v t τ) =
+  sep [text v, text ":=", prettyTerm precs t, char ':', prettyTerm precs τ]
 
 nameOf :: Declaration ξ -> Variable
 nameOf (LocalAssum v _)   = v
@@ -23,6 +47,23 @@ data Goal ξ = Goal
   { hypotheses :: [Declaration ξ]
   , conclusion :: TermX ξ
   }
+  deriving (Generic)
+
+deriving instance (ForallX Eq   ξ) => Eq   (Goal ξ)
+deriving instance (ForallX Show ξ) => Show (Goal ξ)
+
+instance (ForallX Arbitrary ξ) => Arbitrary (Goal ξ) where
+  arbitrary = Goal <$> take 2 <$> listOf arbitrary <*> arbitrary
+
+prettyGoal :: ForallX ((~) a) ξ => PrecedenceTable -> Goal ξ -> Doc a
+prettyGoal precs (Goal hyps concl) =
+  vcat
+  [ text "{{{"
+  , vcat (map (prettyDeclaration precs) hyps)
+  , text (replicate 40 '-')
+  , prettyTerm precs concl
+  , text "}}}"
+  ]
 
 data Goals ξ = Goals
   { focused   :: [Goal ξ]
@@ -48,15 +89,51 @@ focus n (Goals f u) =
 data Atomic
   = Intro Binder
 
-addHyp :: MonadFail m => Declaration ξ -> [Declaration ξ] -> m [Declaration ξ]
+addHyp :: MonadError String m => Declaration ξ -> [Declaration ξ] -> m [Declaration ξ]
 addHyp hyp hyps
-  | nameOf hyp `elem` map nameOf hyps = fail "addHyp: name conflict"
+  | nameOf hyp `elem` map nameOf hyps = throwError "addHyp: name conflict"
   | otherwise = return $ hyp:hyps
 
--- runAtomic :: MonadFail m => Atomic -> Goal ξ -> m (Goal ξ)
--- runAtomic a (Goal hyps concl) =
---   case a of
---     Intro i ->
---       case concl of
---         Pi _ b τ1 τ2 ->
---           Goal <$> addHyp (LocalAssum s τ1) hyps <*> _
+isFree :: Variable -> TermX ξ -> Bool
+isFree v = go
+  where
+    go = \case
+      Annot _ t τ     -> go t  && go τ
+      App   _ t1 t2   -> go t1 && go t2
+      Hole  _         -> True
+      Lam   _ b t     -> goUnlessShadowed b t
+      Let   _ b t1 t2 -> go t1 && goUnlessShadowed b t2
+      Pi    _ b τ1 τ2 -> go τ1 && goUnlessShadowed b τ2
+      Type  _         -> True
+      Var   _ v'      -> not (v == v')
+    goUnlessShadowed (Binder   Nothing) t = go t
+    goUnlessShadowed (Binder (Just v')) t
+      | v' == v    = True
+      | otherwise = go t
+
+runAtomic :: MonadError String m => Atomic -> Goal ξ -> m (Goal ξ)
+runAtomic a (Goal hyps concl) =
+  case a of
+    Intro (Binder mi) ->
+      case concl of
+        Pi _ (Binder mv) τ1 τ2 ->
+          case (mi, mv) of
+
+          (Nothing, Nothing) -> return $ Goal hyps τ2
+
+          (Just i, Nothing) ->
+            Goal
+            <$> addHyp (LocalAssum i τ1) hyps
+            <*> pure τ2
+
+          (Nothing, Just v) ->
+            if isFree v τ2
+            then return $ Goal hyps τ2
+            else throwError "Can't discard a dependent binder"
+
+          (Just i, Just v) ->
+            Goal
+            <$> addHyp (LocalAssum i τ1) hyps
+            <*> pure (rename v i τ2)
+
+        _ -> throwError "TODO"
