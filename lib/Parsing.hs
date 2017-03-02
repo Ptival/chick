@@ -11,7 +11,7 @@ import           Text.Megaparsec.String
 import           Text.Printf
 
 import           Term.RawTerm
-import           Term
+import           Term.Term
 
 type Parser1 a = Parser a -> Parser  a
 type Parser2 a = Parser a -> Parser1 a

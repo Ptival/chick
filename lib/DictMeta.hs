@@ -4,7 +4,7 @@
 
 module DictMeta where
 
-import Term
+import Term.Term
 
 data DictMeta (φ :: * -> *) ξ = MkDictMeta
   { metaAnnot :: φ (X_Annot ξ)

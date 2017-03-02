@@ -1,6 +1,6 @@
 module Context where
 
-import Term
+import Term.Term
 
 type Context ξ = [(Variable, TypeX ξ)]
 

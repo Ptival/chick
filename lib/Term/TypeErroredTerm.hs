@@ -9,8 +9,8 @@ module Term.TypeErroredTerm where
 
 import DictMetaId
 import DictMetaMapId
-import RawTerm
-import Term
+import Term.RawTerm
+import Term.Term
 import Term.TypeCheckedTerm
 import TypeCheckingFailure
 

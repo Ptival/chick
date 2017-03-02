@@ -15,7 +15,7 @@ import Text.PrettyPrint.GenericPretty (pp)
 import Notations
 import Parsing
 import PrettyPrinting
-import RawTerm
+import Term.RawTerm
 --import Term
 import Term.NumberedTerm
 import Term.TypeCheckedTerm

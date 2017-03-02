@@ -7,7 +7,7 @@ import Data.Maybe
 import Text.PrettyPrint.Annotated.WL
 
 import Precedence
-import Term
+import Term.Term
 
 {-
 par :: Precedence -> Precedence -> Doc a -> Doc a

@@ -5,7 +5,7 @@ module Notations where
 import Data.Default
 
 import Context
-import Term
+import Term.Term
 
 -- Annot
 infix 0 ^::

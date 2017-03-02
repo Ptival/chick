@@ -1,13 +1,16 @@
+{-# language FlexibleContexts #-}
+
 module TestShow where
 
 import Text.PrettyPrint.GenericPretty (pp)
 import Text.Printf                    (printf)
 
-import Examples
-import RawTerm
-import Term
+--import Examples
+import Notations
+import Term.RawTerm
+import Term.Term
 
-testShow :: TermX ξ -> String -> Bool
+testShow :: ForallX Show ξ => TermX ξ -> String -> Bool
 testShow t s = show t == s
 
 test :: RawTerm -> String -> IO ()
@@ -24,5 +27,5 @@ mainTestShow :: IO ()
 mainTestShow = do
   let a = var "a"
   let b = var "b"
-  test (lam ["a"] $ a) "λ a . a"
-  test (lam ["a", "b"] $ a $$ b) "λ a b . a b"
+  test ((^\) ["a"] $ a) "λ a . a"
+  test ((^\) ["a", "b"] $ a ^$ b) "λ a b . a b"

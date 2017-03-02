@@ -6,8 +6,8 @@
 module Term.NumberedTerm where
 
 import DictMetaMap
-import RawTerm
-import Term
+import Term.RawTerm
+import Term.Term
 
 data Numbered
 

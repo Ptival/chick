@@ -10,7 +10,7 @@
 {-# language TypeFamilies #-}
 {-# language UndecidableInstances #-}
 
-module Term where
+module Term.Term where
 
 import Data.Typeable
 import GHC.Exts                       (Constraint)

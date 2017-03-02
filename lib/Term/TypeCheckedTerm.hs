@@ -2,8 +2,8 @@
 
 module Term.TypeCheckedTerm where
 
-import RawTerm
-import Term
+import Term.RawTerm
+import Term.Term
 
 data TypeChecked
 

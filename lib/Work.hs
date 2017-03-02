@@ -17,8 +17,8 @@ import Prelude                  hiding (or)
 import Text.Printf
 
 import Context
-import RawTerm
-import Term
+import Term.RawTerm
+import Term.Term
 import Term.TypeCheckedTerm
 import TypeCheckingFailure
 import Term.TypeErroredTerm

@@ -3,7 +3,7 @@
 
 module Term.RawTerm where
 
-import Term
+import Term.Term
 
 data Raw
 

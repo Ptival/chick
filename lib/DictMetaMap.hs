@@ -4,7 +4,7 @@
 
 module DictMetaMap where
 
-import Term
+import Term.Term
 
 data DictMetaMap fξ fψ ξ ψ = MkDictMetaMap
   { doAnnot :: fξ (X_Annot ξ) -> fψ (X_Annot ψ)

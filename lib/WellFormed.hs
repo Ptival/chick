@@ -4,7 +4,7 @@
 module WellFormed where
 
 import Parsing (reservedWords)
-import Term
+import Term.Term
 import Term.RawTerm
 
 foldVars :: forall a ξ. (Variable -> a -> a) -> TermX ξ -> a -> a

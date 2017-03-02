@@ -7,7 +7,7 @@ module Tactic where
 import Control.Monad.Fail
 import Prelude hiding (fail)
 
-import Term
+import Term.Term
 
 data Declaration ξ
   = LocalAssum Variable (TypeX ξ)

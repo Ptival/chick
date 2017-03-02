@@ -6,7 +6,7 @@ module DictMetaId where
 import Data.Functor.Identity
 
 import DictMeta
-import Term
+import Term.Term
 
 type DictMetaId = DictMeta Identity
 
