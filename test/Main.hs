@@ -41,9 +41,9 @@ prettyRaw = prettyTermString def
 
 unitTestTerms :: [(RawTerm, String)]
 unitTestTerms =
-  [ (var "a" ^:: var "b", "a ∷ b")
+  [ (var "a" ^:: var "b", printf "a %s b" annotSymbol)
   , (var "a" ^$ var "b", "a b")
-  , (hole, "_")
+  , (hole, holeSymbol)
   , ((^\) ["arg1", "arg2", "arg3"] (var "body"), "λ arg1 arg2 arg3 . body")
   , ( let' [("x1", var "body1"), ("x2", var "body2")] (var "body")
     , "let x1 = body1 in let x2 = body2 in body"

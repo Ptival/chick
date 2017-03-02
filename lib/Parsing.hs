@@ -32,7 +32,7 @@ parser :: [[ModularParser RawTerm]]
 parser =
   -- low precedence
   [ [SelfNextParser letP, SelfNextParser lamP]
-  , [binOpN "∷" (Annot ())]
+  , [binOpN annotSymbol (Annot ())]
   , [SelfNextParser namedPiP, binOpR "→" (Pi () (Binder Nothing))]
   , [binOpL "" (App ())]
   , [AtomParser holeP, AtomParser typeP, AtomParser varP]
@@ -84,7 +84,7 @@ binderP :: Parser Binder
 binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> identifier))
 
 holeP :: Parser RawTerm
-holeP = Hole () <$ symbol "_"
+holeP = Hole () <$ symbol holeSymbol
 
 lamP :: Parser2 RawTerm
 lamP selfP _nextP =

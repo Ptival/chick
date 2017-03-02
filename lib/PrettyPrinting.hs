@@ -43,7 +43,7 @@ prettyTerm precs = go (PrecMin, TolerateEqual)
       Annot a t τ ->
         (annotate a $ sep
          [ go (PrecAnnot, TolerateHigher) t
-         , char '∷'
+         , text annotSymbol
          , go (PrecAnnot, TolerateHigher) τ
          ]
         , PrecAnnot)
@@ -55,7 +55,7 @@ prettyTerm precs = go (PrecMin, TolerateEqual)
          ]
         , PrecApp)
 
-      Hole a -> (annotate a $ char '_', PrecAtom)
+      Hole a -> (annotate a $ text holeSymbol, PrecAtom)
 
       Lam a n t -> (goLams [] (Lam a n t), PrecLam)
 

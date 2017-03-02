@@ -21,6 +21,29 @@ import Test.SmallCheck.Series
 import Text.PrettyPrint.GenericPretty (Out)
 import Text.Printf
 
+{-
+The type-ascription symbol unfortunately cannot be ":" like you would expect,
+because in the presence of the four syntactic constructs:
+
+`(t)`
+`t → t`
+`t : t`
+`(t : t) → t`
+
+The string `(t : t) → t` can be decomposed in two non-equivalent ways.
+
+One could either:
+- change the Pi syntax, for instance `[t : t] → t`, but people would be surprised by
+  the meaning of `(t : t) → t`
+- change the Pi syntax, for instance `Π (t : t) → t`, but people would be surprised by
+  the meaning of `(t : t) → t`
+
+-}
+
+annotSymbol, holeSymbol :: String
+annotSymbol = "@"
+holeSymbol  = "?"
+
 type Variable = String
 
 newtype Binder
