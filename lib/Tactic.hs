@@ -20,8 +20,8 @@ nameOf (LocalAssum v _)   = v
 nameOf (LocalDef   v _ _) = v
 
 data Goal ξ = Goal
-  { hyps  :: [Declaration ξ]
-  , concl :: TermX ξ
+  { hypotheses :: [Declaration ξ]
+  , conclusion :: TermX ξ
   }
 
 data Goals ξ = Goals
