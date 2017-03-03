@@ -18,7 +18,7 @@ Source-repository head
 Library
   default-language: Haskell2010
   ghc-options:      -Wall -Wno-orphans
-  hs-source-dirs:   lib
+  hs-source-dirs:   lib, test
   build-depends: base                      >= 4.9   && < 4.10,
                  bifunctors                >= 5.4   && < 5.5,
                  data-default              >= 0.7   && < 0.8,
@@ -40,7 +40,18 @@ Library
                    Parsing
                    Precedence
                    PrettyPrinting
+                   Tactic
+                   Term.AlphaEquivalence
+                   Term.AlphaRenaming
+                   Term.Fold
+                   Term.Free
+                   Term.Fresh
+                   Term.NumberedTerm
                    Term.RawTerm
+                   Term.Substitution
+                   Term.Term
+                   Term.TypeCheckedTerm
+                   Term.TypeErroredTerm
                    WellFormed
   other-modules:
 

@@ -25,7 +25,7 @@ foldVars g = go
 
 wellFormed :: RawTerm -> Bool
 wellFormed t =
-  let condition v =
+  let condition (Variable v) =
         -- Variable name should not be empty
         v /= ""
         -- Variable name should not be reserved

@@ -78,7 +78,7 @@ prettyTerm precs = go (PrecMin, TolerateEqual)
          ]
         , PrecArrow)
 
-      Pi a (Binder (Just n)) τ1 τ2 ->
+      Pi a (Binder (Just (Variable n))) τ1 τ2 ->
         (annotate a $ sep
          [ parens $ sep
            [ text n
@@ -92,10 +92,10 @@ prettyTerm precs = go (PrecMin, TolerateEqual)
 
       Type a -> (annotate a $ text "Type", PrecAtom)
 
-      Var a x -> (annotate a $ text x, PrecAtom)
+      Var a (Variable x) -> (annotate a $ text x, PrecAtom)
 
     goBinder :: Binder -> Doc a
-    goBinder (Binder b) = text . fromMaybe "_" $ b
+    goBinder (Binder b) = text . unVariable . fromMaybe (Variable "_") $ b
 
     goLams :: ForallX ((~) a) ξ => [Doc a] -> TermX ξ -> Doc a
     goLams l = \case

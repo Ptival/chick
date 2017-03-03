@@ -2,21 +2,23 @@
 
 module Main where
 
-import Data.Default
-import Test.Tasty
-import Test.Tasty.HUnit
-import Test.Tasty.QuickCheck as QC
-import Test.Tasty.SmallCheck as SC
-import Text.Megaparsec
-import Text.Printf
+import           Data.Default
+import           Test.Tasty
+import           Test.Tasty.HUnit
+import           Test.Tasty.QuickCheck as QC
+import           Test.Tasty.SmallCheck as SC
+import           Text.Megaparsec
+import           Text.Printf
 
-import Notations
-import Parsing
-import Precedence
-import PrettyPrinting
-import Term.RawTerm
-import Term.Term
-import WellFormed
+import           Notations
+import           Parsing
+import           Precedence
+import           PrettyPrinting
+import           Term.RawTerm
+import           Term.Term
+import qualified TestFresh             as TF
+import qualified TestAlphaRenaming     as TAR
+import           WellFormed
 
 main :: IO ()
 main = defaultMain tests
@@ -25,14 +27,8 @@ tests :: TestTree
 tests =
   testGroup "Tests"
   [ unitTests
-  , properties
-  ]
-
-properties :: TestTree
-properties =
-  testGroup "Properties"
-  [ scProps
-  , qcProps
+  ,  TF.unitTests,  TF.scTests,  TF.qcTests
+  , TAR.unitTests, TAR.scTests, TAR.qcTests
   ]
 
 parseMaybeRaw :: String -> Maybe RawTerm
@@ -86,7 +82,6 @@ unitTests =
 
   [ testCase ("can't parse a : b : c") $
     parseMaybeRaw "a : b : c" @?= Nothing ]
-
 
 scProps :: TestTree
 scProps =

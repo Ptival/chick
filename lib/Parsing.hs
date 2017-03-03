@@ -81,7 +81,7 @@ binOpNP s k _selfP nextP = binOpRP s k nextP nextP
 -- Individual parsers (alphabetically)
 
 binderP :: Parser Binder
-binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> identifier))
+binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just . Variable <$> identifier))
 
 holeP :: Parser RawTerm
 holeP = Hole () <$ symbol holeSymbol
@@ -135,13 +135,13 @@ namedPiP selfP _nextP = do
     symbol "→" -- I don't think we can commit prior to this, unfortunately
     return (x, τ1)
   τ2 <- selfP
-  return $ Pi () (Binder (Just x)) τ1 τ2
+  return $ Pi () (Binder (Just (Variable x))) τ1 τ2
 
 typeP :: Parser RawTerm
 typeP = Type () <$ rword "Type"
 
 varP :: Parser RawTerm
-varP = Var () <$> identifier
+varP = Var () . Variable <$> identifier
 
 -- Running parsers
 

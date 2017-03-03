@@ -12,6 +12,7 @@
 
 module Term.Term where
 
+import Data.String
 import Data.Typeable
 import GHC.Exts                       (Constraint)
 import GHC.Generics
@@ -44,23 +45,27 @@ annotSymbol, holeSymbol :: String
 annotSymbol = "@"
 holeSymbol  = "?"
 
-type Variable = String
-
-newtype Binder
-  = Binder (Maybe Variable)
+newtype Variable
+  = Variable { unVariable :: String }
   deriving (Eq, Generic, Out, Serial m, Show)
 
-arbitraryVariable :: Gen Variable
-arbitraryVariable = do
-  c <- choose ('a', 'e')
-  return [c]
-  --take 2 <$> (listOf1 $ oneof [choose ('a', 'z')])
+instance Arbitrary Variable where
+  arbitrary = do
+    c <- choose ('a', 'e')
+    return $ Variable [c]
+
+instance IsString Variable where
+  fromString s = Variable s
+
+newtype Binder
+  = Binder { unBinder :: (Maybe Variable) }
+  deriving (Eq, Generic, Out, Serial m, Show)
 
 instance Arbitrary Binder where
   arbitrary =
     frequency
     [ (1, return . Binder $ Nothing)
-    , (9, Binder . Just <$> arbitraryVariable)
+    , (9, Binder . Just <$> arbitrary)
     ]
   shrink (Binder b) = case b of
     Nothing -> []
@@ -108,7 +113,7 @@ genTerm 0 =
   frequency
   [ (1, Hole <$> arbitrary)
   , (1, Type <$> arbitrary)
-  , (3, Var  <$> arbitrary <*> arbitraryVariable)
+  , (3, Var  <$> arbitrary <*> arbitrary)
   ]
 genTerm n =
   let arbitrary' = choose (0, n-1) >>= genTerm in
@@ -120,7 +125,7 @@ genTerm n =
   , Let   <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary'
   , Pi    <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary'
   --, Type  <$> arbitrary
-  , Var   <$> arbitrary <*> arbitraryVariable
+  , Var   <$> arbitrary <*> arbitrary
   ]
 
 instance ForallX Arbitrary ξ => Arbitrary (TermX ξ) where
@@ -148,8 +153,7 @@ instance ForallX Arbitrary ξ => Arbitrary (TermX ξ) where
 
     Type _ -> []
 
-    Var a (c : _ : _ ) -> [Var a [c]]
-    Var _ _            -> []
+    Var a v -> [Var a v' | v' <- shrink v]
 
 deriving instance ForallX Show ξ => Show (TermX ξ)
 

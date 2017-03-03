@@ -7,7 +7,9 @@ import Test.QuickCheck
 import Text.PrettyPrint.Annotated.WL
 import Text.Printf
 
+import Parsing
 import Tactic
+import Term.Fresh
 import Term.RawTerm
 import Term.Term
 
@@ -20,7 +22,7 @@ genPi = do
 
 main :: IO ()
 main = do
-  l <- sample' (resize 1 genPi)
+  l <- sample' (resize 2 genPi)
   forM_ l $ \ p -> do
     putStrLn "\n\n\n"
     let g = Goal [] p
