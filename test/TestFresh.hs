@@ -10,7 +10,7 @@ import Term.Fresh
 import Term.RawTerm
 
 group :: String
-group = "Substitution"
+group = "Fresh"
 
 testFresh :: RawTerm -> Bool
 testFresh t = not (isFree (fresh t) t)
@@ -30,7 +30,8 @@ scTests :: TestTree
 scTests =
   testGroup group $
   [ SC.testProperty "testFresh" testFresh
-  , SC.testProperty "testFresh2" testFresh2
+  , localOption (SmallCheckDepth 2) $
+    SC.testProperty "testFresh2" testFresh2
   ]
 
 qcTests :: TestTree

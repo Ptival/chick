@@ -10,22 +10,26 @@ import Term.Fresh
 import Term.Term
 
 αrename :: Variable -> Variable -> TermX ξ -> TermX ξ
-αrename v s = go
+αrename target replacement = go
   where
     go = \case
       Annot a t τ     -> Annot a (go t) (go τ)
       App   a t1 t2   -> App   a (go t1) (go t2)
       Hole  a         -> Hole  a
-      Lam   a b t     -> Lam   a b (goBound b t)
-      Let   a b t1 t2 -> Let   a b (go t1) (goBound b t2)
-      Pi    a b τ1 τ2 -> Pi    a b (go τ1) (goBound b τ2)
+      Lam   a b t     -> goBound (Lam a) b t
+      Let   a b t1 t2 -> goBound (\ b' t2' -> Let a b' (go t1) t2') b t2
+      Pi    a b τ1 τ2 -> goBound (\ b' τ2' -> Pi  a b' (go τ1) τ2') b τ2
       Type  a         -> Type  a
-      Var   a x
-        | x == v       -> Var   a s
-        | otherwise   -> Var   a v
-    goBound (Binder b) t = case b of
-      Just v' | v == v' -> t
-      _                -> go t
+      Var   a v
+        | v == target -> Var a replacement
+        | otherwise  -> Var a v
+    goBound :: (Binder -> TermX ξ -> TermX ξ) -> Binder -> TermX ξ -> TermX ξ
+    goBound k (Binder b) t = case b of
+      Just v | v == target      -> k (Binder b) t
+      Just v | v == replacement ->
+               let f = freshAvoid [v] t in
+               k (Binder (Just f)) (go (αrename v f t))
+      _                        -> k (Binder b) (go t)
 
 -- this is pretty inefficient
 αrenameAvoidFree :: [Variable] -> TermX ξ -> TermX ξ
@@ -39,6 +43,7 @@ import Term.Term
       go cs (αrename c (freshAvoid (c:cs) t) t)
 
 -- this is pretty inefficient
+{-
 αrenameAvoidBound :: forall ξ. [Variable] -> TermX ξ -> TermX ξ
 αrenameAvoidBound avoid term =
   let term' = αrenameAvoidFree avoid term in
@@ -60,3 +65,4 @@ import Term.Term
         (Binder (Just v'), go (αrename v v' t))
       | otherwise      = (b, go t)
     goBound b t = (b, go t)
+-}

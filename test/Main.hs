@@ -26,9 +26,21 @@ main = defaultMain tests
 tests :: TestTree
 tests =
   testGroup "Tests"
-  [ unitTests
-  ,  TF.unitTests,  TF.scTests,  TF.qcTests
-  , TAR.unitTests, TAR.scTests, TAR.qcTests
+  [ testGroup "(checked by HUnit)" $
+    [unitTests, TF.unitTests, TAR.unitTests]
+
+  , localOption (SmallCheckDepth 3) $
+    testGroup "(checked by SmallCheck)" $
+    [TF.scTests, TAR.scTests]
+
+  , localOption (QuickCheckMaxSize 30) $
+    localOption (QuickCheckTests 100) $
+    localOption (QuickCheckReplay Nothing) $
+    localOption (QuickCheckShowReplay True) $
+    --localOption (QuickCheckVerbose True) $
+    testGroup "(checked by QuickCheck)" $
+    [TF.qcTests, TAR.qcTests]
+
   ]
 
 parseMaybeRaw :: String -> Maybe RawTerm
@@ -80,15 +92,16 @@ unitTests =
 
   ++
 
-  [ testCase ("can't parse a : b : c") $
-    parseMaybeRaw "a : b : c" @?= Nothing ]
+  [ let bad = printf "a %s b %s c" annotSymbol annotSymbol in
+    testCase (printf "should not parse %s" bad) $
+    parseMaybeRaw bad @?= Nothing ]
 
 scProps :: TestTree
 scProps =
 
   let isTolerable' = isTolerable (tableToOrdering def) in
 
-  localOption (SmallCheckDepth 3) $
+  localOption (SmallCheckDepth 1) $
 
   testGroup "(checked by SmallCheck)" $
 
@@ -113,13 +126,7 @@ scProps =
 qcProps :: TestTree
 qcProps =
 
-  localOption (QuickCheckMaxSize 30) $
-  localOption (QuickCheckTests 500) $
-  localOption (QuickCheckReplay Nothing) $
-  localOption (QuickCheckShowReplay True) $
-  --localOption (QuickCheckVerbose True) $
-
-  testGroup "(checked by QuickCheck)" $
+  testGroup "Something something roundtrip" $
 
   [ QC.testProperty
     "parseMaybeRaw . prettyRaw == Just" $

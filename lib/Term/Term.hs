@@ -47,7 +47,7 @@ holeSymbol  = "?"
 
 newtype Variable
   = Variable { unVariable :: String }
-  deriving (Eq, Generic, Out, Serial m, Show)
+  deriving (Eq, Generic, Out, Show)
 
 instance Arbitrary Variable where
   arbitrary = do
@@ -56,6 +56,9 @@ instance Arbitrary Variable where
 
 instance IsString Variable where
   fromString s = Variable s
+
+instance Monad m => Serial m Variable where
+  series = Variable <$> cons2 (:)
 
 newtype Binder
   = Binder { unBinder :: (Maybe Variable) }
@@ -117,15 +120,15 @@ genTerm 0 =
   ]
 genTerm n =
   let arbitrary' = choose (0, n-1) >>= genTerm in
-  oneof
-  [ Annot <$> arbitrary <*> arbitrary' <*> arbitrary'
-  , App   <$> arbitrary <*> arbitrary' <*> arbitrary'
+  frequency
+  [ (1, Annot <$> arbitrary <*> arbitrary' <*> arbitrary')
+  , (3, App   <$> arbitrary <*> arbitrary' <*> arbitrary')
   --, Hole  <$> arbitrary
-  , Lam   <$> arbitrary <*> arbitrary <*> arbitrary'
-  , Let   <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary'
-  , Pi    <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary'
+  , (3, Lam   <$> arbitrary <*> arbitrary <*> arbitrary')
+  , (1, Let   <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary')
+  , (3, Pi    <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary')
   --, Type  <$> arbitrary
-  , Var   <$> arbitrary <*> arbitrary
+  , (1, Var   <$> arbitrary <*> arbitrary)
   ]
 
 instance ForallX Arbitrary ξ => Arbitrary (TermX ξ) where

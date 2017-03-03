@@ -30,15 +30,15 @@ deriving instance (ForallX Show ξ) => Show (Declaration ξ)
 instance (ForallX Arbitrary ξ) => Arbitrary (Declaration ξ) where
   arbitrary =
     oneof
-    [ LocalAssum <$> arbitraryVariable <*> genTerm 2
-    , LocalDef   <$> arbitraryVariable <*> genTerm 2 <*> genTerm 2
+    [ LocalAssum <$> arbitrary <*> genTerm 2
+    , LocalDef   <$> arbitrary <*> genTerm 2 <*> genTerm 2
     ]
 
 prettyDeclaration :: ForallX ((~) a) ξ => PrecedenceTable -> Declaration ξ -> Doc a
-prettyDeclaration precs (LocalAssum v τ) =
-  sep [text v, char ':', prettyTerm precs τ]
-prettyDeclaration precs (LocalDef v t τ) =
-  sep [text v, text ":=", prettyTerm precs t, char ':', prettyTerm precs τ]
+prettyDeclaration precs (LocalAssum (Variable v) τ) =
+  sep [text v, char ':', prettyTermDoc precs τ]
+prettyDeclaration precs (LocalDef (Variable v) t τ) =
+  sep [text v, text ":=", prettyTermDoc precs t, char ':', prettyTermDoc precs τ]
 
 nameOf :: Declaration ξ -> Variable
 nameOf (LocalAssum v _)   = v
@@ -62,7 +62,7 @@ prettyGoal precs (Goal hyps concl) =
   [ text "{{{"
   , vcat (map (prettyDeclaration precs) hyps)
   , text (replicate 40 '-')
-  , prettyTerm precs concl
+  , prettyTermDoc precs concl
   , text "}}}"
   ]
 

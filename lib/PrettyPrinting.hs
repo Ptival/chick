@@ -3,10 +3,11 @@
 
 module PrettyPrinting where
 
-import Data.Maybe
+import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import Precedence
+import Term.RawTerm
 import Term.Term
 
 {-
@@ -22,11 +23,21 @@ sep [hang (text "let") tabWidth (vcat (map prettyPrint decls)),
 tabWidth :: Int
 tabWidth = 20
 
-prettyTermString :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> String
-prettyTermString precs = display . renderPrettyDefault . prettyTerm precs
+prettyTerm :: TermX ξ -> String
+prettyTerm t = prettyTermString def (raw t)
 
-prettyTerm :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> Doc a
-prettyTerm precs = go (PrecMin, TolerateEqual)
+prettyTermString :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> String
+prettyTermString precs = display . renderPrettyDefault . prettyTermDoc precs
+
+prettyVariable :: Variable -> Doc a
+prettyVariable (Variable s) = text s
+
+prettyBinder :: Binder -> Doc a
+prettyBinder (Binder Nothing)  = text "_"
+prettyBinder (Binder (Just v)) = prettyVariable v
+
+prettyTermDoc :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> Doc a
+prettyTermDoc precs = go (PrecMin, TolerateEqual)
   where
     par :: (Precedence, Tolerance) -> (Doc a, Precedence) -> Doc a
     par (pOut, t) (d, pIn) =
@@ -62,7 +73,7 @@ prettyTerm precs = go (PrecMin, TolerateEqual)
       Let a n t1 t2 ->
         (annotate a $ sep
          [ text "let"
-         , goBinder n
+         , prettyBinder n
          , char '='
          , go (PrecMin, TolerateEqual) t1
          , text "in"
@@ -92,14 +103,11 @@ prettyTerm precs = go (PrecMin, TolerateEqual)
 
       Type a -> (annotate a $ text "Type", PrecAtom)
 
-      Var a (Variable x) -> (annotate a $ text x, PrecAtom)
-
-    goBinder :: Binder -> Doc a
-    goBinder (Binder b) = text . unVariable . fromMaybe (Variable "_") $ b
+      Var a v -> (annotate a $ prettyVariable v, PrecAtom)
 
     goLams :: ForallX ((~) a) ξ => [Doc a] -> TermX ξ -> Doc a
     goLams l = \case
-      Lam a n t -> goLams ((annotate a $ goBinder n) : l) t
+      Lam a n t -> goLams ((annotate a $ prettyBinder n) : l) t
       t -> sep
           [ char 'λ'
           , sep . reverse $ l
