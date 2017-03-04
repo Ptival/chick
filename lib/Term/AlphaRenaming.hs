@@ -27,7 +27,7 @@ import Term.Term
     goBound k (Binder b) t = case b of
       Just v | v == target      -> k (Binder b) t
       Just v | v == replacement ->
-               let f = freshAvoid [v] t in
+               let f = freshAvoid [target, replacement] t in
                k (Binder (Just f)) (go (αrename v f t))
       _                        -> k (Binder b) (go t)
 

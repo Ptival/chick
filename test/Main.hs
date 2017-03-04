@@ -17,6 +17,7 @@ import           PrettyPrinting
 import           Term.RawTerm
 import           Term.Term
 import qualified TestFresh             as TF
+import qualified TestAlphaEquivalence  as TAE
 import qualified TestAlphaRenaming     as TAR
 import           WellFormed
 
@@ -27,19 +28,29 @@ tests :: TestTree
 tests =
   testGroup "Tests"
   [ testGroup "(checked by HUnit)" $
-    [unitTests, TF.unitTests, TAR.unitTests]
+    [ unitTests
+    , TAE.unitTests
+    , TAR.unitTests
+    , TF.unitTests
+    ]
 
   , localOption (SmallCheckDepth 3) $
     testGroup "(checked by SmallCheck)" $
-    [TF.scTests, TAR.scTests]
+    [ TAE.scTests
+    , TAR.scTests
+    , TF.scTests
+    ]
 
   , localOption (QuickCheckMaxSize 30) $
-    localOption (QuickCheckTests 100) $
+    localOption (QuickCheckTests 1000) $
     localOption (QuickCheckReplay Nothing) $
     localOption (QuickCheckShowReplay True) $
     --localOption (QuickCheckVerbose True) $
     testGroup "(checked by QuickCheck)" $
-    [TF.qcTests, TAR.qcTests]
+    [ TAE.qcTests
+    , TAR.qcTests
+    , TF.qcTests
+    ]
 
   ]
 

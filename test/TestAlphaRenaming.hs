@@ -10,6 +10,7 @@ import Parsing
 import Term.AlphaEquivalence
 import Term.AlphaRenaming
 import Term.Free
+import Term.Fresh
 import Term.RawTerm
 import Term.Term
 import Text.Printf
@@ -17,12 +18,11 @@ import Text.Printf
 group :: String
 group = "AlphaRenaming"
 
-testRename :: Variable -> Variable -> RawTerm -> Bool
-testRename a b t =
-  let t' = αrename a b t in
-  if isFree a t
-  then bindVars (freeVars t') t' `αeq` bindVars (freeVars t) t
-  else t' == t
+testRename :: Variable -> RawTerm -> Bool
+testRename r t =
+  let f = fresh t in
+  let t' = αrename f r t in
+  t' `αeq` t
 
 bindVars :: [Variable] -> RawTerm -> RawTerm
 bindVars []     t = t
@@ -39,15 +39,15 @@ unitTests =
         case (parseMaybeTerm s1, parseMaybeTerm s2) of
         (Just t1, Just t2) ->
           αrename (Variable a) (Variable b) t1 `αeq` t2
-          @? "Terms are not alpha-equivalent after renaming"
-        _ -> False @? "Terms to be tested did not parse"
+          @? "α-renamed term is not α-equivalent to the expectation"
+        _ -> False @? "terms to be tested did not parse"
   in
 
   testGroup group $
-  [ matchRename "a b" "a" "b" "b b"
-  , matchRename "a b" "b" "a" "a a"
-  , matchRename "a b" "c" "a" "a b"
-  , matchRename "a b" "c" "b" "a b"
+  [ matchRename "a b"         "a" "b" "b b"
+  , matchRename "a b"         "b" "a" "a a"
+  , matchRename "a b"         "c" "a" "a b"
+  , matchRename "a b"         "c" "b" "a b"
   , matchRename "a (λ a . a)" "a" "b" "b (λ a . a)"
   , matchRename "a (λ a . b)" "a" "b" "b (λ a . b)"
   , matchRename "a (λ b . b)" "a" "b" "b (λ b . b)"
