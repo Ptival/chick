@@ -23,11 +23,14 @@ sep [hang (text "let") tabWidth (vcat (map prettyPrint decls)),
 tabWidth :: Int
 tabWidth = 20
 
+doc2String :: Doc a -> String
+doc2String = display . renderPretty 1.0 80
+
 prettyTerm :: TermX ξ -> String
 prettyTerm t = prettyTermString def (raw t)
 
 prettyTermString :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> String
-prettyTermString precs = display . renderPrettyDefault . prettyTermDoc precs
+prettyTermString precs = doc2String . prettyTermDoc precs
 
 prettyVariable :: Variable -> Doc a
 prettyVariable (Variable s) = text s
@@ -52,7 +55,7 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
     goTerm = \case
 
       Annot a t τ ->
-        (annotate a $ sep
+        (annotate a $ fillSep
          [ go (PrecAnnot, TolerateHigher) t
          , text annotSymbol
          , go (PrecAnnot, TolerateHigher) τ
@@ -60,7 +63,7 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
         , PrecAnnot)
 
       App a t1 t2 ->
-        (annotate a $ sep
+        (annotate a $ fillSep
          [ go (PrecApp, TolerateEqual) t1
          , go (PrecApp, TolerateHigher) t2
          ]
@@ -71,7 +74,7 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
       Lam a n t -> (goLams [] (Lam a n t), PrecLam)
 
       Let a n t1 t2 ->
-        (annotate a $ sep
+        (annotate a $ fillSep
          [ text "let"
          , prettyBinder n
          , char '='
@@ -90,8 +93,8 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
         , PrecArrow)
 
       Pi a (Binder (Just (Variable n))) τ1 τ2 ->
-        (annotate a $ sep
-         [ parens $ sep
+        (annotate a $ fillSep
+         [ parens $ fillSep
            [ text n
            , char ':'
            , go (PrecMin, TolerateEqual) τ1
@@ -108,7 +111,7 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
     goLams :: ForallX ((~) a) ξ => [Doc a] -> TermX ξ -> Doc a
     goLams l = \case
       Lam a n t -> goLams ((annotate a $ prettyBinder n) : l) t
-      t -> sep
+      t -> fillSep
           [ char 'λ'
           , sep . reverse $ l
           , char '.'

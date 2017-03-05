@@ -6,7 +6,7 @@ module DictMeta where
 
 import Term.Term
 
-data DictMeta (φ :: * -> *) ξ = MkDictMeta
+data DictMeta (φ :: * -> *) ξ = DictMeta
   { metaAnnot :: φ (X_Annot ξ)
   , metaApp   :: φ (X_App   ξ)
   , metaHole  :: φ (X_Hole  ξ)
@@ -18,4 +18,4 @@ data DictMeta (φ :: * -> *) ξ = MkDictMeta
   }
 
 dictMeta' :: ForallX ((~) t) ξ => φ t -> DictMeta φ ξ
-dictMeta' t = MkDictMeta t t t t t t t t
+dictMeta' t = DictMeta t t t t t t t t

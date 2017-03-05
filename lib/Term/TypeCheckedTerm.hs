@@ -1,28 +1,30 @@
+{-# language LambdaCase #-}
 {-# language TypeFamilies #-}
 
 module Term.TypeCheckedTerm where
 
-import Term.RawTerm
 import Term.Term
 
 data TypeChecked
 
 type TypeCheckedTerm = TermX TypeChecked
-type TypeCheckedType = TypeCheckedTerm
 
--- it'd be nice for this to be
--- forall ξ. TypeX ξ
--- but I'm not sure how to make this happen
-type TypeAnnotation = RawType
+type instance X_Annot TypeChecked = ()
+type instance X_App   TypeChecked = TypeCheckedTerm
+type instance X_Hole  TypeChecked = TypeCheckedTerm
+type instance X_Lam   TypeChecked = TypeCheckedTerm
+type instance X_Let   TypeChecked = TypeCheckedTerm
+type instance X_Pi    TypeChecked = TypeCheckedTerm
+type instance X_Type  TypeChecked = () -- eventually, universe information
+type instance X_Var   TypeChecked = TypeCheckedTerm
 
-type instance X_Annot TypeChecked = TypeAnnotation
-type instance X_App   TypeChecked = TypeAnnotation
-type instance X_Hole  TypeChecked = TypeAnnotation
-type instance X_Lam   TypeChecked = TypeAnnotation
-type instance X_Let   TypeChecked = TypeAnnotation
-type instance X_Pi    TypeChecked = TypeAnnotation
-type instance X_Type  TypeChecked = TypeAnnotation
-type instance X_Var   TypeChecked = TypeAnnotation
-
-typeOf :: TypeCheckedTerm -> RawType
-typeOf = annotationOf
+typeOf :: TypeCheckedTerm -> TypeCheckedTerm
+typeOf = \case
+  Annot () _ τ   -> τ
+  App   a _ _   -> a
+  Hole  a       -> a
+  Lam   a _ _   -> a
+  Let   a _ _ _ -> a
+  Pi    a _ _ _ -> a
+  Type  ()       -> Type ()
+  Var   a _     -> a

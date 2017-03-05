@@ -33,6 +33,9 @@ metaMapId' ::
   (a -> b) -> TermX ξ -> TermX ψ
 metaMapId' f t = metaMapId (dictMetaMapId f) t
 
+reannotateUniform :: ForallX ((~) b) ψ => b -> TermX ξ -> TermX ψ
+reannotateUniform v = metaMapId (dictMetaMapIgnoreLeft (pure v))
+
 doAnnotId :: DictMetaMapId ξ ψ -> X_Annot ξ -> X_Annot ψ
 doAnnotId d a = runIdentity (doAnnot d (Identity a))
 doAppId   :: DictMetaMapId ξ ψ -> X_App   ξ -> X_App   ψ

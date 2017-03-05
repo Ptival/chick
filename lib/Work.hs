@@ -26,8 +26,8 @@ import Term.TypeErroredTerm
 type TypeCheckingTerm = Either TypeErroredTerm TypeCheckedTerm
 
 data TypeCheckerF k
-  = Check (Context Raw) RawTerm RawType (TypeCheckingTerm -> k)
-  | Synth (Context Raw) RawTerm         (TypeCheckingTerm -> k)
+  = Check (Context TypeChecked) RawTerm RawType (TypeCheckingTerm -> k)
+  | Synth (Context TypeChecked) RawTerm         (TypeCheckingTerm -> k)
   | Failure TypeErroredTerm
   | Success TypeCheckedTerm
   deriving (Functor)
@@ -83,18 +83,18 @@ type MonadTypeCheck m =
   )
 
 checkF :: MonadError e m =>
-         Context Raw -> TermX ξ -> TermX ψ -> (TypeErroredTerm -> e) ->
+         Context TypeChecked -> TermX ξ -> TermX ψ -> (TypeErroredTerm -> e) ->
          TypeCheckerF (m TypeCheckedTerm)
 checkF γ t τ h = Check γ (raw t) (raw τ) (either (throwError . h) return)
 
 checkM :: MonadTypeCheck m =>
-         Context Raw -> TermX ξ -> TypeX ψ ->
+         Context TypeChecked -> TermX ξ -> TypeX ψ ->
          (TypeErroredTerm -> TypeErroredTerm) ->
          m TypeCheckedTerm
 checkM γ t τ h = wrap $ checkF γ t τ h
 
 synth :: MonadTypeCheck m =>
-        Context Raw -> TermX ξ -> (TypeErroredTerm -> TypeErroredTerm) ->
+        Context TypeChecked -> TermX ξ -> (TypeErroredTerm -> TypeErroredTerm) ->
         m TypeCheckedTerm
 synth γ t h = wrap $ Synth γ (raw t) (either (throwError . h) return)
 
@@ -202,27 +202,27 @@ False `ifFalseFailWith` e = throwError e
 
 runSynth' ::
   (MonadTypeCheck m) =>
-  Context Raw -> TermX ξ -> m TypeCheckedTerm
+  Context TypeChecked -> TermX ξ -> m TypeCheckedTerm
 runSynth' γ t = case t of
 
   App _ fun arg -> do
     -- synthesize a type for fun
     sFun <- synth γ fun
-           (\ fFun -> App (Right AppFunctionFailed) fFun ((~!) arg))
+           (\ fFun -> App (Left AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
     Pi _ (Binder binder) τIn τOut <-
       typeOf sFun `isPiOtherwise`
-      (App (Right (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
+      (App (Left (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
     -- check that arg has the type τIn
     sArg <- checkM γ arg τIn
-           (\ fArg -> App (Right AppArgumentFailed) ((!->) sFun) fArg)
+           (\ fArg -> App (Left AppArgumentFailed) ((!->) sFun) fArg)
     -- perform substitution if needed
     case binder of
       Just _name ->
         let τOut' = τOut in -- substitute name arg τOut
-        return $ App (raw τOut') sFun sArg
+        return $ App τOut' sFun sArg
       Nothing ->
-        return $ App (raw τOut) sFun sArg
+        return $ App τOut sFun sArg
 
   Var _ name ->
     case lookup name γ of
@@ -232,32 +232,32 @@ runSynth' γ t = case t of
   Pi _ binderPi τIn τOut -> do
     τIn' <- checkM γ τIn (Type () :: RawTerm)
            (\ _τIn' -> error "TODO qwer")
-    let γ' = (binderPi, raw τIn') +: γ
+    let γ' = (binderPi, τIn') +: γ
     τOut' <- checkM γ' τOut (Type () :: RawTerm)
             (\ _τOut' -> error "TODO adsf")
     return $ Pi (Type ()) binderPi τIn' τOut'
 
-  Type _ -> return $ Type (Type ())
+  Type _ -> return $ Type ()
 
   _ -> error "TODO: runSynth'"
 
 runCheck' ::
   (MonadTypeCheck m) =>
-  Context Raw -> TermX ξ -> TermX ψ -> m TypeCheckedTerm
+  Context TypeChecked -> TermX ξ -> TermX ψ -> m TypeCheckedTerm
 runCheck' γ t τ = case t of
 
   Lam _ binderLam bodyLam -> do
     τ' <- checkM γ τ (Type () :: RawType)
-         (\ _τ' -> annotateError (Right NotAType) t)
+         (\ _τ' -> annotateError NotAType t)
     Pi _ binderPi τIn τOut <-
       redβ τ' `isPiOtherwise`
-      annotateError (Right (error "YOLO")) t
+      annotateError (error "YOLO") t
     _ <- matchBinders binderLam binderPi
-        `maybeFailWith` annotateError (Right (error . show $ binderPi)) t
-    let γ' = (binderLam, raw τIn) +: γ
+        `maybeFailWith` annotateError (error . show $ binderPi) t
+    let γ' = (binderLam, τIn) +: γ
     bodyLam' <- checkM γ' bodyLam τOut
         (\ _t' -> error "TODOCACA")
-    return $ Lam (raw τ') binderLam bodyLam'
+    return $ Lam τ' binderLam bodyLam'
 
   Hole _ -> error "runCheck Hole"
 
@@ -265,7 +265,7 @@ runCheck' γ t τ = case t of
   _ -> do
     t' <- synth γ t (\ t' -> t')
     () <- (typeOf t' `eqβ` τ) `ifFalseFailWith`
-        annotateError (Right IncompatibleTypes) t
+        annotateError IncompatibleTypes t
     return t'
 
 runTypeCheckerF ::

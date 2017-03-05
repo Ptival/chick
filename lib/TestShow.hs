@@ -1,4 +1,5 @@
 {-# language FlexibleContexts #-}
+{-# language OverloadedStrings #-}
 
 module TestShow where
 

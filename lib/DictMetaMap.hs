@@ -6,7 +6,7 @@ module DictMetaMap where
 
 import Term.Term
 
-data DictMetaMap fξ fψ ξ ψ = MkDictMetaMap
+data DictMetaMap fξ fψ ξ ψ = DictMetaMap
   { doAnnot :: fξ (X_Annot ξ) -> fψ (X_Annot ψ)
   , doApp   :: fξ (X_App   ξ) -> fψ (X_App   ψ)
   , doHole  :: fξ (X_Hole  ξ) -> fψ (X_Hole  ψ)
@@ -20,7 +20,15 @@ data DictMetaMap fξ fψ ξ ψ = MkDictMetaMap
 dictMetaMap' ::
   (ForallX ((~) a) ξ, ForallX ((~) b) ψ) =>
   (fξ a -> fψ b) -> DictMetaMap fξ fψ ξ ψ
-dictMetaMap' f  = MkDictMetaMap f f f f f f f f
+dictMetaMap' f  = DictMetaMap f f f f f f f f
+
+dictMetaMapIgnoreLeft :: forall fξ fψ ξ ψ b.
+  (ForallX ((~) b) ψ) =>
+  fψ b -> DictMetaMap fξ fψ ξ ψ
+dictMetaMapIgnoreLeft v = DictMetaMap f f f f f f f f
+  where
+    f :: whatever -> fψ b
+    f = const v
 
 metaMap ::
   forall ξ ψ a. DictMetaMap ((,) a) ((,) a) ξ ψ -> a -> TermX ξ -> TermX ψ
