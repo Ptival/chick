@@ -320,6 +320,4 @@ stepTypeCheckerF input =
 
 {-
 ExceptT ... FreeT ... Identity
-
-
 -}

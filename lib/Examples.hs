@@ -1,22 +1,20 @@
 {-# language DeriveAnyClass #-}
 {-# language FlexibleContexts #-}
+{-# language OverloadedStrings #-}
 {-# language StandaloneDeriving #-}
 {-# language UndecidableInstances #-}
 
 module Examples where
 
 import Control.Monad.Trans.Free
-import Data.Default
 import Text.Megaparsec
-import Text.PrettyPrint.Annotated.WL
 import Text.PrettyPrint.GenericPretty (pp)
 
---import Context
 import Notations
 import Parsing
 import PrettyPrinting
 import Term.RawTerm
---import Term
+import Term.AlphaEquivalence
 import Term.NumberedTerm
 import Term.TypeCheckedTerm
 import Term.TypeErroredTerm
@@ -40,6 +38,17 @@ testing = runTypeCheck2 $ runCheck' [] tFlip τFlip
 trace :: [TypeCheckerF (TCMonad TypeCheckedTerm)]
 trace = tcTrace stepTypeCheckerF $ checkF [] tFlip τFlip id
 
+{-
+didItWork :: [TypeCheckerF (TCMonad TypeCheckedTerm)] -> Bool
+didItWork (a:b:c) = didItWork (b:c)
+didItWork (a:[])  =
+  case a of
+  Success t ->
+    let τ = typeOf t in
+    raw τ == τFlip
+  _ -> error "sucks"
+-}
+
 testNumberize :: NumberedTerm
 testNumberize = numberize tFlip
 
@@ -53,7 +62,7 @@ manyLeftApps n = manyLeftApps (n - 1) ^$ var "x"
 
 testPretty :: IO ()
 testPretty = do
-  let p = (putStrLn . display . renderPrettyDefault . prettyTerm def :: RawTerm -> IO ())
+  let p = (putStrLn . prettyTerm :: RawTerm -> IO ())
   p $ var "a" ^$ (var "b" ^$ (var "c" ^$ var "d"))
   p $ ((var "a" ^$ var "b") ^$ var "c") ^$ var "d"
   p $ manyLeftApps 40

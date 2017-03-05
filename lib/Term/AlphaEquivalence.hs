@@ -7,7 +7,7 @@ import Term.Free
 import Term.Fresh
 import Term.Term
 
-αeq :: TermX ξ -> TermX ξ -> Bool
+αeq :: TermX ξ -> TermX ψ -> Bool
 αeq x y =
   case (x, y) of
   (Annot _ t τ, Annot _ t' τ') -> t `αeq` t' && τ `αeq` τ'
@@ -21,6 +21,7 @@ import Term.Term
   (Var _ v, Var _ v') -> v == v'
   (_, _) -> False
   where
+    αeqBound :: (Binder, TermX ξ) -> (Binder, TermX ψ) -> Bool
     αeqBound (Binder b, t) (Binder b', t') = case (b, b') of
       (Nothing, Nothing) -> t `αeq` t'
       (Just v, Nothing)
