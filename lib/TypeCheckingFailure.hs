@@ -3,6 +3,7 @@
 module TypeCheckingFailure where
 
 import Text.Printf       (printf)
+import Term.Term
 
 data TypeCheckingFailure t
   = AppArgumentFailed
@@ -10,6 +11,8 @@ data TypeCheckingFailure t
   | AppFunctionTypeFailed t
   | IncompatibleTypes -- should add two arguments
   | NotAType -- TODO
+  | SynthesizeLambda
+  | UnboundVariable Variable
   | Unchecked
 
   | TODO -- this should be removed eventually
@@ -28,6 +31,8 @@ displayTypeCheckingFailure = \case
     (show τFun)
   IncompatibleTypes -> "TODO"
   NotAType -> "TODO"
+  SynthesizeLambda -> "Cannot synthesize the type of an abstraction"
   TODO -> "TODO"
+  UnboundVariable v -> printf "Unbound variable: %s" (show v)
   Unchecked ->
     "This term was not type-checked"

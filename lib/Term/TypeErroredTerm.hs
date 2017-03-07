@@ -11,6 +11,7 @@ module Term.TypeErroredTerm where
 import Control.Monad.Identity
 
 import DictMeta
+import DictMetaHead
 import DictMetaId
 import DictMetaMap
 import DictMetaMapId
@@ -64,3 +65,9 @@ annotateError e term =
   where
     x :: Identity (TypeError a)
     x = pure (Left e)
+
+getTypeError :: TypeErroredTerm -> String
+getTypeError = metaHead (DictMetaHead f f f f f f f f)
+  where
+    f :: Show a => a -> String
+    f = show

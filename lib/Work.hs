@@ -216,7 +216,7 @@ False `ifFalseFailWith` e = throwError e
 runSynth' ::
   (MonadTypeCheck m) =>
   Context TypeChecked -> TermX ξ -> m TypeCheckedTerm
-runSynth' γ t = case t of
+runSynth' γ = \case
 
   App _ fun arg -> do
     -- synthesize a type for fun
@@ -239,7 +239,7 @@ runSynth' γ t = case t of
 
   Var _ name ->
     case lookup name γ of
-    Nothing -> throwError $ Var (error "TODEEDOO") name
+    Nothing -> throwError $ Var (Left $ UnboundVariable name) name
     Just τ -> return $ Var τ name
 
   Pi _ binderPi τIn τOut -> do
@@ -252,7 +252,9 @@ runSynth' γ t = case t of
 
   Type _ -> return $ Type ()
 
-  _ -> error "TODO: runSynth'"
+  Lam _ b t -> throwError $ Lam (Left SynthesizeLambda) b ((~!) t)
+
+  term -> throwError $ unchecked term
 
 runCheck' ::
   (MonadTypeCheck m) =>

@@ -11,30 +11,45 @@ import Text.Printf
 
 import Parsing
 import PrettyPrinting
+import StandardLibrary
 import Tactic
 import Term.AlphaRenaming
 import Term.Fresh
 import Term.RawTerm
 import Term.Term
+import Term.TypeErroredTerm
 import Work
 
 genPi :: Gen RawTerm
 genPi = do
   Pi def <$> arbitrary <*> arbitrary <*> arbitrary
 
+typeCheck :: TermX ξ -> Maybe (TypeX ξ) -> IO ()
+typeCheck t mτ = do
+  putStrLn $ replicate 80 '-'
+  putStrLn "Type-checking:"
+  putStrLn $ prettyTerm t
+  let e = tc $ case mτ of
+        Nothing -> synthF [] t id
+        Just τ  -> checkF [] t τ id
+  case e of
+    Left  l -> do
+      putStrLn "Failed:"
+      putStrLn $ prettyTerm l
+      putStrLn $ getTypeError l
+    Right r -> do
+      putStrLn "Succeded:"
+      putStrLn $ prettyTerm r
+  return ()
+
+stdlibTypeCheck :: IO ()
+stdlibTypeCheck = do
+  forM_ stdlib $ \ (τ, t) -> typeCheck t (Just τ)
+
 randomTypeCheck :: IO ()
 randomTypeCheck = do
   t <- generate (arbitrary :: Gen RawTerm)
-  putStrLn $ prettyTerm t
-  let e = tc $ synthF [] t id
-  case e of
-    Left  l -> do
-      putStrLn "Type-checking failed:"
-      putStrLn $ prettyTerm l
-    Right r -> do
-      putStrLn "Type-checking succeded:"
-      putStrLn $ prettyTerm r
-  return ()
+  typeCheck t Nothing
 
 {-
 main :: IO ()
