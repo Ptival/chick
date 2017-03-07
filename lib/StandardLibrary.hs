@@ -8,6 +8,7 @@ module StandardLibrary where
 import Parsing
 import Term.RawTerm
 --import Term.Term
+import Term.TypeCheckedTerm
 import Text.Printf
 
 -- do not use `unsafeParseRaw` anywhere else!
@@ -19,28 +20,37 @@ unsafeParseRaw s =
 
 τId, tId :: RawTerm
 τId = unsafeParseRaw "(T : Type) → T → T"
-tId = unsafeParseRaw "λ _ x . x"
+tId = unsafeParseRaw "λ T x . x"
 
 τFlip, tFlip :: RawTerm
 τFlip = unsafeParseRaw
   "(A B C : Type) → (A → B → C) → (B → A → C)"
-tFlip = unsafeParseRaw "λ _ _ _ f b a . f a b"
+tFlip = unsafeParseRaw "λ A B C f b a . f a b"
+
+nat :: String
+nat = "((T → T) → T → T)"
 
 τNat :: RawTerm
-τNat = unsafeParseRaw "(ℕ : Type) → (ℕ → ℕ) → ℕ → ℕ"
+τNat = unsafeParseRaw $ printf "(T : Type) → %s" nat
 
 tZero, tOne, tTwo :: RawTerm
-tZero = unsafeParseRaw "λ _ S O . O"
-tOne  = unsafeParseRaw "λ _ S O . S O"
-tTwo  = unsafeParseRaw "λ _ S O . S (S O)"
+tZero = unsafeParseRaw "λ T S O . O"
+tOne  = unsafeParseRaw "λ T S O . S O"
+tTwo  = unsafeParseRaw "λ T S O . S (S O)"
 
-τNatBinOp :: RawTerm
-τNatBinOp = unsafeParseRaw "(ℕ : Type) → ℕ → ℕ → (ℕ → ℕ) → ℕ → ℕ"
+τNatUnOp , τNatBinOp :: RawTerm
+τNatUnOp  = unsafeParseRaw $ printf "(T : Type) → %s → %s"      nat nat
+τNatBinOp = unsafeParseRaw $ printf "(T : Type) → %s → %s → %s" nat nat nat
 
 tSucc, tPlus, tMult :: RawTerm
-tSucc = unsafeParseRaw "λ n S O . S (n S O)"
-tPlus = unsafeParseRaw "λ m n S O . m S (n S O)"
-tMult = unsafeParseRaw "λ m n S . m (n S)"
+tSucc = unsafeParseRaw "λ T n S O . S (n S O)"
+tPlus = unsafeParseRaw "λ T m n S O . m S (n S O)"
+tMult = unsafeParseRaw "λ T m n S . m (n S)"
+
+axioms :: [(TypeCheckedTerm, TypeCheckedTerm)]
+axioms =
+  [ -- (Var (Type ()) "T", Type ())
+  ]
 
 stdlib :: [(RawTerm, RawTerm)]
 stdlib =
