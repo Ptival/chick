@@ -21,6 +21,7 @@ import PrettyPrinting
 import Term.AlphaRenaming
 import Term.Free
 import Term.Term
+import Term.TypeCheckedTerm
 
 data Declaration ξ
   = LocalAssum Variable (TypeX ξ)
@@ -96,24 +97,26 @@ addHyp hyp hyps
   | otherwise = return $ hyp:hyps
 
 runAtomic ::
-  forall m ξ.
-  (ForallX Default ξ, MonadError String m) =>
-  Atomic -> Goal ξ -> m (Goal ξ)
+  forall m.
+  (ForallX Default TypeChecked, MonadError String m) =>
+  Atomic -> Goal TypeChecked -> m (Goal TypeChecked)
 runAtomic a (Goal hyps concl) =
   case a of
+
     Intro (Binder mi) ->
       case concl of
-      Lam _ (Binder mv) t     -> runIntro (Hole def) t  LocalAssum (mi, mv)
+      Lam _ (Binder mv) t     -> runIntro (typeOf t) t  LocalAssum (mi, mv)
       Let _ (Binder mv) t1 t2 -> runIntro t1         t2 LocalDef   (mi, mv)
       Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1         τ2 LocalAssum (mi, mv)
-      _ -> throwError "TODO"
+      _ -> throwError "Head constructor does not allow introduction"
 
   where
 
     runIntro ::
       MonadError String m =>
-      TermX ξ -> TermX ξ -> (Variable -> TermX ξ -> Declaration ξ) ->
-      (Maybe Variable, Maybe Variable) -> m (Goal ξ)
+      TypeCheckedTerm -> TypeCheckedTerm ->
+      (Variable -> TypeCheckedTerm -> Declaration TypeChecked) ->
+      (Maybe Variable, Maybe Variable) -> m (Goal TypeChecked)
     runIntro introed rest h = \case
       (Nothing, Nothing) -> return $ Goal hyps rest
       (Just i, Nothing) -> Goal <$> addHyp (h i introed) hyps <*> pure rest

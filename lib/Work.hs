@@ -18,6 +18,7 @@ import Text.Printf
 
 import Context
 import Term.RawTerm
+import Term.Substitution
 import Term.Term
 import Term.TypeCheckedTerm
 import TypeCheckingFailure
@@ -37,6 +38,11 @@ tcTrace ::
 tcTrace _    (Failure f) = [Failure f]
 tcTrace _    (Success s) = [Success s]
 tcTrace step w           = w : tcTrace step (step w)
+
+tc :: TypeCheckerF (TCMonad TypeCheckedTerm) -> Either TypeErroredTerm TypeCheckedTerm
+tc (Failure f) = Left f
+tc (Success s) = Right s
+tc w           = tc (stepTypeCheckerF w)
 
 {-
 tcStep ::
@@ -82,21 +88,29 @@ type MonadTypeCheck m =
   , MonadFree TypeCheckerF m
   )
 
-checkF :: MonadError e m =>
-         Context TypeChecked -> TermX ξ -> TermX ψ -> (TypeErroredTerm -> e) ->
-         TypeCheckerF (m TypeCheckedTerm)
+checkF ::
+  MonadError e m =>
+  Context TypeChecked -> TermX ξ -> TermX ψ -> (TypeErroredTerm -> e) ->
+  TypeCheckerF (m TypeCheckedTerm)
 checkF γ t τ h = Check γ (raw t) (raw τ) (either (throwError . h) return)
 
-checkM :: MonadTypeCheck m =>
-         Context TypeChecked -> TermX ξ -> TypeX ψ ->
-         (TypeErroredTerm -> TypeErroredTerm) ->
-         m TypeCheckedTerm
+checkM ::
+  MonadTypeCheck m =>
+  Context TypeChecked -> TermX ξ -> TypeX ψ -> (TypeErroredTerm -> TypeErroredTerm) ->
+  m TypeCheckedTerm
 checkM γ t τ h = wrap $ checkF γ t τ h
 
-synth :: MonadTypeCheck m =>
-        Context TypeChecked -> TermX ξ -> (TypeErroredTerm -> TypeErroredTerm) ->
-        m TypeCheckedTerm
-synth γ t h = wrap $ Synth γ (raw t) (either (throwError . h) return)
+synthF ::
+  MonadError e m =>
+  Context TypeChecked -> TermX ξ -> (TypeErroredTerm -> e) ->
+  TypeCheckerF (m TypeCheckedTerm)
+synthF γ t h = Synth γ (raw t) (either (throwError . h) return)
+
+synthM ::
+  MonadTypeCheck m =>
+  Context TypeChecked -> TermX ξ -> (TypeErroredTerm -> TypeErroredTerm) ->
+  m TypeCheckedTerm
+synthM γ t h = wrap $ synthF γ t h
 
 failure :: MonadTypeCheck m => TypeErroredTerm -> m TypeCheckedTerm
 failure t = wrap $ Failure t
@@ -148,7 +162,6 @@ runTypeCheck2 ::
   TCMonad a ->
   Either TypeErroredTerm (FreeF TypeCheckerF a (TCMonad a))
 runTypeCheck2 = runIdentity . runExceptT . runFreeT
-
 
 {-
 hole :: TCMonad TypeCheckedTerm -> TypeCheckingTerm
@@ -207,22 +220,22 @@ runSynth' γ t = case t of
 
   App _ fun arg -> do
     -- synthesize a type for fun
-    sFun <- synth γ fun
+    sFun <- synthM γ fun
            (\ fFun -> App (Left AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
     Pi _ (Binder binder) τIn τOut <-
       typeOf sFun `isPiOtherwise`
       (App (Left (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
     -- check that arg has the type τIn
-    sArg <- checkM γ arg τIn
+    cArg <- checkM γ arg τIn
            (\ fArg -> App (Left AppArgumentFailed) ((!->) sFun) fArg)
     -- perform substitution if needed
     case binder of
-      Just _name ->
-        let τOut' = τOut in -- substitute name arg τOut
-        return $ App τOut' sFun sArg
+      Just name -> do
+        let τOut' = subst name cArg τOut
+        return $ App τOut' sFun cArg
       Nothing ->
-        return $ App τOut sFun sArg
+        return $ App τOut sFun cArg
 
   Var _ name ->
     case lookup name γ of
@@ -263,7 +276,7 @@ runCheck' γ t τ = case t of
 
   -- conversion rule
   _ -> do
-    t' <- synth γ t (\ t' -> t')
+    t' <- synthM γ t (\ t' -> t')
     () <- (typeOf t' `eqβ` τ) `ifFalseFailWith`
         annotateError IncompatibleTypes t
     return t'

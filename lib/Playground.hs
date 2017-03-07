@@ -16,11 +16,27 @@ import Term.AlphaRenaming
 import Term.Fresh
 import Term.RawTerm
 import Term.Term
+import Work
 
 genPi :: Gen RawTerm
 genPi = do
   Pi def <$> arbitrary <*> arbitrary <*> arbitrary
 
+randomTypeCheck :: IO ()
+randomTypeCheck = do
+  t <- generate (arbitrary :: Gen RawTerm)
+  putStrLn $ prettyTerm t
+  let e = tc $ synthF [] t id
+  case e of
+    Left  l -> do
+      putStrLn "Type-checking failed:"
+      putStrLn $ prettyTerm l
+    Right r -> do
+      putStrLn "Type-checking succeded:"
+      putStrLn $ prettyTerm r
+  return ()
+
+{-
 main :: IO ()
 main = do
   l <- sample' (resize 2 (arbitrary :: Gen RawTerm))
@@ -35,3 +51,4 @@ main = do
       Left e   -> putStrLn e
       Right g' -> printGoal g'
   where printGoal = putStrLn . doc2String . prettyGoal def
+-}
