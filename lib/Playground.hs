@@ -24,11 +24,24 @@ genPi :: Gen RawTerm
 genPi = do
   Pi def <$> arbitrary <*> arbitrary <*> arbitrary
 
+test :: IO ()
+test = do
+  let task = checkF [] tId τId id
+  --let task = checkF [] tFlip τFlip id
+  let trace = tcTrace stepTypeCheckerF task
+  forM_ trace $ \ item -> do
+    putStrLn $ doc2String $ prettyTypeCheckerF item
+
 typeCheck :: TermX ξ -> Maybe (TypeX ξ) -> IO ()
 typeCheck t mτ = do
   putStrLn $ replicate 80 '-'
   putStrLn "Type-checking:"
   putStrLn $ prettyTerm t
+  case mτ of
+    Nothing -> return ()
+    Just τ  -> do
+      putStrLn "Against type:"
+      putStrLn $ prettyTerm τ
   let e = tc $ case mτ of
         Nothing -> synthF [] t id
         Just τ  -> checkF [] t τ id
