@@ -1,3 +1,5 @@
+{-# options_ghc -fno-warn-unused-imports #-}
+
 module Playground where
 
 import Control.Monad
