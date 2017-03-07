@@ -113,7 +113,7 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
       Lam a n t -> goLams ((annotate a $ prettyBinder n) : l) t
       t -> fillSep
           [ char 'λ'
-          , sep . reverse $ l
+          , fillSep . reverse $ l
           , char '.'
           , go (PrecMin, TolerateEqual) t
           ]
