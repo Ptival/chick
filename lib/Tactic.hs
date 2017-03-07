@@ -25,7 +25,7 @@ import Term.TypeCheckedTerm
 
 data Declaration ξ
   = LocalAssum Variable (TypeX ξ)
-  | LocalDef   Variable (TermX ξ) -- (TypeX ξ)
+  | LocalDef   (TermX ξ) Variable (TypeX ξ)
 
 deriving instance (ForallX Eq   ξ) => Eq   (Declaration ξ)
 deriving instance (ForallX Show ξ) => Show (Declaration ξ)
@@ -34,18 +34,18 @@ instance (ForallX Arbitrary ξ) => Arbitrary (Declaration ξ) where
   arbitrary =
     oneof
     [ LocalAssum <$> arbitrary <*> genTerm 2
-    , LocalDef   <$> arbitrary <*> genTerm 2 -- <*> genTerm 2
+    , LocalDef   <$> genTerm 2 <*> arbitrary <*> genTerm 2
     ]
 
 prettyDeclaration :: ForallX ((~) a) ξ => PrecedenceTable -> Declaration ξ -> Doc a
 prettyDeclaration precs (LocalAssum (Variable v) τ) =
   sep [text v, char ':', prettyTermDoc precs τ]
-prettyDeclaration precs (LocalDef (Variable v) t {- τ -}) =
-  sep [text v, text ":=", prettyTermDoc precs t {-, char ':', prettyTermDoc precs τ -}]
+prettyDeclaration precs (LocalDef t (Variable v) τ) =
+  sep [text v, text ":=", prettyTermDoc precs t , char ':', prettyTermDoc precs τ]
 
 nameOf :: Declaration ξ -> Variable
 nameOf (LocalAssum v _)   = v
-nameOf (LocalDef   v _ {- _ -}) = v
+nameOf (LocalDef   _ v _) = v
 
 data Goal ξ = Goal
   { hypotheses :: [Declaration ξ]
@@ -105,9 +105,9 @@ runAtomic a (Goal hyps concl) =
 
     Intro (Binder mi) ->
       case concl of
-      Lam _ (Binder mv) t     -> runIntro (typeOf t) t  LocalAssum (mi, mv)
-      Let _ (Binder mv) t1 t2 -> runIntro t1         t2 LocalDef   (mi, mv)
-      Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1         τ2 LocalAssum (mi, mv)
+      Lam _ (Binder mv) t     -> runIntro (typeOf t)  t  LocalAssum    (mi, mv)
+      Let _ (Binder mv) t1 t2 -> runIntro (typeOf t1) t2 (LocalDef t1) (mi, mv)
+      Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1          τ2 LocalAssum    (mi, mv)
       _ -> throwError "Head constructor does not allow introduction"
 
   where
