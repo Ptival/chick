@@ -6,12 +6,12 @@ import Test.Tasty.QuickCheck as QC
 import Test.Tasty.SmallCheck as SC
 
 import Term.AlphaEquivalence
-import Term.RawTerm
+import Term.Raw as Raw
 
 group :: String
 group = "AlphaEquivalence"
 
-testReflexivity :: RawTerm -> Bool
+testReflexivity :: Raw.Term -> Bool
 testReflexivity t = t `αeq` t
 
 unitTests :: TestTree

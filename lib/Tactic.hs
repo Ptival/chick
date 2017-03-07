@@ -21,7 +21,7 @@ import PrettyPrinting
 import Term.AlphaRenaming
 import Term.Free
 import Term.Term
-import Term.TypeCheckedTerm
+import Term.TypeChecked as TypeChecked
 
 data Declaration ξ
   = LocalAssum Variable (TypeX ξ)
@@ -114,8 +114,8 @@ runAtomic a (Goal hyps concl) =
 
     runIntro ::
       MonadError String m =>
-      TypeCheckedTerm -> TypeCheckedTerm ->
-      (Variable -> TypeCheckedTerm -> Declaration TypeChecked) ->
+      TypeChecked.Term -> TypeChecked.Term ->
+      (Variable -> TypeChecked.Term -> Declaration TypeChecked) ->
       (Maybe Variable, Maybe Variable) -> m (Goal TypeChecked)
     runIntro introed rest h = \case
       (Nothing, Nothing) -> return $ Goal hyps rest

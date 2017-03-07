@@ -5,7 +5,7 @@ module WellFormed where
 
 import Parsing (reservedWords)
 import Term.Term
-import Term.RawTerm
+import Term.Raw  as Raw
 
 foldVars :: forall a ξ. (Variable -> a -> a) -> TermX ξ -> a -> a
 foldVars g = go
@@ -23,7 +23,7 @@ foldVars g = go
     g' (Binder (Just v)) = g v
     g' _                 = id
 
-wellFormed :: RawTerm -> Bool
+wellFormed :: Raw.Term -> Bool
 wellFormed t =
   let condition (Variable v) =
         -- Variable name should not be empty

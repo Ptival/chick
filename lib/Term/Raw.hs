@@ -1,14 +1,14 @@
 {-# language LambdaCase #-}
 {-# language TypeFamilies #-}
 
-module Term.RawTerm where
+module Term.Raw where
 
 import Term.Term
 
 data Raw
 
-type RawTerm = TermX Raw
-type RawType = RawTerm
+type Term = TermX Raw
+type Type = Term
 
 type instance X_Annot Raw = ()
 type instance X_App   Raw = ()
@@ -19,7 +19,7 @@ type instance X_Pi    Raw = ()
 type instance X_Type  Raw = ()
 type instance X_Var   Raw = ()
 
-raw :: TermX ξ -> RawTerm
+raw :: TermX ξ -> Term
 raw = \case
   Annot _ t τ     -> Annot () (raw t) (raw τ)
   App   _ t1 t2   -> App   () (raw t1) (raw t2)

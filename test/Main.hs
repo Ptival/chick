@@ -14,7 +14,7 @@ import           Notations
 import           Parsing
 import           Precedence
 import           PrettyPrinting
-import           Term.RawTerm
+import           Term.Raw              as Raw
 import           Term.Term
 import qualified TestFresh             as TF
 import qualified TestAlphaEquivalence  as TAE
@@ -54,13 +54,13 @@ tests =
 
   ]
 
-parseMaybeRaw :: String -> Maybe RawTerm
+parseMaybeRaw :: String -> Maybe Raw.Term
 parseMaybeRaw = parseMaybe termP
 
-prettyRaw :: RawTerm -> String
+prettyRaw :: Raw.Term -> String
 prettyRaw = prettyTermString def
 
-unitTestTerms :: [(RawTerm, String)]
+unitTestTerms :: [(Raw.Term, String)]
 unitTestTerms =
   [ (var "a" ^:: var "b", printf "a %s b" annotSymbol)
   , (var "a" ^$ var "b", "a b")

@@ -11,24 +11,24 @@ import Term.AlphaEquivalence
 import Term.AlphaRenaming
 import Term.Free
 import Term.Fresh
-import Term.RawTerm
+import Term.Raw as Raw
 import Term.Term
 import Text.Printf
 
 group :: String
 group = "AlphaRenaming"
 
-testRename :: Variable -> RawTerm -> Bool
+testRename :: Variable -> Raw.Term -> Bool
 testRename r t =
   let f = fresh t in
   let t' = αrename f r t in
   t' `αeq` t
 
-bindVars :: [Variable] -> RawTerm -> RawTerm
+bindVars :: [Variable] -> Raw.Term -> Raw.Term
 bindVars []     t = t
 bindVars (v:vs) t = Lam () (Binder (Just v)) $ bindVars vs t
 
-bindFreeVars :: RawTerm -> RawTerm
+bindFreeVars :: Raw.Term -> Raw.Term
 bindFreeVars t = bindVars (freeVars t) t
 
 unitTests :: TestTree

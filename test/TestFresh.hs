@@ -7,15 +7,15 @@ import Test.Tasty.SmallCheck as SC
 
 import Term.Free
 import Term.Fresh
-import Term.RawTerm
+import Term.Raw as Raw
 
 group :: String
 group = "Fresh"
 
-testFresh :: RawTerm -> Bool
+testFresh :: Raw.Term -> Bool
 testFresh t = not (isFree (fresh t) t)
 
-testFresh2 :: RawTerm -> RawTerm -> Bool
+testFresh2 :: Raw.Term -> Raw.Term -> Bool
 testFresh2 t1 t2 =
   let f = fresh2 t1 t2 in
   not (isFree f t1 || isFree f t2)

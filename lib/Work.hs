@@ -20,20 +20,20 @@ import Text.PrettyPrint.Annotated.WL
 
 import Context
 import PrettyPrinting
-import Term.RawTerm
+import Term.Raw            as Raw
 import Term.Substitution
 import Term.Term
-import Term.TypeCheckedTerm
+import Term.TypeChecked    as TypeChecked
 import TypeCheckingFailure
-import Term.TypeErroredTerm
+import Term.TypeErrored    as TypeErrored
 
-type TypeCheckingTerm = Either TypeErroredTerm TypeCheckedTerm
+type TypeCheckingTerm = Either TypeErrored.Term TypeChecked.Term
 
 data TypeCheckerF k
-  = Check (Context TypeChecked) RawTerm RawType (TypeCheckingTerm -> k)
-  | Synth (Context TypeChecked) RawTerm         (TypeCheckingTerm -> k)
-  | Failure TypeErroredTerm
-  | Success TypeCheckedTerm
+  = Check (Context TypeChecked) Raw.Term Raw.Type (TypeCheckingTerm -> k)
+  | Synth (Context TypeChecked) Raw.Term          (TypeCheckingTerm -> k)
+  | Failure TypeErrored.Term
+  | Success TypeChecked.Term
   deriving (Functor)
 
 tcTrace ::
@@ -42,7 +42,7 @@ tcTrace _    (Failure f) = [Failure f]
 tcTrace _    (Success s) = [Success s]
 tcTrace step w           = w : tcTrace step (step w)
 
-tc :: TypeCheckerF (TCMonad TypeCheckedTerm) -> Either TypeErroredTerm TypeCheckedTerm
+tc :: TypeCheckerF (TCMonad TypeChecked.Term) -> Either TypeErrored.Term TypeChecked.Term
 tc (Failure f) = Left f
 tc (Success s) = Right s
 tc w           = tc (stepTypeCheckerF w)
@@ -112,38 +112,38 @@ instance Functor TypeCheckerF where
 type TypeCheckerT = FreeT TypeCheckerF
 
 type MonadTypeCheck m =
-  ( MonadError TypeErroredTerm m
+  ( MonadError TypeErrored.Term m
   , MonadFree TypeCheckerF m
   )
 
 checkF ::
   MonadError e m =>
-  Context TypeChecked -> TermX ξ -> TermX ψ -> (TypeErroredTerm -> e) ->
-  TypeCheckerF (m TypeCheckedTerm)
+  Context TypeChecked -> TermX ξ -> TermX ψ -> (TypeErrored.Term -> e) ->
+  TypeCheckerF (m TypeChecked.Term)
 checkF γ t τ h = Check γ (raw t) (raw τ) (either (throwError . h) return)
 
 checkM ::
   MonadTypeCheck m =>
-  Context TypeChecked -> TermX ξ -> TypeX ψ -> (TypeErroredTerm -> TypeErroredTerm) ->
-  m TypeCheckedTerm
+  Context TypeChecked -> TermX ξ -> TypeX ψ -> (TypeErrored.Term -> TypeErrored.Term) ->
+  m TypeChecked.Term
 checkM γ t τ h = wrap $ checkF γ t τ h
 
 synthF ::
   MonadError e m =>
-  Context TypeChecked -> TermX ξ -> (TypeErroredTerm -> e) ->
-  TypeCheckerF (m TypeCheckedTerm)
+  Context TypeChecked -> TermX ξ -> (TypeErrored.Term -> e) ->
+  TypeCheckerF (m TypeChecked.Term)
 synthF γ t h = Synth γ (raw t) (either (throwError . h) return)
 
 synthM ::
   MonadTypeCheck m =>
-  Context TypeChecked -> TermX ξ -> (TypeErroredTerm -> TypeErroredTerm) ->
-  m TypeCheckedTerm
+  Context TypeChecked -> TermX ξ -> (TypeErrored.Term -> TypeErrored.Term) ->
+  m TypeChecked.Term
 synthM γ t h = wrap $ synthF γ t h
 
-failure :: MonadTypeCheck m => TypeErroredTerm -> m TypeCheckedTerm
+failure :: MonadTypeCheck m => TypeErrored.Term -> m TypeChecked.Term
 failure t = wrap $ Failure t
 
-success :: MonadTypeCheck m => TypeCheckedTerm -> m TypeCheckedTerm
+success :: MonadTypeCheck m => TypeChecked.Term -> m TypeChecked.Term
 success t = wrap $ Success t
 
 {-
@@ -153,11 +153,11 @@ synth t = liftF $ Synth (raw t) id
 check :: Monad m => TermX ξ -> TypeX ξ -> TypeCheckerT m
 check t τ = liftF $ Check (raw t) (raw τ) id
 
-done :: Monad m => TypeCheckedTerm -> TypeCheckerT m
+done :: Monad m => TypeChecked.Term -> TypeCheckerT m
 done r = liftF $ Done r
 -}
 
-rawType :: RawTerm
+rawType :: Raw.Term
 rawType = Type ()
 
 {-
@@ -169,14 +169,14 @@ tryEither m l = cont $ meither m l
 -}
 
 isPiOtherwise :: MonadTypeCheck m =>
-                TermX ξ -> TypeErroredTerm -> m (TermX ξ)
+                TermX ξ -> TypeErrored.Term -> m (TermX ξ)
 isPiOtherwise t@(Pi _ _ _ _) _ = return t
 isPiOtherwise _              e = throwError e
 
-(~!) :: TermX ξ -> TypeErroredTerm
+(~!) :: TermX ξ -> TypeErrored.Term
 (~!) = unchecked
 
-(!->) :: TypeCheckedTerm -> TypeErroredTerm
+(!->) :: TypeChecked.Term -> TypeErrored.Term
 (!->) = fromChecked
 
 runFreeTypeCheckerT :: TypeCheckerT m a ->
@@ -184,15 +184,15 @@ runFreeTypeCheckerT :: TypeCheckerT m a ->
 runFreeTypeCheckerT = runFreeT
 
 -- TypeCheckerT = FreeT TypeCheckerF
-type TCMonad = TypeCheckerT (ExceptT TypeErroredTerm Identity)
+type TCMonad = TypeCheckerT (ExceptT TypeErrored.Term Identity)
 
 runTypeCheck2 ::
   TCMonad a ->
-  Either TypeErroredTerm (FreeF TypeCheckerF a (TCMonad a))
+  Either TypeErrored.Term (FreeF TypeCheckerF a (TCMonad a))
 runTypeCheck2 = runIdentity . runExceptT . runFreeT
 
 {-
-hole :: TCMonad TypeCheckedTerm -> TypeCheckingTerm
+hole :: TCMonad TypeChecked.Term -> TypeCheckingTerm
 hole m =
   case runTypeCheck2 m of
   Left l -> Left l
@@ -203,9 +203,9 @@ hole m =
       case f of
       Synth t k -> hole . k . runSynth $ t
 
-runSynth :: RawTerm -> TypeCheckingTerm
+runSynth :: Raw.Term -> TypeCheckingTerm
 runSynth = \case
-  App () fun arg -> hole $ (synthApp fun arg) -- :: TCMonad TypeCheckedTerm)
+  App () fun arg -> hole $ (synthApp fun arg) -- :: TCMonad TypeChecked.Term)
   t -> Left (unchecked t)
 
 interpret :: Monad m => TypeCheckerT m TypeCheckingTerm -> m TypeCheckingTerm
@@ -243,7 +243,7 @@ False `ifFalseFailWith` e = throwError e
 
 runSynth' ::
   (MonadTypeCheck m) =>
-  Context TypeChecked -> TermX ξ -> m TypeCheckedTerm
+  Context TypeChecked -> TermX ξ -> m TypeChecked.Term
 runSynth' γ = \case
 
   App _ fun arg -> do
@@ -271,10 +271,10 @@ runSynth' γ = \case
     Just τ -> return $ Var τ name
 
   Pi _ binderPi τIn τOut -> do
-    τIn' <- checkM γ τIn (Type () :: RawTerm)
+    τIn' <- checkM γ τIn (Type () :: Raw.Term)
            (\ _τIn' -> error "TODO qwer")
     let γ' = (binderPi, τIn') +: γ
-    τOut' <- checkM γ' τOut (Type () :: RawTerm)
+    τOut' <- checkM γ' τOut (Type () :: Raw.Term)
             (\ _τOut' -> error "TODO adsf")
     return $ Pi (Type ()) binderPi τIn' τOut'
 
@@ -286,11 +286,11 @@ runSynth' γ = \case
 
 runCheck' ::
   (MonadTypeCheck m) =>
-  Context TypeChecked -> TermX ξ -> TermX ψ -> m TypeCheckedTerm
+  Context TypeChecked -> TermX ξ -> TermX ψ -> m TypeChecked.Term
 runCheck' γ t τ = case t of
 
   Lam _ binderLam bodyLam -> do
-    τ' <- checkM γ τ (Type () :: RawType)
+    τ' <- checkM γ τ (Type () :: Raw.Type)
          (\ _τ' -> annotateError NotAType t)
     Pi _ binderPi τIn τOut <-
       redβ τ' `isPiOtherwise`
@@ -312,8 +312,8 @@ runCheck' γ t τ = case t of
     return t'
 
 runTypeCheckerF ::
-  TypeCheckerF (TypeCheckerT TCMonad TypeCheckedTerm) ->
-  TCMonad TypeCheckedTerm
+  TypeCheckerF (TypeCheckerT TCMonad TypeChecked.Term) ->
+  TCMonad TypeChecked.Term
 runTypeCheckerF ff = case ff of
   Failure f     -> throwError f
   Success s     -> return s
@@ -321,21 +321,21 @@ runTypeCheckerF ff = case ff of
   Check γ t τ k -> join $ runTypeCheckerT . k . Right <$> runCheck' γ t τ
 
 runFreeF ::
-  FreeF TypeCheckerF TypeCheckedTerm
-  (TypeCheckerT TCMonad TypeCheckedTerm) ->
-  TCMonad TypeCheckedTerm
+  FreeF TypeCheckerF TypeChecked.Term
+  (TypeCheckerT TCMonad TypeChecked.Term) ->
+  TCMonad TypeChecked.Term
 runFreeF = \case
   Pure pp -> return pp
   Free ff -> runTypeCheckerF ff
 
 runTypeCheckerT ::
-  TypeCheckerT TCMonad TypeCheckedTerm ->
-  TCMonad TypeCheckedTerm
+  TypeCheckerT TCMonad TypeChecked.Term ->
+  TCMonad TypeChecked.Term
 runTypeCheckerT = runFreeT >=> runFreeF
 
 runTypeCheckerF' ::
-  TypeCheckerF (TCMonad TypeCheckedTerm) ->
-  TCMonad TypeCheckedTerm
+  TypeCheckerF (TCMonad TypeChecked.Term) ->
+  TCMonad TypeChecked.Term
 runTypeCheckerF' ff = case ff of
   Failure f     -> throwError f
   Success s     -> return s
@@ -343,16 +343,16 @@ runTypeCheckerF' ff = case ff of
   Check γ t τ k -> join $ k . Right <$> runCheck' γ t τ
 
 runFreeF' ::
-  FreeF TypeCheckerF TypeCheckedTerm
-  (TCMonad TypeCheckedTerm) ->
-  TCMonad TypeCheckedTerm
+  FreeF TypeCheckerF TypeChecked.Term
+  (TCMonad TypeChecked.Term) ->
+  TCMonad TypeChecked.Term
 runFreeF' = \case
   Pure pp -> return pp
   Free ff -> runTypeCheckerF' ff
 
 stepTypeCheckerF ::
-  TypeCheckerF (TCMonad TypeCheckedTerm) ->
-  TypeCheckerF (TCMonad TypeCheckedTerm)
+  TypeCheckerF (TCMonad TypeChecked.Term) ->
+  TypeCheckerF (TCMonad TypeChecked.Term)
 stepTypeCheckerF input =
   case runTypeCheck2 . runTypeCheckerF' $ input of
   Left  l -> Failure l

@@ -3,16 +3,16 @@
 {-# language ScopedTypeVariables #-}
 {-# language TypeFamilies #-}
 
-module Term.NumberedTerm where
+module Term.Numbered where
 
-import DictMetaMap
-import Term.RawTerm
-import Term.Term
+import           DictMetaMap
+import qualified Term.Raw    as Raw
+import           Term.Term
 
 data Numbered
 
-type NumberedTerm = TermX Numbered
-type NumberedType = NumberedTerm
+type Term = TermX Numbered
+type Type = Term
 
 type Numbering = Int
 
@@ -25,8 +25,8 @@ type instance X_Pi    Numbered = Numbering
 type instance X_Type  Numbered = Numbering
 type instance X_Var   Numbered = Numbering
 
-numberOf :: NumberedTerm -> Int
+numberOf :: Term -> Int
 numberOf = annotationOf
 
-numberize :: RawTerm -> NumberedTerm
+numberize :: Raw.Term -> Term
 numberize = metaMap (dictMetaMap' (\ (acc, ()) -> (acc + 1, acc))) 0

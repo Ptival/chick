@@ -10,7 +10,7 @@ import qualified Text.Megaparsec.Lexer  as L
 import           Text.Megaparsec.String
 import           Text.Printf
 
-import           Term.RawTerm
+import           Term.Raw  as Raw
 import           Term.Term
 
 type Parser1 a = Parser a -> Parser  a
@@ -28,7 +28,7 @@ binOpL = BinaryOpParser LeftAssociative
 binOpR = BinaryOpParser RightAssociative
 binOpN = BinaryOpParser NonAssociative
 
-parser :: [[ModularParser RawTerm]]
+parser :: [[ModularParser Raw.Term]]
 parser =
   -- low precedence
   [ [SelfNextParser letP, SelfNextParser lamP]
@@ -53,7 +53,7 @@ choiceOrNextP ps nextP =
 foldP :: [[ModularParser a]] -> Parser a
 foldP ps = fix $ \ self -> foldr ($) (parens self) (map choiceOrNextP ps)
 
-termP :: Parser RawTerm
+termP :: Parser Raw.Term
 termP = foldP parser
 
 -- Binary operator parsers
@@ -83,10 +83,10 @@ binOpNP s k _selfP nextP = binOpRP s k nextP nextP
 binderP :: Parser Binder
 binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just . Variable <$> identifier))
 
-holeP :: Parser RawTerm
+holeP :: Parser Raw.Term
 holeP = Hole () <$ symbol holeSymbol
 
-lamP :: Parser2 RawTerm
+lamP :: Parser2 Raw.Term
 lamP selfP _nextP =
   lams
   <$> (try (symbol "λ") *> some binderP)
@@ -101,11 +101,11 @@ lamP selfP _nextP =
   return $ lams bs t
 -}
   where
-    lams :: [Binder] -> RawTerm -> RawTerm
+    lams :: [Binder] -> Raw.Term -> Raw.Term
     lams []       t = t
     lams (b : bs) t = Lam () b $ lams bs t
 
-letP :: Parser2 RawTerm
+letP :: Parser2 Raw.Term
 letP selfP _nextP =
   Let ()
   <$> (try (rword "let") *> binderP)
@@ -124,7 +124,7 @@ letP selfP _nextP =
   return $ Let () b t1 t2
 -}
 
-namedPiP :: Parser2 RawTerm
+namedPiP :: Parser2 Raw.Term
 namedPiP selfP _nextP = do
   (bs, τ1) <- try $ do
     symbol "("
@@ -137,25 +137,25 @@ namedPiP selfP _nextP = do
   τ2 <- selfP
   return $ pis bs τ1 τ2
   where
-    pis :: [Binder] -> RawTerm -> RawTerm -> RawTerm
+    pis :: [Binder] -> Raw.Term -> Raw.Term -> Raw.Term
     pis []     _  τ2 = τ2
     pis (b:bs) τ1 τ2 = Pi () b τ1 $ pis bs τ1 τ2
 
-typeP :: Parser RawTerm
+typeP :: Parser Raw.Term
 typeP = Type () <$ rword "Type"
 
-varP :: Parser RawTerm
+varP :: Parser Raw.Term
 varP = Var () . Variable <$> identifier
 
 -- Running parsers
 
-langP :: Parser RawTerm
+langP :: Parser Raw.Term
 langP = termP <* eof
 
-runParserTerm :: String -> Either (ParseError Char Dec) RawTerm
+runParserTerm :: String -> Either (ParseError Char Dec) Raw.Term
 runParserTerm = runParser langP "runParserTerm"
 
-parseMaybeTerm :: String -> Maybe RawTerm
+parseMaybeTerm :: String -> Maybe Raw.Term
 parseMaybeTerm = parseMaybe langP
 
 -- Utilities

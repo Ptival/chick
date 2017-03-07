@@ -46,12 +46,12 @@ Library
                    Term.Fold
                    Term.Free
                    Term.Fresh
-                   Term.NumberedTerm
-                   Term.RawTerm
+                   Term.Numbered
+                   Term.Raw
                    Term.Substitution
                    Term.Term
-                   Term.TypeCheckedTerm
-                   Term.TypeErroredTerm
+                   Term.TypeChecked
+                   Term.TypeErrored
                    WellFormed
   other-modules:
 

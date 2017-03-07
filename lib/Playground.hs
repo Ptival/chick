@@ -15,12 +15,12 @@ import StandardLibrary
 import Tactic
 import Term.AlphaRenaming
 import Term.Fresh
-import Term.RawTerm
+import Term.Raw         as Raw
 import Term.Term
-import Term.TypeErroredTerm
+import Term.TypeErrored as TypeErrored
 import Work
 
-genPi :: Gen RawTerm
+genPi :: Gen Raw.Term
 genPi = do
   Pi def <$> arbitrary <*> arbitrary <*> arbitrary
 
@@ -61,7 +61,7 @@ stdlibTypeCheck = do
 
 randomTypeCheck :: IO ()
 randomTypeCheck = do
-  t <- generate (arbitrary :: Gen RawTerm)
+  t <- generate (arbitrary :: Gen Raw.Term)
   typeCheck t Nothing
 
 {-

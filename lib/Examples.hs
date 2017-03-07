@@ -13,33 +13,33 @@ import Text.PrettyPrint.GenericPretty (pp)
 import Notations
 import Parsing
 import PrettyPrinting
-import Term.RawTerm
-import Term.AlphaEquivalence
-import Term.NumberedTerm
-import Term.TypeCheckedTerm
-import Term.TypeErroredTerm
+import Term.Raw              as Raw
+--import Term.AlphaEquivalence
+import Term.Numbered         as Numbered
+import Term.TypeChecked      as TypeChecked
+import Term.TypeErrored      as TypeErrored
 import Work
 
-τFlip :: RawType
+τFlip :: Raw.Type
 τFlip = π [ ("A", type'), ("B", type'), ("C", type') ] $
      (var "A" ^-> var "B" ^-> var "C") ^->
      (var "B" ^-> var "A" ^-> var "C")
 
-tFlip :: RawTerm
+tFlip :: Raw.Term
 tFlip = (^\) ["A", "B", "C", "f", "b", "a"] $
         var "f" ^$ var "a" ^$ var "b"
 
 testing ::
   Either
-  TypeErroredTerm
-  (FreeF TypeCheckerF TypeCheckedTerm (TCMonad TypeCheckedTerm))
+  TypeErrored.Term
+  (FreeF TypeCheckerF TypeChecked.Term (TCMonad TypeChecked.Term))
 testing = runTypeCheck2 $ runCheck' [] tFlip τFlip
 
-trace :: [TypeCheckerF (TCMonad TypeCheckedTerm)]
+trace :: [TypeCheckerF (TCMonad TypeChecked.Term)]
 trace = tcTrace stepTypeCheckerF $ checkF [] tFlip τFlip id
 
 {-
-didItWork :: [TypeCheckerF (TCMonad TypeCheckedTerm)] -> Bool
+didItWork :: [TypeCheckerF (TCMonad TypeChecked.Term)] -> Bool
 didItWork (a:b:c) = didItWork (b:c)
 didItWork (a:[])  =
   case a of
@@ -49,20 +49,20 @@ didItWork (a:[])  =
   _ -> error "sucks"
 -}
 
-testNumberize :: NumberedTerm
+testNumberize :: Numbered.Term
 testNumberize = numberize tFlip
 
-manyRightApps :: Int -> RawTerm
+manyRightApps :: Int -> Raw.Term
 manyRightApps 0 = var "x"
 manyRightApps n = var "x" ^$ manyRightApps (n - 1)
 
-manyLeftApps :: Int -> RawTerm
+manyLeftApps :: Int -> Raw.Term
 manyLeftApps 0 = var "x"
 manyLeftApps n = manyLeftApps (n - 1) ^$ var "x"
 
 testPretty :: IO ()
 testPretty = do
-  let p = (putStrLn . prettyTerm :: RawTerm -> IO ())
+  let p = (putStrLn . prettyTerm :: Raw.Term -> IO ())
   p $ var "a" ^$ (var "b" ^$ (var "c" ^$ var "d"))
   p $ ((var "a" ^$ var "b") ^$ var "c") ^$ var "d"
   p $ manyLeftApps 40

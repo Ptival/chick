@@ -7,7 +7,7 @@ import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import Precedence
-import Term.RawTerm
+import Term.Raw   as Raw
 import Term.Term
 
 {-
