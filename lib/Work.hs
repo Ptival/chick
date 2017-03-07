@@ -13,10 +13,13 @@ import Control.Monad.Except
 import Control.Monad.Identity
 --import Control.Monad.Managed
 import Control.Monad.Trans.Free
-import Prelude                  hiding (or)
-import Text.Printf
+import Data.Default
+import Prelude                       hiding (or)
+--import Text.Printf
+import Text.PrettyPrint.Annotated.WL
 
 import Context
+import PrettyPrinting
 import Term.RawTerm
 import Term.Substitution
 import Term.Term
@@ -62,6 +65,30 @@ tcStep magic t =
 showContext :: Bool
 showContext = False
 
+prettyTypeCheckerF :: TypeCheckerF k -> Doc ()
+prettyTypeCheckerF = \case
+  Check _γ t τ _ -> fillSep
+    [ text "Check"
+    , text "γ ⊢"
+    , prettyTermDoc def t
+    , text ":"
+    , prettyTermDoc def τ
+    ]
+  Synth _γ t _ -> fillSep
+    [ text "Synth"
+    , text "γ ⊢"
+    , prettyTermDoc def t
+    ]
+  Failure f -> fillSep
+    [ text "Failure"
+    , prettyTermDoc def (raw f)
+    ]
+  Success s -> fillSep
+    [ text "Success"
+    , prettyTermDoc def (raw s)
+    ]
+
+{-
 instance Show (TypeCheckerF k) where
   show (Check γ t τ _) =
     "\n  Check\n  "
@@ -73,6 +100,7 @@ instance Show (TypeCheckerF k) where
     ++ printf "%v\n" t
   show (Failure t)   = printf "Failure %v" t
   show (Success t)   = printf "Success %v" t
+-}
 
 {-
 instance Functor TypeCheckerF where
