@@ -126,16 +126,20 @@ letP selfP _nextP =
 
 namedPiP :: Parser2 RawTerm
 namedPiP selfP _nextP = do
-  (b, τ1) <- try $ do
+  (bs, τ1) <- try $ do
     symbol "("
-    b <- binderP
+    bs <- some binderP
     symbol ":"
     τ1 <- termP
     symbol ")"
     symbol "→" -- I don't think we can commit prior to this, unfortunately
-    return (b, τ1)
+    return (bs, τ1)
   τ2 <- selfP
-  return $ Pi () b τ1 τ2
+  return $ pis bs τ1 τ2
+  where
+    pis :: [Binder] -> RawTerm -> RawTerm -> RawTerm
+    pis []     _  τ2 = τ2
+    pis (b:bs) τ1 τ2 = Pi () b τ1 $ pis bs τ1 τ2
 
 typeP :: Parser RawTerm
 typeP = Type () <$ rword "Type"

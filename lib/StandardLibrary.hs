@@ -10,7 +10,7 @@ import Term.RawTerm
 --import Term.Term
 import Text.Printf
 
--- do not use `p` anywhere else!
+-- do not use `unsafeParseRaw` anywhere else!
 unsafeParseRaw :: String -> RawTerm
 unsafeParseRaw s =
   case parseMaybeTerm s of
@@ -23,7 +23,7 @@ tId = unsafeParseRaw "λ _ x . x"
 
 τFlip, tFlip :: RawTerm
 τFlip = unsafeParseRaw
-  "(A : Type) → (B : Type) → (C : Type) → (A → B → C) → (B → A → C)"
+  "(A B C : Type) → (A → B → C) → (B → A → C)"
 tFlip = unsafeParseRaw "λ _ _ _ f b a . f a b"
 
 τNat :: RawTerm
