@@ -15,9 +15,9 @@ import StandardLibrary
 import Tactic
 import Term.AlphaRenaming
 import Term.Fresh
-import Term.Raw         as Raw
+import Term.Raw                      as Raw
 import Term.Term
-import Term.TypeErrored as TypeErrored
+import Term.TypeErrored              as TypeErrored
 import Work
 
 genPi :: Gen Raw.Term

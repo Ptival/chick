@@ -20,12 +20,12 @@ import Text.PrettyPrint.Annotated.WL
 
 import Context
 import PrettyPrinting
-import Term.Raw            as Raw
+import Term.Raw                      as Raw
 import Term.Substitution
 import Term.Term
-import Term.TypeChecked    as TypeChecked
+import Term.TypeChecked              as TypeChecked
+import Term.TypeErrored              as TypeErrored
 import TypeCheckingFailure
-import Term.TypeErrored    as TypeErrored
 
 type TypeCheckingTerm = Either TypeErrored.Term TypeChecked.Term
 

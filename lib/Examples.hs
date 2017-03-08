@@ -13,11 +13,11 @@ import Text.PrettyPrint.GenericPretty (pp)
 import Notations
 import Parsing
 import PrettyPrinting
-import Term.Raw              as Raw
+import Term.Raw                       as Raw
 --import Term.AlphaEquivalence
-import Term.Numbered         as Numbered
-import Term.TypeChecked      as TypeChecked
-import Term.TypeErrored      as TypeErrored
+import Term.Numbered                  as Numbered
+import Term.TypeChecked               as TypeChecked
+import Term.TypeErrored               as TypeErrored
 import Work
 
 τFlip :: Raw.Type
