@@ -74,6 +74,9 @@ instance Arbitrary Binder where
     Nothing -> []
     Just v  -> [Binder Nothing] ++ [Binder (Just v') | v' <- shrink v]
 
+instance IsString Binder where
+  fromString s = Binder (Just (fromString s))
+
 type family X_Annot ξ
 type family X_App   ξ
 type family X_Hole  ξ

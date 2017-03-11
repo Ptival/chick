@@ -4,11 +4,15 @@
 module PrettyPrinting where
 
 import Data.Default
+import Data.List
 import Text.PrettyPrint.Annotated.WL
+import Text.Printf
 
+import Context
 import Precedence
-import Term.Raw   as Raw
+import Term.Raw                      as Raw
 import Term.Term
+import Term.TypeChecked
 
 {-
 par :: Precedence -> Precedence -> Doc a -> Doc a
@@ -32,12 +36,20 @@ prettyTerm t = prettyTermString def (raw t)
 prettyTermString :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> String
 prettyTermString precs = doc2String . prettyTermDoc precs
 
-prettyVariable :: Variable -> Doc a
-prettyVariable (Variable s) = text s
+prettyVariable :: Variable -> String
+prettyVariable v = doc2String $ prettyVariableDoc v
+
+prettyVariableDoc :: Variable -> Doc a
+prettyVariableDoc (Variable s) = text s
 
 prettyBinder :: Binder -> Doc a
 prettyBinder (Binder Nothing)  = text "_"
-prettyBinder (Binder (Just v)) = prettyVariable v
+prettyBinder (Binder (Just v)) = prettyVariableDoc v
+
+prettyContext :: Context TypeChecked -> String
+prettyContext ctxt =
+  intercalate "\n"
+  (map (\ (v, τ) -> printf "(%s, %s)" (prettyVariable v) (prettyTerm τ)) (reverse ctxt))
 
 prettyTermDoc :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> Doc a
 prettyTermDoc precs = go (PrecMin, TolerateEqual)
@@ -106,7 +118,7 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
 
       Type a -> (annotate a $ text "Type", PrecAtom)
 
-      Var a v -> (annotate a $ prettyVariable v, PrecAtom)
+      Var a v -> (annotate a $ prettyVariableDoc v, PrecAtom)
 
     goLams :: ForallX ((~) a) ξ => [Doc a] -> TermX ξ -> Doc a
     goLams l = \case
