@@ -4,7 +4,6 @@ module Notations where
 
 import Data.Default
 
-import Context
 import Term.Term
 
 -- Annot
@@ -32,7 +31,7 @@ let' []             t  = t
 let' ((n, t1) : ns) t2 = Let def (Binder (Just n)) t1 (let' ns t2)
 
 -- Pi (named)
-π :: ForallX Default ξ => Context ξ -> TermX ξ -> TermX ξ
+π :: ForallX Default ξ => [(Variable, TypeX ξ)] -> TermX ξ -> TermX ξ
 π []             t = t
 π ((n, τ) : nτs) t = Pi def (Binder (Just n)) τ (π nτs t)
 

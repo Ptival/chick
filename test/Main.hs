@@ -58,7 +58,7 @@ parseMaybeRaw :: String -> Maybe Raw.Term
 parseMaybeRaw = parseMaybe termP
 
 prettyRaw :: Raw.Term -> String
-prettyRaw = prettyTermString def
+prettyRaw = prettyTerm
 
 unitTestTerms :: [(Raw.Term, String)]
 unitTestTerms =

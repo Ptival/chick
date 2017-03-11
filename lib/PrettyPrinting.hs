@@ -1,18 +1,20 @@
 {-# language LambdaCase #-}
+{-# language ScopedTypeVariables #-}
 {-# language TypeFamilies #-}
 
 module PrettyPrinting where
 
 import Data.Default
-import Data.List
+--import Data.List
 import Text.PrettyPrint.Annotated.WL
-import Text.Printf
+--import Text.Printf
 
-import Context
+import DictMetaOut
 import Precedence
-import Term.Raw                      as Raw
+--import Term.Raw                      as Raw
 import Term.Term
-import Term.TypeChecked
+--import Term.TypeChecked
+import Typing.LocalContext
 
 {-
 par :: Precedence -> Precedence -> Doc a -> Doc a
@@ -30,11 +32,14 @@ tabWidth = 20
 doc2String :: Doc a -> String
 doc2String = display . renderPretty 1.0 80
 
-prettyTerm :: TermX ξ -> String
-prettyTerm t = prettyTermString def (raw t)
+dictIgnore :: DictMetaOut () ξ
+dictIgnore = DictMetaOut f f f f f f f f
+  where
+    f :: a -> ()
+    f _ = ()
 
-prettyTermString :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> String
-prettyTermString precs = doc2String . prettyTermDoc precs
+prettyTerm :: TermX ξ -> String
+prettyTerm = doc2String . prettyTermDoc dictIgnore def
 
 prettyVariable :: Variable -> String
 prettyVariable v = doc2String $ prettyVariableDoc v
@@ -42,17 +47,29 @@ prettyVariable v = doc2String $ prettyVariableDoc v
 prettyVariableDoc :: Variable -> Doc a
 prettyVariableDoc (Variable s) = text s
 
-prettyBinder :: Binder -> Doc a
-prettyBinder (Binder Nothing)  = text "_"
-prettyBinder (Binder (Just v)) = prettyVariableDoc v
+prettyBinderDoc :: Binder -> Doc a
+prettyBinderDoc (Binder Nothing)  = text "_"
+prettyBinderDoc (Binder (Just v)) = prettyVariableDoc v
 
-prettyContext :: Context TypeChecked -> String
-prettyContext ctxt =
-  intercalate "\n"
-  (map (\ (v, τ) -> printf "(%s, %s)" (prettyVariable v) (prettyTerm τ)) (reverse ctxt))
+prettyLocalDeclaration ::
+  DictMetaOut a ξ -> PrecedenceTable -> LocalDeclaration ξ -> Doc a
+prettyLocalDeclaration dict precs (LocalAssum (Variable v) τ) =
+  fillSep
+  [ text v
+  , char ':'
+  , prettyTermDoc dict precs τ
+  ]
+prettyLocalDeclaration dict precs (LocalDef (Variable v) t τ) =
+  fillSep
+  [ text v
+  , text ":="
+  , prettyTermDoc dict precs t
+  , char ':'
+  , prettyTermDoc dict precs τ
+  ]
 
-prettyTermDoc :: ForallX ((~) a) ξ => PrecedenceTable -> TermX ξ -> Doc a
-prettyTermDoc precs = go (PrecMin, TolerateEqual)
+prettyTermDoc :: forall a ξ. DictMetaOut a ξ -> PrecedenceTable -> TermX ξ -> Doc a
+prettyTermDoc dict precs = go (PrecMin, TolerateEqual)
   where
     par :: (Precedence, Tolerance) -> (Doc a, Precedence) -> Doc a
     par (pOut, t) (d, pIn) =
@@ -60,35 +77,37 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
       then d
       else parens . nest 2 $ d
 
-    go :: ForallX ((~) a) ξ => (Precedence, Tolerance) -> TermX ξ -> Doc a
+    go :: (Precedence, Tolerance) -> TermX ξ -> Doc a
     go pt = par pt . goTerm
 
-    goTerm :: ForallX ((~) a) ξ => TermX ξ -> (Doc a, Precedence)
-    goTerm = \case
+    goTerm :: TermX ξ -> (Doc a, Precedence)
+    goTerm term =
+      (\ (doc, p) -> (annotate (metaOut dict term) doc, p))
+      $ case term of
 
-      Annot a t τ ->
-        (annotate a $ fillSep
+      Annot _ t τ ->
+        (fillSep
          [ go (PrecAnnot, TolerateHigher) t
          , text annotSymbol
          , go (PrecAnnot, TolerateHigher) τ
          ]
         , PrecAnnot)
 
-      App a t1 t2 ->
-        (annotate a $ fillSep
+      App _ t1 t2 ->
+        (fillSep
          [ go (PrecApp, TolerateEqual) t1
          , go (PrecApp, TolerateHigher) t2
          ]
         , PrecApp)
 
-      Hole a -> (annotate a $ text holeSymbol, PrecAtom)
+      Hole _ -> (text holeSymbol, PrecAtom)
 
-      Lam a n t -> (goLams [] (Lam a n t), PrecLam)
+      l@(Lam _ _ _) -> (goLams [] l, PrecLam)
 
-      Let a n t1 t2 ->
-        (annotate a $ fillSep
+      Let _ n t1 t2 ->
+        (fillSep
          [ text "let"
-         , prettyBinder n
+         , prettyBinderDoc n
          , char '='
          , go (PrecMin, TolerateEqual) t1
          , text "in"
@@ -96,16 +115,16 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
          ]
         , PrecLet)
 
-      Pi a (Binder Nothing) τ1 τ2 ->
-        (annotate a $ fillSep
+      Pi _ (Binder Nothing) τ1 τ2 ->
+        (fillSep
          [ go (PrecArrow, TolerateHigher) τ1
          , char '→'
          , go (PrecArrow, TolerateEqual) τ2
          ]
         , PrecArrow)
 
-      Pi a (Binder (Just (Variable n))) τ1 τ2 ->
-        (annotate a $ fillSep
+      Pi _ (Binder (Just (Variable n))) τ1 τ2 ->
+        (fillSep
          [ parens $ fillSep
            [ text n
            , char ':'
@@ -116,13 +135,13 @@ prettyTermDoc precs = go (PrecMin, TolerateEqual)
          ]
         , PrecArrow)
 
-      Type a -> (annotate a $ text "Type", PrecAtom)
+      Type _ -> (text "Type", PrecAtom)
 
-      Var a v -> (annotate a $ prettyVariableDoc v, PrecAtom)
+      Var _ v -> (prettyVariableDoc v, PrecAtom)
 
-    goLams :: ForallX ((~) a) ξ => [Doc a] -> TermX ξ -> Doc a
+    goLams :: [Doc a] -> TermX ξ -> Doc a
     goLams l = \case
-      Lam a n t -> goLams ((annotate a $ prettyBinder n) : l) t
+      Lam _ n t -> goLams (prettyBinderDoc n : l) t
       t -> fillSep
           [ char 'λ'
           , fillSep . reverse $ l
