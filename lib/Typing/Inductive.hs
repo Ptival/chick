@@ -103,7 +103,7 @@ checkInductive (Inductive n ps is cs) = do
 
   -- now adding all the constructors to the global environment
   forM_ cs' $ \ (Constructor cn cps cis) ->
-    addVariable (cn, constructorType n cps cis)
+    addVariable (cn, constructorType n ps' cps cis)
 
   return (Inductive n ps' is' cs')
 

@@ -143,15 +143,17 @@ prettyInductiveDoc dict precs (Inductive n ps is cs) =
     , arrows (map (prettyTermDoc dict precs) is ++ [text "Type"])
     , text "where"
     ]
-  ] ++ map (indent 2 . prettyConstructorDoc dict precs n) cs
+  ] ++ map (indent 2 . prettyConstructorDoc dict precs n ps) cs
 
 prettyConstructorDoc ::
-  DictMetaOut a TypeChecked -> PrecedenceTable -> Variable -> Constructor TypeChecked -> Doc a
-prettyConstructorDoc dict precs ind (Constructor n ps is) =
+  DictMetaOut a TypeChecked -> PrecedenceTable ->
+  Variable -> [(Binder, TypeChecked.Type)] ->
+  Constructor TypeChecked -> Doc a
+prettyConstructorDoc dict precs ind indps (Constructor n ps is) =
   fillSep
   [ prettyVariableDoc n
   , text ":"
-  , prettyTermDoc dict precs (constructorType ind ps is)
+  , prettyTermDoc dict precs (constructorType ind indps ps is)
     {-
   , arrows (map (prettyBindingDoc dict precs) ps)
   , text "→"

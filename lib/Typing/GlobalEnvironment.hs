@@ -46,7 +46,7 @@ unwrapInductive (Inductive v ps is cs) =
   GlobalAssum v (inductiveType ps is (Type ())) : map constructorAssumption cs
   where
     constructorAssumption (Constructor cv cps cis) =
-      GlobalAssum cv (constructorType v cps cis)
+      GlobalAssum cv (constructorType v ps cps cis)
 
 lookupType :: Variable -> GlobalEnvironment TypeChecked -> Maybe (TypeChecked.Type)
 lookupType _ [] = Nothing
