@@ -13,12 +13,12 @@ import Control.Monad.Except
 import Control.Monad.Identity
 --import Control.Monad.Managed
 import Control.Monad.Trans.Free
-import Data.Default
+--import Data.Default
 import Prelude                       hiding (or)
 --import Text.Printf
 import Text.PrettyPrint.Annotated.WL
 
-import Context
+import Typing.LocalContext
 import PrettyPrinting
 import Term.Raw                      as Raw
 import Term.Substitution
@@ -30,8 +30,8 @@ import TypeCheckingFailure
 type TypeCheckingTerm = Either TypeErrored.Term TypeChecked.Term
 
 data TypeCheckerF k
-  = Check (Context TypeChecked) Raw.Term Raw.Type (TypeCheckingTerm -> k)
-  | Synth (Context TypeChecked) Raw.Term          (TypeCheckingTerm -> k)
+  = Check (LocalContext TypeChecked) Raw.Term Raw.Type (TypeCheckingTerm -> k)
+  | Synth (LocalContext TypeChecked) Raw.Term          (TypeCheckingTerm -> k)
   | Failure TypeErrored.Term
   | Success TypeChecked.Term
   deriving (Functor)
@@ -70,22 +70,22 @@ prettyTypeCheckerF = \case
   Check _γ t τ _ -> fillSep
     [ text "Check"
     , text "γ ⊢"
-    , prettyTermDoc def t
+    , prettyTermDoc' t
     , text ":"
-    , prettyTermDoc def τ
+    , prettyTermDoc' τ
     ]
   Synth _γ t _ -> fillSep
     [ text "Synth"
     , text "γ ⊢"
-    , prettyTermDoc def t
+    , prettyTermDoc' t
     ]
   Failure f -> fillSep
     [ text "Failure"
-    , prettyTermDoc def (raw f)
+    , prettyTermDoc' (raw f)
     ]
   Success s -> fillSep
     [ text "Success"
-    , prettyTermDoc def (raw s)
+    , prettyTermDoc' (raw s)
     ]
 
 {-
@@ -118,25 +118,25 @@ type MonadTypeCheck m =
 
 checkF ::
   MonadError e m =>
-  Context TypeChecked -> TermX ξ -> TermX ψ -> (TypeErrored.Term -> e) ->
+  LocalContext TypeChecked -> TermX ξ -> TermX ψ -> (TypeErrored.Term -> e) ->
   TypeCheckerF (m TypeChecked.Term)
 checkF γ t τ h = Check γ (raw t) (raw τ) (either (throwError . h) return)
 
 checkM ::
   MonadTypeCheck m =>
-  Context TypeChecked -> TermX ξ -> TypeX ψ -> (TypeErrored.Term -> TypeErrored.Term) ->
+  LocalContext TypeChecked -> TermX ξ -> TypeX ψ -> (TypeErrored.Term -> TypeErrored.Term) ->
   m TypeChecked.Term
 checkM γ t τ h = wrap $ checkF γ t τ h
 
 synthF ::
   MonadError e m =>
-  Context TypeChecked -> TermX ξ -> (TypeErrored.Term -> e) ->
+  LocalContext TypeChecked -> TermX ξ -> (TypeErrored.Term -> e) ->
   TypeCheckerF (m TypeChecked.Term)
 synthF γ t h = Synth γ (raw t) (either (throwError . h) return)
 
 synthM ::
   MonadTypeCheck m =>
-  Context TypeChecked -> TermX ξ -> (TypeErrored.Term -> TypeErrored.Term) ->
+  LocalContext TypeChecked -> TermX ξ -> (TypeErrored.Term -> TypeErrored.Term) ->
   m TypeChecked.Term
 synthM γ t h = wrap $ synthF γ t h
 
@@ -243,7 +243,7 @@ False `ifFalseFailWith` e = throwError e
 
 runSynth' ::
   (MonadTypeCheck m) =>
-  Context TypeChecked -> TermX ξ -> m TypeChecked.Term
+  LocalContext TypeChecked -> TermX ξ -> m TypeChecked.Term
 runSynth' γ = \case
 
   App _ fun arg -> do
@@ -266,14 +266,14 @@ runSynth' γ = \case
         return $ App τOut sFun cArg
 
   Var _ name ->
-    case lookup name γ of
+    case lookupType name γ of
     Nothing -> throwError $ Var (Left $ UnboundVariable name) name
     Just τ -> return $ Var τ name
 
   Pi _ binderPi τIn τOut -> do
     τIn' <- checkM γ τIn (Type () :: Raw.Term)
            (\ _τIn' -> error "TODO qwer")
-    let γ' = (binderPi, τIn') +: γ
+    let γ' = addLocalAssum (binderPi, τIn') γ
     τOut' <- checkM γ' τOut (Type () :: Raw.Term)
             (\ _τOut' -> error "TODO adsf")
     return $ Pi (Type ()) binderPi τIn' τOut'
@@ -286,7 +286,7 @@ runSynth' γ = \case
 
 runCheck' ::
   (MonadTypeCheck m) =>
-  Context TypeChecked -> TermX ξ -> TermX ψ -> m TypeChecked.Term
+  LocalContext TypeChecked -> TermX ξ -> TermX ψ -> m TypeChecked.Term
 runCheck' γ t τ = case t of
 
   Lam _ binderLam bodyLam -> do
@@ -297,7 +297,7 @@ runCheck' γ t τ = case t of
       annotateError (error "YOLO") t
     _ <- matchBinders binderLam binderPi
         `maybeFailWith` annotateError (error . show $ binderPi) t
-    let γ' = (binderLam, τIn) +: γ
+    let γ' = addLocalAssum (binderLam, τIn) γ
     bodyLam' <- checkM γ' bodyLam τOut
         (\ _t' -> error "TODOCACA")
     return $ Lam τ' binderLam bodyLam'

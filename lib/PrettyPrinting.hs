@@ -10,11 +10,14 @@ import Text.PrettyPrint.Annotated.WL
 --import Text.Printf
 
 import DictMetaOut
+import Inductive.Constructor
+import Inductive.Inductive
 import Precedence
 --import Term.Raw                      as Raw
 import Term.Term
---import Term.TypeChecked
+import Term.TypeChecked         as TypeChecked
 import Typing.LocalContext
+import Typing.GlobalEnvironment
 
 {-
 par :: Precedence -> Precedence -> Doc a -> Doc a
@@ -32,14 +35,14 @@ tabWidth = 20
 doc2String :: Doc a -> String
 doc2String = display . renderPretty 1.0 80
 
-dictIgnore :: DictMetaOut () ξ
-dictIgnore = DictMetaOut f f f f f f f f
+ignoreAnnotations :: DictMetaOut () ξ
+ignoreAnnotations = DictMetaOut f f f f f f f f
   where
     f :: a -> ()
     f _ = ()
 
 prettyTerm :: TermX ξ -> String
-prettyTerm = doc2String . prettyTermDoc dictIgnore def
+prettyTerm = doc2String . prettyTermDoc ignoreAnnotations def
 
 prettyVariable :: Variable -> String
 prettyVariable v = doc2String $ prettyVariableDoc v
@@ -51,34 +54,137 @@ prettyBinderDoc :: Binder -> Doc a
 prettyBinderDoc (Binder Nothing)  = text "_"
 prettyBinderDoc (Binder (Just v)) = prettyVariableDoc v
 
-prettyLocalDeclaration ::
+prettyLocalContext :: LocalContext ξ -> String
+prettyLocalContext = doc2String . prettyLocalContextDoc ignoreAnnotations def
+
+prettyLocalContextDoc ::
+  DictMetaOut a ξ -> PrecedenceTable -> LocalContext ξ -> Doc a
+prettyLocalContextDoc dict precs ctxt =
+  vsep (map (prettyLocalDeclarationDoc dict precs) (reverse ctxt))
+
+prettyLocalDeclarationDoc ::
   DictMetaOut a ξ -> PrecedenceTable -> LocalDeclaration ξ -> Doc a
-prettyLocalDeclaration dict precs (LocalAssum (Variable v) τ) =
+prettyLocalDeclarationDoc dict precs = \case
+  LocalAssum (Variable v) τ ->
+    fillSep
+    [ text v
+    , char ':'
+    , prettyTermDoc dict precs τ
+    ]
+  LocalDef (Variable v) t τ ->
+    fillSep
+    [ text v
+    , text ":="
+    , prettyTermDoc dict precs t
+    , char ':'
+    , prettyTermDoc dict precs τ
+    ]
+
+prettyGlobalEnvironment :: GlobalEnvironment TypeChecked -> String
+prettyGlobalEnvironment =
+  doc2String . prettyGlobalEnvironmentDoc ignoreAnnotations def
+
+prettyGlobalEnvironmentDoc ::
+  DictMetaOut a TypeChecked -> PrecedenceTable -> GlobalEnvironment TypeChecked -> Doc a
+prettyGlobalEnvironmentDoc dict precs ge =
+  vsep (map (prettyGlobalDeclarationDoc dict precs) (reverse ge))
+
+prettyGlobalDeclarationDoc ::
+  DictMetaOut a TypeChecked -> PrecedenceTable -> GlobalDeclaration TypeChecked -> Doc a
+prettyGlobalDeclarationDoc dict precs = \case
+  GlobalAssum (Variable v) τ ->
+    fillSep
+    [ text v
+    , char ':'
+    , prettyTermDoc dict precs τ
+    ]
+  GlobalDef (Variable v) t τ ->
+    fillSep
+    [ text v
+    , text ":="
+    , prettyTermDoc dict precs t
+    , char ':'
+    , prettyTermDoc dict precs τ
+    ]
+  GlobalInd ind -> prettyInductiveDoc dict precs ind
+
+arrows :: [Doc a] -> Doc a
+arrows = encloseSep mempty mempty (text " →")
+
+prettyBindingDoc ::
+  DictMetaOut a ξ -> PrecedenceTable -> (Binder, TermX ξ) -> Doc a
+prettyBindingDoc dict precs (Binder b, t) =
+  case b of
+  Nothing -> prettyTermDoc dict precs t
+  Just v ->
+    parens . fillSep $
+    [ prettyVariableDoc v
+    , text ":"
+    , prettyTermDoc dict precs t
+    ]
+
+prettyInductiveDoc ::
+  DictMetaOut a TypeChecked -> PrecedenceTable -> Inductive TypeChecked -> Doc a
+prettyInductiveDoc dict precs (Inductive n ps is cs) =
+  vsep $
+  [ fillSep $
+    [ text "inductive"
+    , prettyVariableDoc n
+    ]
+    ++
+    (
+      -- mempty creates an unwanted space, so have to use []
+      if length ps == 0
+      then []
+      else [encloseSep mempty mempty mempty (map (prettyBindingDoc dict precs) ps)]
+    )
+    ++
+    [ text ":"
+    , arrows (map (prettyTermDoc dict precs) is ++ [text "Type"])
+    , text "where"
+    ]
+  ] ++ map (indent 2 . prettyConstructorDoc dict precs n) cs
+
+prettyConstructorDoc ::
+  DictMetaOut a TypeChecked -> PrecedenceTable -> Variable -> Constructor TypeChecked -> Doc a
+prettyConstructorDoc dict precs ind (Constructor n ps is) =
   fillSep
-  [ text v
-  , char ':'
-  , prettyTermDoc dict precs τ
+  [ prettyVariableDoc n
+  , text ":"
+  , prettyTermDoc dict precs (constructorType ind ps is)
+    {-
+  , arrows (map (prettyBindingDoc dict precs) ps)
+  , text "→"
+  , prettyVariableDoc ind
+  , encloseSep mempty mempty mempty
+    (map (par precs (PrecApp, TolerateHigher) . prettyTermDocPrec dict precs) is)
+    -}
   ]
-prettyLocalDeclaration dict precs (LocalDef (Variable v) t τ) =
-  fillSep
-  [ text v
-  , text ":="
-  , prettyTermDoc dict precs t
-  , char ':'
-  , prettyTermDoc dict precs τ
-  ]
+
+prettyTermDoc' :: TermX ξ -> Doc ()
+prettyTermDoc' = prettyTermDoc ignoreAnnotations def
+
+par :: PrecedenceTable -> (Precedence, Tolerance) -> (Doc a, Precedence) -> Doc a
+par precs (pOut, t) (d, pIn) =
+  if isTolerable (tableToOrdering precs) pIn (pOut, t)
+  then d
+  else parens . nest 2 $ d
 
 prettyTermDoc :: forall a ξ. DictMetaOut a ξ -> PrecedenceTable -> TermX ξ -> Doc a
 prettyTermDoc dict precs = go (PrecMin, TolerateEqual)
   where
-    par :: (Precedence, Tolerance) -> (Doc a, Precedence) -> Doc a
-    par (pOut, t) (d, pIn) =
-      if isTolerable (tableToOrdering precs) pIn (pOut, t)
-      then d
-      else parens . nest 2 $ d
 
     go :: (Precedence, Tolerance) -> TermX ξ -> Doc a
-    go pt = par pt . goTerm
+    go pt = par precs pt . prettyTermDocPrec dict precs
+
+prettyTermDocPrec ::
+  forall a ξ. DictMetaOut a ξ -> PrecedenceTable -> TermX ξ -> (Doc a, Precedence)
+prettyTermDocPrec dict precs = goTerm
+
+  where
+
+    go :: (Precedence, Tolerance) -> TermX ξ -> Doc a
+    go pt = par precs pt . prettyTermDocPrec dict precs
 
     goTerm :: TermX ξ -> (Doc a, Precedence)
     goTerm term =

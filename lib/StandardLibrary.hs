@@ -3,52 +3,31 @@
 module StandardLibrary where
 
 import Control.Monad
---import Data.Maybe
 
---import Notations
-
-import Context
 import Inductive.Constructor
 import Inductive.Inductive
 import Parsing
 import PrettyPrinting
-import Term.Raw              as Raw
+import Term.Raw                 as Raw
 import Term.Term
+import Term.TypeChecked         as TypeChecked
 import Text.Printf
+import Typing.GlobalEnvironment
+import Typing.Inductive
 import Work
 
-{-
-checkStdLibInductives :: (MonadState TypeCheckedContext m, MonadIO m) => m ()
-checkStdLibInductives = do
-  forM_ stdlibInductives $ \ i -> do
-    ctxt <- get
-    case runStateT (checkInductive i) ctxt of
-      Left  l -> liftIO $ do
-        putStrLn
-          $ printf "Failed to check %s:" (prettyVariable (Inductive.name i))
-        putStrLn l
-      Right (_, ctxt') -> do
-        put $ ctxt'
-        liftIO . putStrLn
-          $ printf "Success check %s" (prettyVariable (Inductive.name i))
-
-doCheck :: IO ()
-doCheck = do
-  (_, ctxt) <- runStateT checkStdLibInductives []
-  forM_ (reverse ctxt) $ \ (v, τ) -> do
-    putStrLn $ printf "%s : %s" (prettyVariable v) (prettyTerm τ)
--}
-
-addTerm :: Variable -> (Raw.Term, Raw.Type) -> TypeCheckedContext -> Either String TypeCheckedContext
-addTerm v (t, τ) ctxt =
-  case tc (checkF ctxt t τ id) of
+addTerm ::
+  Variable -> (Raw.Term, Raw.Type) -> GlobalEnvironment TypeChecked ->
+  Either String (GlobalEnvironment TypeChecked)
+addTerm v (t, τ) ge =
+  case tc (checkF (toLocalContext ge) t τ id) of
   Left  _ ->
     Left $
     printf "Could not typecheck %s at type %s"
     (prettyTerm t) (prettyTerm τ)
-  Right r -> Right $ (v, r) : ctxt
+  Right r -> Right $ GlobalAssum v r : ge
 
-stdlib :: TypeCheckedContext
+stdlib :: GlobalEnvironment TypeChecked
 stdlib =
   fromRight $ foldM (flip ($)) []
   [ addTerm "id" (tId, τId)

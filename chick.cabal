@@ -40,19 +40,21 @@ Library
                    Parsing
                    Precedence
                    PrettyPrinting
-                   Tactic
+                   StandardLibrary
+                   --Tactic
                    Term.AlphaEquivalence
                    Term.AlphaRenaming
-                   Term.Fold
+                   --Term.Fold
                    Term.Free
                    Term.Fresh
-                   Term.Numbered
+                   --Term.Numbered
                    Term.Raw
-                   Term.Substitution
+                   --Term.Substitution
                    Term.Term
-                   Term.TypeChecked
-                   Term.TypeErrored
+                   --Term.TypeChecked
+                   --Term.TypeErrored
                    WellFormed
+                   Work
   other-modules:
 
 Test-suite Test
