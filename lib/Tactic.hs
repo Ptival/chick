@@ -40,7 +40,7 @@ instance (ForallX Arbitrary ξ) => Arbitrary (Goal ξ) where
 prettyGoal :: DictMetaOut a ξ -> PrecedenceTable -> Goal ξ -> Doc a
 prettyGoal dict precs (Goal hyps concl) =
   vcat
-  [ vcat (map (prettyLocalDeclaration dict precs) hyps)
+  [ vcat (map (prettyLocalDeclarationDoc dict precs) hyps)
   , text (replicate 40 '-')
   , prettyTermDoc dict precs concl
   ]

@@ -55,10 +55,6 @@ typeCheck t mτ = do
       putStrLn $ prettyTerm r
   return ()
 
-stdlibTypeCheck :: IO ()
-stdlibTypeCheck = do
-  forM_ stdlib $ \ (τ, t) -> typeCheck t (Just τ)
-
 randomTypeCheck :: IO ()
 randomTypeCheck = do
   t <- generate (arbitrary :: Gen Raw.Term)
