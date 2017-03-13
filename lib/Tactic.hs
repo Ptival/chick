@@ -10,7 +10,6 @@
 module Tactic where
 
 import Control.Monad.Except
-import Data.Default
 import GHC.Generics
 import Prelude
 import Test.QuickCheck
@@ -77,15 +76,13 @@ addHyp hyp hyps
   | otherwise = return $ hyp:hyps
 
 runAtomic ::
-  forall m.
-  (ForallX Default TypeChecked, MonadError String m) =>
+  MonadError String m =>
   Atomic -> Goal TypeChecked -> m (Goal TypeChecked)
 runAtomic a (Goal hyps concl) =
   case a of
 
     Intro (Binder mi) ->
       case concl of
-      Lam _ (Binder mv) t     -> runIntro (typeOf t)  t  LocalAssum         (mi, mv)
       Let _ (Binder mv) t1 t2 -> runIntro (typeOf t1) t2 (flip LocalDef t1) (mi, mv)
       Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1          τ2 LocalAssum         (mi, mv)
       _ -> throwError "Head constructor does not allow introduction"

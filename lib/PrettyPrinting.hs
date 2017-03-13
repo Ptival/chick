@@ -50,6 +50,9 @@ prettyVariable v = doc2String $ prettyVariableDoc v
 prettyVariableDoc :: Variable -> Doc a
 prettyVariableDoc (Variable s) = text s
 
+prettyBinder :: Binder -> String
+prettyBinder b = doc2String $ prettyBinderDoc b
+
 prettyBinderDoc :: Binder -> Doc a
 prettyBinderDoc (Binder Nothing)  = text "_"
 prettyBinderDoc (Binder (Just v)) = prettyVariableDoc v

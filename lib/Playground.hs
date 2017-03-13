@@ -17,6 +17,7 @@ import Term.AlphaRenaming
 import Term.Fresh
 import Term.Raw                      as Raw
 import Term.Term
+import Term.TypeChecked              as TypeChecked
 import Term.TypeErrored              as TypeErrored
 import Work
 
@@ -60,19 +61,18 @@ randomTypeCheck = do
   t <- generate (arbitrary :: Gen Raw.Term)
   typeCheck t Nothing
 
-{-
 main :: IO ()
 main = do
-  l <- sample' (resize 2 (arbitrary :: Gen RawTerm))
+  l <- sample' (resize 2 (arbitrary :: Gen TypeChecked.Term))
   forM_ l $ \ p -> do
     putStrLn "\n\n\n"
     let g = Goal [] p
     printGoal g
     b <- generate arbitrary
-    putStrLn $ printf "\nintros %s:\n" (doc2String $ prettyBinder b)
+    putStrLn $ printf "\nintros %s:\n" (prettyBinder b)
     eeg <- runExceptT $ runAtomic (Intro b) g
     case eeg of
       Left e   -> putStrLn e
       Right g' -> printGoal g'
-  where printGoal = putStrLn . doc2String . prettyGoal def
--}
+  where
+    printGoal = putStrLn . doc2String . prettyGoal ignoreAnnotations def
