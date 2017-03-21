@@ -7,7 +7,7 @@ import Control.Monad
 import Inductive.Constructor
 import Inductive.Inductive
 import Parsing
-import PrettyPrinting
+import PrettyPrinting.Term
 import Term.Raw                 as Raw
 import Term.Term
 import Term.TypeChecked         as TypeChecked

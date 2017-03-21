@@ -19,7 +19,7 @@ import Prelude                       hiding (or)
 import Text.PrettyPrint.Annotated.WL
 
 import Typing.LocalContext
-import PrettyPrinting
+import PrettyPrinting.Term
 import Term.Raw                      as Raw
 import Term.Substitution
 import Term.Term
@@ -42,7 +42,9 @@ tcTrace _    (Failure f) = [Failure f]
 tcTrace _    (Success s) = [Success s]
 tcTrace step w           = w : tcTrace step (step w)
 
-tc :: TypeCheckerF (TCMonad TypeChecked.Term) -> Either TypeErrored.Term TypeChecked.Term
+tc ::
+  TypeCheckerF (TCMonad TypeChecked.Term) ->
+  Either TypeErrored.Term TypeChecked.Term
 tc (Failure f) = Left f
 tc (Success s) = Right s
 tc w           = tc (stepTypeCheckerF w)

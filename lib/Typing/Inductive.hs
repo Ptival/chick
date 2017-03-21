@@ -9,10 +9,12 @@ import Control.Monad.State
 
 import Inductive.Constructor
 import Inductive.Inductive
-import PrettyPrinting
-import Term.Raw                 as Raw
+import PrettyPrinting.LocalContext
+import PrettyPrinting.Term
+import PrettyPrinting.Variable
+import Term.Raw                    as Raw
 import Term.Term
-import Term.TypeChecked         as TypeChecked
+import Term.TypeChecked            as TypeChecked
 import Text.Printf
 import Typing.GlobalEnvironment
 import Typing.LocalContext

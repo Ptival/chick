@@ -3,11 +3,13 @@
 {-# language DeriveGeneric #-}
 {-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
+{-# language GADTs #-}
 {-# language LambdaCase #-}
 {-# language MultiParamTypeClasses #-}
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
 {-# language TypeFamilies #-}
+{-# language TypeOperators #-}
 {-# language UndecidableInstances #-}
 
 module Term.Term where

@@ -14,15 +14,18 @@ import GHC.Generics
 import Prelude
 import Test.QuickCheck
 import Text.PrettyPrint.Annotated.WL
+import Text.Printf
 
 import DictMetaOut
 import Precedence
 import PrettyPrinting
+import Term.AlphaEquivalence
 import Term.AlphaRenaming
 import Term.Free
 import Term.Term
 import Term.TypeChecked              as TypeChecked
-import Typing.LocalContext
+import Typing.GlobalEnvironment      as GE
+import Typing.LocalContext           as LC
 
 data Goal ξ = Goal
   { hypotheses :: [LocalDeclaration ξ]
@@ -65,23 +68,40 @@ focus n (Goals f u) =
   Nothing -> Nothing
   Just (l, x, r) -> Just (Goals [x] ((l, r):u))
 
-data Atomic
-  = Intro Binder
-
 addHyp ::
   MonadError String m =>
   LocalDeclaration ξ -> [LocalDeclaration ξ] -> m [LocalDeclaration ξ]
 addHyp hyp hyps
-  | nameOf hyp `elem` map nameOf hyps = throwError "addHyp: name conflict"
+  | LC.nameOf hyp `elem` map LC.nameOf hyps = throwError "addHyp: name conflict"
   | otherwise = return $ hyp:hyps
+
+data Atomic
+  = Exact Variable
+  | Intro Binder
+  deriving (Show)
 
 runAtomic ::
   MonadError String m =>
-  Atomic -> Goal TypeChecked -> m (Goal TypeChecked)
-runAtomic a (Goal hyps concl) =
+  GlobalEnvironment TypeChecked ->
+  Atomic -> Goal TypeChecked -> m [Goal TypeChecked]
+runAtomic ge a (Goal hyps concl) =
   case a of
 
+    Exact v -> do
+      case LC.lookupType v (hyps ++ toLocalContext ge) of
+        Nothing ->
+          throwError $
+          printf "Could not find variable %s in global environment"
+          (prettyVariable v)
+        Just τ -> do
+          if τ `αeq` concl
+            then return []
+            else throwError $
+                 printf "The type of %s does not match the conclusion"
+                 (prettyVariable v)
+
     Intro (Binder mi) ->
+      pure <$> -- i.e. returns just the one goal produced
       case concl of
       Let _ (Binder mv) t1 t2 -> runIntro (typeOf t1) t2 (flip LocalDef t1) (mi, mv)
       Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1          τ2 LocalAssum         (mi, mv)
@@ -96,10 +116,29 @@ runAtomic a (Goal hyps concl) =
       (Maybe Variable, Maybe Variable) -> m (Goal TypeChecked)
     runIntro introed rest h = \case
       (Nothing, Nothing) -> return $ Goal hyps rest
-      (Just i, Nothing) -> Goal <$> addHyp (h i introed) hyps <*> pure rest
+      (Just i, Nothing) -> do
+        hyps' <- addHyp (h i introed) hyps
+        return $ Goal hyps' rest
       (Nothing, Just v) ->
         if isFree v rest
         then return $ Goal hyps rest
         else throwError "Can't discard a dependent binder"
       (Just i, Just v) ->
         Goal <$> addHyp (h i introed) hyps <*> pure (αrename v i rest)
+
+data Tactic
+  = Atomic Atomic
+  | Semicolon Tactic Tactic
+  deriving (Show)
+
+runTactic ::
+  MonadError String m =>
+  GlobalEnvironment TypeChecked ->
+  Tactic -> Goal TypeChecked -> m [Goal TypeChecked]
+runTactic ge t goal =
+  case t of
+    Atomic a -> runAtomic ge a goal
+    Semicolon t1 t2 -> do
+      gs <- runTactic ge t1 goal
+      gs' <- concat <$> sequence (map (runTactic ge t2) gs)
+      return gs'
