@@ -10,7 +10,9 @@ import Text.PrettyPrint.Annotated.WL
 import Text.Printf
 
 import Parsing
-import PrettyPrinting
+import PrettyPrinting.Binder
+import PrettyPrinting.Term
+import PrettyPrinting.Utils
 import StandardLibrary
 import Tactic
 import Term.AlphaRenaming
@@ -70,9 +72,9 @@ main = do
     printGoal g
     b <- generate arbitrary
     putStrLn $ printf "\nintros %s:\n" (prettyBinder b)
-    eeg <- runExceptT $ runAtomic (Intro b) g
+    eeg <- runExceptT $ runAtomic [] (Intro b) g
     case eeg of
       Left e   -> putStrLn e
-      Right g' -> printGoal g'
+      Right g' -> forM_ g' printGoal
   where
     printGoal = putStrLn . doc2String . prettyGoal ignoreAnnotations def

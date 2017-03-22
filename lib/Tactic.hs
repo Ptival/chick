@@ -18,7 +18,9 @@ import Text.Printf
 
 import DictMetaOut
 import Precedence
-import PrettyPrinting
+import PrettyPrinting.LocalContext
+import PrettyPrinting.Term
+import PrettyPrinting.Variable
 import Term.AlphaEquivalence
 import Term.AlphaRenaming
 import Term.Free
