@@ -12,7 +12,8 @@ import           Tactic
 atomicP :: Parser Tactic
 atomicP =
   Atomic <$> choice
-  [ exactP
+  [ admitP
+  , exactP
   , introP
   ]
 

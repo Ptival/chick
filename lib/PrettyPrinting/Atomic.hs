@@ -10,5 +10,6 @@ import Tactic
 
 prettyAtomicDoc :: Atomic -> Doc a
 prettyAtomicDoc = \case
+  Admit   -> text "admit"
   Exact v -> fillSep [text "exact", prettyVariableDoc v]
   Intro b -> fillSep [text "intro", prettyBinderDoc b]

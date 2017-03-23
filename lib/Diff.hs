@@ -30,7 +30,17 @@ unsafeParseTactic :: String -> Tactic
 unsafeParseTactic s = fromJust $ parseMaybe tacticP s
 
 main :: IO ()
-main = forM_ patchBenchmark $ \ (_τ0, _τ1, _t0) -> do
+main = forM_ patchBenchmark $ \ (τ0, τ1, t0) -> do
+  putStrLn $ replicate 60 '-'
+  case testPatchTactic τ0 τ1 t0 of
+    Left  l -> putStrLn $ printf "Failed: %s" l
+    Right t1 -> do
+      putStrLn . doc2String $ vcat
+        [ text "Success!"
+        , prettyTacticDoc t0
+        , text "was patched into:"
+        , prettyTacticDoc t1
+        ]
   return ()
 
 patchBenchmark :: [(Raw.Term, Raw.Term, Tactic)]
@@ -38,6 +48,18 @@ patchBenchmark =
   map (\ (τ1, τ2, t) -> (unsafeParseRaw τ1, unsafeParseRaw τ2, unsafeParseTactic t))
   [ ( "(A : Type) → A → A"
     , "(B : Type) → (A : Type) → A → A"
+    , "intro A; intro a; exact a"
+    )
+  , ( "(A : Type) → A → A"
+    , "(A : Type) → (B : Type) → A → A"
+    , "intro A; intro a; exact a"
+    )
+  , ( "(A : Type) → A → A"
+    , "(A : Type) → A → (B : Type) → A"
+    , "intro A; intro a; exact a"
+    )
+  , ( "(A : Type) → A → A"
+    , "(A : Type) → A → A → A"
     , "intro A; intro a; exact a"
     )
   ]
@@ -69,7 +91,7 @@ testPatchTactic τBefore τAfter tactic = do
               , text "Patched tactic:"
               , prettyTacticDoc tactic1
               ]
-            Right _ -> throwError "SUCCESS!"
+            Right _ -> return tactic1
 
 aa, bb, ab :: Raw.Term
 aa = unsafeParseRaw "(a : T) → a a"
@@ -107,13 +129,22 @@ patchTacticL τ tactic τdiff =
   case (τdiff, τ) of
 
   -- a Pi was added
-  (Cpy Pi' (Ins (Binder' b) (Ins _τ1 diffRest)), _) -> do
-    let nameToIntroduce =
-          Binder . Just $
-          case unBinder b of
-          Nothing -> Variable "TODO"
-          Just v  -> v
-    tactic' <- patchTacticL τ tactic diffRest
-    return $ Semicolon (Atomic (Intro nameToIntroduce)) tactic'
+  (Cpy Pi' (Ins (Binder' b) (Ins _ diffRest)), _) ->
+    insertIntro b diffRest
+  (Ins Pi' (Ins (Binder' b) (Ins _ diffRest)), _) ->
+    insertIntro b diffRest
 
   _ -> Just tactic
+
+  where
+
+    insertIntro ::
+      forall ψ txs tys. Binder -> EditScriptL (TermXFamily ψ) txs tys -> Maybe Tactic
+    insertIntro b diffRest = do
+      let nameToIntroduce =
+            Binder . Just $
+            case unBinder b of
+            Nothing -> Variable "TODO"
+            Just v  -> v
+      tactic' <- patchTacticL τ tactic diffRest
+      return $ Semicolon (Atomic (Intro nameToIntroduce)) tactic'

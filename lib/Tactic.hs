@@ -78,7 +78,8 @@ addHyp hyp hyps
   | otherwise = return $ hyp:hyps
 
 data Atomic
-  = Exact Variable
+  = Admit
+  | Exact Variable
   | Intro Binder
   deriving (Show)
 
@@ -89,44 +90,46 @@ runAtomic ::
 runAtomic ge a (Goal hyps concl) =
   case a of
 
-    Exact v -> do
-      case LC.lookupType v (hyps ++ toLocalContext ge) of
-        Nothing ->
-          throwError $
-          printf "Could not find variable %s in global environment"
-          (prettyVariable v)
-        Just τ -> do
-          if τ `αeq` concl
-            then return []
-            else throwError $
-                 printf "The type of %s does not match the conclusion"
-                 (prettyVariable v)
+  Admit -> return []
 
-    Intro (Binder mi) ->
-      pure <$> -- i.e. returns just the one goal produced
-      case concl of
-      Let _ (Binder mv) t1 t2 -> runIntro (typeOf t1) t2 (flip LocalDef t1) (mi, mv)
-      Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1          τ2 LocalAssum         (mi, mv)
-      _ -> throwError "Head constructor does not allow introduction"
+  Exact v -> do
+    case LC.lookupType v (hyps ++ toLocalContext ge) of
+      Nothing ->
+        throwError $
+        printf "Could not find variable %s in global environment"
+        (prettyVariable v)
+      Just τ -> do
+        if τ `αeq` concl
+          then return []
+          else throwError $
+               printf "The type of %s does not match the conclusion"
+               (prettyVariable v)
 
-  where
+  Intro (Binder mi) ->
+    pure <$> -- i.e. returns just the one goal produced
+    case concl of
+    Let _ (Binder mv) t1 t2 -> runIntro (typeOf t1) t2 (flip LocalDef t1) (mi, mv)
+    Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1          τ2 LocalAssum         (mi, mv)
+    _ -> throwError "Head constructor does not allow introduction"
 
-    runIntro ::
-      MonadError String m =>
-      TypeChecked.Term -> TypeChecked.Term ->
-      (Variable -> TypeChecked.Term -> LocalDeclaration TypeChecked) ->
-      (Maybe Variable, Maybe Variable) -> m (Goal TypeChecked)
-    runIntro introed rest h = \case
-      (Nothing, Nothing) -> return $ Goal hyps rest
-      (Just i, Nothing) -> do
-        hyps' <- addHyp (h i introed) hyps
-        return $ Goal hyps' rest
-      (Nothing, Just v) ->
-        if isFree v rest
-        then return $ Goal hyps rest
-        else throwError "Can't discard a dependent binder"
-      (Just i, Just v) ->
-        Goal <$> addHyp (h i introed) hyps <*> pure (αrename v i rest)
+   where
+
+     runIntro ::
+       MonadError String m =>
+       TypeChecked.Term -> TypeChecked.Term ->
+       (Variable -> TypeChecked.Term -> LocalDeclaration TypeChecked) ->
+       (Maybe Variable, Maybe Variable) -> m (Goal TypeChecked)
+     runIntro introed rest h = \case
+       (Nothing, Nothing) -> return $ Goal hyps rest
+       (Just i, Nothing) -> do
+         hyps' <- addHyp (h i introed) hyps
+         return $ Goal hyps' rest
+       (Nothing, Just v) ->
+         if isFree v rest
+         then return $ Goal hyps rest
+         else throwError "Can't discard a dependent binder"
+       (Just i, Just v) ->
+         Goal <$> addHyp (h i introed) hyps <*> pure (αrename v i rest)
 
 data Tactic
   = Atomic Atomic
