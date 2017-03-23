@@ -37,8 +37,10 @@ Library
                  tasty-smallcheck          >= 0.8   && < 0.9,
                  unbound-generics          >= 0.3   && < 0.4,
                  wl-pprint-annotated       >= 0.0   && < 0.1
-  exposed-modules: Notations
+  exposed-modules: Diff
+                   Notations
                    Parsing
+                   Playground
                    Precedence
                    PrettyPrinting.Inductive
                    PrettyPrinting.Term

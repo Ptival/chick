@@ -10,7 +10,8 @@ import qualified Text.Megaparsec.Lexer  as L
 import           Text.Megaparsec.String
 import           Text.Printf
 
-import           Term.Raw  as Raw
+import           Parsing.Utils
+import           Term.Raw               as Raw
 import           Term.Term
 
 type Parser1 a = Parser a -> Parser  a
@@ -80,8 +81,11 @@ binOpNP s k _selfP nextP = binOpRP s k nextP nextP
 
 -- Individual parsers (alphabetically)
 
+variableP :: Parser Variable
+variableP = Variable <$> identifier
+
 binderP :: Parser Binder
-binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just . Variable <$> identifier))
+binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> variableP))
 
 holeP :: Parser Raw.Term
 holeP = Hole () <$ symbol holeSymbol
@@ -145,7 +149,7 @@ typeP :: Parser Raw.Term
 typeP = Type () <$ rword "Type"
 
 varP :: Parser Raw.Term
-varP = Var () . Variable <$> identifier
+varP = Var () <$> variableP
 
 -- Running parsers
 
@@ -193,10 +197,3 @@ identifier = (lexeme . try) (p >>= check)
       if x `elem` reservedWords
       then fail $ printf "keyword %s cannot be an identifier" (show x)
       else return x
-
-chainl1 :: (Alternative m, Monad m) => m a -> m (a -> a -> a) -> m a
-chainl1 p op = do
-  x <- p
-  rest x
-  where
-    rest x = do { f <- op ; y <- p ; rest (f x y) } <|> return x
