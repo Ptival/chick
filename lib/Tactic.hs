@@ -136,6 +136,12 @@ data Tactic
   | Semicolon Tactic Tactic
   deriving (Show)
 
+decomposeTactic :: Tactic -> (Atomic, [Tactic])
+decomposeTactic (Atomic a)      = (a, [])
+decomposeTactic (Semicolon a b) =
+  let (atomic, ts) = decomposeTactic a in
+  (atomic, ts ++ [b])
+
 runTactic ::
   MonadError String m =>
   GlobalEnvironment TypeChecked ->

@@ -1,6 +1,8 @@
 From Coq Require Import List.
 From Coq Require Import String.
 
+From HaysTac Require Import HaysTac.
+
 From Chick Require Export constructor.
 
 Record inductive : Type :=
@@ -13,7 +15,7 @@ Record inductive : Type :=
 
 Definition onIndex i t := mkPi None i t.
 
-Definition onParam bp t := let '(b, p) := bp in mkPi b p t.
+Definition onParam '(b, p) t := mkPi b p t.
 
 Definition
   inductiveType
@@ -49,4 +51,23 @@ Definition
   : term :=
   oterm
     (Match (inductiveBindings i))
-    (List.map (fun vb => let '(vars, body) := vb in bterm vars body) branches).
+    (List.map (fun '(vars, body) => bterm vars body) branches).
+
+Theorem nt_wf_mkMatch :
+  forall i bs,
+    List.Forall (fun b => nt_wf (snd b)) bs ->
+    nt_wf (mkMatch i bs).
+Proof.
+  intros.
+  constructor.
+  - intros.
+    on_head list induction'.
+    + on In inversion'.
+    + on Forall inversion'.
+      on In inversion'.
+      * on_head prod destruct'.
+        constructor.
+        assumption.
+      * now find_apply.
+  - admit.
+Admitted.

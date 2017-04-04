@@ -1,7 +1,8 @@
-Require Import List.
-Require Import SquiggleEq.export.
+From Coq Require Import List.
 
-Require Export Chick.binder.
+From Chick Require Export binder.
+From HaysTac Require Import HaysTac.
+From SquiggleEq Require Import export.
 
 Import ListNotations.
 
@@ -98,29 +99,21 @@ Proof.
     simpl.
     rewrite app_nil_r.
     apply list.null_iff_nil.
-    intros x Hx.
-    apply list.in_remove in Hx.
-    destruct Hx as [Hx1 Hx2].
-    specialize (FV x Hx2).
-    inversion FV as [|IN].
+    do 2 intro.
+    apply_in_hyp list.in_remove.
+    on and destruct'.
+    on @list.subset ltac:(repeat' find_specialize_in).
+    on In inversion'.
     + congruence.
-    + inversion IN.
+    + on In inversion'.
   }
   {
     constructor.
     {
-      intros l IN.
-      inversion_clear IN as [|IN'].
-      {
-        subst.
-        constructor.
-        assumption.
-      }
-      { inversion IN'. }
+      intros.
+      repeat on In inversion'; now constructor.
     }
-    {
-      reflexivity.
-    }
+    { reflexivity. }
   }
 Qed.
 
@@ -130,33 +123,22 @@ Theorem nt_wf_mkPi :
     nt_wf τ2 ->
     nt_wf (mkPi b τ1 τ2).
 Proof.
-  intros b τ1 τ2 WF1 WF2.
-  destruct b.
+  intros.
+  on binder destruct'.
   {
     constructor.
     {
-      intros l IN.
-      inversion_clear IN as [|[|IN']].
-      { subst. constructor. assumption. }
-      { subst. constructor. assumption. }
-      { inversion IN'. }
+      intros.
+      repeat on In inversion'; now constructor.
     }
-    {
-      reflexivity.
-    }
+    { reflexivity. }
   }
   {
     constructor.
     {
-      intros l IN.
-      inversion_clear IN as [|[|IN']].
-      { subst. constructor. assumption. }
-      { subst. constructor. assumption. }
-      { inversion IN'. }
+      intros.
+      repeat on In inversion'; now constructor.
     }
-    {
-      unfold num_bvars. simpl.
-      reflexivity.
-    }
+    { reflexivity. }
   }
 Qed.

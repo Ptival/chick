@@ -3,3 +3,5 @@
 *.v.d
 *.vo
 Makefile.coq
+/HaysTac
+/SquiggleEq

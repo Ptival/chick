@@ -1,6 +1,10 @@
-Require Import List.
+From Coq Require Import List.
 
-From Chick Require Import inductive.
+From SquiggleEq Require Import export.
+
+From HaysTac Require Import HaysTac.
+
+From Chick Require Export inductive.
 
 Import ListNotations.
 
@@ -57,8 +61,6 @@ Definition testing :=
       ;
       (["n"], mkVar "n")
     ].
-
-Require Import SquiggleEq.export.
 
 Theorem nt_wf_testing : nt_wf testing.
 Proof.

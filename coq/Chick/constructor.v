@@ -12,10 +12,10 @@ Record constructor : Type :=
 
 Definition onIndex i t := mkApp t i.
 
-Definition onParam bp t := let '(b, p) := bp in mkPi b p t.
+Definition onParam '(b, p) t := mkPi b p t.
 
-Definition onIndParam (bτ : (binder * term)) t :=
-  let '(b, τ) := bτ in
+Definition onIndParam '(b, τ) t :=
+  let τ := τ : term in (* to help the type-checker *)
   match b with
   | None   => mkApp t mkHole
   | Some v => mkApp t (mkVar v)
