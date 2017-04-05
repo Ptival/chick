@@ -92,7 +92,7 @@ Proof.
       constructor.
       assumption.
     * intros.
-      find_eapply; eauto.
+      find_eapply; now eauto with List.
   - simpl.
     f_equal.
     on (list constructor) generalize_dependent'.
