@@ -1,9 +1,11 @@
-From Coq Require Import List.
 From Coq Require Import String.
 
 From HaysTac Require Import HaysTac.
+From HaysTac Require Import Lists.List.
 
 From Chick Require Export constructor.
+
+Import ListNotations.
 
 Record inductive : Type :=
   Inductive'
@@ -45,29 +47,66 @@ Definition inductiveBindings (i : inductive) : list nat :=
 
 Require Import SquiggleEq.export.
 
-Definition
-  mkMatch
-  (i : inductive) (branches : list (list variable * term))
+Definition branch : Type := list variable * term.
+Definition branch_term '((vars, body) : branch) := bterm vars body.
+
+Definition mkMatch (i : inductive) (discriminant : term) (branches : list branch)
   : term :=
   oterm
     (Match (inductiveBindings i))
-    (List.map (fun '(vars, body) => bterm vars body) branches).
+    (bterm [] discriminant :: (List.map branch_term branches)).
 
-Theorem nt_wf_mkMatch :
-  forall i bs,
-    List.Forall (fun b => nt_wf (snd b)) bs ->
-    nt_wf (mkMatch i bs).
+Definition WellFormedBranch '(Constructor _ as' is') '((vs, t) : branch) : Prop :=
+  List.length vs = List.length as' /\ nt_wf t.
+
+Lemma WellFormedBranch_num_bvars : forall c b,
+    WellFormedBranch c b -> num_bvars (branch_term b) = constructorBindings c.
 Proof.
   intros.
+  on constructor destruct'.
+  on branch destruct'.
+  on WellFormedBranch destruct'.
+  assumption.
+Qed.
+
+Theorem nt_wf_mkMatch :
+  forall i d bs,
+    nt_wf d ->
+    List.Forall (fun b => nt_wf (snd b)) bs ->
+    List.Forall2 WellFormedBranch (constructors i) bs ->
+    nt_wf (mkMatch i d bs).
+Proof.
+  intros.
+  on inductive destruct'.
+  simpl in *.
   constructor.
   - intros.
+    on In inversion'.
+    { now constructor. }
+    on (list constructor) generalize_dependent'.
     on_head list induction'.
-    + on In inversion'.
-    + on Forall inversion'.
-      on In inversion'.
-      * on_head prod destruct'.
-        constructor.
-        assumption.
-      * now find_apply.
-  - admit.
-Admitted.
+    { now on In inversion'. }
+    on Forall inversion'.
+    on In inversion'.
+    * on_head prod destruct'.
+      constructor.
+      assumption.
+    * intros.
+      find_eapply; eauto.
+  - simpl.
+    f_equal.
+    on (list constructor) generalize_dependent'.
+    on_head list induction'.
+    + intros.
+      simpl in *.
+      now on Forall2 inversion'.
+    + intros.
+      simpl in *.
+      on_head Forall inversion'.
+      on_head Forall2 inversion'.
+      do 3 on @eq find_specialize_in.
+      on @eq rewrite_r.
+      simpl.
+      f_equal.
+      now apply WellFormedBranch_num_bvars.
+Qed.

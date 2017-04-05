@@ -54,9 +54,8 @@ Definition listInductive : inductive :=
 Definition testing :=
   mkMatch
     natInductive
+    (mkVar "n")
     [
-      ([], mkVar "n")
-      ;
       ([], mkVar "foo")
       ;
       (["n"], mkVar "n")
