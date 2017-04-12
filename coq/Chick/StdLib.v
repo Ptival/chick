@@ -1,10 +1,16 @@
-From Coq Require Import List.
+From Coq Require Import
+     List
+.
 
-From SquiggleEq Require Import export.
+From SquiggleEq Require Import
+     export
+.
 
-From HaysTac Require Import HaysTac.
+From HaysTac Require Import
+     HaysTac
+.
 
-From Chick Require Export inductive.
+Require Export Chick.Inductive.
 
 Import ListNotations.
 

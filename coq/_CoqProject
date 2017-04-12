@@ -1,16 +1,20 @@
--Q Chick Chick
+-R Chick Chick
 
 -Q HaysTac HaysTac
 -Q SquiggleEq SquiggleEq
 
-./Chick/binder.v
-./Chick/constructor.v
-./Chick/inductive.v
-./Chick/localContext.v
-./Chick/localDeclaration.v
-./Chick/stdlib.v
-./Chick/term.v
-./Chick/variable.v
+./Chick/Binder.v
+./Chick/Constructor.v
+./Chick/CoreLtac.v
+./Chick/Goal.v
+./Chick/Inductive.v
+./Chick/LocalContext.v
+./Chick/LocalDeclaration.v
+./Chick/Tactic/Atomic.v
+./Chick/Tactic/Atomic/Semantics/Relational.v
+./Chick/StdLib.v
+./Chick/Term.v
+./Chick/Variable.v
 
 # ./Control/Applicative.v
 # ./Control/Monad.v

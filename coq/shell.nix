@@ -5,6 +5,7 @@ nixpkgs.stdenv.mkDerivation {
     coq_8_6
   ] ++ (with coqPackages_8_6; [
     coq-ext-lib
+    ssreflect
   ]));
   shellHook = ''
     export NIXSHELL="$NIXSHELL\[chick\]"

@@ -1,9 +1,15 @@
-From Coq Require Import String.
+From Coq Require Import
+     String
+.
 
-From HaysTac Require Import HaysTac.
-From HaysTac Require Import Lists.List.
+From HaysTac Require Import
+     HaysTac
+     Lists.List
+.
 
-From Chick Require Export constructor.
+From Chick Require Export
+     Constructor
+.
 
 Import ListNotations.
 

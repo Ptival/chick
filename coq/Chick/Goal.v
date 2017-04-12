@@ -1,4 +1,6 @@
-Require Export Chick.localDeclaration.
+From Chick Require Export
+     LocalDeclaration
+.
 
 Record goal := Goal
   {   hypotheses : list localDeclaration

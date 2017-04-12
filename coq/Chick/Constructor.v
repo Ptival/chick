@@ -1,7 +1,11 @@
-From Coq Require Import List.
-From Coq Require Import String.
+From Coq Require Import
+     List
+     String
+.
 
-From Chick Require Export term.
+From Chick Require Export
+     Term
+.
 
 Record constructor : Type :=
   Constructor

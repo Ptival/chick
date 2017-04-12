@@ -1,4 +1,6 @@
-Require Export Chick.term.
+From Chick Require Export
+     Term
+.
 
 Inductive localDeclaration :=
 | LocalAssum : forall (v : variable) (τ : term),            localDeclaration

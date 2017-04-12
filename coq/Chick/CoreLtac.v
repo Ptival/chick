@@ -1,20 +1,17 @@
-Require Import List.
-Require Import String.
-
-Import ListNotations.
-
-Parameter formula : Type.
-Parameter matcher : Type.
-Parameter pattern : Type.
-
-Inductive atomic : Type :=
-| AtomIntro      : forall (x : variable), atomic
-| AtomAssumption : atomic
-| AtomApply      : forall (H : variable), atomic
-| AtomAssert     : forall (x : variable) (φ : formula), atomic
+From Coq Require Import
+     List
+     String
 .
 
-Definition localContext := list localDeclaration.
+From Chick Require Import
+     Tactic.Atomic
+     Goal
+     LocalContext
+     LocalDeclaration
+.
+Require Import Chick.Variable.
+
+Import ListNotations.
 
 Parameter Fresh : variable -> localContext -> Prop.
 
@@ -24,7 +21,7 @@ Fixpoint piListRev pis φ :=
   match pis with
   | [] => φ
   | (pi :: pis) =>
-    piListRev pis (Pi None pi φ)
+    piListRev pis (mkPi None pi φ)
   end.
 
 Definition piList pis φ := piListRev (List.rev pis) φ.
@@ -41,7 +38,7 @@ Inductive AtomicExec : goal -> atomic -> option (list goal) -> Prop :=
 | IntroOK :
     forall b x Γ ψ φ,
       Fresh x Γ ->
-      Γ ÷ (Pi b ψ φ) ⊢ AtomIntro x ⇓ Some [(LocalAssum x φ :: Γ) ÷ ψ]
+      Γ ÷ (mkPi b ψ φ) ⊢ AtomIntro x ⇓ Some [(LocalAssum x φ :: Γ) ÷ ψ]
 
 | ApplyOK :
     forall H Γ φ ψ pis,
@@ -51,6 +48,9 @@ Inductive AtomicExec : goal -> atomic -> option (list goal) -> Prop :=
 
 where "Γ ⊢ x ⇓ v" := (AtomicExec Γ x v)
 .
+
+Parameter matcher : Type.
+Parameter pattern : Type.
 
 Inductive expr : Type :=
 | ExprVal   : forall (v : value), expr
@@ -521,7 +521,7 @@ Definition tcstep (tc : tacticclosure) : tacticclosure :=
   | TCComma (RXGoals gs) es => TCSeq (SeqExprs gs es)
 
   (* seq_cons *)
-  | TC
+
 
   | _ => TODO
 

@@ -1,5 +1,7 @@
-Require Import Chick.localDeclaration.
-Require Import Chick.term.
+From Chick Require Import
+     LocalDeclaration
+     Term
+.
 
 Definition localContext := list localDeclaration.
 
