@@ -7,10 +7,14 @@ Inductive localDeclaration :=
 | LocalDef   : forall (v : variable) (t : term) (τ : term), localDeclaration
 .
 
-Definition nameOflocalDeclaration (ld : localDeclaration) : variable.
+Definition nameOfLocalDeclaration (ld : localDeclaration) : variable.
   destruct ld; exact v.
 Defined.
 
-Definition typeOflocalDeclaration (ld : localDeclaration) : term.
+Definition typeOfLocalDeclaration (ld : localDeclaration) : term.
   destruct ld; exact τ.
 Defined.
+
+Function isLocalAssum a := match a with LocalAssum _ _ => true | _ => false end.
+
+Function isLocalDef a := match a with LocalDef _ _ _ => true | _ => false end.

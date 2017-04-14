@@ -6,14 +6,18 @@
 ./Chick/Binder.v
 ./Chick/Constructor.v
 ./Chick/CoreLtac.v
+./Chick/Fresh.v
 ./Chick/Goal.v
 ./Chick/Inductive.v
 ./Chick/LocalContext.v
 ./Chick/LocalDeclaration.v
 ./Chick/Tactic/Atomic.v
+./Chick/Tactic/Atomic/Semantics/Agreement.v
+./Chick/Tactic/Atomic/Semantics/Functional.v
 ./Chick/Tactic/Atomic/Semantics/Relational.v
 ./Chick/StdLib.v
 ./Chick/Term.v
+./Chick/Unify.v
 ./Chick/Variable.v
 
 # ./Control/Applicative.v

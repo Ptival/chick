@@ -3,3 +3,5 @@ From Coq Require Import
 .
 
 Definition variable := string.
+
+Definition variable_dec := string_dec.
