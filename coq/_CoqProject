@@ -19,11 +19,3 @@
 ./Chick/Term.v
 ./Chick/Unify.v
 ./Chick/Variable.v
-
-# ./Control/Applicative.v
-# ./Control/Monad.v
-# ./Chick.v
-# ./Data/Functor.v
-# ./Data/Functor/Const.v
-# ./Data/Functor/Contravariant.v
-# ./Ltac.v
