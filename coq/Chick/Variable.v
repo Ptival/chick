@@ -1,7 +1,11 @@
 From Coq Require Import
+     EquivDec
      String
 .
 
+From HaysTac Require Import HaysTac.
+
 Definition variable := string.
 
-Definition variable_dec := string_dec.
+Global Instance EqDec_goal : EqDec variable eq.
+Proof string_dec.
