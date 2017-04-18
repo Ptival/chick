@@ -2,6 +2,7 @@ From Coq Require Import
      EquivDec
      List
      Omega
+     Relation_Operators
      String
 .
 
@@ -582,6 +583,10 @@ Fixpoint step (n : nat) (c : configuration) : configuration :=
 
 Notation "a ⇒ b" := (step 1 a = b) (at level 50).
 
+(*
+Definition step_star := clos_refl_trans _ (fun a b => a ⇒ b).
+ *)
+
 Definition step_star (a b : configuration) : Prop := exists n, step n a = b.
 
 Notation "a ⇒* b" := (step_star a b) (at level 50).
@@ -634,44 +639,89 @@ Qed.
 
 Ltac step n := eapply (decompose_star n); [ reflexivity | simpl ].
 
-Ltac next := on_head nat destruct'; [ try discriminate | ]; simpl in *.
+Tactic Notation "on_context" open_constr(c) tactic(tac) :=
+  match goal with [ H : context [c] |- _ ] => tac H end.
+
+(*
+Lemma stack_comes_back :
+  forall s r r',
+    exists n, step (S n) (A_v s r) = A_v s r'.
+Proof.
+  intro.
+  on S_v induction'; intros.
+  - simpl.
+    break_match_in_goal.
+    edestruct IHs.
+    eexists (S _).
+    apply H.
+
+Qed.
+
+Lemma stack_decreases :
+  forall n s r s' r',
+    step n (A_v s r) = A_v s' r' ->
+    S_v_size s >= S_v_size s'.
+Proof with (try solve [on step find_apply_in; simpl in *; omega]).
+  intro.
+  on_head nat ltac:(fun n => induction n using lt_wf_ind); intros.
+  on_head nat destruct'.
+  { on_head @eq inversion'. omega. }
+  on step simpl'.
+  break_match_in_hyp; subst; simpl.
+  - break_match_in_hyp; subst...
+    + next.
+      on step simpl'.
+      break_match_in_hyp.
+      * break_match_in_hyp...
+      * next; simpl in *.
+        break_match_in_hyp; subst.
+        { break_match_in_hyp... }
+        { next; simpl in *.
+          break_match_in_hyp; subst.
+          { break_match_in_hyp; subst.
+            { on_head nat destruct'.
+              { apply H in H0. simpl in H0. on step inversion'. simpl.
+            apply H in H0.
+
+Qed.
+*)
 
 Theorem abstractMachineCorrect_val :
-  forall (g : goal) (e : expr) (r : RV) s,
-    g ⊢ e ↓v r <-> E_v g e s ⇒* A_v s r.
+  forall (g : goal) (e : expr) (r : RV),
+    g ⊢ e ↓v r -> (forall s, E_v g e s ⇒* A_v s r).
 Proof.
-  split; intros.
-  {
-    on S_v generalize_dependent'.
-    on_head ExprEval induction';  intros.
-    - step 1.
-      now on_head value destruct'; subst.
-    - now step 1.
-    - step 1.
-      find_rewrite_r.
-      now step 1.
-    - step 1.
-      find_rewrite_r.
-      now step 1.
-    - step 1.
-      find_rewrite_r.
-      now step 1.
-    - step 1.
-      find_rewrite_r.
-      now step 1.
-    - step 1.
-      find_rewrite_r.
-      now step 1.
-  }
-  {
+  do 4 intro.
+  on_head ExprEval induction';  intros.
+  - step 1.
+    now on_head value destruct'; subst.
+  - now step 1.
+  - step 1.
+    find_rewrite_r.
+    now step 1.
+  - step 1.
+    find_rewrite_r.
+    now step 1.
+  - step 1.
+    find_rewrite_r.
+    now step 1.
+  - step 1.
+    find_rewrite_r.
+    now step 1.
+  - step 1.
+    find_rewrite_r.
+    now step 1.
+Qed.
+
+(*
+{
     revert r H.
     unfold step_star.
     induction e; intros.
+
     {
-      on_head @ex destruct'.
-      next.
       on_head value destruct'.
       {
+        econstructor.
         next.
         { now inversion H; constructor. }
         {
@@ -706,6 +756,7 @@ Proof.
     { admit. }
   }
 Admitted.
+ *)
 
 Theorem abstractMachineCorrect_exec :
   forall g,
@@ -757,177 +808,29 @@ Proof.
     now step 1.
 Qed.
 
-Theorem
-  abstractMachineCorrect_tac :
-  forall (g : goal) (t : tactic) (r : RX) s,
-    g ⊢ t ↓x r <-> E_x g t s ⇒* A_x s r.
+Ltac next := on_head nat destruct'; [ try discriminate | ]; on step simpl'.
+
+Theorem abstractMachineCorrect_exec' :
+  forall g,
+    (forall e r, E_ee g e Nil ⇒* A_x Nil r -> g ⊢ e ⇓ r)
+    /\
+    (forall t r, E_x g t Nil ⇒* A_x Nil r -> g ⊢ t ↓x r)
+.
 Proof.
-  {
   split; intros.
   {
-    on_head TacExec induction';  intros.
-    - now step 1.
-    - now step 1.
-    - now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-  }
-  {
-    exact TODO.
-  }
-  }
-
-  Qed.
-
-
-
-  {
-  split; intros.
-  {
-    on_head TacExec induction';  intros.
-    - now step 1.
-    - now step 1.
-    - now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-    - step 1.
-      on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-      on_head step_star rewrite_r.
-      now step 1.
-  }
-  {
-    exact TODO.
-  }
-  }
-Qed.
-
-Theorem thm_expr : abstractMachineCorrect_tac_stmt
-  with thm_val : abstractMachineCorrect_val_stmt
-  with thm_stmt : abstractMachineCorrect_expr_stmt.
-Proof.
-  admit.
-Admitted.
-
-Theorem
-  abstractMachineCorrect_expr :
-  forall (g : goal) (e : expr) (r : RX) s,
-    g ⊢ e ⇓ r <-> E_ee g e s ⇒* A_x s r.
-Proof.
-
-  {
-    split; intros.
-    {
-      on_head ExprExec induction'.
-      - step 1.
-        on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-        on_head step_star rewrite_r.
-        now step 1.
-      - step 1.
-        on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-        on_head step_star rewrite_r.
-        step 1.
-        now apply abstractMachineCorrect_tac.
-      - step 1.
-        on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-        on_head step_star rewrite_r.
-        now step 1.
-      - step 1.
-        on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-        on_head step_star rewrite_r.
-        now step 1.
-      - step 1.
-        on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-        on_head step_star rewrite_r.
-        now step 1.
-    }
-    {
-      exact TODO.
-    }
-  }
-
-  {
-    split; intros.
-    {
-      on_head TacExec induction';  intros.
-      - now step 1.
-      - now step 1.
-      - now step 1.
-      - step 1.
-        on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-        on_head step_star rewrite_r.
-        now step 1.
-      - step 1.
-        on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-        on_head step_star rewrite_r.
-        now step 1.
-      - step 1.
-        on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-        on_head step_star rewrite_r.
-        now step 1.
-      - step 1.
-        on ExprExec ltac:(in_eapply abstractMachineCorrect_expr).
-        on_head step_star rewrite_r.
-        now step 1.
-    }
-    {
-      exact TODO.
-    }
-  }
-
-  {
-    split; intros.
-    {
-      on S_v generalize_dependent'.
-      on_head ExprEval induction';  intros.
-      - step 1.
-        now on_head value destruct'; subst.
-      - now step 1.
-      - step 1.
-        find_rewrite_r.
-        now step 1.
-      - step 1.
-        find_rewrite_r.
-        now step 1.
-      - step 1.
-        find_rewrite_r.
-        now step 1.
-      - step 1.
-        find_rewrite_r.
-        now step 1.
-      - step 1.
-        find_rewrite_r.
-        now step 1.
-    }
-    {
-      exact TODO.
-    }
-  }
-
-Qed.
+    on_head RX generalize_dependent'.
+    on_head expr induction'; intros.
+    - on step_star destruct'.
+      next.
+      next.
+      break_match_in_hyp; subst.
+      + next.
+        next.
+        * on @eq inversion'.
+          constructor.
+          constructor.
+      simpl in H.
 
 Inductive exprclosure : Type :=
 | ECResult : forall (r : RV), exprclosure
