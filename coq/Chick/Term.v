@@ -111,7 +111,7 @@ Proof.
     rewrite app_nil_r.
     apply list.null_iff_nil.
     do 2 intro.
-    apply_in_hyp list.in_remove.
+    find_apply_in_hyp list.in_remove.
     on and destruct'.
     on @list.subset ltac:(repeat' find_specialize_in).
     on In inversion'.
@@ -188,7 +188,7 @@ Proof with decide_equality.
       on_head (EqDec NVar) ltac:(fun H => pose proof (List.list_eq_dec H)).
       on_head2 list ltac:(
         fun l1 l2 =>
-          let H := enumerate_hypotheses in
+          let H := enumerate_hyps in
           specialize (H l1 l2)
       ).
       on_head sumbool destruct'...

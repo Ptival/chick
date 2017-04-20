@@ -2,6 +2,7 @@ From Coq Require Import
      EquivDec
      List
      Omega
+     Operators_Properties
      Relation_Operators
      String
 .
@@ -13,6 +14,12 @@ From Chick Require Import
      LocalDeclaration
 .
 Require Import Chick.Variable.
+
+From Chick.Tactic.Atomic.Semantics Require Import
+     Agreement
+     Functional
+     Relational
+.
 
 From HaysTac Require Import HaysTac.
 
@@ -31,29 +38,6 @@ Fixpoint piListRev pis φ :=
 
 Definition piList pis φ := piListRev (List.rev pis) φ.
 
-Reserved Notation "Γ ⊢ x ⇓ v" (at level 50).
-
-Inductive AtomicExec : goal -> atomic -> option (list goal) -> Prop :=
-
-| AssumptionOK :
-    forall Γ φ,
-      TypeInLocalContext φ Γ ->
-      Γ ÷ φ ⊢ AtomAssumption ⇓ Some []
-
-| IntroOK :
-    forall b x Γ ψ φ,
-      Fresh x Γ ->
-      Γ ÷ (mkPi b ψ φ) ⊢ AtomIntro x ⇓ Some [(LocalAssum x φ :: Γ) ÷ ψ]
-
-| ApplyOK :
-    forall H Γ φ ψ pis,
-      InLocalContext (LocalAssum H φ) Γ ->
-      Unify ψ (piList pis φ) ->
-      Γ ÷ φ ⊢ AtomApply H ⇓ Some (List.map (Goal Γ) pis)
-
-where "Γ ⊢ x ⇓ v" := (AtomicExec Γ x v)
-.
-
 Parameter matcher : Type.
 Parameter pattern : Type.
 
@@ -67,7 +51,7 @@ Inductive expr : Type :=
 
 with
 value : Type :=
-| ValLam : forall (xs : list variable) (e : expr), value
+| ValLam : forall (l : lam), value
 | ValTac : forall (t : tactic), value
 | ValInt : forall (n : nat), value
 
@@ -80,62 +64,92 @@ tactic : Type :=
 | TacBranchComp : forall (e : expr) (es : list expr), tactic
 | TacFirst      : forall (es : list expr), tactic
 | TacProgress   : forall (e : expr), tactic
+
+with
+lam : Type :=
+| Lam : forall (xs : list variable) (e : expr), lam
 .
 
-(*
-Coercion ValTac : tactic >-> value.
-Coercion ExprVal : value >-> expr.
- *)
+Notation "λ xs . e" := (Lam xs e) (at level 50).
+
+Coercion ExprVal : value  >-> expr.
+Coercion ValLam  : lam    >-> value.
+Coercion ValTac  : tactic >-> value.
+Coercion ValInt  : nat      >-> value.
+Coercion TacAtom : atomic >-> tactic.
+
+Inductive fail := Fail : forall (l : nat), fail.
 
 Inductive RV :=
-| RVFail  : forall (n : nat), RV
-| RVGoals : forall (gs : list goal), RV
-| RVLam   : forall (xs : list variable) (e : expr), RV
-| RVInt   : forall (n : nat), RV
-| RVTac   : forall (t : tactic), RV
+| Fail__RV  : forall (l : fail), RV
+| Goals__RV : forall (gs : goals), RV
+| Lam__RV   : forall (l : lam), RV
+| Int__RV   : forall (n : nat), RV
+| Tac__RV   : forall (t : tactic), RV
 .
+
+Coercion Fail__RV  : fail   >-> RV.
+Coercion Goals__RV : goals  >-> RV.
+Coercion Lam__RV   : lam    >-> RV.
+Coercion Int__RV   : nat      >-> RV.
+Coercion Tac__RV   : tactic >-> RV.
 
 Definition coerce_value_to_RV (v : value) : RV :=
   match v with
-  | ValLam xs e => RVLam xs e
-  | ValInt n    => RVInt n
-  | ValTac t    => RVTac t
+  | ValLam l => Lam__RV l
+  | ValInt n => Int__RV n
+  | ValTac t => Tac__RV t
   end.
 
 Coercion coerce_value_to_RV : value >-> RV.
 
 Inductive RVX :=
-| RVXFail  : forall (n : nat), RVX
-| RVXGoals : forall (gs : list goal), RVX
-| RVXLam   : forall (xs : list variable) (e : expr), RVX
-| RVXInt   : forall (n : nat), RVX
+| Fail__RVX  : forall (l : fail), RVX
+| Goals__RVX : forall (gs : goals), RVX
+| Lam__RVX   : forall (l : lam), RVX
+| Int__RVX   : forall (n : nat), RVX
 .
+
+Coercion Fail__RVX  : fail  >-> RVX.
+Coercion Goals__RVX : goals >-> RVX.
+Coercion Lam__RVX   : lam   >-> RVX.
+Coercion Int__RVX   : nat     >-> RVX.
 
 Definition coerce_RVX_to_RV (rvx : RVX) : RV :=
   match rvx with
-  | RVXFail n   => RVFail n
-  | RVXGoals gs => RVGoals gs
-  | RVXLam xs e => RVLam xs e
-  | RVXInt n    => RVInt n
+  | Fail__RVX  n  => Fail__RV  n
+  | Goals__RVX gs => Goals__RV gs
+  | Lam__RVX   l  => Lam__RV   l
+  | Int__RVX   n  => Int__RV   n
   end.
+
 Coercion coerce_RVX_to_RV : RVX >-> RV.
 
 Inductive RX :=
-| RXFail  : forall (n : nat), RX
-| RXGoals : forall (gs : list goal), RX
+| Fail__RX  : forall (l : fail), RX
+| Goals__RX : forall (gs : goals), RX
 .
+
+Coercion Fail__RX  : fail  >-> RX.
+Coercion Goals__RX : goals >-> RX.
 
 Definition coerce_RX_to_RVX (rx : RX) : RVX :=
   match rx with
-  | RXFail n   => RVXFail n
-  | RXGoals gs => RVXGoals gs
+  | Fail__RX  n  => Fail__RVX  n
+  | Goals__RX gs => Goals__RVX gs
   end.
+
 Coercion coerce_RX_to_RVX : RX >-> RVX.
 
+Definition values := list value.
+
 Inductive RARGS :=
-| RARGSFail : forall (n : nat), RARGS
-| RARGSVals : forall (vs : list value), RARGS
+| Fail__RARGS : forall (l : fail), RARGS
+| Vals__RARGS : forall (vs : values), RARGS
 .
+
+Coercion Fail__RARGS  : fail   >-> RARGS.
+Coercion Vals__RARGS  : values >-> RARGS.
 
 Reserved Notation "g ⊢ e ↓v gs" (at level 50).
 Reserved Notation "g ⊢ e ↓vx gs" (at level 50).
@@ -163,10 +177,10 @@ Inductive ExprEval (g : goal) : expr -> RV -> Prop :=
 (** Figure 7.4 *)
 
 | VAL : forall v r,
-    r = match v with
-        | ValLam xs e => RVLam xs e
-        | ValTac t    => RVTac t
-        | ValInt n    => RVInt n
+    r = match v return RV with
+        | ValLam l => l
+        | ValTac t => t
+        | ValInt n => n
         end ->
     ExprEval g (ExprVal v) r
 
@@ -174,30 +188,31 @@ Inductive ExprEval (g : goal) : expr -> RV -> Prop :=
     ExprEval g (subst_expr x (ExprFix x e) e) rv ->
     ExprEval g (ExprFix x e)                  rv
 
-| APP1 : forall e es n,
-    ExprEval g e              (RVFail n) ->
-    ExprEval g (ExprApp e es) (RVFail n)
+| APP1 : forall e es (l : fail),
+    ExprEval g e              l ->
+    ExprEval g (ExprApp e es) l
 
-| APP2_Int : forall e es n,
-    ExprEval g e              (RVInt n) ->
-    ExprEval g (ExprApp e es) (RVFail 0)
+| APP2_Int : forall e es (n : nat),
+    ExprEval g e              n ->
+    ExprEval g (ExprApp e es) (Fail 0)
 
-| APP2_Tac : forall e es t,
-    ExprEval g e              (RVTac t) ->
-    ExprEval g (ExprApp e es) (RVFail 0)
+| APP2_Tac : forall e es (t : tactic),
+    ExprEval g e              t        ->
+    ExprEval g (ExprApp e es) (Fail 0)
 
-| APP3 : forall e es xs e' n,
-    ExprEval g e              (RVLam xs e') ->
-    ArgsEval g es             (RARGSFail n) ->
-    ExprEval g (ExprApp e es) (RVFail n)
+| APP3 : forall e es l n,
+    ExprEval g e              (Lam__RV l)     ->
+    ArgsEval g es             (Fail__RARGS n) ->
+    ExprEval g (ExprApp e es) (Fail__RV n)
 
-| APP4 : forall e es xs e' vs xs1 xs2,
-    ExprEval g e              (RVLam xs e') ->
-    ArgsEval g es             (RARGSVals vs) ->
-    List.length vs < List.length xs ->
+| APP4 : forall e es xs e' (vs : values) xs1 xs2,
+    ExprEval g e  (Lam xs e')             ->
+    ArgsEval g es vs                      ->
+    List.length vs < List.length xs       ->
     xs1 = List.firstn (List.length vs) xs ->
     xs2 = List.skipn  (List.length vs) xs ->
-    ExprEval g (ExprApp e es) (RVLam xs2 (subst_exprs xs1 (List.map ExprVal vs) e))
+    ExprEval g (ExprApp e es)
+             (Lam__RV (Lam xs2 (subst_exprs xs1 (List.map ExprVal vs) e)))
 
 where
 "g ⊢ e ↓v r" := (ExprEval g e r)
@@ -209,27 +224,33 @@ where
 .
 
 Inductive ExprExec (g : goal) : expr -> RX -> Prop :=
+
 | EEX1 :
-    forall e gs,
-      g ⊢ e ↓v (RVGoals gs) ->
-      g ⊢ e ⇓  (RXGoals gs)
+    forall e (gs : goals),
+      g ⊢ e ↓v gs ->
+      g ⊢ e ⇓  gs
+
 | EEX2 :
-    forall e t rx,
-      g ⊢ e ↓v (RVTac t) ->
+    forall e (t : tactic) rx,
+      g ⊢ e ↓v t  ->
       g ⊢ t ↓x rx ->
       g ⊢ e ⇓  rx
+
 | EEX3 :
     forall e n,
-      g ⊢ e ↓v (RVFail n) ->
-      g ⊢ e ⇓  (RXFail n)
+      g ⊢ e ↓v Fail n ->
+      g ⊢ e ⇓  Fail n
+
 | EEX4_1 :
-    forall e n,
-      g ⊢ e ↓v (RVInt n) ->
-      g ⊢ e ⇓  (RXFail 0)
+    forall e (n : nat),
+      g ⊢ e ↓v n      ->
+      g ⊢ e ⇓  Fail 0
+
 | EEX4_2 :
-    forall e xs e',
-      g ⊢ e ↓v (RVLam xs e') ->
-      g ⊢ e ⇓  (RXFail 0)
+    forall e (l : lam),
+      g ⊢ e ↓v l      ->
+      g ⊢ e ⇓  Fail 0
+
 where
 
 "g ⊢ e ⇓ r" := (ExprExec g e r)
@@ -238,36 +259,46 @@ with
 
 TacExec (g : goal) : tactic -> RX -> Prop :=
 
+| ATOMIC_FAIL :
+    forall a,
+      g ⊢ a ⇓a None           ->
+      g ⊢ TacAtom a ↓x Fail 0
+
+| ATOMIC_SUCCESS :
+    forall a gs,
+      g ⊢ a ⇓a Some gs    ->
+      g ⊢ TacAtom a ↓x gs
+
 | IDTAC :
-    g ⊢ TacIdtac ↓x RXGoals [g]
+    g ⊢ TacIdtac ↓x Goals__RX [g]
 
 | FAIL :
     forall n,
-      g ⊢ TacFail n ↓x RXFail n
+      g ⊢ TacFail n ↓x Fail n
 
 | FIRST1 :
-    g ⊢ TacFirst [] ↓x RXFail 0
+    g ⊢ TacFirst [] ↓x Fail 0
 
 | FIRST2 :
-    forall e es gs,
-      g ⊢ e                  ⇓  RXGoals gs ->
-      g ⊢ TacFirst (e :: es) ↓x RXGoals gs
+    forall e es (gs : goals),
+      g ⊢ e                  ⇓  gs ->
+      g ⊢ TacFirst (e :: es) ↓x gs
 
 | FIRST3 :
     forall e es n,
-      g ⊢ e                  ⇓  RXFail (S n) ->
-      g ⊢ TacFirst (e :: es) ↓x RXFail n
+      g ⊢ e                  ⇓  Fail (S n) ->
+      g ⊢ TacFirst (e :: es) ↓x Fail n
 
 | FIRST4 :
     forall e es rx,
-      g ⊢ e                  ⇓  RXFail 0 ->
+      g ⊢ e                  ⇓  Fail 0 ->
       g ⊢ TacFirst es        ↓x rx     ->
       g ⊢ TacFirst (e :: es) ↓x rx
 
 | PROGR1 :
     forall e n,
-      g ⊢ e             ⇓  RXFail n ->
-      g ⊢ TacProgress e ↓x RXFail n
+      g ⊢ e             ⇓  Fail n ->
+      g ⊢ TacProgress e ↓x Fail n
 
 (* TODO *)
 
@@ -283,26 +314,26 @@ Combined Scheme Exec_ind from ExprExec_ind', TacExec_ind'.
 
 Inductive ExtendedExprEval (g : goal) (e : expr) : RVX -> Prop :=
 | EEV1 :
-    forall gs,
-      g ⊢ e ↓v  (RVGoals gs) ->
-      g ⊢ e ↓vx (RVXGoals gs)
+    forall (gs : goals),
+      g ⊢ e ↓v  gs ->
+      g ⊢ e ↓vx gs
 | EEV2 :
-    forall t rx,
-      g ⊢ e ↓v  (RVTac t) ->
-      g ⊢ t ↓x  rx       ->
+    forall (t : tactic) rx,
+      g ⊢ e ↓v  t  ->
+      g ⊢ t ↓x  rx ->
       g ⊢ e ↓vx rx
 | EEV3 :
-    forall n,
-      g ⊢ e ↓v  (RVFail n) ->
-      g ⊢ e ↓vx (RVXFail n)
+    forall (n : fail),
+      g ⊢ e ↓v  n ->
+      g ⊢ e ↓vx n
 | EEV4_1 :
-    forall n,
-      g ⊢ e ↓v  (RVInt n) ->
-      g ⊢ e ↓vx (RVXInt n)
+    forall (n : nat),
+      g ⊢ e ↓v  n ->
+      g ⊢ e ↓vx n
 | EEV4_2 :
-    forall xs e',
-      g ⊢ e ↓v  (RVLam xs e') ->
-      g ⊢ e ↓vx (RVXLam xs e')
+    forall (l : lam),
+      g ⊢ e ↓v  l ->
+      g ⊢ e ↓vx l
 where
 "g ⊢ e ↓vx r" := (ExtendedExprEval g e r)
 .
@@ -321,7 +352,7 @@ Inductive S_v : Type :=
 with
 
 S_a : Type :=
-| Args1 : forall (g : goal) (xs : list variable) (e : expr) (s : S_v), S_a
+| Args1 : forall (g : goal) (l : lam) (s : S_v), S_a
 | Args2 : forall (v : value) (s : S_a), S_a
 
 with
@@ -349,8 +380,8 @@ Fixpoint S_v_size sv :=
   end
 with S_a_size sa :=
        match sa with
-       | Args1 _ _ _ s => S (S_v_size s)
-       | Args2 _     s => S (S_a_size s)
+       | Args1 _ _ s => S (S_v_size s)
+       | Args2 _   s => S (S_a_size s)
        end
 with S_x_size sx :=
        match sx with
@@ -365,22 +396,22 @@ with S_x_size sx :=
   end.
 
 Inductive configuration : Type :=
-| E_v    : forall (g : goal) (e : expr) (s : S_v), configuration
-    (* I think there's a typo in the thesis here, is says A_v takes a RX *)
-| A_v    : forall (s : S_v) (r : RV), configuration
-| E_x    : forall (g : goal) (t : tactic) (s : S_x), configuration
-| A_x    : forall (s : S_x) (r : RX), configuration
-| E_ee   : forall (g : goal) (e : expr) (s : S_x), configuration
-| E_vx   : forall (g : goal) (e : expr) (s : S_v), configuration
-| E_pat  : forall (g : goal) (m : matcher) (e : expr) (cl : list (pattern * expr))
+| E__v    : forall (g : goal) (e : expr) (s : S_v), configuration
+    (* I think there's a typo in the thesis here, is says A__v takes a RX *)
+| A__v    : forall (s : S_v) (r : RV), configuration
+| E__x    : forall (g : goal) (t : tactic) (s : S_x), configuration
+| A__x    : forall (s : S_x) (r : RX), configuration
+| E__ee   : forall (g : goal) (e : expr) (s : S_x), configuration
+| E__vx   : forall (g : goal) (e : expr) (s : S_v), configuration
+| E__pat  : forall (g : goal) (m : matcher) (e : expr) (cl : list (pattern * expr))
                  (s : S_v), configuration
-| E_args : forall (g : goal) (es : list expr) (s : S_a), configuration
-| A_args : forall (s : S_a) (r : RARGS), configuration
-| E_seq  : forall (g : list goal) (es : list expr) (s : S_x), configuration
+| E__args : forall (g : goal) (es : list expr) (s : S_a), configuration
+| A__args : forall (s : S_a) (r : RARGS), configuration
+| E__seq  : forall (g : list goal) (es : list expr) (s : S_x), configuration
 .
 
 Definition initialconfiguration (g : goal) (e : expr) :=
-  E_ee g e Nil.
+  E__ee g e Nil.
 
 Axiom TODO : forall {T}, T.
 
@@ -392,205 +423,210 @@ Definition stepConfiguration (c : configuration) : configuration :=
 
   (** Figure 8.1 *)
 
-  | E_v g (ExprVal (ValLam xs e))    s => A_v s (RVLam xs e)
-  | E_v g (ExprVal (ValTac t))       s => A_v s (RVTac t)
-  | E_v g (ExprVal (ValInt n))       s => A_v s (RVInt n)
+  | E__v g (ExprVal (ValLam l))       s => A__v s l
+  | E__v g (ExprVal (ValTac t))       s => A__v s t
+  | E__v g (ExprVal (ValInt n))       s => A__v s n
 
-  | E_v g (ExprApp e es)             s => E_v g e (App g es s)
+  | E__v g (ExprApp e es)             s => E__v g e (App g es s)
 
-  | E_v g (ExprLet x e1 e2)          s => E_v g e1 (Let g x e2 s)
+  | E__v g (ExprLet x e1 e2)          s => E__v g e1 (Let g x e2 s)
 
-  | E_v g (ExprMGoal [])             s => A_v s (RVFail 0)
-  | E_v g (ExprMGoal ((p, e) :: cl)) s => E_pat g (start g p) e cl s
+  | E__v g (ExprMGoal [])             s => A__v s (Fail 0)
+  | E__v g (ExprMGoal ((p, e) :: cl)) s => E__pat g (start g p) e cl s
 
-  | E_v g (ExprFix x e)              s => E_v g (subst_expr x (ExprFix x e) e) s
+  | E__v g (ExprFix x e)              s => E__v g (subst_expr x (ExprFix x e) e) s
 
-  | E_x g TacIdtac                   s => A_x s (RXGoals [g])
+  | E__x g TacIdtac                   s => A__x s ([g] : goals)
 
-  | E_x g (TacFail n)                s => A_x s (RXFail n)
+  | E__x g (TacFail n)                s => A__x s (Fail n)
 
-  | E_x g (TacProgress e)            s => E_ee g e (Prog g s)
+  | E__x g (TacProgress e)            s => E__ee g e (Prog g s)
 
-  | E_x g (TacFirst [])              s => A_x s (RXFail 0)
+  | E__x g (TacFirst [])              s => A__x s (Fail 0)
 
-  | E_x g (TacFirst (e :: es))       s => E_ee g e (First g es s)
+  | E__x g (TacFirst (e :: es))       s => E__ee g e (First g es s)
 
-  | E_x g (TacComp e1 e2)            s => E_ee g e1 (Semi e2 s)
+  | E__x g (TacComp e1 e2)            s => E__ee g e1 (Semi e2 s)
 
-  | E_x g (TacBranchComp e1 es)      s => E_ee g e1 (BSemi es s)
+  | E__x g (TacBranchComp e1 es)      s => E__ee g e1 (BSemi es s)
 
-  | E_pat g m e cl                   s =>
+  | E__pat g m e cl                   s =>
     match next m with
-    | None         => E_v g (ExprMGoal cl) s
-    | Some (σ, m') => E_vx g (σ e) (Pat g m' e cl s)
+    | None         => E__v g (ExprMGoal cl) s
+    | Some (σ, m') => E__vx g (σ e) (Pat g m' e cl s)
     end
 
-  | E_args g []                      s => A_args s (RARGSVals [])
+  | E__args g []                      s => A__args s ([] : values)
 
-  | E_args g (e :: es)               s => E_v g e (Args g es s)
+  | E__args g (e :: es)               s => E__v g e (Args g es s)
 
-  | E_seq [] []                      s => A_x s (RXGoals [])
+  | E__seq [] []                      s => A__x s ([] : goals)
 
-  | E_seq (g :: gs) (e :: es)        s => E_ee g e (Seq1 gs es s)
+  | E__seq (g :: gs) (e :: es)        s => E__ee g e (Seq1 gs es s)
 
-  | E_vx g e                         s => E_v g e (EExec1 g s)
+  | E__vx g e                         s => E__v g e (EExec1 g s)
 
-  | E_ee g e                         s => E_v g e (EExpr g s)
+  | E__ee g e                         s => E__v g e (EExpr g s)
 
   (** Figure 8.2 *)
 
-  | A_args (Args1 g xs e s) (RARGSFail n) => A_v s (RVFail n)
+  | A__args (Args1 g l s) (Fail__RARGS n) => A__v s n
 
-  | A_args (Args1 g xs e s) (RARGSVals vs) =>
+  | A__args (Args1 g (Lam xs e) s) (Vals__RARGS vs) =>
     match Nat.compare (List.length vs) (List.length xs) with
     | Lt =>
       let lv := List.length vs in
       let xs1 := firstn lv xs in
       let xs2 := firstn lv xs in
-      A_v s (RVLam xs2 (subst_exprs xs1 (List.map ExprVal vs) e))
-    | Eq => E_v g (subst_exprs xs (List.map ExprVal vs) e) s
+      A__v s (Lam__RV (Lam xs2 (subst_exprs xs1 (List.map ExprVal vs) e)))
+    | Eq => E__v g (subst_exprs xs (List.map ExprVal vs) e) s
     | Gt =>
       let lx := List.length xs in
       let vs1 := firstn lx vs in
       let vs2 := firstn lx vs in
-      E_v g (subst_exprs xs (List.map ExprVal vs1) e) s
+      E__v g (subst_exprs xs (List.map ExprVal vs1) e) s
     end
 
-  | A_args (Args2 v s) (RARGSFail n) => A_args s (RARGSFail n)
+  | A__args (Args2 v s) (Fail__RARGS n) => A__args s n
 
-  | A_args (Args2 v s) (RARGSVals vs) => A_args s (RARGSVals (v :: vs))
+  | A__args (Args2 v s) (Vals__RARGS vs) => A__args s ((v :: vs) : values)
 
   (** Figure 8.3 *)
 
-  | A_x (Prog g s) (RXFail n) => A_x s (RXFail n)
+  | A__x (Prog g s) (Fail__RX n)   => A__x s n
 
-  | A_x (Prog g s) (RXGoals gs) =>
-    A_x s (
+  | A__x (Prog g s) (Goals__RX gs) =>
+    A__x s (
           match gs with
           | [g'] =>
             if g == g'
-            then RXFail 0
-            else RXGoals gs
-          | _ => RXGoals gs
+            then Fail 0
+            else Goals__RX gs
+          | _ => Goals__RX gs
           end
         )
 
-  | A_x (First g es s) (RXFail 0)     => E_x g (TacFirst es) s
+  | A__x (First g es s) (Fail 0)     => E__x g (TacFirst es) s
 
-  | A_x (First g es s) (RXFail (S n)) => A_x s (RXFail n)
+  | A__x (First g es s) (Fail (S n)) => A__x s (Fail n)
 
-  | A_x (First g es s) (RXGoals gs)   => A_x s (RXGoals gs)
+  | A__x (First g es s) (Goals__RX gs) => A__x s (Goals__RX gs)
 
-  | A_x (Semi e s) (RXFail n)   => A_x s (RXFail n)
+  | A__x (Semi e s) (Fail__RX n)       => A__x s (Fail__RX n)
 
-  | A_x (Semi e s) (RXGoals gs) => E_seq gs (List.repeat e (List.length gs)) s
+  | A__x (Semi e s) (Goals__RX gs)     => E__seq gs (List.repeat e (List.length gs)) s
 
-  | A_x (BSemi es s) (RXFail n)   => A_x s (RXFail n)
+  | A__x (BSemi es s) (Fail__RX n)     => A__x s (Fail__RX n)
 
-  | A_x (BSemi es s) (RXGoals gs) =>
+  | A__x (BSemi es s) (Goals__RX gs)   =>
     if List.length gs == List.length es
-    then E_seq gs es s
-    else A_x s (RXFail 0)
+    then E__seq gs es s
+    else A__x s (Fail 0)
 
-  | A_x (Seq1 gs es s) (RXFail n)   => A_x s (RXFail n)
+  | A__x (Seq1 gs es s) (Fail__RX n)    => A__x s (Fail__RX n)
 
-  | A_x (Seq1 gs es s) (RXGoals gs') => E_seq gs es (Seq2 gs' s)
+  | A__x (Seq1 gs es s) (Goals__RX gs') => E__seq gs es (Seq2 gs' s)
 
-  | A_x (Seq2 gs s) (RXFail n)    => A_x s (RXFail n)
+  | A__x (Seq2 gs s) (Fail__RX n)       => A__x s n
 
-  | A_x (Seq2 gs s) (RXGoals gs') => A_x s (RXGoals (gs ++ gs'))
+  | A__x (Seq2 gs s) (Goals__RX gs')    => A__x s ((gs ++ gs')%list : goals)
 
-  | A_x (EExec2 s) r => A_v s r
+  | A__x (EExec2 s) r => A__v s r
 
   (** Figure 8.4 *)
 
-  | A_v (Let g x e2 s) (RVGoals gs) => A_v s (RVFail 0)
+  | A__v (Let g x e2 s) (Goals__RV gs) => A__v s (Fail 0)
 
-  | A_v (Let g x e2 s) (RVFail n)   => A_v s (RVFail n)
+  | A__v (Let g x e2 s) (Fail__RV n)   => A__v s n
 
-  | A_v (Let g x e2 s) (RVLam xs e) => E_v g (subst_expr x (ExprVal (ValLam xs e)) e2) s
+  | A__v (Let g x e2 s) (Lam__RV l)    => E__v g (subst_expr x (ExprVal l) e2) s
 
-  | A_v (Let g x e2 s) (RVInt n)    => E_v g (subst_expr x (ExprVal (ValInt n)) e2) s
+  | A__v (Let g x e2 s) (Int__RV n)    => E__v g (subst_expr x (ExprVal (ValInt n)) e2) s
 
-  | A_v (Let g x e2 s) (RVTac t)    => E_v g (subst_expr x (ExprVal (ValTac t)) e2) s
+  | A__v (Let g x e2 s) (Tac__RV t)    => E__v g (subst_expr x (ExprVal (ValTac t)) e2) s
 
-  | A_v (App g es s) (RVFail n)   => A_v s (RVFail n)
+  | A__v (App g es s) (Fail__RV n)   => A__v s (Fail__RV n)
 
-  | A_v (App g es s) (RVLam xs e) => E_args g es (Args1 g xs e s)
+  | A__v (App g es s) (Lam__RV l) => E__args g es (Args1 g l s)
 
-  | A_v (App g es s) _            => A_v s (RVFail 0)
+  | A__v (App g es s) _            => A__v s (Fail 0)
 
-  | A_v (Args g es s) (RVLam xs e) => E_args g es (Args2 (ValLam xs e) s)
-  | A_v (Args g es s) (RVInt n)    => E_args g es (Args2 (ValInt n)    s)
-  | A_v (Args g es s) (RVTac t)    => E_args g es (Args2 (ValTac t)    s)
+  | A__v (Args g es s) (Lam__RV l) => E__args g es (Args2 l s)
+  | A__v (Args g es s) (Int__RV n) => E__args g es (Args2 n s)
+  | A__v (Args g es s) (Tac__RV t) => E__args g es (Args2 t s)
 
-  | A_v (Args g es s) (RVGoals gs) => A_args s (RARGSFail 0)
+  | A__v (Args g es s) (Goals__RV gs) => A__args s (Fail 0)
 
-  | A_v (Args g es s) (RVFail n)   => A_args s (RARGSFail n)
+  | A__v (Args g es s) (Fail__RV n)   => A__args s (Fail__RARGS n)
 
-  | A_v (Pat g m e cl s) (RVLam xs e')  => A_v s (ValLam xs e')
-  | A_v (Pat g m e cl s) (RVInt n)      => A_v s (ValInt n)
-  | A_v (Pat g m e cl s) (RVTac t)      => A_v s (ValTac t)
+  | A__v (Pat g m e cl s) (Lam__RV l) => A__v s l
+  | A__v (Pat g m e cl s) (Int__RV n) => A__v s n
+  | A__v (Pat g m e cl s) (Tac__RV t) => A__v s t
 
-  | A_v (Pat g m e cl s) (RVGoals gs)   => A_v s (RVGoals gs)
+  | A__v (Pat g m e cl s) (Goals__RV gs)   => A__v s gs
 
-  | A_v (Pat g m e cl s) (RVFail 0)     => E_pat g m e cl s
+  | A__v (Pat g m e cl s) (Fail 0)     => E__pat g m e cl s
 
-  | A_v (Pat g m e cl s) (RVFail (S n)) => A_v s (RVFail n)
+  | A__v (Pat g m e cl s) (Fail (S n)) => A__v s (Fail n)
 
-  | A_v (EExec1 g s) (RVFail n)   => A_v s (RVFail n)
+  | A__v (EExec1 g s) (Fail__RV n)   => A__v s n
 
-  | A_v (EExec1 g s) (RVGoals gs) => A_v s (RVGoals gs)
+  | A__v (EExec1 g s) (Goals__RV gs) => A__v s gs
 
-  | A_v (EExec1 g s) (RVInt n)    => A_v s (RVInt n)
+  | A__v (EExec1 g s) (Int__RV n)    => A__v s n
 
-  | A_v (EExec1 g s) (RVLam xs e) => A_v s (RVLam xs e)
+  | A__v (EExec1 g s) (Lam__RV l) => A__v s l
 
-  | A_v (EExec1 g s) (RVTac t)    => E_x g t (EExec2 s)
+  | A__v (EExec1 g s) (Tac__RV t)    => E__x g t (EExec2 s)
 
-  | A_v (EExpr g s) (RVFail n)   => A_x s (RXFail n)
+  | A__v (EExpr g s) (Fail__RV n)   => A__x s n
 
-  | A_v (EExpr g s) (RVGoals gs) => A_x s (RXGoals gs)
+  | A__v (EExpr g s) (Goals__RV gs) => A__x s gs
 
-  | A_v (EExpr g s) (RVInt n)    => A_x s (RXFail 0)
+  | A__v (EExpr g s) (Int__RV n)    => A__x s (Fail 0)
 
-  | A_v (EExpr g s) (RVLam xs e) => A_x s (RXFail 0)
+  | A__v (EExpr g s) (Lam__RV l)    => A__x s (Fail 0)
 
-  | A_v (EExpr g s) (RVTac t)    => E_x g t s
+  | A__v (EExpr g s) (Tac__RV t)    => E__x g t s
 
   (* Final configuration steps to itself *)
 
-  | A_x Nil r => A_x Nil r
+  | A__x Nil r => A__x Nil r
 
   (* Missing from the paper: *)
   (*
-  | E_v _ (ExprVar _) _ => TODO
+  | E__v _ (ExprVar _) _ => TODO
    *)
 
-  | E_x _ (TacAtom _) _ => TODO
+  | E__x g (TacAtom atac) s =>
+    match atomic_exec g atac with
+    | None    => A__x s (Fail 0)
+    | Some gs => A__x s gs
+    end
 
   (* by construction, I believe this never happens: *)
-  | E_seq [] (_ :: _) _ => TODO
-  | E_seq (_ :: _) [] _ => TODO
+  | E__seq [] (_ :: _) _ => TODO
+  | E__seq (_ :: _) [] _ => TODO
 
   end.
 
+(*
 Fixpoint step (n : nat) (c : configuration) : configuration :=
   match n with
   | O => c
   | S n' => step n' (stepConfiguration c)
   end.
-
-Notation "a ⇒ b" := (step 1 a = b) (at level 50).
-
-(*
-Definition step_star := clos_refl_trans _ (fun a b => a ⇒ b).
  *)
 
-Definition step_star (a b : configuration) : Prop := exists n, step n a = b.
+Definition step_one a b := stepConfiguration a = b.
 
-Notation "a ⇒* b" := (step_star a b) (at level 50).
+Notation "a ⇒ b" := (step_one a b) (at level 50).
 
+Definition step_star := clos_refl_trans configuration step_one.
+
+Notation "a ⇒* b" := (clos_refl_trans _ step_one a b) (at level 50).
+
+(*
 Lemma decompose_step:
   forall (n : nat) (cStart cMiddle cFinal : configuration),
     step n cStart = cMiddle ->
@@ -605,25 +641,23 @@ Proof.
   - simpl in *.
     now find_eapply; eauto.
 Qed.
+ *)
 
-Global Instance Reflexive_step_star : Reflexive step_star.
+Global Instance Reflexive_clos_refl_trans :
+  forall T (R : T -> T -> Prop), Reflexive (clos_refl_trans _ R).
 Proof.
   repeat intro.
-  now (exists 0).
+  now constructor.
 Qed.
 
-Global Instance Transitive_step_star : Transitive step_star.
+Global Instance Transitive_clos_refl_trans :
+  forall T (R : T -> T -> Prop), Transitive (clos_refl_trans _ R).
 Proof.
   repeat intro.
-  unfold step_star in *.
-  do 2 on @ex destruct'.
-  eexists (_ + _).
-  erewrite decompose_step.
-  - reflexivity.
-  - eassumption.
-  - eassumption.
+  now econstructor; eauto.
 Qed.
 
+(*
 Theorem decompose_star :
   forall n cStart cMiddle cFinal,
     step n cStart = cMiddle ->
@@ -631,85 +665,43 @@ Theorem decompose_star :
     cStart ⇒* cFinal.
 Proof.
   intros.
-  unfold step_star in *.
-  on @ex destruct'.
+  etransitivity; [ | eauto ].
   eexists (_ + _).
   eapply decompose_step; eauto.
 Qed.
 
 Ltac step n := eapply (decompose_star n); [ reflexivity | simpl ].
+ *)
+
+Local Ltac step := etransitivity; [ apply rt_step; reflexivity | simpl ].
 
 Tactic Notation "on_context" open_constr(c) tactic(tac) :=
   match goal with [ H : context [c] |- _ ] => tac H end.
 
-(*
-Lemma stack_comes_back :
-  forall s r r',
-    exists n, step (S n) (A_v s r) = A_v s r'.
-Proof.
-  intro.
-  on S_v induction'; intros.
-  - simpl.
-    break_match_in_goal.
-    edestruct IHs.
-    eexists (S _).
-    apply H.
-
-Qed.
-
-Lemma stack_decreases :
-  forall n s r s' r',
-    step n (A_v s r) = A_v s' r' ->
-    S_v_size s >= S_v_size s'.
-Proof with (try solve [on step find_apply_in; simpl in *; omega]).
-  intro.
-  on_head nat ltac:(fun n => induction n using lt_wf_ind); intros.
-  on_head nat destruct'.
-  { on_head @eq inversion'. omega. }
-  on step simpl'.
-  break_match_in_hyp; subst; simpl.
-  - break_match_in_hyp; subst...
-    + next.
-      on step simpl'.
-      break_match_in_hyp.
-      * break_match_in_hyp...
-      * next; simpl in *.
-        break_match_in_hyp; subst.
-        { break_match_in_hyp... }
-        { next; simpl in *.
-          break_match_in_hyp; subst.
-          { break_match_in_hyp; subst.
-            { on_head nat destruct'.
-              { apply H in H0. simpl in H0. on step inversion'. simpl.
-            apply H in H0.
-
-Qed.
-*)
-
 Theorem abstractMachineCorrect_val :
   forall (g : goal) (e : expr) (r : RV),
-    g ⊢ e ↓v r -> (forall s, E_v g e s ⇒* A_v s r).
+    g ⊢ e ↓v r -> (forall s, E__v g e s ⇒* A__v s r).
 Proof.
   do 4 intro.
   on_head ExprEval induction';  intros.
-  - step 1.
+  - step.
     now on_head value destruct'; subst.
-  - now step 1.
-  - step 1.
+  - now step.
+  - step.
     find_rewrite_r.
-    now step 1.
-  - step 1.
+    now step.
+  - step.
     find_rewrite_r.
-    now step 1.
-  - step 1.
+    now step.
+  - step.
     find_rewrite_r.
-    now step 1.
-  - step 1.
+    now step.
+  - step.
     find_rewrite_r.
-    now step 1.
-  - step 1.
+    now step.
+  - step.
     find_rewrite_r.
-    now step 1.
+    now step.
 Qed.
 
 (*
@@ -760,77 +752,249 @@ Admitted.
 
 Theorem abstractMachineCorrect_exec :
   forall g,
-    (forall e r, g ⊢ e ⇓ r -> forall s, E_ee g e s ⇒* A_x s r)
+    (forall e r, g ⊢ e ⇓ r -> forall s, E__ee g e s ⇒* A__x s r)
     /\
-    (forall t r, g ⊢ t ↓x r -> forall s, E_x g t s ⇒* A_x s r)
+    (forall t r, g ⊢ t ↓x r -> forall s, E__x g t s ⇒* A__x s r)
 .
 Proof.
   intro.
   apply (
       Exec_ind _
-        (fun e r => forall s, E_ee g e s ⇒* A_x s r)
-        (fun t r => forall s, E_x g t s ⇒* A_x s r)
+        (fun e r => forall s, E__ee g e s ⇒* A__x s r)
+        (fun t r => forall s, E__x g t s ⇒* A__x s r)
     ); intros.
-  - step 1.
+  - step.
     on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head step_star rewrite_r.
-    now step 1.
-  - step 1.
+    on_head clos_refl_trans rewrite_r.
+    now step.
+  - step.
     on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head step_star rewrite_r.
-    now step 1.
-  - step 1.
+    on_head clos_refl_trans rewrite_r.
+    now step.
+  - step.
     on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head step_star rewrite_r.
-    now step 1.
-  - step 1.
+    on_head clos_refl_trans rewrite_r.
+    now step.
+  - step.
     on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head step_star rewrite_r.
-    now step 1.
-  - step 1.
+    on_head clos_refl_trans rewrite_r.
+    now step.
+  - step.
     on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head step_star rewrite_r.
-    now step 1.
-  - now step 1.
-  - now step 1.
-  - now step 1.
-  - step 1.
+    on_head clos_refl_trans rewrite_r.
+    now step.
+  - now step.
+  - step.
+    find_apply_in_hyp agreement.
     find_rewrite_r.
-    now step 1.
-  - step 1.
+    now constructor.
+  - now step.
+  - now step.
+  - now step.
+  - step.
     find_rewrite_r.
-    now step 1.
-  - step 1.
+    now step.
+  - step.
     find_rewrite_r.
-    now step 1.
-  - step 1.
+    now step.
+  - step.
     find_rewrite_r.
-    now step 1.
+    now step.
+  - step.
+    find_rewrite_r.
+    now step.
 Qed.
 
-Ltac next := on_head nat destruct'; [ try discriminate | ]; on step simpl'.
+Local Ltac next :=
+  on clos_refl_trans inversion'; [ try solve [ on step_one inversion' ] | ].
+
+Theorem next_configuration : forall (P : Prop) c c',
+    c <> c' ->
+    (stepConfiguration c ⇒* c' -> P) ->
+    c ⇒* c' -> P.
+Proof.
+  intros.
+  on_head clos_refl_trans
+          ltac:(
+    in_eapply (
+        clos_refl_trans_ind_right
+          _ step_one (fun cInd => cInd = c -> P)
+  )).
+  - assumption.
+  - congruence.
+  - intros. subst. on_head step_one inversion'. auto.
+  - reflexivity.
+Qed.
+
+Ltac forward :=
+  on_head clos_refl_trans
+          ltac:(fun H =>
+                  eapply next_configuration in H;
+                  [ eassumption
+                  | discriminate
+                  | simpl; clear H; intro
+                  ]
+               ).
+
+Lemma A__x_Nil_steps_to_itself : forall c c',
+    c ⇒* c' ->
+    forall r,
+    c = A__x Nil r ->
+    c' = A__x Nil r.
+Proof.
+  do 4 intro.
+  on clos_refl_trans induction'; intros; subst.
+  - now on step_one inversion'.
+  - reflexivity.
+  - auto.
+Qed.
+
+Local Ltac step_A__x :=
+  on_context (_ ⇒* _) ltac:(fun H => eapply A__x_Nil_steps_to_itself in H; eauto).
+
+Notation "Γ ⊢ a ⇒ v" := (atomic_exec Γ a = Some v) (at level 50).
+
+Theorem abstractMachineCorrect_expr' :
+  forall g e r, E__ee g e Nil ⇒* A__x Nil r -> g ⊢ e ⇓ r.
+Proof.
+  intros.
+  - on expr destruct'.
+    + on value destruct'.
+      * on RX destruct'.
+        { on_head fail destruct'.
+          on_head nat destruct'.
+          { eapply EEX4_2.
+            now constructor.
+          }
+          { repeat progress forward.
+            now step_A__x.
+          }
+        }
+        { repeat progress forward.
+          now step_A__x.
+        }
+      * on_head tactic destruct'.
+        { repeat progress forward.
+          break_match_in_hyp.
+          step_A__x.
+          subst_all.
+          TODO.
+
+
+
+
+
+
+
+
+
+
+
+            eapply (
+              clos_refl_trans_ind_right
+                _ step_one
+                (fun c : configuration => c = E__ee g (ExprVal (ValLam xs e)) Nil -> False)
+    ) in H.
+  exact H.
+  congruence.
+
+
+  ; try congruence; intros; subst.
+
+  inversion' H0.
+  simpl in *; subst. clear H1.
+  inversion H0.
+
+
+  (*
+  pose proof (
+         clos_refl_trans_ind_left
+           configuration step_one c
+           (fun c1 : configuration => c1 = A__x Nil (Fail__RX n) -> False)
+       ).
+  eapply H0 in H. exact H. congruence.
+  apply H. subst. simpl in *.
+  specialize (
+      H0 _ _ _ c0 H
+    ).
+    *)
+
+  pose proof (
+         clos_refl_trans_ind_right
+           configuration step_one
+           (fun c : configuration => c = E__ee g (ExprVal (ValLam xs e)) Nil -> False) c0
+       ) as IND.
+  eapply IND in H; eauto. congruence.
+  intros. subst.
+
+
+
+
+  inversion H0.
+          next.
+          inversion H.
+
+
+          apply EEX3.
+          apply VAL.
+          constructor.
+          inversion H. inversion H0. simpl in H0.
+          next.
+
+
+
+  match goal with
+  | [_ : ?a ⇒* ?b |- _] => remember a; remember b
+  end.
+  induction H. admit. admit.
+  on clos_refl_trans ltac:(fun H => induction H using clos_refl_trans_ind_left); intros.
+  admit.
+  auto.
+Qed.
 
 Theorem abstractMachineCorrect_exec' :
   forall g,
-    (forall e r, E_ee g e Nil ⇒* A_x Nil r -> g ⊢ e ⇓ r)
+    (forall e r, E__ee g e Nil ⇒* A__x Nil r -> g ⊢ e ⇓ r)
     /\
-    (forall t r, E_x g t Nil ⇒* A_x Nil r -> g ⊢ t ↓x r)
+    (forall t r, E__x g t Nil ⇒* A__x Nil r -> g ⊢ t ↓x r)
 .
 Proof.
   split; intros.
   {
-    on_head RX generalize_dependent'.
-    on_head expr induction'; intros.
-    - on step_star destruct'.
-      next.
-      next.
-      break_match_in_hyp; subst.
-      + next.
-        next.
+    match goal with
+    | [_ : ?a ⇒* ?b |- _] => remember a; remember b
+    end.
+    repeat on @eq revert'.
+    induction H; intros; subst.
+    inversion H.
+    inversion Heqc0.
+    subst.
+    admit.
+
+    on clos_refl_trans ltac:(fun H => induction H using clos_refl_trans_ind_left); intros.
+    { congruence. }
+    subst.
+    on ExprExec ltac:(fun H => specialize (H eq_refl)).
+    on_head step_one inversion'.
+    on_head configuration destruct'; on @eq simpl'.
+    - break_match_in_hyp; subst; try congruence.
+      + break_match_in_hyp; subst; congruence.
+      + break_match_in_hyp; subst.
+        * congruence.
+        * break_let_pair_in_hyp; congruence.
+    - break_match_in_hyp; subst.
+      + break_match_in_hyp; subst; try congruence.
+      + break_match_in_hyp; subst; try congruence.
+      + break_match_in_hyp; subst; try congruence.
+      + break_match_in_hyp; subst; try congruence.
+        * break_match_in_hyp; subst; try congruence.
+      + break_match_in_hyp; subst; try congruence.
+      + break_match_in_hyp; subst; try congruence.
         * on @eq inversion'.
-          constructor.
-          constructor.
-      simpl in H.
+          on clos_refl_trans inversion'.
+          { on step_one inversion'. }
+
+Qed.
 
 Inductive exprclosure : Type :=
 | ECResult : forall (r : RV), exprclosure
@@ -879,31 +1043,31 @@ Definition ecstep (e : exprclosure) : exprclosure :=
   match e with
 
   (* beta_bot *)
-  | ECApp (ECExpr g _) (LCFail n) => RVFail n
+  | ECApp (ECExpr g _) (LCFail n) => Fail__RV n
 
   (* prop_app *)
   | ECExpr g (ExprApp e es) => ECApp (ECExpr g e) (LCExprs g es)
 
   (* app_l_bot *)
-  | ECApp (RVFail n) cs => RVFail n
+  | ECApp (Fail__RV n) cs => Fail__RV n
 
   (* app_l_nval *)
-  | ECApp _ cs => RVFail 0
+  | ECApp _ cs => Fail__RV 0
 
   (* prop_let *)
   | ECExpr g (ExprLet x e1 e2) => ECLet x (ECExpr g e1) (ECExpr g e2)
 
   (* let_gs *)
-  | ECLet x (RVGoals gs) c => RVFail 0
+  | ECLet x (Goals__RV gs) c => Fail__RV 0
 
   (* let_bot *)
-  | ECLet x (RVFail n) c => RVFail n
+  | ECLet x (Fail__RV n) c => Fail__RV n
 
   (* let_v *)
   | ECLet x v c => subst_exprclosure x v c
 
   (* mg_nil *)
-  | ECExpr g (ExprMGoal []) => RVFail 0
+  | ECExpr g (ExprMGoal []) => Fail__RV 0
 
   (* prop_mg *)
   | ECExpr g (ExprMGoal ((p, e) :: cl)) => ECMGoal (start g p) (ECExpr g e) cl
@@ -916,13 +1080,13 @@ Definition ecstep (e : exprclosure) : exprclosure :=
     end
 
   (* mg_gs *)
-  | ECMEval m' (g, e, RVGoals gs) cl => RVGoals gs
+  | ECMEval m' (g, e, Goals__RV gs) cl => Goals__RV gs
 
   (* mg_bot0 *)
-  | ECMEval m' (g, e, RVFail 0) cl => ECMGoal m' (ECExpr g e) cl
+  | ECMEval m' (g, e, Fail__RV 0) cl => ECMGoal m' (ECExpr g e) cl
 
   (* mg_botS *)
-  | ECMEval m' (g, e, RVFail (S n)) cl => RVFail n
+  | ECMEval m' (g, e, Fail__RV (S n)) cl => Fail__RV n
 
   (* mg_val *)
   | ECMEval m' (g, e, v) cl => v
@@ -931,7 +1095,7 @@ Definition ecstep (e : exprclosure) : exprclosure :=
   | ECExpr g (ExprFix x e) => ECExpr g (subst_expr x (ExprFix x e) e)
 
   (* exec1_tac *)
-  | ECExec1 g (RVTac t) => ECEval (TCTac g t)
+  | ECExec1 g (Tac__RV t) => ECEval (TCTac g t)
 
   (* exec1_res + exec1_val *)
   | ECExec1 g (ECResult v)   => v
@@ -971,51 +1135,51 @@ Definition tcstep (tc : tacticclosure) : tacticclosure :=
   match tc with
 
   (* idtac *)
-  | TCTac g TacIdtac => RXGoals [g]
+  | TCTac g TacIdtac => Goals__RX [g]
 
   (* fail *)
-  | TCTac g (TacFail n) => RXFail n
+  | TCTac g (TacFail n) => Fail__RX n
 
   (* prop_progress *)
   | TCTac g (TacProgress e) => TCProgress g (TCExec g e)
 
   (* progress_eq + progress_neq *)
-  | TCProgress g (RXGoals gs) =>
+  | TCProgress g (Goals__RX gs) =>
     if list_eq_dec goal_eq_dec [g] gs
-    then RXFail 0
-    else RXGoals gs
+    then Fail__RX 0
+    else Goals__RX gs
 
   (* progress_bot *)
-  | TCProgress g (RXFail n) => RXFail n
+  | TCProgress g (Fail__RX n) => Fail__RX n
 
   (* semi_bot_l *)
-  | TCSemi (RXFail n) _ => RXFail n
+  | TCSemi (Fail__RX n) _ => Fail__RX n
 
   (* semi_gs *)
-  | TCSemi (RXGoals gs) e => TCSeq (SeqExprs gs (repeat e (length gs)))
+  | TCSemi (Goals__RX gs) e => TCSeq (SeqExprs gs (repeat e (length gs)))
 
   (* bsemi_bot_l *)
-  | TCBSemi (RXFail n) _ => RXFail n
+  | TCBSemi (Fail__RX n) _ => Fail__RX n
 
   (* bsemi_gs *)
-  | TCBSemi (RXGoals gs) es =>
+  | TCBSemi (Goals__RX gs) es =>
     if Nat.eq_dec (length gs) (length es)
-    then RXFail 0
+    then Fail__RX 0
     else TCSeq (SeqExprs gs es)
 
   (* seq_bot_l *)
-  | TCComma (RXFail n) _ => RXFail n
+  | TCComma (Fail__RX n) _ => Fail__RX n
 
   (* seq_bot_r *)
-  (* | TCComma (RXGoals gs) ??? => ??? *)
+  (* | TCComma (Goals__RX gs) ??? => ??? *)
   (* The paper does not make sense there *)
 
   (* seq_app *)
-  (*| TCComma (RXGoals gs) ??? => RXGoals (gs ++ ???)*)
+  (*| TCComma (Goals__RX gs) ??? => Goals__RX (gs ++ ???)*)
   (* The paper does not make sense there *)
 
   (* seq_gs *)
-  | TCComma (RXGoals gs) es => TCSeq (SeqExprs gs es)
+  | TCComma (Goals__RX gs) es => TCSeq (SeqExprs gs es)
 
   (* seq_cons *)
 

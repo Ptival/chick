@@ -1,5 +1,6 @@
 From Coq Require Import
      DecidableClass
+     EquivDec
      List
 .
 
@@ -43,7 +44,7 @@ Definition isPi (t : term) :
 
 Open Scope bool.
 
-Fixpoint atomic_exec (g : goal) (a : atomic) : option (list goal) :=
+Fixpoint atomic_exec (g : goal) (a : atomic) : option goals :=
   let '(hyps ÷ concl) := g in
   match a with
 
@@ -61,7 +62,7 @@ Fixpoint atomic_exec (g : goal) (a : atomic) : option (list goal) :=
     match
       List.find
         (fun d =>
-           if variable_dec H (nameOfLocalDeclaration d)
+           if H == (nameOfLocalDeclaration d)
            then isLocalAssum d
            else false)
         hyps
@@ -86,4 +87,4 @@ Fixpoint atomic_exec (g : goal) (a : atomic) : option (list goal) :=
   end
 .
 
-Notation "Γ ⊢ a ⇒ v" := (atomic_exec Γ a = Some v) (at level 50).
+Notation "Γ ⊢ a ⇒a v" := (atomic_exec Γ a = Some v) (at level 50).

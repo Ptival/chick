@@ -20,27 +20,28 @@ Fixpoint piListRev pis τ2 :=
 
 Definition piList pis φ := piListRev (List.rev pis) φ.
 
-Reserved Notation "Γ ⊢ x ⇓ v" (at level 50).
+Reserved Notation "Γ ⊢ x ⇓a v" (at level 50).
 
-Inductive AtomicExec : goal -> atomic -> option (list goal) -> Prop :=
+Inductive AtomicExec : goal -> atomic -> option goals -> Prop :=
 
 | AssumptionOK :
     forall Γ φ,
       TypeInLocalContext φ Γ ->
-      Γ ÷ φ ⊢ AtomAssumption ⇓ Some []
+      Γ ÷ φ ⊢ AtomAssumption ⇓a Some []
 
 | IntroOK :
     forall b x Γ τ1 τ2 τG goals,
       Fresh x Γ ->
       τG = mkPi b τ1 τ2 ->
       goals = [(LocalAssum x τ1 :: Γ) ÷ τ2] ->
-      Γ ÷ τG ⊢ AtomIntro x ⇓ Some goals
+      Γ ÷ τG ⊢ AtomIntro x ⇓a Some goals
 
 | ApplyOK :
     forall H Γ τH τG pis,
       InLocalContext (LocalAssum H τH) Γ ->
       Unify τH (piList pis τG) ->
-      Γ ÷ τG ⊢ AtomApply H ⇓ Some (List.map (Goal Γ) pis)
+      Γ ÷ τG ⊢ AtomApply H ⇓a Some (List.map (Goal Γ) pis)
 
-where "Γ ⊢ x ⇓ v" := (AtomicExec Γ x v)
+where "Γ ⊢ x ⇓a v" := (AtomicExec Γ x v)
+
 .

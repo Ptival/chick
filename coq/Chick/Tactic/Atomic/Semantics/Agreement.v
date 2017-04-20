@@ -21,11 +21,19 @@ Proof.
   on binder destruct'; repeat eexists.
 Qed.
 
-Theorem agreement : forall Γ x v, Γ ⊢ x ⇓ Some v <-> Γ ⊢ x ⇒ v.
+Theorem agreement :
+  forall Γ x v,
+    Γ ⊢ x ⇓a Some v <-> Γ ⊢ x ⇒a v.
 Proof.
   split; intros.
   {
-    on atomic destruct'; on AtomicExec inversion'.
+    on AtomicExec inversion'.
+    {
+      simpl.
+      match goal with
+      | [ |- context [ decide ?P ] ] => now _decide_ P X
+      end.
+    }
     {
       simpl.
       pose proof isPi_mkPi.
@@ -40,12 +48,6 @@ Proof.
         do 2 on_head binder destruct'; on @eq now_inversion.
       }
       { contradiction. }
-    }
-    {
-      simpl.
-      match goal with
-      | [ |- context [ decide ?P ] ] => now _decide_ P X
-      end.
     }
     {
       simpl.
