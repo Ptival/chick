@@ -5,6 +5,7 @@ From Chick Require Export
      Fresh
      Goal
      LocalContext
+     ReservedNotations
      Term
      Unify
 .
@@ -20,27 +21,52 @@ Fixpoint piListRev pis τ2 :=
 
 Definition piList pis φ := piListRev (List.rev pis) φ.
 
-Reserved Notation "Γ ⊢ x ⇓a v" (at level 50).
-
 Inductive AtomicExec : goal -> atomic -> option goals -> Prop :=
 
-| AssumptionOK :
-    forall Γ φ,
-      TypeInLocalContext φ Γ ->
-      Γ ÷ φ ⊢ AtomAssumption ⇓a Some []
+| Assumption__OK :
+    forall Γ goal,
+      ? \: goal ∈ Γ ->
+      Γ ÷ goal ⊢ AtomAssumption ⇓a Some []
 
-| IntroOK :
-    forall b x Γ τ1 τ2 τG goals,
+| Intro__OK :
+    forall b x Γ τ1 τ2 goal goals,
       Fresh x Γ ->
-      τG = mkPi b τ1 τ2 ->
+      goal = mkPi b τ1 τ2 ->
       goals = [(LocalAssum x τ1 :: Γ) ÷ τ2] ->
-      Γ ÷ τG ⊢ AtomIntro x ⇓a Some goals
+      Γ ÷ goal ⊢ AtomIntro x ⇓a Some goals
 
-| ApplyOK :
-    forall H Γ τH τG pis,
-      InLocalContext (LocalAssum H τH) Γ ->
-      Unify τH (piList pis τG) ->
-      Γ ÷ τG ⊢ AtomApply H ⇓a Some (List.map (Goal Γ) pis)
+| Apply__OK :
+    forall H Γ τH goal pis goals,
+      H \: τH ∈ Γ ->
+      Unify τH (piList pis goal) ->
+      goals = List.map (Goal Γ) pis ->
+      Γ ÷ goal ⊢ AtomApply H ⇓a Some goals
+
+| Assumption__FAIL :
+    forall Γ goal,
+      ~ (? \: goal ∈ Γ) ->
+      Γ ÷ goal ⊢ AtomAssumption ⇓a None
+
+| Intro__FAIL1 :
+    forall Γ goal x,
+      ~ Fresh x Γ ->
+      Γ ÷ goal ⊢ AtomIntro x ⇓a None
+
+| Intro__FAIL2 :
+    forall Γ goal x,
+      (forall b τ1 τ2, goal <> mkPi b τ1 τ2) ->
+      Γ ÷ goal ⊢ AtomIntro x ⇓a None
+
+| Apply__Fail1 :
+    forall Γ goal H,
+      Fresh H Γ ->
+      Γ ÷ goal ⊢ AtomApply H ⇓a None
+
+| Apply__Fail2 :
+    forall Γ goal τH H,
+      H \: τH ∈ Γ ->
+      ~ Unify τH goal ->
+      Γ ÷ goal ⊢ AtomApply H ⇓a None
 
 where "Γ ⊢ x ⇓a v" := (AtomicExec Γ x v)
 

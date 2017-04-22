@@ -12,6 +12,8 @@ From Chick Require Import
      Goal
      LocalContext
      LocalDeclaration
+     ReservedNotations
+     TODO
 .
 Require Import Chick.Variable.
 
@@ -57,13 +59,13 @@ value : Type :=
 
 with
 tactic : Type :=
-| TacAtom       : forall (a : atomic), tactic
-| TacIdtac      : tactic
-| TacFail       : forall (n : nat), tactic
-| TacComp       : forall (e1 e2 : expr), tactic
-| TacBranchComp : forall (e : expr) (es : list expr), tactic
-| TacFirst      : forall (es : list expr), tactic
-| TacProgress   : forall (e : expr), tactic
+| TacAtom     : forall (a : atomic), tactic
+| TacIdtac    : tactic
+| TacFail     : forall (n : nat), tactic
+| TacSemi     : forall (e1 e2 : expr), tactic
+| TacBranch   : forall (e : expr) (es : list expr), tactic
+| TacFirst    : forall (es : list expr), tactic
+| TacProgress : forall (e : expr), tactic
 
 with
 lam : Type :=
@@ -151,12 +153,6 @@ Inductive RARGS :=
 Coercion Fail__RARGS  : fail   >-> RARGS.
 Coercion Vals__RARGS  : values >-> RARGS.
 
-Reserved Notation "g ⊢ e ↓v gs" (at level 50).
-Reserved Notation "g ⊢ e ↓vx gs" (at level 50).
-Reserved Notation "g ⊢ e ↓x gs" (at level 50).
-Reserved Notation "g ⊢ e ↓seq gs" (at level 50).
-Reserved Notation "g ⊢ e ⇓ r" (at level 50).
-
 Parameter subst_expr : variable -> expr -> expr -> expr.
 
 Parameter subst_exprs : list variable -> list expr -> expr -> expr.
@@ -218,36 +214,31 @@ where
 "g ⊢ e ↓v r" := (ExprEval g e r)
 .
 
-Inductive TacSeqExec (g : goal) (e : expr) : RX -> Prop :=
-where
-"g ⊢ e ↓seq r" := (TacSeqExec g e r)
-.
-
-Inductive ExprExec (g : goal) : expr -> RX -> Prop :=
+Inductive ExprExec : goal -> expr -> RX -> Prop :=
 
 | EEX1 :
-    forall e (gs : goals),
+    forall g e (gs : goals),
       g ⊢ e ↓v gs ->
       g ⊢ e ⇓  gs
 
 | EEX2 :
-    forall e (t : tactic) rx,
+    forall g e (t : tactic) rx,
       g ⊢ e ↓v t  ->
       g ⊢ t ↓x rx ->
       g ⊢ e ⇓  rx
 
 | EEX3 :
-    forall e n,
+    forall g e n,
       g ⊢ e ↓v Fail n ->
       g ⊢ e ⇓  Fail n
 
 | EEX4_1 :
-    forall e (n : nat),
+    forall g e (n : nat),
       g ⊢ e ↓v n      ->
       g ⊢ e ⇓  Fail 0
 
 | EEX4_2 :
-    forall e (l : lam),
+    forall g e (l : lam),
       g ⊢ e ↓v l      ->
       g ⊢ e ⇓  Fail 0
 
@@ -257,60 +248,123 @@ where
 
 with
 
-TacExec (g : goal) : tactic -> RX -> Prop :=
+TacExec : goal -> tactic -> RX -> Prop :=
 
 | ATOMIC_FAIL :
-    forall a,
+    forall g a,
       g ⊢ a ⇓a None           ->
       g ⊢ TacAtom a ↓x Fail 0
 
 | ATOMIC_SUCCESS :
-    forall a gs,
+    forall g a gs,
       g ⊢ a ⇓a Some gs    ->
       g ⊢ TacAtom a ↓x gs
 
 | IDTAC :
-    g ⊢ TacIdtac ↓x Goals__RX [g]
+    forall g,
+      g ⊢ TacIdtac ↓x Goals__RX [g]
 
 | FAIL :
-    forall n,
+    forall g n,
       g ⊢ TacFail n ↓x Fail n
 
 | FIRST1 :
-    g ⊢ TacFirst [] ↓x Fail 0
+    forall g,
+      g ⊢ TacFirst [] ↓x Fail 0
 
 | FIRST2 :
-    forall e es (gs : goals),
+    forall g e es (gs : goals),
       g ⊢ e                  ⇓  gs ->
       g ⊢ TacFirst (e :: es) ↓x gs
 
 | FIRST3 :
-    forall e es n,
+    forall g e es n,
       g ⊢ e                  ⇓  Fail (S n) ->
       g ⊢ TacFirst (e :: es) ↓x Fail n
 
 | FIRST4 :
-    forall e es rx,
+    forall g e es rx,
       g ⊢ e                  ⇓  Fail 0 ->
       g ⊢ TacFirst es        ↓x rx     ->
       g ⊢ TacFirst (e :: es) ↓x rx
 
 | PROGR1 :
-    forall e n,
+    forall g e n,
       g ⊢ e             ⇓  Fail n ->
       g ⊢ TacProgress e ↓x Fail n
 
-(* TODO *)
+| PROGR2 :
+    forall g e,
+      g ⊢ e             ⇓  ([g] : goals) ->
+      g ⊢ TacProgress e ↓x Fail 0
+
+| PROGR3 :
+    forall g e (gs : goals),
+      g ⊢ e             ⇓  gs ->
+      gs <> [g]                ->
+      g ⊢ TacProgress e ↓x gs
+
+| SEMI1 :
+    forall g e1 e2 (f : fail),
+      g ⊢ e1            ⇓  f ->
+      g ⊢ TacSemi e1 e2 ↓x f
+
+| SEMI2 :
+    forall g e1 e2 (gs : goals) rx,
+      g ⊢ e1            ⇓  gs ->
+      gs ⊢ List.repeat e2 (List.length gs) ↓seq rx ->
+      g ⊢ TacSemi e1 e2 ↓x rx
+
+| BRANCH1 :
+    forall g e1 es (f : fail),
+      g ⊢ e1                  ⇓  f ->
+      g ⊢ TacBranch e1 es ↓x f
+
+| BRANCH2 :
+    forall g e1 es (gs : goals),
+      g ⊢ e1                  ⇓  gs   ->
+      List.length gs <> List.length es ->
+      g ⊢ TacBranch e1 es ↓x Fail 0
+
+| BRANCH3 :
+    forall g e1 es (gs : goals) rx,
+      g ⊢ e1                  ⇓    gs     ->
+      List.length gs = List.length es     ->
+      gs ⊢ es                 ↓seq rx     ->
+      g ⊢ TacBranch e1 es ↓x   rx
 
 where
 
 "g ⊢ e ↓x r" := (TacExec g e r)
+
+with TacSeqExec : goals -> list expr -> RX -> Prop :=
+
+| SEQ1 :
+    [] ⊢ [] ↓seq ([] : goals)
+
+| SEQ2 :
+    forall g e gs es (f : fail),
+      g       ⊢ e       ⇓    f ->
+      g :: gs ⊢ e :: es ↓seq f
+
+| SEQ3 :
+    forall g e gs es (gs' : goals) (f : fail),
+      g       ⊢ e       ⇓    gs' ->
+      gs      ⊢ es      ↓seq f   ->
+      g :: gs ⊢ e :: es ↓seq f
+
+where
+
+"g ⊢ e ↓seq r" := (TacSeqExec g e r)
+
 .
 
-Scheme ExprExec_ind' := Minimality for ExprExec Sort Prop
-  with TacExec_ind'  := Minimality for TacExec Sort Prop.
+Scheme ExprExec_ind'   := Minimality for ExprExec   Sort Prop
+  with TacExec_ind'    := Minimality for TacExec    Sort Prop
+  with TacSeqExec_ind' := Minimality for TacSeqExec Sort Prop
+.
 
-Combined Scheme Exec_ind from ExprExec_ind', TacExec_ind'.
+Combined Scheme Exec_ind from ExprExec_ind', TacExec_ind', TacSeqExec_ind'.
 
 Inductive ExtendedExprEval (g : goal) (e : expr) : RVX -> Prop :=
 | EEV1 :
@@ -413,8 +467,6 @@ Inductive configuration : Type :=
 Definition initialconfiguration (g : goal) (e : expr) :=
   E__ee g e Nil.
 
-Axiom TODO : forall {T}, T.
-
 Parameter start : goal -> pattern -> matcher.
 Parameter next : matcher -> option ((expr -> expr) * matcher).
 
@@ -446,9 +498,9 @@ Definition stepConfiguration (c : configuration) : configuration :=
 
   | E__x g (TacFirst (e :: es))       s => E__ee g e (First g es s)
 
-  | E__x g (TacComp e1 e2)            s => E__ee g e1 (Semi e2 s)
+  | E__x g (TacSemi e1 e2)            s => E__ee g e1 (Semi e2 s)
 
-  | E__x g (TacBranchComp e1 es)      s => E__ee g e1 (BSemi es s)
+  | E__x g (TacBranch e1 es)      s => E__ee g e1 (BSemi es s)
 
   | E__pat g m e cl                   s =>
     match next m with
@@ -683,124 +735,72 @@ Theorem abstractMachineCorrect_val :
     g ⊢ e ↓v r -> (forall s, E__v g e s ⇒* A__v s r).
 Proof.
   do 4 intro.
-  on_head ExprEval induction';  intros.
-  - step.
-    now on_head value destruct'; subst.
-  - now step.
-  - step.
-    find_rewrite_r.
-    now step.
-  - step.
-    find_rewrite_r.
-    now step.
-  - step.
-    find_rewrite_r.
-    now step.
-  - step.
-    find_rewrite_r.
-    now step.
-  - step.
-    find_rewrite_r.
-    now step.
+  on_head ExprEval induction';  intros;
+    try solve
+        [ now step
+        | step; find_rewrite_r; now step
+        | step; break_match_in_goal; now subst
+        ].
 Qed.
 
-(*
-{
-    revert r H.
-    unfold step_star.
-    induction e; intros.
-
-    {
-      on_head value destruct'.
-      {
-        econstructor.
-        next.
-        { now inversion H; constructor. }
-        {
-          on_head S_v destruct'.
-          next.
-          break_match_in H.
-          break_match_in H.
-          next.
-          inversion H.
-          apply f_equal with (f := S_v_size) in H1.
-          simpl in H1. omega.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-          admit.
-        }
-      }
-      { admit. }
-      { admit. }
-    }
-    { admit. }
-    { admit. }
-    { admit. }
-    { admit. }
-  }
-Admitted.
- *)
-
 Theorem abstractMachineCorrect_exec :
-  forall g,
-    (forall e r, g ⊢ e ⇓ r -> forall s, E__ee g e s ⇒* A__x s r)
-    /\
-    (forall t r, g ⊢ t ↓x r -> forall s, E__x g t s ⇒* A__x s r)
+  (forall g  e  r, g  ⊢ e  ⇓    r -> forall s, E__ee  g  e  s ⇒* A__x s r)
+  /\
+  (forall g  t  r, g  ⊢ t  ↓x   r -> forall s, E__x   g  t  s ⇒* A__x s r)
+  /\
+  (forall gs es r, gs ⊢ es ↓seq r -> forall s, E__seq gs es s ⇒* A__x s r)
 .
 Proof.
-  intro.
   apply (
-      Exec_ind _
-        (fun e r => forall s, E__ee g e s ⇒* A__x s r)
-        (fun t r => forall s, E__x g t s ⇒* A__x s r)
-    ); intros.
-  - step.
-    on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head clos_refl_trans rewrite_r.
-    now step.
-  - step.
-    on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head clos_refl_trans rewrite_r.
-    now step.
-  - step.
-    on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head clos_refl_trans rewrite_r.
-    now step.
-  - step.
-    on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head clos_refl_trans rewrite_r.
-    now step.
-  - step.
-    on ExprEval ltac:(in_eapply abstractMachineCorrect_val).
-    on_head clos_refl_trans rewrite_r.
-    now step.
-  - now step.
-  - step.
-    find_apply_in_hyp agreement.
-    find_rewrite_r.
-    now constructor.
-  - now step.
-  - now step.
-  - now step.
+      Exec_ind
+        (fun g  e  r => forall s, E__ee  g  e  s ⇒* A__x s r)
+        (fun g  t  r => forall s, E__x   g  t  s ⇒* A__x s r)
+        (fun gs es r => forall s, E__seq gs es s ⇒* A__x s r)
+    );
+    intros;
+    try solve
+        [ now step
+        | step; find_rewrite_r; now step
+        | step;
+          on ExprEval ltac:(in_eapply abstractMachineCorrect_val);
+          on_head clos_refl_trans rewrite_r;
+          now step
+        | step;
+          find_apply_in_hyp agreement;
+          find_rewrite_r;
+          now constructor
+        ].
   - step.
     find_rewrite_r.
-    now step.
+    step.
+    break_if_in_goal.
+    + reflexivity.
+    + congruence.
   - step.
     find_rewrite_r.
-    now step.
+    step.
+    break_match_in_goal; subst_all.
+    + reflexivity.
+    + break_match_in_goal; subst_all.
+      * break_if_in_goal; subst_all.
+        { congruence. }
+        { reflexivity. }
+      * reflexivity.
   - step.
     find_rewrite_r.
-    now step.
+    step.
+    break_if_in_goal; subst_all.
+    + congruence.
+    + reflexivity.
   - step.
+    find_rewrite_r.
+    step.
+    break_if_in_goal; subst_all.
+    + now find_rewrite_r.
+    + congruence.
+  - step.
+    find_rewrite_r.
+    step.
     find_rewrite_r.
     now step.
 Qed.
@@ -852,34 +852,114 @@ Qed.
 Local Ltac step_A__x :=
   on_context (_ ⇒* _) ltac:(fun H => eapply A__x_Nil_steps_to_itself in H; eauto).
 
-Notation "Γ ⊢ a ⇒ v" := (atomic_exec Γ a = Some v) (at level 50).
+Notation "Γ ⊢ a ⇒ v" := (atomic_exec Γ a = Some v).
+
+Lemma abstractMachineCorrect_tac:
+  forall g (t : tactic) r,
+    E__ee g t Nil ⇒* A__x Nil r -> g ⊢ t ↓x r.
+Proof.
+  intros.
+  on_head tactic destruct'.
+
+  { (* g ⊢ atac ⇓ r *)
+    repeat progress forward.
+    break_match_in_hyp.
+    { step_A__x.
+      subst_all.
+      find_apply_in_hyp agreement.
+      now econstructor.
+    }
+    { find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+      subst_all.
+      find_eapply_in_hyp agreement.
+      now constructor.
+    }
+  }
+
+  { (* g ⊢ idtac ⇓ r *)
+    repeat forward.
+    find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+    subst_all.
+    now constructor.
+  }
+
+  { (* g ⊢ fail n ⇓ r *)
+    repeat forward.
+    find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+    subst_all.
+    now constructor.
+  }
+
+  { (* g ⊢ e1 ; e2 ⇓ r *)
+    repeat forward.
+    break_match_in_hyp; subst_all.
+
+    { (* g ⊢ v ; e2 ⇓ r *)
+      break_match_in_hyp; subst_all.
+
+      { (* g ⊢ λ xs . e ; e2 ⇓ r *)
+        repeat forward.
+        find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+        subst_all.
+        apply SEMI1.
+        eapply EEX4_2.
+        now apply VAL.
+      }
+
+      { (* g ⊢ t ; e2 ⇓ r *)
+        repeat forward.
+        break_match_in_hyp; subst_all.
+        { break_match_in_hyp; subst_all.
+          { TODODODO.
+
+
+            repeat forward.
+            break_match_in_hyp; subst_all.
+            { break_match_in_hyp; subst_all.
+              { find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+                subst_all.
+          eapply EEX2.
+          { now apply VAL. }
+          apply SEMI1.
+          eapply EEX4_1.
+          now apply VAL.
+        }
+
 
 Theorem abstractMachineCorrect_expr' :
   forall g e r, E__ee g e Nil ⇒* A__x Nil r -> g ⊢ e ⇓ r.
 Proof.
   intros.
-  - on expr destruct'.
-    + on value destruct'.
-      * on RX destruct'.
-        { on_head fail destruct'.
-          on_head nat destruct'.
-          { eapply EEX4_2.
-            now constructor.
-          }
-          { repeat progress forward.
-            now step_A__x.
-          }
+  on expr destruct'.
+
+  { (* g ⊢ v ⇓ r *)
+    on value destruct'.
+
+    { (* g ⊢ λ xs . e ⇓ r *)
+      on RX destruct'.
+
+      { (* g ⊢ λ xs . e ⇓ ⊥ *)
+        on_head fail destruct'.
+        on_head nat destruct'.
+        { eapply EEX4_2.
+          now constructor.
         }
         { repeat progress forward.
           now step_A__x.
         }
-      * on_head tactic destruct'.
-        { repeat progress forward.
-          break_match_in_hyp.
-          step_A__x.
-          subst_all.
-          TODO.
+      }
+      { repeat progress forward.
+        now step_A__x.
+      }
+    }
 
+    { (* g ⊢ t ⇓ r *)
+      eapply EEX2; [ now apply VAL | ].
+      on_head tactic destruct'.
+
+
+            eauto.
+            repeat constructor.
 
 
 

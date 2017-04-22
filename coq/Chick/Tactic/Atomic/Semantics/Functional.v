@@ -10,7 +10,9 @@ From Chick Require Export
      Goal
      LocalContext
      LocalDeclaration
+     ReservedNotations
      Term
+     TODO
      Unify
 .
 
@@ -48,30 +50,14 @@ Fixpoint atomic_exec (g : goal) (a : atomic) : option goals :=
   let '(hyps ÷ concl) := g in
   match a with
 
-    (*
-
-| ApplyOK :
-    forall H Γ τH τG pis,
-      InLocalContext (LocalAssum H τH) Γ ->
-      Unify τH (piList pis τG) ->
-      Γ ÷ τG ⊢ AtomApply H ⇓ Some (List.map (Goal Γ) pis)
-
-     *)
-
   | AtomApply H =>
-    match
-      List.find
-        (fun d =>
-           if H == (nameOfLocalDeclaration d)
-           then isLocalAssum d
-           else false)
-        hyps
-    with
-    | Some (LocalAssum _ τH) => None (* TODO *)    | _ => None
+    match @witness _ (fun τ => H \: τ ∈ hyps) _ with
+    | inl (exist _ τ IN) => TODO
+    | inr _ => None
     end
 
   | AtomAssumption =>
-      if decide (TypeInLocalContext concl hyps)
+      if decide (? \: concl ∈ hyps)
       then Some []
       else None
 
@@ -87,4 +73,4 @@ Fixpoint atomic_exec (g : goal) (a : atomic) : option goals :=
   end
 .
 
-Notation "Γ ⊢ a ⇒a v" := (atomic_exec Γ a = Some v) (at level 50).
+Notation "Γ ⊢ a ⇒a v" := (atomic_exec Γ a = v).

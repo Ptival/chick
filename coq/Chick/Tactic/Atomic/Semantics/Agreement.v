@@ -21,9 +21,25 @@ Proof.
   on binder destruct'; repeat eexists.
 Qed.
 
+Lemma isPi_None:
+  forall conclusion : term,
+    isPi conclusion = None ->
+    forall (b : binder) (τ1 τ2 : term), conclusion <> mkPi b τ1 τ2.
+Proof.
+  intro.
+  on_head term destruct'; intros.
+  { on binder destruct'; simpl.
+    { discriminate. }
+    { discriminate. }
+  }
+  { on binder destruct';
+      simpl in *;
+      repeat (break_match_in_hyp; try discriminate). }
+Qed.
+
 Theorem agreement :
-  forall Γ x v,
-    Γ ⊢ x ⇓a Some v <-> Γ ⊢ x ⇒a v.
+  forall g a v,
+    g ⊢ a ⇓a v <-> g ⊢ a ⇒a v.
 Proof.
   split; intros.
   {
@@ -53,32 +69,45 @@ Proof.
       simpl.
       admit. (* TODO *)
     }
+    {
+      admit.
+    }
+    {
+      admit.
+    }
+    {
+      admit.
+    }
+    {
+      admit.
+    }
+    {
+      admit.
+    }
   }
   {
     on_head goal destruct'.
     unfold atomic_exec in *.
     on_head atomic destruct'.
-    {
-      on @eq break_match_in.
-      {
-        do 3 on @eq break_let_pair_in.
-        on @eq break_decide_in.
-        {
-          econstructor; eauto.
-          congruence.
-        }
-        { discriminate. }
+    { on @eq break_match_in.
+      { do 3 on @eq break_let_pair_in.
+        break_decide_in_goal.
+        { econstructor; eauto. }
+        { now constructor. }
       }
-      { discriminate. }
+      { subst_all.
+        eapply Intro__FAIL2.
+        now apply isPi_None. }
+    }
+    { break_decide_in_hyp; subst_all.
+      { now constructor. }
+      { now constructor. }
     }
     {
-      on decide break_decide_in.
-      {
-        on @eq inversion'.
-        now constructor.
-      }
-      { discriminate. }
+      break_match_in_hyp.
+      { break_let_pair_in_hyp.
+        admit. }
+      { admit. }
     }
-    { admit. (* TODO *) }
   }
 Admitted.
