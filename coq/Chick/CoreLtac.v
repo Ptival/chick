@@ -80,6 +80,13 @@ Coercion ValTac  : tactic >-> value.
 Coercion ValInt  : nat      >-> value.
 Coercion TacAtom : atomic >-> tactic.
 
+Scheme expr_ind'   := Induction for expr   Sort Prop
+  with value_ind'  := Induction for value  Sort Prop
+  with tactic_ind' := Induction for tactic Sort Prop
+.
+
+Combined Scheme ltac_ind from expr_ind', value_ind', tactic_ind'.
+
 Inductive fail := Fail : forall (l : nat), fail.
 
 Inductive RV :=
@@ -158,6 +165,11 @@ Parameter subst_expr : variable -> expr -> expr -> expr.
 Parameter subst_exprs : list variable -> list expr -> expr -> expr.
 
 Inductive ArgsEval (g : goal) : list expr -> RARGS -> Type :=
+
+where
+
+"g ⊢ es ↓args r" := (ArgsEval g es r)
+
 .
 
 Inductive ExprEval (g : goal) : expr -> RV -> Prop :=
@@ -178,40 +190,41 @@ Inductive ExprEval (g : goal) : expr -> RV -> Prop :=
         | ValTac t => t
         | ValInt n => n
         end ->
-    ExprEval g (ExprVal v) r
+    g ⊢ ExprVal v ↓v r
 
 | FIX : forall x e rv,
-    ExprEval g (subst_expr x (ExprFix x e) e) rv ->
-    ExprEval g (ExprFix x e)                  rv
+    g ⊢ subst_expr x (ExprFix x e) e ↓v rv ->
+    g ⊢ ExprFix x e                  ↓v rv
 
 | APP1 : forall e es (l : fail),
-    ExprEval g e              l ->
-    ExprEval g (ExprApp e es) l
+    g ⊢ e            ↓v l ->
+    g ⊢ ExprApp e es ↓v l
 
 | APP2_Int : forall e es (n : nat),
-    ExprEval g e              n ->
-    ExprEval g (ExprApp e es) (Fail 0)
+    g ⊢ e            ↓v n      ->
+    g ⊢ ExprApp e es ↓v Fail 0
 
 | APP2_Tac : forall e es (t : tactic),
-    ExprEval g e              t        ->
-    ExprEval g (ExprApp e es) (Fail 0)
+    g ⊢ e            ↓v t      ->
+    g ⊢ ExprApp e es ↓v Fail 0
 
-| APP3 : forall e es l n,
-    ExprEval g e              (Lam__RV l)     ->
-    ArgsEval g es             (Fail__RARGS n) ->
-    ExprEval g (ExprApp e es) (Fail__RV n)
+| APP3 : forall e es (l : lam) (n : fail),
+    g ⊢ e            ↓v    l ->
+    g ⊢ es           ↓args n ->
+    g ⊢ ExprApp e es ↓v    n
 
 | APP4 : forall e es xs e' (vs : values) xs1 xs2,
-    ExprEval g e  (Lam xs e')             ->
-    ArgsEval g es vs                      ->
     List.length vs < List.length xs       ->
     xs1 = List.firstn (List.length vs) xs ->
     xs2 = List.skipn  (List.length vs) xs ->
-    ExprEval g (ExprApp e es)
-             (Lam__RV (Lam xs2 (subst_exprs xs1 (List.map ExprVal vs) e)))
+    g ⊢ e            ↓v    Lam xs e'      ->
+    g ⊢ es           ↓args vs             ->
+    g ⊢ ExprApp e es ↓v    Lam__RV (Lam xs2 (subst_exprs xs1 (List.map ExprVal vs) e))
 
 where
+
 "g ⊢ e ↓v r" := (ExprEval g e r)
+
 .
 
 Inductive ExprExec : goal -> expr -> RX -> Prop :=
@@ -352,6 +365,12 @@ with TacSeqExec : goals -> list expr -> RX -> Prop :=
       g       ⊢ e       ⇓    gs' ->
       gs      ⊢ es      ↓seq f   ->
       g :: gs ⊢ e :: es ↓seq f
+
+| SEQ4 :
+    forall g e gs es (gs' gs'' : goals),
+      g       ⊢ e       ⇓    gs'  ->
+      gs      ⊢ es      ↓seq gs'' ->
+      g :: gs ⊢ e :: es ↓seq ((gs' ++ gs'')%list : goals)
 
 where
 
@@ -765,10 +784,8 @@ Proof.
           on ExprEval ltac:(in_eapply abstractMachineCorrect_val);
           on_head clos_refl_trans rewrite_r;
           now step
-        | step;
-          find_apply_in_hyp agreement;
-          find_rewrite_r;
-          now constructor
+        | step; find_apply_in_hyp agreement; find_rewrite_r; now constructor
+        | step; find_rewrite_r; step; find_rewrite_r; now step
         ].
   - step.
     find_rewrite_r.
@@ -798,11 +815,6 @@ Proof.
     break_if_in_goal; subst_all.
     + now find_rewrite_r.
     + congruence.
-  - step.
-    find_rewrite_r.
-    step.
-    find_rewrite_r.
-    now step.
 Qed.
 
 Local Ltac next :=
@@ -854,12 +866,93 @@ Local Ltac step_A__x :=
 
 Notation "Γ ⊢ a ⇒ v" := (atomic_exec Γ a = Some v).
 
+Ltac done :=
+  find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto; subst_all.
+
+Lemma abstractMachineCorrect :
+  (forall (e : expr)   g r, E__ee g e Nil ⇒* A__x Nil r -> g ⊢ e ⇓  r)
+  /\
+  (forall (v : value)  g r, E__ee g v Nil ⇒* A__x Nil r -> g ⊢ v ↓v r)
+  /\
+  (forall (t : tactic) g r, E__ee g t Nil ⇒* A__x Nil r -> g ⊢ t ↓x r).
+Proof.
+  eapply (
+      ltac_ind
+        (fun e => forall g r, E__ee g e Nil ⇒* A__x Nil r -> g ⊢ e ⇓  r)
+        (fun v => forall g r, E__ee g v Nil ⇒* A__x Nil r -> g ⊢ v ↓v r)
+        (fun t => forall g r, E__ee g t Nil ⇒* A__x Nil r -> g ⊢ t ↓x r)
+    ); intros.
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    forward.
+    forward.
+    forward.
+    break_match_in_hyp.
+    { break_match_in_hyp.
+      { forward.
+        forward.
+        break_match_in_hyp.
+        { break_match_in_hyp.
+          { forward.
+            done.
+            eapply EEX4_2.
+            eapply ExprLet.
+            now repeat econstructor.
+
+            forward.
+            forward.
+            forward.
+            forward.
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+  {
+    admit.
+  }
+
 Lemma abstractMachineCorrect_tac:
   forall g (t : tactic) r,
     E__ee g t Nil ⇒* A__x Nil r -> g ⊢ t ↓x r.
 Proof.
   intros.
-  on_head tactic destruct'.
+  on_head tactic induction'.
 
   { (* g ⊢ atac ⇓ r *)
     repeat progress forward.
@@ -907,24 +1000,102 @@ Proof.
       }
 
       { (* g ⊢ t ; e2 ⇓ r *)
-        repeat forward.
+        forward.
+        forward.
         break_match_in_hyp; subst_all.
         { break_match_in_hyp; subst_all.
-          { TODODODO.
-
-
-            repeat forward.
-            break_match_in_hyp; subst_all.
-            { break_match_in_hyp; subst_all.
+          { generalize dependent g0. revert r a.
+            on_head expr induction'; intros.
+            admit.
+            { repeat forward.
+              break_match_in_hyp.
+              simpl in *.
+              find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+              subst_all.
+              eapply SEMI2.
+              eapply EEX2; [ now apply VAL | ].
+              apply ATOMIC_SUCCESS.
+              apply agreement.
+              eassumption.
+              constructor.
+              simpl in H.
+              subst_all.
+              forward.
+              forward.
+              forward.
+              forward.
+              forward.
+              forward.
+              forward.
+              forward.
+              eapply EEX1. eapply agreement. apply VAL.
+              admit.[
+            }
+            { repeat forward.
+              break_match_in_hyp; subst_all; simpl in *.
               { find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
                 subst_all.
-          eapply EEX2.
-          { now apply VAL. }
-          apply SEMI1.
-          eapply EEX4_1.
-          now apply VAL.
-        }
-
+                eapply SEMI2.
+                { eapply EEX2; [ now apply VAL | ].
+                  apply ATOMIC_SUCCESS.
+                  apply agreement.
+                  eassumption.
+                }
+                {
+                  constructor.
+                  constructor.
+                }
+              }
+              { repeat forward.
+                break_match_in_hyp; subst_all.
+                { break_match_in_hyp; subst_all.
+                  { forward.
+                    (*
+H : A__x (Seq1 g2 (repeat l (Datatypes.length g2)) Nil) (Fail 0) ⇒* A__x Nil r
+                   *)
+                  repeat forward.
+                  find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+                  subst_all.
+                  eapply SEMI2.
+                  { eapply EEX2; [ now apply VAL | ].
+                    apply ATOMIC_SUCCESS.
+                    apply agreement.
+                    eassumption.
+                  }
+                  { constructor.
+                    eapply EEX4_2.
+                    now apply VAL.
+                  }
+                }
+                { repeat forward.
+                  break_match_in_hyp; subst_all.
+                  { break_match_in_hyp; subst_all.
+                    {
+                  (*
+H : A__x (Seq1 g2 (repeat l (Datatypes.length g2)) Nil) (Fail 0) ⇒* A__x Nil r
+                   *)
+                      repeat forward.
+                      find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+                      subst_all.
+                      eapply SEMI2.
+                      { eapply EEX2; [ now apply VAL | ].
+                        apply ATOMIC_SUCCESS.
+                        apply agreement.
+                        eassumption.
+                      }
+                      { constructor.
+                        eapply EEX4_2.
+                        now apply VAL.
+                      }
+                    }
+                    { repeat forward.
+                      break_match_in_hyp; subst_all.
+                      { break_match_in_hyp; subst_all.
+                        { repeat forward.
+                          find_eapply_in_hyp A__x_Nil_steps_to_itself; eauto.
+                          subst_all.
+                          eapply SEMI2.
+                          { eapply EEX2; [ now apply VAL | ].
 
 Theorem abstractMachineCorrect_expr' :
   forall g e r, E__ee g e Nil ⇒* A__x Nil r -> g ⊢ e ⇓ r.
