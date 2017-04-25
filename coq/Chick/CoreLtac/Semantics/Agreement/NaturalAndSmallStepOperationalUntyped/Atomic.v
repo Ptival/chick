@@ -2,13 +2,10 @@ From Coq Require Import
      DecidableClass
 .
 
-From Chick Require Import
-     Atomic
-.
-
-From Chick.Tactic.Atomic.Semantics Require Import
-     Functional
-     Relational
+From Chick.CoreLtac Require Import
+     Semantics.Natural
+     Semantics.SmallStepOperational.Untyped
+     Syntax
 .
 
 From HaysTac Require Import HaysTac.
@@ -61,7 +58,7 @@ Proof.
       repeat break_let_pair_in_goal.
       break_decide_in_goal.
       {
-        do 2 on_head binder destruct'; on @eq now_inversion.
+        do 2 on_head binder destruct'; now on @eq inversion'.
       }
       { contradiction. }
     }
@@ -111,3 +108,6 @@ Proof.
     }
   }
 Admitted.
+
+Hint Resolve agreement : NaturalSemantics.
+Hint Extern 0 (_ ⊢ _ ⇓a _) => eapply agreement : NaturalSemantics.

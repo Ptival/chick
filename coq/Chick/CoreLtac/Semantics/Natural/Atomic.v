@@ -1,13 +1,16 @@
 From Coq Require Import List.
 
 From Chick Require Export
-     Atomic
      Fresh
      Goal
      LocalContext
      ReservedNotations
      Term
      Unify
+.
+
+From Chick.CoreLtac Require Import
+     Syntax
 .
 
 Import ListNotations.

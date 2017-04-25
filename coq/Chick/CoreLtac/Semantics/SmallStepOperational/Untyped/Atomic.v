@@ -5,7 +5,6 @@ From Coq Require Import
 .
 
 From Chick Require Export
-     Atomic
      Fresh
      Goal
      LocalContext
@@ -15,6 +14,8 @@ From Chick Require Export
      TODO
      Unify
 .
+
+From Chick.CoreLtac.Syntax Require Import Atomic.
 
 From HaysTac Require Import HaysTac.
 
