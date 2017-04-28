@@ -57,18 +57,18 @@ Inductive ExprEval (g : goal) : expr -> RV -> Prop :=
     g ⊢ e            ↓v l ->
     g ⊢ ExprApp e es ↓v l
 
-| APP2__INT : forall e es (n : nat),
-    g ⊢ e            ↓v n      ->
-    g ⊢ ExprApp e es ↓v Fail 0
+| APP2__INT : forall e es n,
+    g ⊢ e            ↓v ⎡n⎤ ->
+    g ⊢ ExprApp e es ↓v ⊥ 0
 
 | APP2__TAC : forall e es (t : tactic),
-    g ⊢ e            ↓v t      ->
-    g ⊢ ExprApp e es ↓v Fail 0
+    g ⊢ e            ↓v t   ->
+    g ⊢ ExprApp e es ↓v ⊥ 0
 
-| APP3 : forall e es (l : lam) (n : fail),
+| APP3 : forall e es (l : lam) n,
     g ⊢ e            ↓v    l ->
-    g ⊢ es           ↓args n ->
-    g ⊢ ExprApp e es ↓v    n
+    g ⊢ es           ↓args ⊥ n ->
+    g ⊢ ExprApp e es ↓v    ⊥ n
 
 | APP4 : forall e es xs e' (vs : values) xs1 xs2,
     List.length vs < List.length xs       ->
@@ -130,18 +130,18 @@ Inductive ExprExec : goal -> expr -> RX -> Prop :=
 
 | EEX3 :
     forall g e n,
-      g ⊢ e ↓v Fail n ->
-      g ⊢ e ⇓  Fail n
+      g ⊢ e ↓v ⊥ n ->
+      g ⊢ e ⇓  ⊥ n
 
 | EEX4__INT :
     forall g e (n : nat),
-      g ⊢ e ↓v n      ->
-      g ⊢ e ⇓  Fail 0
+      g ⊢ e ↓v ⎡n⎤ ->
+      g ⊢ e ⇓  ⊥ 0
 
 | EEX4__LAM :
     forall g e (l : lam),
       g ⊢ e ↓v l      ->
-      g ⊢ e ⇓  Fail 0
+      g ⊢ e ⇓  ⊥ 0
 
 where
 
@@ -153,25 +153,25 @@ TacExec : goal -> tactic -> RX -> Prop :=
 
 | ATOMIC_FAIL :
     forall g a,
-      g ⊢ a ⇓a None           ->
-      g ⊢ TacAtom a ↓x Fail 0
+      g ⊢ a         ⇓a None ->
+      g ⊢ TacAtom a ↓x ⊥ 0
 
 | ATOMIC_SUCCESS :
     forall g a gs,
-      g ⊢ a ⇓a Some gs    ->
+      g ⊢ a         ⇓a Some gs ->
       g ⊢ TacAtom a ↓x gs
 
 | IDTAC :
     forall g,
-      g ⊢ TacIdtac ↓x Goals__RX [g]
+      g ⊢ TacIdtac ↓x ([g] : goals)
 
 | FAIL :
     forall g n,
-      g ⊢ TacFail n ↓x Fail n
+      g ⊢ TacFail n ↓x ⊥ n
 
 | FIRST1 :
     forall g,
-      g ⊢ TacFirst [] ↓x Fail 0
+      g ⊢ TacFirst [] ↓x ⊥ 0
 
 | FIRST2 :
     forall g e es (gs : goals),
@@ -180,24 +180,24 @@ TacExec : goal -> tactic -> RX -> Prop :=
 
 | FIRST3 :
     forall g e es n,
-      g ⊢ e                  ⇓  Fail (S n) ->
-      g ⊢ TacFirst (e :: es) ↓x Fail n
+      g ⊢ e                  ⇓  ⊥ (S n) ->
+      g ⊢ TacFirst (e :: es) ↓x ⊥ n
 
 | FIRST4 :
     forall g e es rx,
-      g ⊢ e                  ⇓  Fail 0 ->
-      g ⊢ TacFirst es        ↓x rx     ->
+      g ⊢ e                  ⇓  ⊥ 0 ->
+      g ⊢ TacFirst es        ↓x rx  ->
       g ⊢ TacFirst (e :: es) ↓x rx
 
 | PROGR1 :
     forall g e n,
-      g ⊢ e             ⇓  Fail n ->
-      g ⊢ TacProgress e ↓x Fail n
+      g ⊢ e             ⇓  ⊥ n ->
+      g ⊢ TacProgress e ↓x ⊥ n
 
 | PROGR2 :
     forall g e,
       g ⊢ e             ⇓  ([g] : goals) ->
-      g ⊢ TacProgress e ↓x Fail 0
+      g ⊢ TacProgress e ↓x ⊥ 0
 
 | PROGR3 :
     forall g e (gs : goals),
@@ -206,33 +206,33 @@ TacExec : goal -> tactic -> RX -> Prop :=
       g ⊢ TacProgress e ↓x gs
 
 | SEMI1 :
-    forall g e1 e2 (f : fail),
-      g ⊢ e1            ⇓  f ->
-      g ⊢ TacSemi e1 e2 ↓x f
+    forall g e1 e2 n,
+      g ⊢ e1            ⇓  ⊥ n ->
+      g ⊢ TacSemi e1 e2 ↓x ⊥ n
 
 | SEMI2 :
     forall g e1 e2 (gs : goals) rx,
-      g ⊢ e1            ⇓  gs ->
+      g  ⊢ e1                              ⇓    gs ->
       gs ⊢ List.repeat e2 (List.length gs) ↓seq rx ->
-      g ⊢ TacSemi e1 e2 ↓x rx
+      g  ⊢ TacSemi e1 e2                   ↓x   rx
 
 | BRANCH1 :
-    forall g e1 es (f : fail),
-      g ⊢ e1                  ⇓  f ->
-      g ⊢ TacBranch e1 es ↓x f
+    forall g e1 es n,
+      g ⊢ e1              ⇓  ⊥ n ->
+      g ⊢ TacBranch e1 es ↓x ⊥ n
 
 | BRANCH2 :
     forall g e1 es (gs : goals),
-      g ⊢ e1                  ⇓  gs   ->
       List.length gs <> List.length es ->
+      g ⊢ e1              ⇓  gs       ->
       g ⊢ TacBranch e1 es ↓x Fail 0
 
 | BRANCH3 :
     forall g e1 es (gs : goals) rx,
-      g ⊢ e1                  ⇓    gs     ->
-      List.length gs = List.length es     ->
-      gs ⊢ es                 ↓seq rx     ->
-      g ⊢ TacBranch e1 es ↓x   rx
+      List.length gs = List.length es ->
+      g  ⊢ e1              ⇓    gs    ->
+      gs ⊢ es              ↓seq rx    ->
+      g  ⊢ TacBranch e1 es ↓x   rx
 
 where
 
@@ -244,15 +244,15 @@ with TacSeqExec : goals -> list expr -> RX -> Prop :=
     [] ⊢ [] ↓seq ([] : goals)
 
 | SEQ2 :
-    forall g e gs es (f : fail),
-      g       ⊢ e       ⇓    f ->
-      g :: gs ⊢ e :: es ↓seq f
+    forall g e gs es n,
+      g       ⊢ e       ⇓    ⊥ n ->
+      g :: gs ⊢ e :: es ↓seq ⊥ n
 
 | SEQ3 :
-    forall g e gs es (gs' : goals) (f : fail),
+    forall g e gs es (gs' : goals) n,
       g       ⊢ e       ⇓    gs' ->
-      gs      ⊢ es      ↓seq f   ->
-      g :: gs ⊢ e :: es ↓seq f
+      gs      ⊢ es      ↓seq ⊥ n ->
+      g :: gs ⊢ e :: es ↓seq ⊥ n
 
 | SEQ4 :
     forall g e gs es (gs' gs'' : goals),
@@ -274,29 +274,37 @@ Scheme ExprExec_ind'   := Minimality for ExprExec   Sort Prop
 Combined Scheme Exec_ind from ExprExec_ind', TacExec_ind', TacSeqExec_ind'.
 
 Inductive ExtendedExprEval (g : goal) (e : expr) : RVX -> Prop :=
+
 | EEV1 :
     forall (gs : goals),
       g ⊢ e ↓v  gs ->
       g ⊢ e ↓vx gs
+
 | EEV2 :
     forall (t : tactic) rx,
       g ⊢ e ↓v  t  ->
       g ⊢ t ↓x  rx ->
       g ⊢ e ↓vx rx
+
 | EEV3 :
-    forall (n : fail),
-      g ⊢ e ↓v  n ->
-      g ⊢ e ↓vx n
+    forall n,
+      g ⊢ e ↓v  ⊥ n ->
+      g ⊢ e ↓vx ⊥ n
+
 | EEV4__INT :
-    forall (n : nat),
-      g ⊢ e ↓v  n ->
-      g ⊢ e ↓vx n
+    forall n,
+      g ⊢ e ↓v  ⎡n⎤ ->
+      g ⊢ e ↓vx ⎡n⎤
+
 | EEV4__LAM :
     forall (l : lam),
       g ⊢ e ↓v  l ->
       g ⊢ e ↓vx l
+
 where
+
 "g ⊢ e ↓vx r" := (ExtendedExprEval g e r)
+
 .
 
 Create HintDb NaturalSemantics.

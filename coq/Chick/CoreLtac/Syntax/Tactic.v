@@ -30,9 +30,11 @@ Definition piList pis φ := piListRev (List.rev pis) φ.
 Parameter matcher : Type.
 Parameter pattern : Type.
 
+Notation "⎡ n ⎤" := (n : nat).
+
 Inductive expr : Type :=
 | ExprVal   : forall (v : value), expr
-(*| ExprVar   : forall (x : variable), expr*)
+| ExprVar   : forall (x : variable), expr
 | ExprApp   : forall (e : expr) (es : list expr), expr
 | ExprLet   : forall (x : variable) (e1 e2 : expr), expr
 (*
@@ -61,9 +63,10 @@ lam : Type :=
 | Lam : forall (xs : list variable) (e : expr), lam
 .
 
-Notation "λ xs . e" := (Lam xs e) (at level 50).
+Notation "'λ' xs → e" := (Lam xs e) (at level 50).
 
 Coercion ExprVal : value  >-> expr.
+Coercion ExprVar : variable >-> expr.
 Coercion ValLam  : lam    >-> value.
 Coercion ValTac  : tactic >-> value.
 Coercion ValInt  : nat      >-> value.
@@ -84,6 +87,7 @@ Section ltac_ind.
 
   Hypotheses
     (H__VAL : forall v, V v -> E v)
+    (H__VAR : forall (v : variable), E v)
     (H__APP : forall e, E e -> forall es, L es -> E (ExprApp e es))
     (H__LET : forall x e1, E e1 -> forall e2, E e2 -> E (ExprLet x e1 e2))
     (*f2 : forall cl, E (ExprMGoal cl)*)
@@ -102,6 +106,7 @@ Section ltac_ind.
   Fixpoint expr_ind' (e : expr) : E e :=
     match e as e0 return (E e0) with
     | ExprVal v => H__VAL v (value_ind' v)
+    | ExprVar v => H__VAR v
     | ExprApp e0 es =>
       H__APP e0 (expr_ind' e0) es
          ((fix list_expr_ind l : L l :=

@@ -40,6 +40,9 @@
 ./Chick/CoreLtac/Semantics/SmallStepOperational/Typed/Atomic.v
 ./Chick/CoreLtac/Semantics/SmallStepOperational/Typed/Tactic.v
 
+./Chick/CoreLtac/Semantics/TypeSystem.v
+
 ./Chick/CoreLtac/Syntax.v
 ./Chick/CoreLtac/Syntax/Atomic.v
+./Chick/CoreLtac/Syntax/SmallStepOperationalAbstractMachine.v
 ./Chick/CoreLtac/Syntax/Tactic.v

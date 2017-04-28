@@ -22,6 +22,7 @@ From Chick.CoreLtac Require Import
      Semantics.SmallStepOperational.Untyped
      Semantics.Agreement.NaturalAndSmallStepOperationalUntyped.Atomic
      Syntax
+     Syntax.SmallStepOperationalAbstractMachine
 .
 
 From HaysTac Require Import HaysTac.
@@ -232,83 +233,31 @@ Proof.
     forward.
     break_match_in_hyp.
     { forward.
-      forward.
       break_match_in_hyp.
       { forward.
-        break_match_in_hyp.
-        { done.
-          eapply EEX4__INT.
-          eapply LET3.
-          apply VAL.
-          find_rewrite_r.
-          now eapply VAL. (* this should have been [eauto] *)
-        }
-        { done.
-          eapply EEX4__LAM.
-          eapply LET3.
-          apply VAL.
-          find_rewrite_r.
-          now eapply VAL. (* this should have been [eauto] *)
-        }
-        { forward.
-          break_match_in_hyp.
-          { break_match_in_hyp.
-            { done.
-              admit.
-            }
-            { admit. }
-          }
-          { admit. }
-          { admit. }
-          { admit. }
-          { admit. }
-          { admit. }
-          { admit. }
-        }
+        done.
+        eauto with NaturalSemantics.
       }
-      { admit. }
       { admit. }
       { admit. }
     }
     { admit. }
     { admit. }
     { admit. }
+    { admit. }
   }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
-  {
-    admit.
-  }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
   { admit. }
 Admitted.

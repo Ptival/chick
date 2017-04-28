@@ -27,6 +27,8 @@ Import ListNotations.
 
 Inductive fail := Fail : forall (l : nat), fail.
 
+Notation "⊥" := Fail.
+
 Inductive RV :=
 | Fail__RV  : forall (l : fail), RV
 | Goals__RV : forall (gs : goals), RV

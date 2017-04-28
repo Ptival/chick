@@ -143,6 +143,7 @@ Definition ecstep (e : exprclosure) : exprclosure :=
   | ECMGoal _ _ _ => TODO
   | ECEval _ => TODO
   | ECExec1 _ _ => TODO
+  | ECExpr _ (ExprVar _) => TODO
 
   end
 .
