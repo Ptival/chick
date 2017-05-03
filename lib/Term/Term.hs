@@ -14,7 +14,7 @@
 
 module Term.Term where
 
-import Data.String
+--import Data.String
 import Data.Typeable
 import GHC.Exts                       (Constraint)
 import GHC.Generics

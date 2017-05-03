@@ -7,6 +7,8 @@
 
 module Inductive.Constructor where
 
+import Data.Default
+
 import Term.Binder
 import Term.Term
 import Term.Variable
@@ -53,6 +55,27 @@ constructorTypeChecked ind indps ps is =
     foldr onIndex (
         foldr onIndParam
         (Var (Type ()) ind)
+        indps)
+    is)
+  ps
+  where
+    onIndex :: TypeChecked.Type -> TypeChecked.Type -> TypeChecked.Type
+    onIndex i t = App (Type ()) t i
+    onParam :: (Binder, TypeChecked.Type) -> TypeChecked.Type -> TypeChecked.Type
+    onParam (b, p) t = Pi (Type ()) b p t
+    onIndParam :: (Binder, TypeChecked.Type) -> TypeChecked.Type -> TypeChecked.Type
+    onIndParam (Binder (Just v), τ) t = App (Type ()) t (Var τ v)
+    onIndParam (Binder Nothing,  τ) t = App (Type ()) t (Hole τ)
+
+constructorTerm :: ForallX Default ξ =>
+  Variable -> [(Binder, TypeX ξ)] ->
+  [(Binder, TypeX ξ)] -> [TypeX ξ] ->
+  TermX ξ
+constructorTerm ind indps ps is =
+  foldr onParam (
+    foldr onIndex (
+        foldr onIndParam
+        (Var def ind)
         indps)
     is)
   ps

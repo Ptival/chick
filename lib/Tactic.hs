@@ -22,6 +22,7 @@ import Inductive.Inductive
 import Precedence
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableAnnotated
+import Substitutable
 import Term.AlphaEquivalence
 import Term.AlphaRenaming
 import Term.Binder
@@ -90,14 +91,22 @@ data Atomic
   | Intro Binder
   deriving (Show)
 
+orElse :: MonadError e m => Maybe a -> e -> m a
+orElse Nothing  e = throwError e
+orElse (Just a) _ = return a
+
+isPi :: TermX ξ -> Maybe (TermX ξ)
+isPi t@(Pi _ _ _ _) = Just t
+isPi _              = Nothing
+
 lookupVariable ::
   MonadError String m =>
   Variable ->
   LocalContext TypeChecked ->
   GlobalEnvironment TypeChecked ->
   m TypeChecked.Term
-lookupVariable v hyps ge =
-  case Typing.LocalContext.lookupType v (hyps `mappend` toLocalContext ge) of
+lookupVariable v hyps ge =-
+  case Typing.LocalContext.[lookupType v (hyps `mappend` toLocalContext ge) of
     Nothing ->
       throwError $
       printf "Could not find variable %s in global environment"
@@ -113,14 +122,31 @@ runAtomic ge a (Goal hyps concl) =
 
   Admit -> return []
 
-  Destruct ->
+  Destruct -> do
+    Pi _ b τ _           <- isPi concl       `orElse` "destruct expects the goal to be a forall"
+    Inductive n ps is cs <- isInductive ge τ `orElse` "destruct expects the term to be inductive"
+    let conclModifier cTerm concl =
+          case unBinder b of
+            -- if the Pi was not binding, no need for substitution
+            Nothing -> concl
+            -- if the Pi
+            Just v  -> subst v cTerm concl
+    forM cs $ \c -> do
+      let cTerm = constructorTerm c
+      return . Goal hyps $ case unBinder b of
+        Nothing -> concl
+        Just v  -> subst v cTerm concl
+
+    {-
     case concl of
       Pi _ v τ _ -> do
         case isInductive ge τ of
           Nothing -> throwError "Cannot destruct a non-inductive type"
           Just (Inductive n ps is cs) ->
-            _
+            forM cs $ \c -> do
+            l_
       _ -> throwError "destruct expects the goal to be a forall"
+-}
 {-
       τ <- lookupVariable v hyps ge
       case isInductive ge τ of
@@ -141,10 +167,10 @@ runAtomic ge a (Goal hyps concl) =
 
   Intro (Binder mi) ->
     pure <$> -- i.e. returns just the one goal produced
-    case concl of
-    Let _ (Binder mv) t1 t2 -> runIntro (typeOf t1) t2 (flip LocalDef t1) (mi, mv)
-    Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1          τ2 LocalAssum         (mi, mv)
-    _ -> throwError "Head constructor does not allow introduction"
+      case concl of
+      Let _ (Binder mv) t1 t2 -> runIntro (typeOf t1) t2 (flip LocalDef t1) (mi, mv)
+      Pi  _ (Binder mv) τ1 τ2 -> runIntro τ1          τ2 LocalAssum         (mi, mv)
+      _ -> throwError "Head constructor does not allow introduction"
 
    where
 

@@ -103,8 +103,7 @@ inductive type in the global environment.  For instance, given '(List
 T)', it should return the inductive 'Some (Inductive for List)'.
 Given '(A -> List T)', it should return 'None'.
 -}
-isInductive ::
-  GlobalEnvironment TypeChecked -> TypeChecked.Type -> Maybe (Inductive TypeChecked)
+isInductive :: GlobalEnvironment TypeChecked -> TypeChecked.Type -> Maybe (Inductive TypeChecked)
 isInductive ge = go
   where
     go τ =
