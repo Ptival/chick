@@ -6,13 +6,15 @@ import           Control.Applicative
 import           Control.Monad.Fix
 import           Data.Functor
 import           Text.Megaparsec
-import qualified Text.Megaparsec.Lexer  as L
+import qualified Text.Megaparsec.Lexer as L
 import           Text.Megaparsec.String
 import           Text.Printf
 
 import           Parsing.Utils
-import           Term.Raw               as Raw
+import           Term.Binder
+import           Term.Raw as Raw
 import           Term.Term
+import           Term.Variable
 
 type Parser1 a = Parser a -> Parser  a
 type Parser2 a = Parser a -> Parser1 a

@@ -1,0 +1,8 @@
+flags: {}
+extra-deps:
+  - gdiff-1.1
+  - terminfo-0.4
+resolver: lts-8.12
+nix:
+  packages:
+    - ncurses

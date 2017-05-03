@@ -5,9 +5,11 @@ module Term.AlphaRenaming where
 
 import Data.List
 
+import Term.Binder
 import Term.Free
 import Term.Fresh
 import Term.Term
+import Term.Variable
 
 αrename :: Variable -> Variable -> TermX ξ -> TermX ξ
 αrename target replacement = go

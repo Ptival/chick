@@ -18,6 +18,8 @@ import Data.String
 import Data.Typeable
 import GHC.Exts                       (Constraint)
 import GHC.Generics
+import Term.Binder
+import Term.Variable
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 import Test.SmallCheck.Series
@@ -46,38 +48,6 @@ One could either:
 annotSymbol, holeSymbol :: String
 annotSymbol = "@"
 holeSymbol  = "?"
-
-newtype Variable
-  = Variable { unVariable :: String }
-  deriving (Eq, Generic, Out, Show)
-
-instance Arbitrary Variable where
-  arbitrary = do
-    c <- choose ('a', 'e')
-    return $ Variable [c]
-
-instance IsString Variable where
-  fromString s = Variable s
-
-instance Monad m => Serial m Variable where
-  series = Variable <$> cons2 (:)
-
-newtype Binder
-  = Binder { unBinder :: (Maybe Variable) }
-  deriving (Eq, Generic, Out, Serial m, Show)
-
-instance Arbitrary Binder where
-  arbitrary =
-    frequency
-    [ (1, return . Binder $ Nothing)
-    , (9, Binder . Just <$> arbitrary)
-    ]
-  shrink (Binder b) = case b of
-    Nothing -> []
-    Just v  -> [Binder Nothing] ++ [Binder (Just v') | v' <- shrink v]
-
-instance IsString Binder where
-  fromString s = Binder (Just (fromString s))
 
 type family X_Annot ξ
 type family X_App   ξ

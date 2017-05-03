@@ -17,17 +17,21 @@ import Text.PrettyPrint.Annotated.WL
 import Text.Printf
 
 import DictMetaOut
+import Inductive.Constructor
+import Inductive.Inductive
 import Precedence
-import PrettyPrinting.LocalContext
-import PrettyPrinting.Term
-import PrettyPrinting.Variable
+import PrettyPrinting.PrettyPrintable
+import PrettyPrinting.PrettyPrintableAnnotated
 import Term.AlphaEquivalence
 import Term.AlphaRenaming
+import Term.Binder
 import Term.Free
 import Term.Term
-import Term.TypeChecked              as TypeChecked
-import Typing.GlobalEnvironment      as GE
-import Typing.LocalContext           as LC
+import Term.TypeChecked as TypeChecked
+import Term.Variable
+import Typing.GlobalEnvironment
+import Typing.LocalDeclaration
+import Typing.LocalContext
 
 data Goal ξ = Goal
   { hypotheses :: [LocalDeclaration ξ]
@@ -41,13 +45,15 @@ deriving instance (ForallX Show ξ) => Show (Goal ξ)
 instance (ForallX Arbitrary ξ) => Arbitrary (Goal ξ) where
   arbitrary = Goal <$> take 2 <$> listOf arbitrary <*> arbitrary
 
-prettyGoal :: DictMetaOut a ξ -> PrecedenceTable -> Goal ξ -> Doc a
-prettyGoal dict precs (Goal hyps concl) =
-  vcat
-  [ vcat (map (prettyLocalDeclarationDoc dict precs) hyps)
-  , text (replicate 40 '-')
-  , prettyTermDoc dict precs concl
-  ]
+instance PrettyPrintableAnnotated Goal where
+  prettyDocA (Goal hyps concl) = do
+    hypsDoc <- mapM prettyDocA hyps
+    conclDoc <- prettyDocA concl
+    return $ vcat
+      [ vcat hypsDoc
+      , text (replicate 40 '-')
+      , conclDoc
+      ]
 
 data Goals ξ = Goals
   { focused   :: [Goal ξ]
@@ -74,14 +80,29 @@ addHyp ::
   MonadError String m =>
   LocalDeclaration ξ -> [LocalDeclaration ξ] -> m [LocalDeclaration ξ]
 addHyp hyp hyps
-  | LC.nameOf hyp `elem` map LC.nameOf hyps = throwError "addHyp: name conflict"
+  | nameOf hyp `elem` map nameOf hyps = throwError "addHyp: name conflict"
   | otherwise = return $ hyp:hyps
 
 data Atomic
   = Admit
+  | Destruct -- assumes goal is ∀ x. P and destructs x
   | Exact Variable
   | Intro Binder
   deriving (Show)
+
+lookupVariable ::
+  MonadError String m =>
+  Variable ->
+  LocalContext TypeChecked ->
+  GlobalEnvironment TypeChecked ->
+  m TypeChecked.Term
+lookupVariable v hyps ge =
+  case Typing.LocalContext.lookupType v (hyps `mappend` toLocalContext ge) of
+    Nothing ->
+      throwError $
+      printf "Could not find variable %s in global environment"
+      (prettyStr v)
+    Just τ -> return τ
 
 runAtomic ::
   MonadError String m =>
@@ -92,18 +113,31 @@ runAtomic ge a (Goal hyps concl) =
 
   Admit -> return []
 
-  Exact v -> do
-    case LC.lookupType v (hyps ++ toLocalContext ge) of
-      Nothing ->
-        throwError $
-        printf "Could not find variable %s in global environment"
-        (prettyVariable v)
-      Just τ -> do
-        if τ `αeq` concl
-          then return []
-          else throwError $
-               printf "The type of %s does not match the conclusion"
-               (prettyVariable v)
+  Destruct ->
+    case concl of
+      Pi _ v τ _ -> do
+        case isInductive ge τ of
+          Nothing -> throwError "Cannot destruct a non-inductive type"
+          Just (Inductive n ps is cs) ->
+            _
+      _ -> throwError "destruct expects the goal to be a forall"
+{-
+      τ <- lookupVariable v hyps ge
+      case isInductive ge τ of
+        Nothing -> throwError "Cannot destruct a non-inductive type"
+        Just (Inductive n ps is cs) ->
+          forM cs $ \ (Constructor n ps is) -> do
+          subst v (constructor
+-}
+
+  Exact v ->
+    do
+      τ <- lookupVariable v hyps ge
+      if τ `αeq` concl
+        then return []
+        else throwError $
+             printf "The type of %s does not match the conclusion"
+             (prettyVariable v)
 
   Intro (Binder mi) ->
     pure <$> -- i.e. returns just the one goal produced

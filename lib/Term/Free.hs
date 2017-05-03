@@ -5,6 +5,8 @@ module Term.Free where
 import Data.List
 
 import Term.Term
+import Term.Binder
+import Term.Variable
 
 freeVars :: TermX ξ -> [Variable]
 freeVars = go

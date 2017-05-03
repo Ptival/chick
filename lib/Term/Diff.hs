@@ -9,6 +9,8 @@ module Term.Diff where
 import Data.Default
 import Data.Generic.Diff
 
+import Term.Binder
+import Term.Variable
 import Term.Term
 
 type TermDiff ξ = EditScript (TermXFamily ξ) (TermX ξ) (TermX ξ)

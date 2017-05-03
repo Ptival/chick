@@ -4,7 +4,9 @@ module Notations where
 
 import Data.Default
 
+import Term.Binder
 import Term.Term
+import Term.Variable
 
 -- Annot
 infix 0 ^::

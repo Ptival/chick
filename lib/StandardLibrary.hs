@@ -7,14 +7,20 @@ import Control.Monad
 import Inductive.Constructor
 import Inductive.Inductive
 import Parsing
+import PrettyPrinting.GlobalEnvironment
 import PrettyPrinting.Term
-import Term.Raw                 as Raw
+import PrettyPrinting.Utils
+import Term.Raw                         as Raw
 import Term.Term
-import Term.TypeChecked         as TypeChecked
+import Term.TypeChecked                 as TypeChecked
 import Text.Printf
 import Typing.GlobalEnvironment
 import Typing.Inductive
 import Work
+
+main :: IO ()
+main = forM_ stdlib $ \ d ->
+  putStrLn . doc2String $ prettyGlobalDeclarationDoc d
 
 addTerm ::
   Variable -> (Raw.Term, Raw.Type) -> GlobalEnvironment TypeChecked ->

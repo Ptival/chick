@@ -3,6 +3,7 @@
 module Term.AlphaEquivalence where
 
 import Term.AlphaRenaming
+import Term.Binder
 import Term.Free
 import Term.Fresh
 import Term.Term

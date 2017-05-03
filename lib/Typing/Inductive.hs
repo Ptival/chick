@@ -10,11 +10,12 @@ import Control.Monad.State
 import Inductive.Constructor
 import Inductive.Inductive
 import PrettyPrinting.LocalContext
+import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Term
 import PrettyPrinting.Variable
-import Term.Raw                    as Raw
+import Term.Raw                       as Raw
 import Term.Term
-import Term.TypeChecked            as TypeChecked
+import Term.TypeChecked               as TypeChecked
 import Text.Printf
 import Typing.GlobalEnvironment
 import Typing.LocalContext
@@ -90,7 +91,7 @@ checkInductive (Inductive n ps is cs) = do
       Left  _ ->
         throwError $
         printf "In inductive %s: could not typecheck index type %s in context %s"
-        (prettyVariable n) (prettyTerm i) (prettyLocalContext ctxt)
+        (prettyStr n) (prettyStr i) (prettyStr ctxt)
       Right r -> return r
 
   -- adding the inductive type to the global environment, so that constructors

@@ -23,7 +23,7 @@ Library
                  bifunctors                >= 5.4   && < 5.5,
                  data-default              >= 0.7   && < 0.8,
                  free                      >= 4.12  && < 4.13,
-                 gdiff                     >= 1.1   && < 1.2,
+                 gdiff                     >= 1.0   && < 1.2,
                  GenericPretty             >= 1.2   && < 1.3,
                  lens                      >= 4.14  && < 4.16,
                  megaparsec                >= 5.0   && < 5.3,
@@ -42,9 +42,8 @@ Library
                    Parsing
                    Playground
                    Precedence
-                   PrettyPrinting.Inductive
-                   PrettyPrinting.Term
                    StandardLibrary
+                   Substitutable
                    --Tactic
                    Term.AlphaEquivalence
                    Term.AlphaRenaming
@@ -59,7 +58,18 @@ Library
                    --Term.TypeErrored
                    WellFormed
                    Work
-  other-modules:
+  other-modules: DictMetaOut
+                 Inductive.Constructor
+                 Inductive.Inductive
+                 Parsing.Utils
+                 PrettyPrinting.PrettyPrintable
+                 PrettyPrinting.Utils
+                 Term.Binder
+                 Term.Variable
+                 Term.TypeChecked
+                 PrettyPrinting.PrettyPrintableAnnotated
+                 Typing.LocalContext
+                 Typing.LocalDeclaration
 
 Test-suite Test
   default-language: Haskell2010

@@ -1,31 +1,36 @@
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
-{-# language TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-module PrettyPrinting.Term where
+module PrettyPrinting.PrettyPrintableAnnotated where
 
+import Control.Monad.Reader
 import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import DictMetaOut
 import Precedence
-import PrettyPrinting.Binder
+import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Utils
-import PrettyPrinting.Variable
+import Term.Binder
 import Term.Term
+import Term.Variable
+import Term.TypeChecked
 
-prettyTerm :: TermX ξ -> String
-prettyTerm = withDefaultTermParser prettyTermDoc
+class PrettyPrintableAnnotated t where
+  prettyDocA ::
+    (MonadReader (DictMetaOut a TypeChecked, PrecedenceTable) m) =>
+    t TypeChecked -> m (Doc a)
+  prettyStrA :: t TypeChecked -> String
+  prettyStrA t =
+    display . renderPretty 1.0 80 . runReader (prettyDocA t) $
+    (ignoreAnnotations, def)
 
-prettyTermDoc' :: TermX ξ -> Doc ()
-prettyTermDoc' = prettyTermDoc ignoreAnnotations def
-
-prettyTermDoc :: forall a ξ. DictMetaOut a ξ -> PrecedenceTable -> TermX ξ -> Doc a
-prettyTermDoc dict precs = go (PrecMin, TolerateEqual)
-  where
-
-    go :: (Precedence, Tolerance) -> TermX ξ -> Doc a
-    go pt = par precs pt . prettyTermDocPrec dict precs
+instance PrettyPrintableAnnotated TermX where
+  prettyDocA t = do
+    (dict, precs) <- ask
+    return $ par precs (PrecMin, TolerateEqual) . prettyTermDocPrec dict precs $ t
 
 prettyTermDocPrec ::
   forall a ξ. DictMetaOut a ξ -> PrecedenceTable -> TermX ξ -> (Doc a, Precedence)
@@ -63,7 +68,7 @@ prettyTermDocPrec dict precs = goTerm
       Let _ n t1 t2 ->
         (fillSep
          [ text "let"
-         , prettyBinderDoc n
+         , prettyDoc n
          , char '='
          , go (PrecMin, TolerateEqual) t1
          , text "in"
@@ -93,26 +98,14 @@ prettyTermDocPrec dict precs = goTerm
 
       Type _ -> (text "Type", PrecAtom)
 
-      Var _ v -> (prettyVariableDoc v, PrecAtom)
+      Var _ v -> (prettyDoc v, PrecAtom)
 
     goLams :: [Doc a] -> TermX ξ -> Doc a
     goLams l = \case
-      Lam _ n t -> goLams (prettyBinderDoc n : l) t
+      Lam _ n t -> goLams (prettyDoc n : l) t
       t -> fillSep
           [ char 'λ'
           , fillSep . reverse $ l
           , char '.'
           , go (PrecMin, TolerateEqual) t
           ]
-
-prettyBindingDoc ::
-  DictMetaOut a ξ -> PrecedenceTable -> (Binder, TermX ξ) -> Doc a
-prettyBindingDoc dict precs (Binder b, t) =
-  case b of
-  Nothing -> prettyTermDoc dict precs t
-  Just v ->
-    parens . fillSep $
-    [ prettyVariableDoc v
-    , text ":"
-    , prettyTermDoc dict precs t
-    ]

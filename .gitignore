@@ -2,5 +2,5 @@
 *.ho
 *.o
 chick.nix
+.stack-work/
 dist/
-Main

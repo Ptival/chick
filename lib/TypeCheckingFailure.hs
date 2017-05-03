@@ -4,6 +4,7 @@ module TypeCheckingFailure where
 
 import Text.Printf       (printf)
 import Term.Term
+import Term.Variable
 
 data TypeCheckingFailure t
   = AppArgumentFailed

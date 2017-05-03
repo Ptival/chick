@@ -21,7 +21,6 @@ import Text.PrettyPrint.Annotated.WL
 import Typing.LocalContext
 import PrettyPrinting.Term
 import Term.Raw                      as Raw
-import Term.Substitution
 import Term.Term
 import Term.TypeChecked              as TypeChecked
 import Term.TypeErrored              as TypeErrored
