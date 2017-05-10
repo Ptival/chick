@@ -4,6 +4,9 @@
 
 module DictMetaMap where
 
+import Bound
+import Bound.Name
+
 import Term.Term
 
 data DictMetaMap fξ fψ ξ ψ = DictMetaMap
@@ -31,10 +34,10 @@ dictMetaMapIgnoreLeft v = DictMetaMap f f f f f f f f
     f = const v
 
 metaMap ::
-  forall ξ ψ a. DictMetaMap ((,) a) ((,) a) ξ ψ -> a -> TermX ξ -> TermX ψ
+  forall ξ ψ a ν. DictMetaMap ((,) a) ((,) a) ξ ψ -> a -> TermX ξ ν -> TermX ψ ν
 metaMap d base = snd . go base
   where
-    go :: a -> TermX ξ -> (a, TermX ψ)
+    go :: a -> TermX ξ ν -> (a, TermX ψ ν)
     go acc = \case
 
       Annot a t τ ->
@@ -53,10 +56,12 @@ metaMap d base = snd . go base
         let (acc1, a') = doHole d (acc, a) in
         (acc1, Hole a')
 
-      Lam a n t ->
+      Lam a bt ->
         let (acc1, a') = doLam d (acc, a) in
-        let (acc2, t') = go acc1 t in
-        (acc2, Lam a' n t')
+        let yolo = bt >>>= _ in
+        _
+        -- let (acc2, t') = go acc1 t in
+        -- (acc2, Lam a' n t')
 
       Let a n t1 t2 ->
         let (acc1, a') = doLet d (acc, a) in

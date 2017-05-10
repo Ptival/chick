@@ -6,18 +6,17 @@ module Term.Binder where
 import Data.String
 import GHC.Generics
 import PrettyPrinting.PrettyPrintable
-import Term.Variable
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 import Test.SmallCheck.Series
 import Text.PrettyPrint.Annotated.WL
 import Text.PrettyPrint.GenericPretty (Out)
 
-newtype Binder
-  = Binder { unBinder :: Maybe Variable }
+newtype Binder ν
+  = Binder { unBinder :: Maybe ν }
   deriving (Eq, Generic, Out, Serial m, Show)
 
-instance Arbitrary Binder where
+instance Arbitrary ν => Arbitrary (Binder ν) where
   arbitrary =
     frequency
     [ (1, return . Binder $ Nothing)
@@ -27,9 +26,9 @@ instance Arbitrary Binder where
     Nothing -> []
     Just v  -> [Binder Nothing] ++ [Binder (Just v') | v' <- shrink v]
 
-instance IsString Binder where
+instance IsString ν => IsString (Binder ν) where
   fromString s = Binder (Just (fromString s))
 
-instance PrettyPrintable Binder where
+instance PrettyPrintable ν => PrettyPrintable (Binder ν) where
   prettyDoc (Binder Nothing)  = text "_"
   prettyDoc (Binder (Just v)) = prettyDoc v

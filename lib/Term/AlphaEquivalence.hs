@@ -8,6 +8,7 @@ import Term.Free
 import Term.Fresh
 import Term.Term
 
+{-
 αeq :: TermX ξ -> TermX ψ -> Bool
 αeq x y =
   case (x, y) of
@@ -34,3 +35,4 @@ import Term.Term
       (Just v, Just v') ->
         let f = freshAvoid2 [v, v'] t t' in
         αrename v f t `αeq` αrename v' f t'
+-}

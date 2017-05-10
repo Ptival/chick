@@ -20,15 +20,15 @@ data DictMetaOut o ξ = DictMetaOut
 dictMetaOut' :: (ForallX ((~) a) ξ) => (a -> o) -> DictMetaOut o ξ
 dictMetaOut' f  = DictMetaOut f f f f f f f f
 
-metaOut :: forall o ξ . DictMetaOut o ξ -> TermX ξ -> o
+metaOut :: forall o ξ ν . DictMetaOut o ξ -> TermX ξ ν -> o
 metaOut d = go
   where
     go = \case
-      Annot a _ _   -> onAnnot d a
-      App   a _ _   -> onApp   d a
-      Hole  a       -> onHole  d a
-      Lam   a _ _   -> onLam   d a
-      Let   a _ _ _ -> onLet   d a
-      Pi    a _ _ _ -> onPi    d a
-      Type  a       -> onType  d a
-      Var   a _     -> onVar   d a
+      Annot a _ _ -> onAnnot d a
+      App   a _ _ -> onApp   d a
+      Hole  a     -> onHole  d a
+      Lam   a _   -> onLam   d a
+      Let   a _ _ -> onLet   d a
+      Pi    a _ _ -> onPi    d a
+      Type  a     -> onType  d a
+      Var     _   -> error "TODO: DictMetaOut Var" -- onVar   d a

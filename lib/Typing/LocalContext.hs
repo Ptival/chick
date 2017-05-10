@@ -16,22 +16,23 @@ import PrettyPrinting.PrettyPrintableAnnotated
 import Term.Binder
 import Term.Term
 import Term.TypeChecked
-import Term.Variable
+--import Term.Variable
 
-newtype LocalContext ξ = LocalContext { unLocalContext :: [LocalDeclaration ξ] }
+newtype LocalContext ξ ν =
+  LocalContext { unLocalContext :: [LocalDeclaration ξ ν] }
   deriving (Monoid)
 
 instance PrettyPrintableAnnotated TermX =>
          PrettyPrintableAnnotated LocalContext where
   prettyDocA (LocalContext ctxt) = vsep <$> mapM prettyDocA (reverse ctxt)
 
-addLocalAssum :: (Binder, TypeX ξ) -> LocalContext ξ -> LocalContext ξ
+addLocalAssum :: (Binder ν, TypeX ξ ν) -> LocalContext ξ ν -> LocalContext ξ ν
 addLocalAssum (Binder Nothing , _) γ = γ
 addLocalAssum (Binder (Just v), τ) (LocalContext γ) = LocalContext (LocalAssum v τ : γ)
 
-type TypeCheckedLocalContext = LocalContext TypeChecked
+type TypeCheckedLocalContext ν = LocalContext (TypeChecked ν) ν
 
-lookupType :: Variable -> LocalContext ξ -> Maybe (TypeX ξ)
+lookupType :: Eq ν => ν -> LocalContext ξ ν -> Maybe (TypeX ξ ν)
 lookupType target (LocalContext γ) = msum (map found γ)
   where
     found = \case

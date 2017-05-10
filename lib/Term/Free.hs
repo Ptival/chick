@@ -2,24 +2,32 @@
 
 module Term.Free where
 
-import Data.List
+import Data.Foldable
+--import Data.List
 
 import Term.Term
-import Term.Binder
-import Term.Variable
+--import Term.Binder
+--import Term.Variable
 
+freeVars :: TermX ξ ν -> [ν]
+freeVars = toList
+
+isFree :: (Eq ν) => ν -> TermX ξ ν -> Bool
+isFree v t = v `elem` freeVars t
+
+{-
 freeVars :: TermX ξ -> [Variable]
 freeVars = go
   where
     go = \case
-      Annot _ t τ     -> go t  `union` go τ
-      App   _ t1 t2   -> go t1 `union` go t2
-      Hole  _         -> []
-      Lam   _ b t     -> goShadowed b t
-      Let   _ b t1 t2 -> go t1 `union` goShadowed b t2
-      Pi    _ b τ1 τ2 -> go τ1 `union` goShadowed b τ2
-      Type  _         -> []
-      Var   _ v       -> [v]
+      Annot _ t τ    -> go t  `union` go τ
+      App   _ t1 t2  -> go t1 `union` go t2
+      Hole  _        -> []
+      Lam   _ bt     -> goShadowed b t
+      Let   _ t1 bt2 -> go t1 `union` goShadowed b t2
+      Pi    _ τ1 bτ2 -> go τ1 `union` goShadowed b τ2
+      Type  _        -> []
+      Var   _ v      -> [v]
     goShadowed (Binder Nothing)  t = go t
     goShadowed (Binder (Just v)) t = go t \\ [v]
 
@@ -40,3 +48,4 @@ isFree target = go
     goUnlessShadowed (Binder (Just v)) t
       | v == target = False
       | otherwise  = go t
+-}

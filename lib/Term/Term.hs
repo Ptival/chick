@@ -1,6 +1,9 @@
 {-# language ConstraintKinds #-}
 {-# language DeriveAnyClass #-}
+{-# language DeriveFoldable #-}
+{-# language DeriveFunctor #-}
 {-# language DeriveGeneric #-}
+{-# language DeriveTraversable #-}
 {-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
 {-# language GADTs #-}
@@ -14,17 +17,28 @@
 
 module Term.Term where
 
+import Bound
+import Bound.Name
+import Bound.Scope
+import Control.Monad
+--import Data.Bifunctor
+--import Data.Default
+import Data.Functor.Classes
 --import Data.String
 import Data.Typeable
-import GHC.Exts                       (Constraint)
+import GHC.Exts                  (Constraint)
 import GHC.Generics
+--import Prelude.Extras
+--import Term.Binder
+--import Term.Variable
+--import Test.QuickCheck.Arbitrary
+--import Test.QuickCheck.Gen
+--import Test.SmallCheck.Series
+--import Text.PrettyPrint.GenericPretty (Out)
+import Text.Printf
+
 import Term.Binder
 import Term.Variable
-import Test.QuickCheck.Arbitrary
-import Test.QuickCheck.Gen
-import Test.SmallCheck.Series
-import Text.PrettyPrint.GenericPretty (Out)
-import Text.Printf
 
 {-
 The type-ascription symbol unfortunately cannot be ":" like you would expect,
@@ -58,16 +72,22 @@ type family X_Pi    ξ
 type family X_Type  ξ
 type family X_Var   ξ
 
-data TermX ξ
-  = Annot (X_Annot ξ) (TermX ξ) (TypeX ξ)
-  | App   (X_App   ξ) (TermX ξ) (TermX ξ)
+type NameScope = Scope (Name Variable ())
+
+data TermX ξ ν
+  = Annot (X_Annot ξ) (TermX ξ ν) (TypeX ξ ν)
+  | App   (X_App   ξ) (TermX ξ ν) (TermX ξ ν)
   | Hole  (X_Hole  ξ)
-  | Lam   (X_Lam   ξ) Binder (TermX ξ)
-  | Let   (X_Let   ξ) Binder (TermX ξ) (TermX ξ)
-  | Pi    (X_Pi    ξ) Binder (TypeX ξ) (TermX ξ)
+  | Lam   (X_Lam   ξ)             (NameScope (TermX ξ) ν)
+  | Let   (X_Let   ξ) (TermX ξ ν) (NameScope (TermX ξ) ν)
+  | Pi    (X_Pi    ξ) (TypeX ξ ν) (NameScope (TypeX ξ) ν)
   | Type  (X_Type  ξ)
-  | Var   (X_Var   ξ) Variable
-  deriving (Generic, Typeable)
+  | Var   ν
+  deriving
+    (Functor
+    , Generic
+    , Typeable
+    )
 
 type TypeX = TermX
 
@@ -82,16 +102,61 @@ type ForallX (φ :: * -> Constraint) ξ =
   , φ (X_Var   ξ)
   )
 
-deriving instance  ForallX Eq         ξ           => Eq        (TermX ξ)
-deriving instance (ForallX (Serial m) ξ, Monad m) => Serial m  (TermX ξ)
-deriving instance  ForallX Out        ξ           => Out       (TermX ξ)
+instance (Eq ν, Eq1 (TermX ξ)) => Eq (TermX ξ ν) where
+  Annot _ t τ == Annot _ t' τ'= t == t' && τ == τ'
+  App _ t1 t2 == App _ t1' t2' = t1 == t1' && t2 == t2'
+  Hole _ == Hole _ = True
+  Lam _ bt == Lam _ bt' = bt == bt'
+  Let _ t1 bt2 == Let _ t1' bt2' = t1 == t1' && bt2 == bt2'
+  Pi _ τ1 bτ2 == Pi _ τ1' bτ2' = τ1 == τ1' && bτ2 == bτ2'
+  Type _ == Type _ = True
+  Var v == Var v' = v == v'
+  _ == _ = False
 
-genTerm :: ForallX Arbitrary ξ => Int -> Gen (TermX ξ)
+instance Eq1 (TermX ξ) where
+  liftEq eqVar term1 term2 =
+    let (===) = liftEq eqVar in
+    case (term1, term2) of
+      (Annot _ t τ,  Annot _ t' τ')  -> t === t' && τ === τ'
+      (App _ t1 t2,  App _ t1' t2')  -> t1 === t1' && t2 === t2'
+      (Hole _,       Hole _)         -> True
+      (Lam _ bt,     Lam _ bt')      -> liftEq eqVar bt bt'
+      (Let _ t1 bt2, Let _ t1' bt2') -> t1 === t1' && liftEq eqVar bt2 bt2'
+      (Pi _ τ1 bτ2,  Pi _ τ1' bτ2')  -> τ1 === τ1' && liftEq eqVar bτ2 bτ2'
+      (Type _,       Type _)         -> True
+      (Var v,        Var v')         -> eqVar v v'
+      (_,            _)              -> False
+
+--deriving instance (ForallX (Serial m) ξ, Monad m) => Serial m  (TermX ξ ν)
+--deriving instance  ForallX Out        ξ           => Out       (TermX ξ ν)
+
+instance Applicative (TermX ξ) where
+  pure = Var
+  (<*>) = ap
+
+instance Monad (TermX ξ) where
+  return = Var
+  Annot a t  τ   >>= f = Annot a (t   >>= f) (τ  >>= f)
+  App   a t1 t2  >>= f = App   a (t1  >>= f) (t2 >>= f)
+  Hole  a        >>= _ = Hole  a
+  Lam   a bt     >>= f = Lam   a             (bt  >>>= f)
+  Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (bt2 >>>= f)
+  Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (bτ2 >>>= f)
+  Type  a        >>= _ = Type  a
+  Var     v      >>= f = f v
+
+deriving instance Foldable (TermX ξ)
+deriving instance Traversable (TermX ξ)
+
+{-
+genTerm ::
+  (Arbitrary ν, Default (X_Var ξ), ForallX Arbitrary ξ, CoArbitrary ν) =>
+  Int -> Gen (TermX ξ ν)
 genTerm 0 =
   frequency
   [ (1, Hole <$> arbitrary)
   , (1, Type <$> arbitrary)
-  , (3, Var  <$> arbitrary <*> arbitrary)
+  , (3, Var  <$> arbitrary)
   ]
 genTerm n =
   let arbitrary' = choose (0, n-1) >>= genTerm in
@@ -99,14 +164,15 @@ genTerm n =
   [ (1, Annot <$> arbitrary <*> arbitrary' <*> arbitrary')
   , (3, App   <$> arbitrary <*> arbitrary' <*> arbitrary')
   --, Hole  <$> arbitrary
-  , (3, Lam   <$> arbitrary <*> arbitrary <*> arbitrary')
-  , (1, Let   <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary')
-  , (3, Pi    <$> arbitrary <*> arbitrary <*> arbitrary' <*> arbitrary')
+  , (3, Lam   <$> arbitrary <*> arbitrary)
+  , (1, Let   <$> arbitrary <*> arbitrary <*> arbitrary)
+  , (3, Pi    <$> arbitrary <*> arbitrary <*> arbitrary)
   --, Type  <$> arbitrary
-  , (1, Var   <$> arbitrary <*> arbitrary)
+  , (1, Var   <$> arbitrary)
   ]
 
-instance ForallX Arbitrary ξ => Arbitrary (TermX ξ) where
+instance (ForallX Arbitrary ξ, Arbitrary ν, CoArbitrary ν, Default (X_Var ξ)) =>
+         Arbitrary (TermX ξ ν) where
 
   arbitrary = sized genTerm
 
@@ -120,20 +186,30 @@ instance ForallX Arbitrary ξ => Arbitrary (TermX ξ) where
 
     Hole _ -> []
 
-    Lam a b t ->
-      [t] ++ [Lam a' b' t' | (a', b', t') <- shrink (a, b, t)]
+    Lam a bt ->
+      -- [instantiate1 (Var _ "x") bt]
+      -- ++
+      [Lam a' bt' | (a', bt') <- shrink (a, bt)]
 
-    Let a b t1 t2 ->
-      [t1, t2] ++ [Let a' b' t1' t2' | (a', b', t1', t2') <- shrink (a, b, t1, t2)]
+    Let a t1 bt2 ->
+      -- [t1, unscope bt2]
+      -- ++
+      [Let a' t1' bt2' | (a', t1', bt2') <- shrink (a, t1, bt2)]
 
-    Pi a b τ t ->
-      [τ, t] ++ [Pi a' b' τ' t' | (a', b', τ', t') <- shrink (a, b, τ, t)]
+    Pi a τ bt ->
+      -- [τ, unscope bt]
+      -- ++
+      [Pi a' τ' bt' | (a', τ', bt') <- shrink (a, τ, bt)]
 
     Type _ -> []
 
-    Var a v -> [Var a v' | v' <- shrink v]
+    Var v -> [Var v' | v' <- shrink v]
 
-deriving instance ForallX Show ξ => Show (TermX ξ)
+-}
+
+instance ForallX Show ξ => Show1 (TermX ξ) where
+  liftShowsPrec = error "TODO"
+deriving instance (ForallX Show ξ, Show ν) => Show (TermX ξ ν)
 
 type ForallX2 (φ :: * -> * -> Constraint) ξ ψ =
   ( φ (X_Annot ξ) (X_Annot ψ)
@@ -146,7 +222,7 @@ type ForallX2 (φ :: * -> * -> Constraint) ξ ψ =
   , φ (X_Var   ξ) (X_Var   ψ)
   )
 
-instance ForallX Show ξ => PrintfArg (TermX ξ) where
+instance (ForallX Show ξ, Show ν) => PrintfArg (TermX ξ ν) where
   formatArg t = formatString (show t)
 
 {-
@@ -154,13 +230,29 @@ We can retrieve the annotation for a term generically only when they all
 share the same annotation type. Otherwise, the output type would depend on
 the constructor.
 -}
-annotationOf :: ForallX ((~) a) ξ => TermX ξ -> a
+annotationOf :: ForallX ((~) a) ξ => TermX ξ ν -> a
 annotationOf = \case
-  Annot a _ _   -> a
-  App   a _ _   -> a
-  Hole  a       -> a
-  Lam   a _ _   -> a
-  Let   a _ _ _ -> a
-  Pi    a _ _ _ -> a
-  Type  a       -> a
-  Var   a _     -> a
+  Annot a _ _ -> a
+  App   a _ _ -> a
+  Hole  a     -> a
+  Lam   a _   -> a
+  Let   a _ _ -> a
+  Pi    a _ _ -> a
+  Type  a     -> a
+  Var     _   -> error "TODO: I removed annotatoins from Var"
+
+simultaneousSubstitute ::
+  (Monad f, Eq a) => [(a, f a)] -> f a -> f a
+simultaneousSubstitute l w =
+  w >>= \b -> case lookup b l of
+                Just p -> p
+                Nothing -> return b
+
+abstractAnonymous :: (Monad f) => f ν -> Scope (Name ν ()) f ν
+abstractAnonymous = abstractName (const Nothing)
+
+abstractBinder :: (Monad f) => Eq ν => Binder ν -> f ν -> Scope (Name ν ()) f ν
+abstractBinder b =
+  case unBinder b of
+    Nothing -> abstractAnonymous
+    Just v  -> abstract1Name v

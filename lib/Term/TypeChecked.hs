@@ -5,27 +5,27 @@ module Term.TypeChecked where
 
 import Term.Term
 
-data TypeChecked
+data TypeChecked ν
 
-type Term = TermX TypeChecked
-type Type = Term
+type Term ν = TermX (TypeChecked ν) ν
+type Type ν = Term ν
 
-type instance X_Annot TypeChecked = ()
-type instance X_App   TypeChecked = Term
-type instance X_Hole  TypeChecked = Term
-type instance X_Lam   TypeChecked = Term
-type instance X_Let   TypeChecked = Term
-type instance X_Pi    TypeChecked = Term
-type instance X_Type  TypeChecked = () -- eventually, universe information
-type instance X_Var   TypeChecked = Term
+type instance X_Annot (TypeChecked ν) = ()
+type instance X_App   (TypeChecked ν) = Term ν
+type instance X_Hole  (TypeChecked ν) = Term ν
+type instance X_Lam   (TypeChecked ν) = Term ν
+type instance X_Let   (TypeChecked ν) = Term ν
+type instance X_Pi    (TypeChecked ν) = Term ν
+type instance X_Type  (TypeChecked ν) = () -- eventually, universe information
+type instance X_Var   (TypeChecked ν) = Term ν
 
-typeOf :: Term -> Term
+typeOf :: Term ν -> Term ν
 typeOf = \case
-  Annot () _ τ   -> τ
-  App   a _ _   -> a
-  Hole  a       -> a
-  Lam   a _ _   -> a
-  Let   a _ _ _ -> a
-  Pi    a _ _ _ -> a
-  Type  ()       -> Type ()
-  Var   a _     -> a
+  Annot () _ τ -> τ
+  App   a _ _ -> a
+  Hole  a     -> a
+  Lam   a _   -> a
+  Let   a _ _ -> a
+  Pi    a _ _ -> a
+  Type  ()     -> Type ()
+  Var     _   -> error "removed annotations from Var"

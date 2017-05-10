@@ -5,14 +5,16 @@ module Parsing where
 import           Control.Applicative
 import           Control.Monad.Fix
 import           Data.Functor
+--import           Data.Maybe
 import           Text.Megaparsec
-import qualified Text.Megaparsec.Lexer as L
+import qualified Text.Megaparsec.Lexer  as L
 import           Text.Megaparsec.String
 import           Text.Printf
 
 import           Parsing.Utils
 import           Term.Binder
-import           Term.Raw as Raw
+--import           Term.Bound
+import           Term.Raw               as Raw
 import           Term.Term
 import           Term.Variable
 
@@ -31,12 +33,12 @@ binOpL = BinaryOpParser LeftAssociative
 binOpR = BinaryOpParser RightAssociative
 binOpN = BinaryOpParser NonAssociative
 
-parser :: [[ModularParser Raw.Term]]
+parser :: [[ModularParser (Raw.Term Variable)]]
 parser =
   -- low precedence
   [ [SelfNextParser letP, SelfNextParser lamP]
   , [binOpN annotSymbol (Annot ())]
-  , [SelfNextParser namedPiP, binOpR "→" (Pi () (Binder Nothing))]
+  , [SelfNextParser namedPiP, binOpR "→" (\ τ1 τ2 -> Pi () τ1 (abstractAnonymous τ2))]
   , [binOpL "" (App ())]
   , [AtomParser holeP, AtomParser typeP, AtomParser varP]
   ]
@@ -56,7 +58,7 @@ choiceOrNextP ps nextP =
 foldP :: [[ModularParser a]] -> Parser a
 foldP ps = fix $ \ self -> foldr ($) (parens self) (map choiceOrNextP ps)
 
-termP :: Parser Raw.Term
+termP :: Parser (Raw.Term Variable)
 termP = foldP parser
 
 -- Binary operator parsers
@@ -86,13 +88,13 @@ binOpNP s k _selfP nextP = binOpRP s k nextP nextP
 variableP :: Parser Variable
 variableP = Variable <$> identifier
 
-binderP :: Parser Binder
+binderP :: Parser (Binder Variable)
 binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> variableP))
 
-holeP :: Parser Raw.Term
+holeP :: Parser (Raw.Term Variable)
 holeP = Hole () <$ symbol holeSymbol
 
-lamP :: Parser2 Raw.Term
+lamP :: Parser2 (Raw.Term Variable)
 lamP selfP _nextP =
   lams
   <$> (try (symbol "λ") *> some binderP)
@@ -107,16 +109,19 @@ lamP selfP _nextP =
   return $ lams bs t
 -}
   where
-    lams :: [Binder] -> Raw.Term -> Raw.Term
+    lams :: [Binder Variable] -> (Raw.Term Variable) -> (Raw.Term Variable)
     lams []       t = t
-    lams (b : bs) t = Lam () b $ lams bs t
+    lams (b : bs) t = Lam () (abstractBinder b (lams bs t))
 
-letP :: Parser2 Raw.Term
-letP selfP _nextP =
-  Let ()
-  <$> (try (rword "let") *> binderP)
-  <*> (symbol "=" *> termP)
-  <*> (rword "in" *> selfP)
+letP :: Parser2 (Raw.Term Variable)
+letP selfP _nextP = do
+  try $ rword "let"
+  b <- binderP
+  symbol "="
+  t1 <- termP
+  rword "in"
+  t2 <- selfP
+  return $ Let () t1 (abstractBinder b t2)
 
 {-
 -- was:
@@ -130,7 +135,7 @@ letP selfP _nextP =
   return $ Let () b t1 t2
 -}
 
-namedPiP :: Parser2 Raw.Term
+namedPiP :: Parser2 (Raw.Term Variable)
 namedPiP selfP _nextP = do
   (bs, τ1) <- try $ do
     symbol "("
@@ -143,25 +148,25 @@ namedPiP selfP _nextP = do
   τ2 <- selfP
   return $ pis bs τ1 τ2
   where
-    pis :: [Binder] -> Raw.Term -> Raw.Term -> Raw.Term
-    pis []     _  τ2 = τ2
-    pis (b:bs) τ1 τ2 = Pi () b τ1 $ pis bs τ1 τ2
+    pis :: [Binder Variable] -> (Raw.Term Variable) -> (Raw.Term Variable) -> (Raw.Term Variable)
+    pis []       _  τ2 = τ2
+    pis (b : bs) τ1 τ2 = Pi () τ1 (abstractBinder b $ pis bs τ1 τ2)
 
-typeP :: Parser Raw.Term
+typeP :: Parser (Raw.Term Variable)
 typeP = Type () <$ rword "Type"
 
-varP :: Parser Raw.Term
-varP = Var () <$> variableP
+varP :: Parser (Raw.Term Variable)
+varP = Var <$> variableP
 
 -- Running parsers
 
-langP :: Parser Raw.Term
+langP :: Parser (Raw.Term Variable)
 langP = termP <* eof
 
-runParserTerm :: String -> Either (ParseError Char Dec) Raw.Term
+runParserTerm :: String -> Either (ParseError Char Dec) (Raw.Term Variable)
 runParserTerm = runParser langP "runParserTerm"
 
-parseMaybeTerm :: String -> Maybe Raw.Term
+parseMaybeTerm :: String -> Maybe (Raw.Term Variable)
 parseMaybeTerm = parseMaybe langP
 
 -- Utilities

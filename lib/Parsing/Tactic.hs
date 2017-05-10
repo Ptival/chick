@@ -1,15 +1,16 @@
 
 module Parsing.Tactic where
 
-import           Text.Megaparsec.Combinator
-import           Text.Megaparsec.String
+import Text.Megaparsec.Combinator
+import Text.Megaparsec.String
 
-import           Parsing
-import           Parsing.Atomic
-import           Parsing.Utils
-import           Tactic
+import Parsing
+import Parsing.Atomic
+import Parsing.Utils
+import Tactic
+import Term.Variable
 
-atomicP :: Parser Tactic
+atomicP :: Parser (Tactic Variable)
 atomicP =
   Atomic <$> choice
   [ admitP
@@ -17,10 +18,10 @@ atomicP =
   , introP
   ]
 
-semicolonP :: Parser Tactic
+semicolonP :: Parser (Tactic Variable)
 semicolonP = chainl1 atomicP (symbol ";" *> return Semicolon)
 
-tacticP :: Parser Tactic
+tacticP :: Parser (Tactic Variable)
 tacticP =
   choice
   [ semicolonP

@@ -5,63 +5,67 @@
 
 module Inductive.Inductive where
 
+import Bound.Name
 import Control.Monad.Reader.Class
+import Data.Default
 
 import DictMetaOut
 import Inductive.Constructor
 import Precedence
 import PrettyPrinting.PrettyPrintable
-import PrettyPrinting.PrettyPrintableAnnotated
+import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Binder
 import Term.Term
 import Term.TypeChecked      as TypeChecked
 import Term.Variable
 import Text.PrettyPrint.Annotated.WL
 
-data Inductive ξ =
+data Inductive ξ ν =
   Inductive
-  { name         :: Variable
-  , parameters   :: [(Binder, TypeX ξ)]
-  , indices      :: [TypeX ξ]
-  , constructors :: [Constructor ξ]
+  { name         :: ν
+  , parameters   :: [(Binder ν, TypeX ξ ν)]
+  , indices      :: [TypeX ξ ν]
+  , constructors :: [Constructor ξ ν]
   }
 
-deriving instance (ForallX Eq   ξ) => Eq   (Inductive ξ)
-deriving instance (ForallX Show ξ) => Show (Inductive ξ)
+deriving instance (ForallX Eq ξ, Eq ν) => Eq (Inductive ξ ν)
+deriving instance (ForallX Show ξ, Show ν) => Show (Inductive ξ ν)
 
 inductiveType ::
-  [(Binder, TypeChecked.Type)] -> [TypeChecked.Type] -> TypeChecked.Type ->
-  TypeChecked.Type
+  [(Binder Variable, TypeChecked.Type Variable)] -> [TypeChecked.Type Variable] -> TypeChecked.Type Variable ->
+  TypeChecked.Type Variable
 inductiveType ps is o =
   foldr onParam (foldr onIndex o is) ps
   where
-    onIndex :: TypeChecked.Type -> TypeChecked.Type -> TypeChecked.Type
-    onIndex i      t = Pi (Type ()) (Binder Nothing)  i t
-    onParam :: (Binder, TypeChecked.Type) -> TypeChecked.Type -> TypeChecked.Type
-    onParam (b, p) t = Pi (Type ()) b p t
+    onIndex :: TypeChecked.Type Variable -> TypeChecked.Type Variable -> TypeChecked.Type Variable
+    onIndex i      t = Pi (Type ()) i (abstractAnonymous t)
+    onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
+    onParam (b, p) t = Pi (Type ()) p (abstractBinder b t)
 
 arrows :: [Doc a] -> Doc a
 arrows = encloseSep mempty mempty (text " →")
 
-prettyBindingDoc ::
-  MonadReader (DictMetaOut a TypeChecked, PrecedenceTable) m =>
-  (Binder, TypeChecked.Term) -> m (Doc a)
-prettyBindingDoc (Binder b, t) =
+prettyBindingDocU ::
+  MonadReader PrecedenceTable m =>
+  (Binder Variable, TermX ξ Variable) -> m (Doc ())
+prettyBindingDocU (Binder b, t) =
   case b of
-    Nothing -> prettyDocA t
+    Nothing -> prettyDocU t
     Just v -> do
-      tDoc <- prettyDocA t
+      tDoc <- prettyDocU t
       return $ parens . fillSep $
         [ prettyDoc v
         , text ":"
         , tDoc
         ]
 
-instance PrettyPrintableAnnotated Inductive where
-  prettyDocA (Inductive n ps is cs) = do
-    psDoc <- mapM prettyBindingDoc ps
-    csDoc <- mapM (prettyConstructorDoc n ps) cs
-    isDoc <- mapM prettyDocA is
+instance
+  (Default (X_App ξ), Default (X_Hole ξ), Default (X_Pi ξ)) =>
+  PrettyPrintableUnannotated (Inductive ξ) where
+  prettyDocU (Inductive n ps is cs) = do
+    psDoc <- mapM prettyBindingDocU ps
+    csDoc <- mapM (prettyConstructorDocU n ps) cs
+    isDoc <- mapM prettyDocU is
     return $ vsep $
       [ fillSep $
         [ text "inductive"
@@ -81,12 +85,15 @@ instance PrettyPrintableAnnotated Inductive where
         ]
       ] ++ (map (indent 2) csDoc)
 
-prettyConstructorDoc ::
-  MonadReader (DictMetaOut a TypeChecked, PrecedenceTable) m =>
-  Variable -> [(Binder, TypeChecked.Type)] ->
-  Constructor TypeChecked -> m (Doc a)
-prettyConstructorDoc ind indps (Constructor n ps is) = do
-  cDoc <- prettyDocA (constructorTypeChecked ind indps ps is)
+prettyConstructorDocU ::
+  (Default (X_App ξ), Default (X_Hole ξ), Default (X_Pi ξ)) =>
+  MonadReader PrecedenceTable m =>
+  Variable -> [(Binder Variable, TypeX ξ Variable)] ->
+  Constructor ξ Variable -> m (Doc ())
+prettyConstructorDocU ind indps (Constructor n ps is) = do
+  -- it's annoying because to build the term we need annotations
+  -- that we then discard when printing...
+  cDoc <- prettyDocU (constructorTypeUnchecked ind indps ps is)
   return $ fillSep
     [ prettyDoc n
     , text ":"

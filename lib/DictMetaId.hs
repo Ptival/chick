@@ -30,7 +30,8 @@ metaTypeId = runIdentity . metaType
 metaVarId :: DictMetaId ξ -> X_Var ξ
 metaVarId = runIdentity . metaVar
 
-metaId :: DictMetaId ψ -> TermX ξ -> TermX ψ
+{-
+metaId :: DictMetaId ψ -> TermX ξ ν -> TermX ψ ν
 metaId d = go
   where
     go = \case
@@ -43,10 +44,10 @@ metaId d = go
       Type  _         -> Type  (metaTypeId  d)
       Var   _ x       -> Var   (metaVarId   d) x
 
-metaId' :: (ForallX ((~) b) ψ) => b -> TermX ξ -> TermX ψ
+metaId' :: (ForallX ((~) b) ψ) => b -> TermX ξ ν -> TermX ψ ν
 metaId' b t = metaId (dictMetaId b) t
 
-metaIdHead :: DictMetaId ξ -> TermX ξ -> TermX ξ
+metaIdHead :: DictMetaId ξ -> TermX ξ ν -> TermX ξ ν
 metaIdHead d = go
   where
     go = \case
@@ -59,5 +60,6 @@ metaIdHead d = go
       Type  _         -> Type  (metaTypeId  d)
       Var   _ x       -> Var   (metaVarId   d) x
 
-metaIdHead' :: (ForallX ((~) b) ξ) => b -> TermX ξ -> TermX ξ
+metaIdHead' :: (ForallX ((~) b) ξ) => b -> TermX ξ ν -> TermX ξ ν
 metaIdHead' b t = metaIdHead (dictMetaId b) t
+-}

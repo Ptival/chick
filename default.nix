@@ -1,8 +1,7 @@
 { nixpkgs ? import <nixpkgs> {}, compiler }:
+let bound = nixpkgs.pkgs.haskell.packages.${compiler}.callPackage ./bound.nix {}; in
 let packaged = nixpkgs.pkgs.haskell.packages.${compiler}.callPackage ./chick.nix {
-  #base-orphans =
-  #  let base-orphans = nixpkgs.pkgs.haskell.packages.${compiler}.base-orphans; in
-  #  nixpkgs.pkgs.haskell.lib.dontCheck base-orphans;
+  inherit bound;
 }; in
 (nixpkgs.pkgs.haskell.lib.addBuildTools
   packaged

@@ -9,6 +9,7 @@ import Term.Term
 import Term.Raw as Raw
 import Term.Variable
 
+{-
 foldVars :: forall a ξ. (Variable -> a -> a) -> TermX ξ -> a -> a
 foldVars g = go
   where
@@ -34,3 +35,4 @@ wellFormed t =
         && notElem v reservedWords
   in
   foldVars (\ v acc -> acc && condition v) t True
+-}

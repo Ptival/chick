@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module PrettyPrinting.PrettyPrintableAnnotated where
+module PrettyPrinting.PrettyPrintableUnannotated where
 
 import Bound.Name
 import Bound.Scope
@@ -11,45 +11,39 @@ import Control.Monad.Reader
 import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
-import DictMetaOut
+--import DictMetaOut
 import Precedence
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Utils
-import Term.Binder
+--import Term.Binder
 import Term.Term
 import Term.Variable
-import Term.TypeChecked
+--import Term.TypeChecked
 
--- No, you cannot change Variable to ν
--- because prettyTermDocPrec instantiates the name
+class PrettyPrintableUnannotated t where
+  prettyDocU ::
+    (MonadReader PrecedenceTable m) =>
+    t Variable -> m (Doc ())
+  prettyStrU :: t Variable -> String
+  prettyStrU t =
+    display . renderPretty 1.0 80 . runReader (prettyDocU t) $ def
 
-class PrettyPrintableAnnotated t where
-  prettyDocA ::
-    (MonadReader (DictMetaOut a ξ, PrecedenceTable) m) =>
-    t ξ Variable -> m (Doc a)
-  prettyStrA :: t (TypeChecked Variable) Variable -> String
-  prettyStrA t =
-    display . renderPretty 1.0 80 . runReader (prettyDocA t) $
-    (ignoreAnnotations, def)
-
-instance PrettyPrintableAnnotated TermX where
-  prettyDocA t = do
-    (dict, precs) <- ask
-    return $ par precs (PrecMin, TolerateEqual) . prettyTermDocPrec dict precs $ t
+instance PrettyPrintableUnannotated (TermX ξ) where
+  prettyDocU t = do
+    precs <- ask
+    return $ par precs (PrecMin, TolerateEqual) . prettyTermDocPrec precs $ t
 
 prettyTermDocPrec ::
-  forall a ξ. DictMetaOut a ξ -> PrecedenceTable -> TermX ξ Variable -> (Doc a, Precedence)
-prettyTermDocPrec dict precs = goTerm
+  forall a ξ. PrecedenceTable -> TermX ξ Variable -> (Doc a, Precedence)
+prettyTermDocPrec precs = goTerm
 
   where
 
     go :: (Precedence, Tolerance) -> TermX ξ Variable -> Doc a
-    go pt = par precs pt . prettyTermDocPrec dict precs
+    go pt = par precs pt . prettyTermDocPrec precs
 
     goTerm :: TermX ξ Variable -> (Doc a, Precedence)
-    goTerm term =
-      (\ (doc, p) -> (annotate (metaOut dict term) doc, p))
-      $ case term of
+    goTerm = \case
 
       Annot _ t τ ->
         (fillSep

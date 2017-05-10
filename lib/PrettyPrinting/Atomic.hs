@@ -4,12 +4,13 @@ module PrettyPrinting.Atomic where
 
 import Text.PrettyPrint.Annotated.WL
 
-import PrettyPrinting.Binder
-import PrettyPrinting.Variable
+import PrettyPrinting.PrettyPrintable
+
 import Tactic
 
-prettyAtomicDoc :: Atomic -> Doc a
+prettyAtomicDoc :: PrettyPrintable ν => Atomic ν -> Doc a
 prettyAtomicDoc = \case
-  Admit   -> text "admit"
-  Exact v -> fillSep [text "exact", prettyVariableDoc v]
-  Intro b -> fillSep [text "intro", prettyBinderDoc b]
+  Admit    -> text "admit"
+  Destruct -> text "destruct"
+  Exact v  -> fillSep [text "exact", prettyDoc v]
+  Intro b  -> fillSep [text "intro", prettyDoc b]

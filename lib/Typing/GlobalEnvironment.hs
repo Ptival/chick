@@ -22,12 +22,12 @@ import           Term.TypeChecked as TypeChecked
 import           Term.Variable
 import qualified Typing.LocalContext as LocalContext
 
-newtype GlobalEnvironment ξ
+newtype GlobalEnvironment ξ ν
   = GlobalEnvironment
-    { unGlobalEnvironment :: [GlobalDeclaration ξ]
+    { unGlobalEnvironment :: [GlobalDeclaration ξ ν]
     }
 
-addGlobalAssum :: (Binder, TypeX ξ) -> GlobalEnvironment ξ -> GlobalEnvironment ξ
+addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalAssum (Binder Nothing , _) γ = γ
 addGlobalAssum (Binder (Just v), τ) (GlobalEnvironment γ) =
   GlobalEnvironment ((GlobalAssum v τ) : γ)
@@ -43,7 +43,8 @@ An inductive brings into scope:
 
 TODO: - recursors
 -}
-unwrapInductive :: Inductive TypeChecked -> [GlobalDeclaration TypeChecked]
+unwrapInductive ::
+  Inductive (TypeChecked Variable) Variable -> [GlobalDeclaration (TypeChecked Variable) Variable]
 unwrapInductive (Inductive v ps is cs) =
   GlobalAssum v (inductiveType ps is (Type ())) : map constructorAssumption cs
   where
@@ -56,7 +57,8 @@ or an inductive type, but will not find constructors of an inductive
 type.
 -}
 lookupDecl ::
-  Variable -> GlobalEnvironment TypeChecked -> Maybe (GlobalDeclaration TypeChecked)
+  Eq ν =>
+  ν -> GlobalEnvironment (TypeChecked ν) ν -> Maybe (GlobalDeclaration (TypeChecked ν) ν)
 lookupDecl target = find found . unGlobalEnvironment
   where
     found = \case
@@ -69,7 +71,9 @@ lookupDecl target = find found . unGlobalEnvironment
 will find either a global assumption, a global declaration, an
 inductive type, or a constructor, and will return its type.
 -}
-lookupType :: Variable -> GlobalEnvironment TypeChecked -> Maybe (TypeChecked.Type)
+lookupType ::
+  Variable -> GlobalEnvironment (TypeChecked Variable) Variable ->
+  Maybe (TypeChecked.Type Variable)
 lookupType target = go . unGlobalEnvironment
   where
     go = msum . map found
@@ -80,21 +84,23 @@ lookupType target = go . unGlobalEnvironment
       _ -> Nothing
 
 toLocalContext ::
-  GlobalEnvironment TypeChecked -> LocalContext.LocalContext TypeChecked
+  GlobalEnvironment (TypeChecked Variable) Variable ->
+  LocalContext.LocalContext (TypeChecked Variable) Variable
 toLocalContext =
   LocalContext . foldr (\ g acc -> localize g ++ acc) [] . unGlobalEnvironment
   where
     localize ::
-      GlobalDeclaration TypeChecked -> [LocalDeclaration TypeChecked]
+      GlobalDeclaration (TypeChecked Variable) Variable ->
+      [LocalDeclaration (TypeChecked Variable) Variable]
     localize = \case
       GlobalAssum v τ   -> [LocalAssum v τ]
       GlobalDef   v t τ -> [LocalDef v t τ]
       GlobalInd   i     -> concatMap localize (unwrapInductive i)
 
-envInductives :: GlobalEnvironment ξ -> [Inductive ξ]
+envInductives :: GlobalEnvironment ξ ν -> [Inductive ξ ν]
 envInductives = foldr addInductive [] . unGlobalEnvironment
   where
-    addInductive :: GlobalDeclaration ξ -> [Inductive ξ] -> [Inductive ξ]
+    addInductive :: GlobalDeclaration ξ ν -> [Inductive ξ ν] -> [Inductive ξ ν]
     addInductive (GlobalInd i) a = i : a
     addInductive _             a = a
 
@@ -103,13 +109,16 @@ inductive type in the global environment.  For instance, given '(List
 T)', it should return the inductive 'Some (Inductive for List)'.
 Given '(A -> List T)', it should return 'None'.
 -}
-isInductive :: GlobalEnvironment TypeChecked -> TypeChecked.Type -> Maybe (Inductive TypeChecked)
+isInductive ::
+  Eq ν =>
+  GlobalEnvironment (TypeChecked ν) ν -> TypeChecked.Type ν ->
+  Maybe (Inductive (TypeChecked ν) ν)
 isInductive ge = go
   where
     go τ =
       case τ of
         App _ l _ -> go l
-        Var _ v   ->
+        Var v   ->
           case lookupDecl v ge of
             Just (GlobalInd i) -> Just i
             _ -> Nothing

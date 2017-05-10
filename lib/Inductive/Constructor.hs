@@ -14,76 +14,99 @@ import Term.Term
 import Term.Variable
 import Term.TypeChecked as TypeChecked
 
-data Constructor ξ =
+data Constructor ξ ν =
   Constructor
-  { name       :: Variable
-  , parameters :: [(Binder, TypeX ξ)]
-  , indices    :: [TypeX ξ]
+  { name       :: ν
+  , parameters :: [(Binder ν, TypeX ξ ν)]
+  , indices    :: [TypeX ξ ν]
   }
 
-deriving instance (ForallX Eq   ξ) => Eq   (Constructor ξ)
-deriving instance (ForallX Show ξ) => Show (Constructor ξ)
+deriving instance (ForallX Eq ξ, Eq ν) => Eq (Constructor ξ ν)
+deriving instance (ForallX Show ξ, Show ν) => Show (Constructor ξ ν)
 
 constructorTypeUnchecked :: forall ξ.
-  X_App ξ -> X_Hole ξ -> X_Pi ξ -> X_Var ξ ->
-  Variable -> [(Binder, TypeX ξ)] ->
-  [(Binder, TypeX ξ)] -> [TypeX ξ] ->
-  TypeX ξ
-constructorTypeUnchecked appA holeA piA varA ind indps ps is =
+  (Default (X_App ξ), Default (X_Hole ξ), Default (X_Pi ξ)) =>
+  Variable -> [(Binder Variable, TypeX ξ Variable)] ->
+  [(Binder Variable, TypeX ξ Variable)] -> [TypeX ξ Variable] ->
+  TypeX ξ Variable
+constructorTypeUnchecked ind indps ps is =
   foldr onParam (
     foldr onIndex (
         foldr onIndParam
-        (Var varA ind)
+        (Var ind)
         indps)
     is)
   ps
   where
-    onIndex :: TypeX ξ -> TypeX ξ -> TypeX ξ
-    onIndex i t = App appA t i
-    onParam :: (Binder, TypeX ξ) -> TypeX ξ -> TypeX ξ
-    onParam (b, p) t = Pi piA b p t
-    onIndParam :: (Binder, TypeX ξ) -> TypeX ξ -> TypeX ξ
-    onIndParam (Binder (Just v), τ) t = App appA t (Var varA v)
-    onIndParam (Binder Nothing,  τ) t = App appA t (Hole holeA)
+    onIndex :: TypeX ξ Variable -> TypeX ξ Variable -> TypeX ξ Variable
+    onIndex i t = App def t i
+    onParam :: (Binder Variable, TypeX ξ Variable) -> TypeX ξ Variable -> TypeX ξ Variable
+    onParam (b, p) t = Pi def p (abstractBinder b t)
+    onIndParam :: (Binder Variable, TypeX ξ Variable) -> TypeX ξ Variable -> TypeX ξ Variable
+    onIndParam (Binder (Just v), _) t = App def t (Var v)
+    onIndParam (Binder Nothing,  _) t = App def t (Hole def)
 
 constructorTypeChecked ::
-  Variable -> [(Binder, TypeChecked.Type)] ->
-  [(Binder, TypeChecked.Type)] -> [TypeChecked.Type] ->
-  TypeChecked.Type
+  Variable -> [(Binder Variable, TypeChecked.Type Variable)] ->
+  [(Binder Variable, TypeChecked.Type Variable)] -> [TypeChecked.Type Variable] ->
+  TypeChecked.Type Variable
 constructorTypeChecked ind indps ps is =
   foldr onParam (
     foldr onIndex (
         foldr onIndParam
-        (Var (Type ()) ind)
+        (Var ind)
         indps)
     is)
   ps
   where
-    onIndex :: TypeChecked.Type -> TypeChecked.Type -> TypeChecked.Type
+    onIndex :: TypeChecked.Type Variable -> TypeChecked.Type Variable -> TypeChecked.Type Variable
     onIndex i t = App (Type ()) t i
-    onParam :: (Binder, TypeChecked.Type) -> TypeChecked.Type -> TypeChecked.Type
-    onParam (b, p) t = Pi (Type ()) b p t
-    onIndParam :: (Binder, TypeChecked.Type) -> TypeChecked.Type -> TypeChecked.Type
-    onIndParam (Binder (Just v), τ) t = App (Type ()) t (Var τ v)
+    onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
+    onParam (b, p) t = Pi (Type ()) p (abstractBinder b t)
+    onIndParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
+    onIndParam (Binder (Just v), _) t = App (Type ()) t (Var v)
     onIndParam (Binder Nothing,  τ) t = App (Type ()) t (Hole τ)
 
-constructorTerm :: ForallX Default ξ =>
-  Variable -> [(Binder, TypeX ξ)] ->
-  [(Binder, TypeX ξ)] -> [TypeX ξ] ->
-  TermX ξ
-constructorTerm ind indps ps is =
+{-
+This is complicated.
+
+For instance if you have:
+
+T : Type
+n : nat
+v : Vec T n
+H : H T n v
+⊢ G T n v
+
+And you destruct v into both constructors, the expected result for cons is:
+
+T : Type
+n : nat
+xs : Vec T n
+H : H T (S n) (vcons n h xs)
+⊢ G T (S n) (vcons n h xs)
+
+-}
+
+{-
+constructorTerm ::
+  Variable -> [(Binder Variable, TypeX ξ Variable)] ->
+  [(Binder Variable, TypeX ξ Variable)] -> [TypeX ξ Variable] ->
+  Constructor ξ Variable -> TermX ξ Variable
+constructorTerm ind indps ips iis (Constructor c ps is) =
   foldr onParam (
     foldr onIndex (
         foldr onIndParam
-        (Var def ind)
+        (Var ind)
         indps)
     is)
   ps
   where
-    onIndex :: TypeChecked.Type -> TypeChecked.Type -> TypeChecked.Type
+    onIndex :: TypeChecked.Type Variable -> TypeChecked.Type Variable -> TypeChecked.Type Variable
     onIndex i t = App (Type ()) t i
-    onParam :: (Binder, TypeChecked.Type) -> TypeChecked.Type -> TypeChecked.Type
-    onParam (b, p) t = Pi (Type ()) b p t
-    onIndParam :: (Binder, TypeChecked.Type) -> TypeChecked.Type -> TypeChecked.Type
-    onIndParam (Binder (Just v), τ) t = App (Type ()) t (Var τ v)
+    onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
+    onParam (b, p) t = Pi (Type ()) p (abstractBinder b t)
+    onIndParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
+    onIndParam (Binder (Just v), τ) t = App (Type ()) t (Var v)
     onIndParam (Binder Nothing,  τ) t = App (Type ()) t (Hole τ)
+-}

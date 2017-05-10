@@ -12,6 +12,7 @@ import Term.Fresh
 import Term.Term
 import Term.Variable
 
+{-
 class Substitutable t where
   subst :: Variable -> TermX ξ -> t ξ -> t ξ
 
@@ -39,3 +40,4 @@ instance Substitutable TermX where
                  let f = freshAvoid ([target] ++ freeVars replacement) t in
                  k (Binder (Just f)) (go (αrename v f t))
         _                        -> k (Binder b) (go t)
+-}

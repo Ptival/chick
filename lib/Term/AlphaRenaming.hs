@@ -3,15 +3,20 @@
 
 module Term.AlphaRenaming where
 
-import Data.List
+--import Data.List
 
-import Term.Binder
-import Term.Free
-import Term.Fresh
+--import Term.Binder
+import Term.Bound
+--import Term.Free
+--import Term.Fresh
 import Term.Term
 import Term.Variable
 
-αrename :: Variable -> Variable -> TermX ξ -> TermX ξ
+αrename :: Variable -> Variable -> TermX ξ Variable -> TermX ξ Variable
+αrename = substituteVar
+
+{-
+αrename :: Variable -> Variable -> TermX ξ Variable -> TermX ξ Variable
 αrename target replacement = go
   where
     go = \case
@@ -25,7 +30,7 @@ import Term.Variable
       Var   a v
         | v == target -> Var a replacement
         | otherwise  -> Var a v
-    goBound :: (Binder -> TermX ξ -> TermX ξ) -> Binder -> TermX ξ -> TermX ξ
+    goBound :: (Binder -> TermX ξ Variable -> TermX ξ Variable) -> Binder -> TermX ξ Variable -> TermX ξ Variable
     goBound k (Binder b) t = case b of
       Just v | v == target      -> k (Binder b) t
       Just v | v == replacement ->
@@ -34,7 +39,7 @@ import Term.Variable
       _                        -> k (Binder b) (go t)
 
 -- this is pretty inefficient
-αrenameAvoidFree :: [Variable] -> TermX ξ -> TermX ξ
+αrenameAvoidFree :: [Variable] -> TermX ξ Variable -> TermX ξ Variable
 αrenameAvoidFree avoid term =
   -- we want to remove the following variables from the term
   let conflicts = avoid `intersect` freeVars term in
@@ -67,4 +72,5 @@ import Term.Variable
         (Binder (Just v'), go (αrename v v' t))
       | otherwise      = (b, go t)
     goBound b t = (b, go t)
+-}
 -}

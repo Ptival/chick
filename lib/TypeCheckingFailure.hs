@@ -2,25 +2,23 @@
 
 module TypeCheckingFailure where
 
-import Text.Printf       (printf)
-import Term.Term
-import Term.Variable
+import Text.Printf    (printf)
 
-data TypeCheckingFailure t
+data TypeCheckingFailure t ν
   = AppArgumentFailed
   | AppFunctionFailed
-  | AppFunctionTypeFailed t
+  | AppFunctionTypeFailed (t ν)
   | IncompatibleTypes -- should add two arguments
   | NotAType -- TODO
   | SynthesizeLambda
-  | UnboundVariable Variable
+  | UnboundVariable ν
   | Unchecked
 
   | TODO -- this should be removed eventually
 
   deriving (Show)
 
-displayTypeCheckingFailure :: Show t => TypeCheckingFailure t -> String
+displayTypeCheckingFailure :: (Show ν, Show (t ν)) => TypeCheckingFailure t ν -> String
 displayTypeCheckingFailure = \case
   AppArgumentFailed ->
     "The argument to this application did not type-check correctly"

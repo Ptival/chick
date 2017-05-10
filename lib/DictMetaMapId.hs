@@ -10,7 +10,7 @@ import Term.Term
 
 type DictMetaMapId = DictMetaMap Identity Identity
 
-metaMapId :: DictMetaMapId ξ ψ -> TermX ξ -> TermX ψ
+metaMapId :: DictMetaMapId ξ ψ -> TermX ξ ν -> TermX ψ ν
 metaMapId d = go
   where
     go = \case
@@ -23,6 +23,7 @@ metaMapId d = go
       Type  a         -> Type  (doTypeId  d a)
       Var   a x       -> Var   (doVarId   d a) x
 
+{-
 dictMetaMapId ::
   (ForallX ((~) a) ξ, ForallX ((~) b) ψ) =>
   (a -> b) -> DictMetaMapId ξ ψ
@@ -52,3 +53,4 @@ doTypeId  :: DictMetaMapId ξ ψ -> X_Type  ξ -> X_Type  ψ
 doTypeId  d a = runIdentity (doType  d (Identity a))
 doVarId   :: DictMetaMapId ξ ψ -> X_Var   ξ -> X_Var   ψ
 doVarId   d a = runIdentity (doVar   d (Identity a))
+-}

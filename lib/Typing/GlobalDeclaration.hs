@@ -8,25 +8,26 @@
 module Typing.GlobalDeclaration where
 
 import Inductive.Inductive
-import Substitutable
+--import Substitutable
 import Term.Term
 import Term.Variable
 
-data GlobalDeclaration ξ
-  = GlobalAssum Variable (TypeX ξ)
+data GlobalDeclaration ξ ν
+  = GlobalAssum ν (TypeX ξ ν)
   -- careful, the term and type arguments are convertible
   -- v := t : τ
-  | GlobalDef   Variable (TermX ξ) (TypeX ξ)
-  | GlobalInd   (Inductive ξ)
+  | GlobalDef   ν (TermX ξ ν) (TypeX ξ ν)
+  | GlobalInd   (Inductive ξ ν)
 
-deriving instance (ForallX Eq   ξ) => Eq   (GlobalDeclaration ξ)
-deriving instance (ForallX Show ξ) => Show (GlobalDeclaration ξ)
+deriving instance (ForallX Eq ξ, Eq ν) => Eq (GlobalDeclaration ξ ν)
+deriving instance (ForallX Show ξ, Show ν) => Show (GlobalDeclaration ξ ν)
 
-nameOf :: GlobalDeclaration ξ -> Variable
+nameOf :: GlobalDeclaration ξ ν -> ν
 nameOf (GlobalAssum v _) = v
 nameOf (GlobalDef v _ _) = v
 nameOf (GlobalInd (Inductive v _ _ _)) = v
 
+{-
 instance Substitutable GlobalDeclaration where
   subst target replacement = \case
     GlobalAssum v τ   -> GlobalAssum v (s τ)
@@ -34,3 +35,4 @@ instance Substitutable GlobalDeclaration where
     GlobalInd   i     -> GlobalInd   i
     where
       s = subst target replacement
+-}
