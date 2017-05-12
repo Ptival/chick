@@ -7,8 +7,10 @@
 
 module Typing.GlobalDeclaration where
 
+import Text.PrettyPrint.Annotated.WL
+
 import Inductive.Inductive
---import Substitutable
+import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
 import Term.Variable
 
@@ -19,8 +21,31 @@ data GlobalDeclaration ξ ν
   | GlobalDef   ν (TermX ξ ν) (TypeX ξ ν)
   | GlobalInd   (Inductive ξ ν)
 
-deriving instance (ForallX Eq ξ, Eq ν) => Eq (GlobalDeclaration ξ ν)
-deriving instance (ForallX Show ξ, Show ν) => Show (GlobalDeclaration ξ ν)
+deriving instance (Eq ξ, Eq ν) => Eq (GlobalDeclaration ξ ν)
+deriving instance (Show ξ, Show ν) => Show (GlobalDeclaration ξ ν)
+
+instance
+  PrettyPrintableUnannotated (TermX ξ) =>
+  PrettyPrintableUnannotated (GlobalDeclaration ξ) where
+  prettyDocU = \case
+    GlobalAssum (Variable v) τ -> do
+      τDoc <- prettyDocU τ
+      return $ fillSep
+        [ text v
+        , char ':'
+        , τDoc
+        ]
+    GlobalDef (Variable v) t τ -> do
+      tDoc <- prettyDocU t
+      τDoc <- prettyDocU τ
+      return $ fillSep
+        [ text v
+        , text ":="
+        , tDoc
+        , char ':'
+        , τDoc
+        ]
+    GlobalInd i -> prettyDocU i
 
 nameOf :: GlobalDeclaration ξ ν -> ν
 nameOf (GlobalAssum v _) = v

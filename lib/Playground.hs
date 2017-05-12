@@ -4,60 +4,66 @@ module Playground where
 
 import Control.Monad
 import Control.Monad.Except
+import Control.Monad.Reader
 import Data.Default
 import Test.QuickCheck
 import Text.PrettyPrint.Annotated.WL
 import Text.Printf
 
 import Parsing
-import PrettyPrinting.Binder
-import PrettyPrinting.Term
+import PrettyPrinting.PrettyPrintable
+import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Utils
 import StandardLibrary
 import Tactic
 import Term.AlphaRenaming
 import Term.Fresh
-import Term.Raw                      as Raw
+import Term.Raw                                  as Raw
 import Term.Term
-import Term.TypeChecked              as TypeChecked
-import Term.TypeErrored              as TypeErrored
+import Term.TypeChecked                          as TypeChecked
+import Term.TypeErrored                          as TypeErrored
+import Term.Variable
+import Typing.GlobalEnvironment
+import Typing.LocalContext
 import Work
 
-genPi :: Gen Raw.Term
+{-
+genPi :: Gen (Raw.Term ν)
 genPi = do
-  Pi def <$> arbitrary <*> arbitrary <*> arbitrary
+  Pi () <$> arbitrary <*> arbitrary
+-}
 
 test :: IO ()
 test = do
-  let task = checkF [] tId τId id
+  let task = checkF (LocalContext []) tId τId id
   --let task = checkF [] tFlip τFlip id
   let trace = tcTrace stepTypeCheckerF task
   forM_ trace $ \ item -> do
-    putStrLn $ doc2String $ prettyTypeCheckerF item
+    putStrLn $ doc2String $ runReader (prettyTypeCheckerF item) def
 
-typeCheck :: TermX ξ -> Maybe (TypeX ξ) -> IO ()
+typeCheck :: TermX ξ Variable -> Maybe (TypeX ξ Variable) -> IO ()
 typeCheck t mτ = do
   putStrLn $ replicate 80 '-'
   putStrLn "Type-checking:"
-  putStrLn $ prettyTerm t
+  putStrLn $ prettyStrU t
   case mτ of
     Nothing -> return ()
     Just τ  -> do
       putStrLn "Against type:"
-      putStrLn $ prettyTerm τ
+      putStrLn $ prettyStrU τ
   let e = tc $ case mτ of
-        Nothing -> synthF [] t id
-        Just τ  -> checkF [] t τ id
+        Nothing -> synthF (LocalContext []) t id
+        Just τ  -> checkF (LocalContext []) t τ id
   case e of
     Left  l -> do
       putStrLn "Failed:"
-      putStrLn $ prettyTerm l
-      putStrLn $ getTypeError l
+      putStrLn $ prettyStrU l
     Right r -> do
       putStrLn "Succeded:"
-      putStrLn $ prettyTerm r
+      putStrLn $ prettyStrU r
   return ()
 
+{-
 randomTypeCheck :: IO ()
 randomTypeCheck = do
   t <- generate (arbitrary :: Gen Raw.Term)
@@ -78,3 +84,4 @@ main = do
       Right g' -> forM_ g' printGoal
   where
     printGoal = putStrLn . doc2String . prettyGoal ignoreAnnotations def
+-}

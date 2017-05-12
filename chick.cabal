@@ -48,10 +48,9 @@ Library
                    Precedence
                    StandardLibrary
                    Substitutable
-                   --Tactic
+                   Tactic
                    Term.AlphaEquivalence
                    Term.AlphaRenaming
-                   Term.Bound
                    --Term.Fold
                    Term.Free
                    Term.Fresh
@@ -68,14 +67,25 @@ Library
                  Inductive.Inductive
                  Parsing.Utils
                  PrettyPrinting.PrettyPrintable
+                 PrettyPrinting.PrettyPrintableAnnotated
+                 PrettyPrinting.PrettyPrintableUnannotated
                  PrettyPrinting.Utils
                  Term.Binder
                  Term.Variable
                  Term.TypeChecked
-                 PrettyPrinting.PrettyPrintableAnnotated
-                 PrettyPrinting.PrettyPrintableUnannotated
+                 Term.TypeErrored
+                 TypeCheckingFailure
+                 Typing.GlobalDeclaration
+                 Typing.GlobalEnvironment
+                 Typing.Inductive
                  Typing.LocalContext
                  Typing.LocalDeclaration
+                 Utils
+                 Parsing.Atomic
+                 Parsing.Tactic
+                 PrettyPrinting.Tactic
+                 Term.Diff
+                 Typing.TypeChecker
 
 Test-suite Test
   default-language: Haskell2010

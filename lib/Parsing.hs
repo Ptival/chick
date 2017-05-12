@@ -153,7 +153,7 @@ namedPiP selfP _nextP = do
     pis (b : bs) τ1 τ2 = Pi () τ1 (abstractBinder b $ pis bs τ1 τ2)
 
 typeP :: Parser (Raw.Term Variable)
-typeP = Type () <$ rword "Type"
+typeP = Type <$ rword "Type"
 
 varP :: Parser (Raw.Term Variable)
 varP = Var <$> variableP

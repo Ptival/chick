@@ -7,12 +7,11 @@
 
 module Inductive.Constructor where
 
-import Data.Default
-
 import Term.Binder
 import Term.Term
 import Term.Variable
 import Term.TypeChecked as TypeChecked
+import Term.Raw         as Raw
 
 data Constructor ξ ν =
   Constructor
@@ -21,15 +20,14 @@ data Constructor ξ ν =
   , indices    :: [TypeX ξ ν]
   }
 
-deriving instance (ForallX Eq ξ, Eq ν) => Eq (Constructor ξ ν)
-deriving instance (ForallX Show ξ, Show ν) => Show (Constructor ξ ν)
+deriving instance (Eq ξ, Eq ν) => Eq (Constructor ξ ν)
+deriving instance (Show ξ, Show ν) => Show (Constructor ξ ν)
 
-constructorTypeUnchecked :: forall ξ.
-  (Default (X_App ξ), Default (X_Hole ξ), Default (X_Pi ξ)) =>
-  Variable -> [(Binder Variable, TypeX ξ Variable)] ->
-  [(Binder Variable, TypeX ξ Variable)] -> [TypeX ξ Variable] ->
-  TypeX ξ Variable
-constructorTypeUnchecked ind indps ps is =
+rawConstructorType ::
+  Variable -> [(Binder Variable, TermX ξ Variable)] ->
+  [(Binder Variable, TermX ξ Variable)] -> [TermX ξ Variable] ->
+  TypeX () Variable
+rawConstructorType ind indps ps is =
   foldr onParam (
     foldr onIndex (
         foldr onIndParam
@@ -38,13 +36,13 @@ constructorTypeUnchecked ind indps ps is =
     is)
   ps
   where
-    onIndex :: TypeX ξ Variable -> TypeX ξ Variable -> TypeX ξ Variable
-    onIndex i t = App def t i
-    onParam :: (Binder Variable, TypeX ξ Variable) -> TypeX ξ Variable -> TypeX ξ Variable
-    onParam (b, p) t = Pi def p (abstractBinder b t)
-    onIndParam :: (Binder Variable, TypeX ξ Variable) -> TypeX ξ Variable -> TypeX ξ Variable
-    onIndParam (Binder (Just v), _) t = App def t (Var v)
-    onIndParam (Binder Nothing,  _) t = App def t (Hole def)
+    onIndex :: TermX ξ Variable -> Raw.Term Variable -> Raw.Term Variable
+    onIndex i t = App () (raw t) (raw i)
+    onParam :: (Binder Variable, TermX ξ Variable) -> Raw.Term Variable -> Raw.Term Variable
+    onParam (b, p) t = Pi () (raw p) (abstractBinder b t)
+    onIndParam :: (Binder Variable, TermX ξ Variable) -> Raw.Term Variable -> Raw.Term Variable
+    onIndParam (Binder (Just v), _) t = App () (raw t) (Var v)
+    onIndParam (Binder Nothing,  _) t = App () (raw t) (Hole ())
 
 constructorTypeChecked ::
   Variable -> [(Binder Variable, TypeChecked.Type Variable)] ->
@@ -60,12 +58,12 @@ constructorTypeChecked ind indps ps is =
   ps
   where
     onIndex :: TypeChecked.Type Variable -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onIndex i t = App (Type ()) t i
+    onIndex i t = App (Checked Type) t i
     onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onParam (b, p) t = Pi (Type ()) p (abstractBinder b t)
+    onParam (b, p) t = Pi (Checked Type) p (abstractBinder b t)
     onIndParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onIndParam (Binder (Just v), _) t = App (Type ()) t (Var v)
-    onIndParam (Binder Nothing,  τ) t = App (Type ()) t (Hole τ)
+    onIndParam (Binder (Just v), _) t = App (Checked Type) t (Var v)
+    onIndParam (Binder Nothing,  τ) t = App (Checked Type) t (Hole (Checked τ))
 
 {-
 This is complicated.
@@ -103,10 +101,10 @@ constructorTerm ind indps ips iis (Constructor c ps is) =
   ps
   where
     onIndex :: TypeChecked.Type Variable -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onIndex i t = App (Type ()) t i
+    onIndex i t = App Type t i
     onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onParam (b, p) t = Pi (Type ()) p (abstractBinder b t)
+    onParam (b, p) t = Pi Type p (abstractBinder b t)
     onIndParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onIndParam (Binder (Just v), τ) t = App (Type ()) t (Var v)
-    onIndParam (Binder Nothing,  τ) t = App (Type ()) t (Hole τ)
+    onIndParam (Binder (Just v), τ) t = App Type t (Var v)
+    onIndParam (Binder Nothing,  τ) t = App Type t (Hole τ)
 -}

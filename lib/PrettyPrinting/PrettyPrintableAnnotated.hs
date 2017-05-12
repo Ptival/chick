@@ -5,6 +5,8 @@
 
 module PrettyPrinting.PrettyPrintableAnnotated where
 
+{-
+
 import Bound.Name
 import Bound.Scope
 import Control.Monad.Reader
@@ -119,3 +121,4 @@ prettyTermDocPrec dict precs = goTerm
           , char '.'
           , go (PrecMin, TolerateEqual) t
           ]
+-}

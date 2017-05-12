@@ -1,14 +1,13 @@
 {-# language LambdaCase #-}
 
 module Term.AlphaEquivalence where
-
+{-
 import Term.AlphaRenaming
 import Term.Binder
 import Term.Free
 import Term.Fresh
 import Term.Term
 
-{-
 αeq :: TermX ξ -> TermX ψ -> Bool
 αeq x y =
   case (x, y) of

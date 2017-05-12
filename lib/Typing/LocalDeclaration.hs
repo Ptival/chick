@@ -10,7 +10,8 @@ module Typing.LocalDeclaration where
 --import Test.QuickCheck
 
 import Text.PrettyPrint.Annotated.WL
-import PrettyPrinting.PrettyPrintableAnnotated
+
+import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
 import Term.Variable
 
@@ -18,11 +19,11 @@ data LocalDeclaration ξ ν
   = LocalAssum ν (TypeX ξ ν)
   | LocalDef   ν (TermX ξ ν) (TypeX ξ ν)
 
-deriving instance (ForallX Eq ξ, Eq ν) => Eq (LocalDeclaration ξ ν)
-deriving instance (ForallX Show ξ, Show ν) => Show (LocalDeclaration ξ ν)
+deriving instance (Eq ξ, Eq ν) => Eq (LocalDeclaration ξ ν)
+deriving instance (Show ξ, Show ν) => Show (LocalDeclaration ξ ν)
 
 {-
-instance (ForallX Arbitrary ξ) => Arbitrary (LocalDeclaration ξ) where
+instance (Arbitrary ξ) => Arbitrary (LocalDeclaration ξ) where
   arbitrary =
     oneof
     [ LocalAssum <$> arbitrary <*> genTerm 2
@@ -31,19 +32,19 @@ instance (ForallX Arbitrary ξ) => Arbitrary (LocalDeclaration ξ) where
 -}
 
 instance
-  PrettyPrintableAnnotated TermX =>
-  PrettyPrintableAnnotated LocalDeclaration where
-  prettyDocA = \case
+  PrettyPrintableUnannotated (TermX ξ) =>
+  PrettyPrintableUnannotated (LocalDeclaration ξ) where
+  prettyDocU = \case
     LocalAssum (Variable v) τ -> do
-      τDoc <- prettyDocA τ
+      τDoc <- prettyDocU τ
       return $ fillSep
         [ text v
         , char ':'
         , τDoc
         ]
     LocalDef (Variable v) t τ -> do
-      tDoc <- prettyDocA t
-      τDoc <- prettyDocA τ
+      tDoc <- prettyDocU t
+      τDoc <- prettyDocU τ
       return $ fillSep
         [ text v
         , text ":="

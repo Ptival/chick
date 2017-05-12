@@ -3,12 +3,8 @@
 
 module Term.AlphaRenaming where
 
---import Data.List
+import Bound.Term
 
---import Term.Binder
-import Term.Bound
---import Term.Free
---import Term.Fresh
 import Term.Term
 import Term.Variable
 

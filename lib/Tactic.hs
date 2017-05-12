@@ -12,18 +12,17 @@ module Tactic where
 import Control.Monad.Except
 import GHC.Generics
 import Prelude
-import Test.QuickCheck
+--import Test.QuickCheck
 import Text.PrettyPrint.Annotated.WL
 import Text.Printf
 
-import DictMetaOut
-import Inductive.Constructor
+--import Inductive.Constructor
 import Inductive.Inductive
-import Precedence
+--import Precedence
 import PrettyPrinting.PrettyPrintable
-import PrettyPrinting.PrettyPrintableAnnotated
-import Substitutable
-import Term.AlphaEquivalence
+--import PrettyPrinting.PrettyPrintableUnannotated
+--import Substitutable
+--import Term.AlphaEquivalence
 import Term.AlphaRenaming
 import Term.Binder
 import Term.Free
@@ -33,21 +32,23 @@ import Term.Variable
 import Typing.GlobalEnvironment
 import Typing.LocalDeclaration
 import Typing.LocalContext
+import Utils
 
 data Goal ξ ν = Goal
-  { hypotheses :: [LocalDeclaration ξ ν]
+  { hypotheses :: LocalContext ξ ν
   , conclusion :: TermX ξ ν
   }
   deriving (Generic)
 
-deriving instance (ForallX Eq ξ, Eq ν) => Eq (Goal ξ ν)
-deriving instance (ForallX Show ξ, Show ν) => Show (Goal ξ ν)
+deriving instance (Eq ξ, Eq ν) => Eq (Goal ξ ν)
+deriving instance (Show ξ, Show ν) => Show (Goal ξ ν)
 
 {-
-instance (ForallX Arbitrary ξ) => Arbitrary (Goal ξ ν) where
+instance (Arbitrary ξ) => Arbitrary (Goal ξ ν) where
   arbitrary = Goal <$> take 2 <$> listOf arbitrary <*> arbitrary
 -}
 
+{-
 instance PrettyPrintableAnnotated Goal where
   prettyDocA (Goal hyps concl) = do
     hypsDoc <- mapM prettyDocA hyps
@@ -57,6 +58,7 @@ instance PrettyPrintableAnnotated Goal where
       , text (replicate 40 '-')
       , conclDoc
       ]
+-}
 
 data Goals ξ ν = Goals
   { focused   :: [Goal ξ ν]
@@ -82,10 +84,10 @@ focus n (Goals f u) =
 
 addHyp ::
   (Eq ν, MonadError String m) =>
-  LocalDeclaration ξ ν -> [LocalDeclaration ξ ν] -> m [LocalDeclaration ξ ν]
-addHyp hyp hyps
+  LocalDeclaration ξ ν -> LocalContext ξ ν -> m (LocalContext ξ ν)
+addHyp hyp (LocalContext hyps)
   | nameOf hyp `elem` map nameOf hyps = throwError "addHyp: name conflict"
-  | otherwise = return $ hyp:hyps
+  | otherwise = return . LocalContext $ hyp:hyps
 
 data Atomic ν
   = Admit
@@ -94,19 +96,18 @@ data Atomic ν
   | Intro (Binder ν)
   deriving (Show)
 
-orElse :: MonadError e m => Maybe a -> e -> m a
-orElse Nothing  e = throwError e
-orElse (Just a) _ = return a
-
-isPi :: TermX ξ ν -> Maybe (TermX ξ ν)
-isPi t@(Pi _ _ _) = Just t
-isPi _            = Nothing
+instance PrettyPrintable ν => PrettyPrintable (Atomic ν) where
+  prettyDoc = \case
+    Admit    -> text "admit"
+    Destruct -> text "destruct"
+    Exact v  -> fillCat [text "exact", prettyDoc v]
+    Intro b  -> fillCat [text "intro", prettyDoc b]
 
 lookupVariable ::
   MonadError String m =>
   Variable ->
-  LocalContext (TypeChecked Variable) Variable ->
-  GlobalEnvironment (TypeChecked Variable) Variable ->
+  LocalContext (Checked Variable) Variable ->
+  GlobalEnvironment (Checked Variable) Variable ->
   m (TypeChecked.Term Variable)
 lookupVariable v hyps ge =
   case Typing.LocalContext.lookupType v (hyps `mappend` toLocalContext ge) of
@@ -116,51 +117,29 @@ lookupVariable v hyps ge =
       (prettyStr v)
     Just τ -> return τ
 
-{-
 runAtomic ::
   MonadError String m =>
-  GlobalEnvironment (TypeChecked ν) ν ->
-  Atomic ν -> Goal (TypeChecked ν) ν -> m [Goal (TypeChecked ν) ν]
+  GlobalEnvironment (Checked Variable) Variable ->
+  Atomic Variable -> Goal (Checked Variable) Variable -> m [Goal (Checked Variable) Variable]
 runAtomic ge a (Goal hyps concl) =
   case a of
 
   Admit -> return []
 
   Destruct -> do
-    Pi _ τ1 bτ2          <- isPi concl        `orElse` "destruct expects the goal to be a forall"
-    Inductive n ps is cs <- isInductive ge τ1 `orElse` "destruct expects the term to be inductive"
+    Pi _ τ1 _bτ2            <- isPi concl        `orElse` "destruct expects the goal to be a forall"
+    Inductive _n _ps _is cs <- isInductive ge τ1 `orElse` "destruct expects the term to be inductive"
+    {-
+    let (b, τ2) = unscopeTerm bτ2
     let conclModifier cTerm concl =
           case unBinder b of
             -- if the Pi was not binding, no need for substitution
             Nothing -> concl
             -- if the Pi
-            Just v  -> subst v cTerm concl
-    forM cs $ \c -> do
+            Just v  -> substitute v cTerm concl
+    -}
+    forM cs $ \ _c -> do
       error "TODO (see bottom of Inductive/Constructor.hs)"
-      {-
-      let cTerm = constructorTerm c
-      return . Goal hyps $ case unBinder b of
-        Nothing -> concl
-        Just v  -> subst v cTerm concl
-      -}
-    {-
-    case concl of
-      Pi _ v τ _ -> do
-        case isInductive ge τ of
-          Nothing -> throwError "Cannot destruct a non-inductive type"
-          Just (Inductive n ps is cs) ->
-            forM cs $ \c -> do
-            l_
-      _ -> throwError "destruct expects the goal to be a forall"
--}
-{-
-      τ <- lookupVariable v hyps ge
-      case isInductive ge τ of
-        Nothing -> throwError "Cannot destruct a non-inductive type"
-        Just (Inductive n ps is cs) ->
-          forM cs $ \ (Constructor n ps is) -> do
-          subst v (constructor
--}
 
   Exact v ->
     do
@@ -174,17 +153,22 @@ runAtomic ge a (Goal hyps concl) =
   Intro (Binder mi) ->
     pure <$> -- i.e. returns just the one goal produced
       case concl of
-      Let _ t1 bt2 -> runIntro (typeOf t1) t2 (flip LocalDef t1) (mi, mv)
-      Pi  _ τ1 bτ2 -> runIntro τ1          τ2 LocalAssum         (mi, mv)
+      Let _ t1 bt2 -> do
+        Checked τ1 <- typeOf t1 `orElse` "could not figure out the type of let-bound variable"
+        let (b, t2) = unscopeTerm bt2
+        runIntro τ1 t2 (flip LocalDef t1) (mi, unBinder b)
+      Pi  _ τ1 bτ2 -> do
+        let (b, τ2) = unscopeTerm bτ2
+        runIntro τ1 τ2 LocalAssum (mi, unBinder b)
       _ -> throwError "Head constructor does not allow introduction"
 
    where
 
      runIntro ::
        MonadError String m =>
-       TypeChecked.Term ν -> TypeChecked.Term ν ->
-       (Variable -> TypeChecked.Term ν -> LocalDeclaration (TypeChecked ν) ν) ->
-       (Maybe Variable, Maybe Variable) -> m (Goal (TypeChecked ν) ν)
+       TypeChecked.Term Variable -> TypeChecked.Term Variable ->
+       (Variable -> TypeChecked.Term Variable -> LocalDeclaration (Checked Variable) Variable) ->
+       (Maybe Variable, Maybe Variable) -> m (Goal (Checked Variable) Variable)
      runIntro introed rest h = \case
        (Nothing, Nothing) -> return $ Goal hyps rest
        (Just i, Nothing) -> do
@@ -196,12 +180,21 @@ runAtomic ge a (Goal hyps concl) =
          else throwError "Can't discard a dependent binder"
        (Just i, Just v) ->
          Goal <$> addHyp (h i introed) hyps <*> pure (αrename v i rest)
--}
 
 data Tactic ν
   = Atomic (Atomic ν)
   | Semicolon (Tactic ν) (Tactic ν)
   deriving (Show)
+
+instance PrettyPrintable ν => PrettyPrintable (Tactic ν) where
+  prettyDoc = \case
+    Atomic a -> prettyDoc a
+    Semicolon a b ->
+      fillCat
+        [ prettyDoc a
+        , text "; "
+        , prettyDoc b
+        ]
 
 decomposeTactic :: Tactic ν -> (Atomic ν, [Tactic ν])
 decomposeTactic (Atomic a)      = (a, [])
@@ -209,11 +202,10 @@ decomposeTactic (Semicolon a b) =
   let (atomic, ts) = decomposeTactic a in
   (atomic, ts ++ [b])
 
-{-
 runTactic ::
   MonadError String m =>
-  GlobalEnvironment (TypeChecked ν) ν ->
-  Tactic ν -> Goal (TypeChecked ν) ν -> m [Goal (TypeChecked ν) ν]
+  GlobalEnvironment (Checked Variable) Variable ->
+  Tactic Variable -> Goal (Checked Variable) Variable -> m [Goal (Checked Variable) Variable]
 runTactic ge t goal =
   case t of
     Atomic a -> runAtomic ge a goal
@@ -221,4 +213,3 @@ runTactic ge t goal =
       gs <- runTactic ge t1 goal
       gs' <- concat <$> sequence (map (runTactic ge t2) gs)
       return gs'
--}

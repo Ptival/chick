@@ -12,8 +12,8 @@ module Term.Diff where
 import Data.Default
 import Data.Generic.Diff
 
---import Term.Binder
---import Term.Variable
+import Term.Binder
+import Term.Variable
 import Term.Term
 
 type TermDiff ξ ν = EditScript (TermXFamily ξ ν) (TermX ξ ν) (TermX ξ ν)
@@ -28,11 +28,11 @@ data TermXFamily ξ ν :: * -> * -> * where
   Type'  :: TermXFamily ξ ν (TermX ξ ν) Nil
   Var'   :: TermXFamily ξ ν (TermX ξ ν) (Cons ν Nil)
   Scope' :: NameScope (TermX ξ) ν -> TermXFamily ξ ν (NameScope (TermX ξ) ν) Nil
-  --Binder'   :: Binder   -> TermXFamily ξ ν Binder   Nil
-  --Variable' :: Variable -> TermXFamily ξ ν Variable Nil
+  Binder'   :: Binder ν -> TermXFamily ξ ν (Binder ν) Nil
+  Variable' :: Variable -> TermXFamily ξ ν Variable Nil
 
 instance
-  (ForallX Default ξ, ForallX Eq ξ, Eq ν, ForallX Show ξ, Show ν) =>
+  (Default ξ, Eq ξ, Eq ν, Show ξ, Show ν) =>
   Family (TermXFamily ξ ν) where
 
   decEq Annot' Annot' = Just (Refl, Refl)
@@ -46,12 +46,12 @@ instance
   decEq (Scope' s1) (Scope' s2)
     | s1 == s2 = Just (Refl, Refl)
     | otherwise = Nothing
-  --decEq (Binder' b1) (Binder' b2)
-  --  | b1 == b2 = Just (Refl, Refl)
-  --  | otherwise = Nothing
-  --decEq (Variable' v1) (Variable' v2)
-  --  | v1 == v2 = Just (Refl, Refl)
-  --  | otherwise = Nothing
+  decEq (Binder' b1) (Binder' b2)
+    | b1 == b2 = Just (Refl, Refl)
+    | otherwise = Nothing
+  decEq (Variable' v1) (Variable' v2)
+    | v1 == v2 = Just (Refl, Refl)
+    | otherwise = Nothing
   decEq _ _ = Nothing
 
   fields Annot' (Annot _ t τ)    = Just (CCons t (CCons τ CNil))
@@ -60,10 +60,10 @@ instance
   fields   Lam' (Lam   _ bt)     = Just (CCons bt CNil)
   fields   Let' (Let   _ t1 bt2) = Just (CCons t1 (CCons bt2 CNil))
   fields    Pi' (Pi    _ τ1 bτ2) = Just (CCons τ1 (CCons bτ2 CNil))
-  fields  Type' (Type  _)        = Just CNil
+  fields  Type' (Type)           = Just CNil
   fields   Var' (Var     v)      = Just (CCons v CNil)
-  --fields (Binder'   _) _ = Just CNil
-  --fields (Variable' _) _ = Just CNil
+  fields (Binder'   _) _ = Just CNil
+  fields (Variable' _) _ = Just CNil
   fields (Scope' _) _ = Just CNil
   fields _ _ = Nothing
 
@@ -73,10 +73,10 @@ instance
   apply   Lam' (CCons bt CNil)             = Lam   def bt
   apply   Let' (CCons t1 (CCons bt2 CNil)) = Let   def t1 bt2
   apply    Pi' (CCons τ1 (CCons bτ2 CNil)) = Pi    def τ1 bτ2
-  apply  Type' CNil                        = Type  def
+  apply  Type' CNil                        = Type
   apply   Var' (CCons v CNil)              = Var   v
-  --apply (Binder'   b) CNil = b
-  --apply (Variable' v) CNil = v
+  apply (Binder'   b) CNil = b
+  apply (Variable' v) CNil = v
   --apply (Scope' s) (CCons t CNil) = s
   apply (Scope' s) CNil = s
 
@@ -88,21 +88,21 @@ instance
   string     Pi' = "Pi"
   string   Type' = "Type"
   string    Var' = "Var"
-  --string (Binder'   b) = show b
-  --string (Variable' v) = show v
+  string (Binder'   b) = show b
+  string (Variable' v) = show v
   string (Scope' s) = show s
 
---instance ForallX Default ξ => Type (TermXFamily ξ ν) Variable where
---    constructors = [ Abstr Variable' ]
+instance (Default ξ, Eq ξ, Eq ν, Show ξ, Show ν) => Type (TermXFamily ξ ν) Variable where
+  constructors = [ Abstr Variable' ]
 
---instance ForallX Default ξ => Type (TermXFamily ξ ν) Binder where
---    constructors = [ Abstr Binder' ]
+instance (Default ξ, Eq ξ, Eq ν, Show ξ, Show ν) => Type (TermXFamily ξ ν) (Binder ν) where
+  constructors = [ Abstr Binder' ]
 
 instance
-  ( ForallX Default ξ
-  , ForallX Eq ξ
+  ( Default ξ
+  , Eq ξ
   , Eq ν
-  , ForallX Show ξ
+  , Show ξ
   , Show ν
   , Type (TermXFamily ξ ν) ν
   ) =>
@@ -110,10 +110,10 @@ instance
   constructors = [ Abstr Scope' ]
 
 instance
-  ( ForallX Default ξ
-  , ForallX Eq ξ
+  ( Default ξ
+  , Eq ξ
   , Eq ν
-  , ForallX Show ξ
+  , Show ξ
   , Show ν
   , Type (TermXFamily ξ ν) ν
   ) =>

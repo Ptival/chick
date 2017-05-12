@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
@@ -10,27 +11,36 @@ module Typing.GlobalEnvironment where
 --import           Control.Applicative
 import           Control.Monad
 import           Data.List
+import           Text.PrettyPrint.Annotated.WL
 
 import           Inductive.Constructor
 import           Inductive.Inductive
+import           PrettyPrinting.PrettyPrintableUnannotated
 import           Typing.LocalContext
 import           Typing.LocalDeclaration
 import           Typing.GlobalDeclaration
 import           Term.Binder
 import           Term.Term
-import           Term.TypeChecked as TypeChecked
+import           Term.TypeChecked                          as TypeChecked
 import           Term.Variable
-import qualified Typing.LocalContext as LocalContext
+import qualified Typing.LocalContext                       as LocalContext
 
 newtype GlobalEnvironment ξ ν
   = GlobalEnvironment
     { unGlobalEnvironment :: [GlobalDeclaration ξ ν]
     }
 
+instance PrettyPrintableUnannotated (TermX ξ) =>
+         PrettyPrintableUnannotated (GlobalEnvironment ξ) where
+  prettyDocU (GlobalEnvironment γ) = vsep <$> mapM prettyDocU (reverse γ)
+
 addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalAssum (Binder Nothing , _) γ = γ
 addGlobalAssum (Binder (Just v), τ) (GlobalEnvironment γ) =
   GlobalEnvironment ((GlobalAssum v τ) : γ)
+
+addGlobalInd :: Inductive ξ ν -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
+addGlobalInd i (GlobalEnvironment γ) = GlobalEnvironment (GlobalInd i : γ)
 
 -- type TypeCheckedGlobalEnvironment = GlobalEnvironment TypeChecked
 
@@ -44,9 +54,9 @@ An inductive brings into scope:
 TODO: - recursors
 -}
 unwrapInductive ::
-  Inductive (TypeChecked Variable) Variable -> [GlobalDeclaration (TypeChecked Variable) Variable]
+  Inductive (Checked Variable) Variable -> [GlobalDeclaration (Checked Variable) Variable]
 unwrapInductive (Inductive v ps is cs) =
-  GlobalAssum v (inductiveType ps is (Type ())) : map constructorAssumption cs
+  GlobalAssum v (inductiveType ps is Type) : map constructorAssumption cs
   where
     constructorAssumption (Constructor cv cps cis) =
       GlobalAssum cv (constructorTypeChecked v ps cps cis)
@@ -58,7 +68,7 @@ type.
 -}
 lookupDecl ::
   Eq ν =>
-  ν -> GlobalEnvironment (TypeChecked ν) ν -> Maybe (GlobalDeclaration (TypeChecked ν) ν)
+  ν -> GlobalEnvironment (Checked ν) ν -> Maybe (GlobalDeclaration (Checked ν) ν)
 lookupDecl target = find found . unGlobalEnvironment
   where
     found = \case
@@ -72,7 +82,7 @@ will find either a global assumption, a global declaration, an
 inductive type, or a constructor, and will return its type.
 -}
 lookupType ::
-  Variable -> GlobalEnvironment (TypeChecked Variable) Variable ->
+  Variable -> GlobalEnvironment (Checked Variable) Variable ->
   Maybe (TypeChecked.Type Variable)
 lookupType target = go . unGlobalEnvironment
   where
@@ -84,14 +94,14 @@ lookupType target = go . unGlobalEnvironment
       _ -> Nothing
 
 toLocalContext ::
-  GlobalEnvironment (TypeChecked Variable) Variable ->
-  LocalContext.LocalContext (TypeChecked Variable) Variable
+  GlobalEnvironment (Checked Variable) Variable ->
+  LocalContext.LocalContext (Checked Variable) Variable
 toLocalContext =
   LocalContext . foldr (\ g acc -> localize g ++ acc) [] . unGlobalEnvironment
   where
     localize ::
-      GlobalDeclaration (TypeChecked Variable) Variable ->
-      [LocalDeclaration (TypeChecked Variable) Variable]
+      GlobalDeclaration (Checked Variable) Variable ->
+      [LocalDeclaration (Checked Variable) Variable]
     localize = \case
       GlobalAssum v τ   -> [LocalAssum v τ]
       GlobalDef   v t τ -> [LocalDef v t τ]
@@ -111,8 +121,8 @@ Given '(A -> List T)', it should return 'None'.
 -}
 isInductive ::
   Eq ν =>
-  GlobalEnvironment (TypeChecked ν) ν -> TypeChecked.Type ν ->
-  Maybe (Inductive (TypeChecked ν) ν)
+  GlobalEnvironment (Checked ν) ν -> TypeChecked.Type ν ->
+  Maybe (Inductive (Checked ν) ν)
 isInductive ge = go
   where
     go τ =

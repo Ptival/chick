@@ -5,11 +5,8 @@
 
 module Inductive.Inductive where
 
-import Bound.Name
 import Control.Monad.Reader.Class
-import Data.Default
 
-import DictMetaOut
 import Inductive.Constructor
 import Precedence
 import PrettyPrinting.PrettyPrintable
@@ -28,8 +25,8 @@ data Inductive ξ ν =
   , constructors :: [Constructor ξ ν]
   }
 
-deriving instance (ForallX Eq ξ, Eq ν) => Eq (Inductive ξ ν)
-deriving instance (ForallX Show ξ, Show ν) => Show (Inductive ξ ν)
+deriving instance (Eq ξ, Eq ν) => Eq (Inductive ξ ν)
+deriving instance (Show ξ, Show ν) => Show (Inductive ξ ν)
 
 inductiveType ::
   [(Binder Variable, TypeChecked.Type Variable)] -> [TypeChecked.Type Variable] -> TypeChecked.Type Variable ->
@@ -38,9 +35,9 @@ inductiveType ps is o =
   foldr onParam (foldr onIndex o is) ps
   where
     onIndex :: TypeChecked.Type Variable -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onIndex i      t = Pi (Type ()) i (abstractAnonymous t)
+    onIndex i      t = Pi (Checked Type) i (abstractAnonymous t)
     onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onParam (b, p) t = Pi (Type ()) p (abstractBinder b t)
+    onParam (b, p) t = Pi (Checked Type) p (abstractBinder b t)
 
 arrows :: [Doc a] -> Doc a
 arrows = encloseSep mempty mempty (text " →")
@@ -60,7 +57,6 @@ prettyBindingDocU (Binder b, t) =
         ]
 
 instance
-  (Default (X_App ξ), Default (X_Hole ξ), Default (X_Pi ξ)) =>
   PrettyPrintableUnannotated (Inductive ξ) where
   prettyDocU (Inductive n ps is cs) = do
     psDoc <- mapM prettyBindingDocU ps
@@ -86,14 +82,13 @@ instance
       ] ++ (map (indent 2) csDoc)
 
 prettyConstructorDocU ::
-  (Default (X_App ξ), Default (X_Hole ξ), Default (X_Pi ξ)) =>
   MonadReader PrecedenceTable m =>
   Variable -> [(Binder Variable, TypeX ξ Variable)] ->
   Constructor ξ Variable -> m (Doc ())
 prettyConstructorDocU ind indps (Constructor n ps is) = do
   -- it's annoying because to build the term we need annotations
   -- that we then discard when printing...
-  cDoc <- prettyDocU (constructorTypeUnchecked ind indps ps is)
+  cDoc <- prettyDocU (rawConstructorType ind indps ps is)
   return $ fillSep
     [ prettyDoc n
     , text ":"

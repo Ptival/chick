@@ -2,6 +2,8 @@
 
 module PrettyPrinting.Tactic where
 
+{-
+
 import Text.PrettyPrint.Annotated.WL
 
 import PrettyPrinting.Atomic
@@ -17,3 +19,4 @@ prettyTacticDoc = \case
     , text "; "
     , prettyTacticDoc b
     ]
+-}

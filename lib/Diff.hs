@@ -6,29 +6,37 @@
 
 module Diff where
 
-import Control.Monad.Except
+--import Control.Monad.Except
+--import Control.Monad.Reader
+--import Data.Default
 import Data.Generic.Diff
 import Data.Maybe
 import Text.Megaparsec
-import Text.PrettyPrint.Annotated.WL
-import Text.Printf
+--import Text.PrettyPrint.Annotated.WL
+--import Text.Printf
 
 import Parsing.Tactic
-import PrettyPrinting.Tactic
-import PrettyPrinting.Term
-import PrettyPrinting.Utils
+--import PrettyPrinting.PrettyPrintable
+--import PrettyPrinting.PrettyPrintableUnannotated
+--import PrettyPrinting.Tactic
+--import PrettyPrinting.Utils
 import Tactic
 --import Term.AlphaEquivalence
+--import Term.Binder
 import Term.Diff
 import Term.Term
 --import Term.TypeChecked   as TypeChecked
 import Term.Raw                      as Raw
-import Typing.TypeChecker
+import Term.Variable
+--import Typing.GlobalEnvironment
+--import Typing.LocalContext
+--import Typing.TypeChecker
 import StandardLibrary
 
-unsafeParseTactic :: String -> Tactic
+unsafeParseTactic :: String -> Tactic Variable
 unsafeParseTactic s = fromJust $ parseMaybe tacticP s
 
+{-
 main :: IO ()
 main = forM_ patchBenchmark $ \ (τ0, τ1, t0) -> do
   putStrLn $ replicate 60 '-'
@@ -37,13 +45,14 @@ main = forM_ patchBenchmark $ \ (τ0, τ1, t0) -> do
     Right t1 -> do
       putStrLn . doc2String $ vcat
         [ text "Success!"
-        , prettyTacticDoc t0
+        , prettyDoc t0
         , text "was patched into:"
-        , prettyTacticDoc t1
+        , prettyDoc t1
         ]
   return ()
+-}
 
-patchBenchmark :: [(Raw.Term, Raw.Term, Tactic)]
+patchBenchmark :: [(Raw.Term Variable, Raw.Term Variable, Tactic Variable)]
 patchBenchmark =
   map (\ (τ1, τ2, t) -> (unsafeParseRaw τ1, unsafeParseRaw τ2, unsafeParseTactic t))
   [ ( "(A : Type) → A → A"
@@ -64,51 +73,57 @@ patchBenchmark =
     )
   ]
 
-testPatchTactic :: Raw.Term -> Raw.Term -> Tactic -> Either String Tactic
+{-
+testPatchTactic :: Raw.Term Variable -> Raw.Term Variable -> Tactic Variable -> Either String (Tactic Variable)
 testPatchTactic τBefore τAfter tactic = do
   let ttype = unsafeParseRaw "Type"
-  let checkType t = case typeCheck [] t ttype of
+  let checkType t = case typeCheck (GlobalEnvironment []) t ttype of
         Left  _  -> Left "Term did not type check"
         Right t' -> Right t'
   concl0 <- checkType τBefore
   concl1 <- checkType τAfter
-  case runTactic [] tactic (Goal [] concl0) of
+  case runTactic (GlobalEnvironment []) tactic (Goal (LocalContext []) concl0) of
     Left  _ -> throwError "Tactic did not solve the original goal"
     Right _ -> do
-      let conclDiff = diff (raw concl0) (raw concl1) :: TermDiff Raw
+      let conclDiff = diff (raw concl0) (raw concl1) :: TermDiff Raw Variable
       case patchTactic concl0 tactic conclDiff of
         Nothing -> throwError "Could not patch the tactic"
         Just tactic1 -> do
-          case runTactic [] tactic1 (Goal [] concl1) of
+          case runTactic (GlobalEnvironment []) tactic1 (Goal (LocalContext []) concl1) of
             Left  _ ->
-              throwError . printf . doc2String $
+              throwError . doc2String $
               vcat
               [ text "Patched tactic did not solve modified goal"
               , text "Diff:"
               , text $ show conclDiff
               , text "Modified goal:"
-              , prettyTermDoc' concl1
+              , runReader (prettyDocU concl1) def
               , text "Patched tactic:"
-              , prettyTacticDoc tactic1
+              , prettyDoc tactic1
               ]
             Right _ -> return tactic1
+-}
 
-aa, bb, ab :: Raw.Term
+aa, bb, ab :: Raw.Term Variable
 aa = unsafeParseRaw "(a : T) → a a"
 bb = unsafeParseRaw "(b : T) → b b"
 ab = unsafeParseRaw "(b : T) → a b"
 
-{-
-τ1, τ2, τ3 :: Raw.Term
-τ1 = unsafeParseRaw "T → T"
-τ2 = unsafeParseRaw "U → T → T"
-τ3 = unsafeParseRaw "T → U → T"
+τTT, τUTT, τTUT :: Raw.Term Variable
+τTT = unsafeParseRaw "T → T"
+τUTT = unsafeParseRaw "U → T → T"
+τTUT = unsafeParseRaw "T → U → T"
 
-diff12, diff13, diff23 :: TermDiff Raw
-diff12 = diff τ1 τ2
-diff13 = diff τ1 τ3
-diff23 = diff τ2 τ3
--}
+rawDiff :: Raw.Term Variable -> Raw.Term Variable -> TermDiff Raw Variable
+rawDiff = diff
+
+diff12, diff13, diff23 :: TermDiff Raw Variable
+diff12 = diff τTT τUTT
+diff13 = diff τTT τTUT
+diff23 = diff τUTT τTUT
+
+testing :: Raw.Term Variable
+testing = patch (rawDiff aa ab) aa
 
 {-
 patchAtomic :: TermX ξ -> Atomic -> TermDiff ψ -> Maybe Atomic
@@ -116,14 +131,15 @@ patchAtomic _τ atomic = \case
   _ -> Just atomic
 -}
 
-type TermDiffL ξ = EditScriptL (TermXFamily ξ) (TermX ξ) (TermX ξ)
+type TermDiffL ξ ν = EditScriptL (TermXFamily ξ ν) (TermX ξ ν) (TermX ξ ν)
 
-patchTactic :: TermX ξ -> Tactic -> TermDiff ψ -> Maybe Tactic
+{-
+patchTactic :: TermX ξ ν -> Tactic ν -> TermDiff ψ ν -> Maybe (Tactic ν)
 patchTactic τ tactic τdiff = patchTacticL τ tactic τdiff
 
 patchTacticL ::
-  forall ξ ψ txs tys.
-  TermX ξ -> Tactic -> EditScriptL (TermXFamily ψ) txs tys -> Maybe Tactic
+  forall ξ ν ψ txs tys.
+  TermX ξ ν -> Tactic ν -> EditScriptL (TermXFamily ψ ν) txs tys -> Maybe (Tactic ν)
 patchTacticL τ tactic τdiff =
 
   case (τdiff, τ) of
@@ -139,7 +155,7 @@ patchTacticL τ tactic τdiff =
   where
 
     insertIntro ::
-      forall ψ txs tys. Binder -> EditScriptL (TermXFamily ψ) txs tys -> Maybe Tactic
+      forall ν ψ txs tys. Binder ν -> EditScriptL (TermXFamily ψ ν) txs tys -> Maybe (Tactic ν)
     insertIntro b diffRest = do
       let nameToIntroduce =
             Binder . Just $
@@ -148,3 +164,4 @@ patchTacticL τ tactic τdiff =
             Just v  -> v
       tactic' <- patchTacticL τ tactic diffRest
       return $ Semicolon (Atomic (Intro nameToIntroduce)) tactic'
+-}
