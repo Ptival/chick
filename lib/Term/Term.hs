@@ -246,7 +246,7 @@ abstractBinder b =
 
 unscopeTerm :: Scope (Name Variable ()) (TermX ξ) Variable -> (Binder Variable, TermX ξ Variable)
 unscopeTerm t =
-  let [Name n _] = bindings t in
+  let Name n _ : _ = bindings t in
   let b = if unVariable n == "_" then Nothing else Just n in
   (Binder b, instantiate1Name (Var n) t)
 

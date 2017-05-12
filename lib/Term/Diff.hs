@@ -7,33 +7,35 @@
 
 module Term.Diff where
 
---import Bound
---import Bound.Name
+import Bound.Name
+import Bound.Scope
 import Data.Default
+import Data.Function
 import Data.Generic.Diff
 
 import Term.Binder
 import Term.Variable
 import Term.Term
 
-type TermDiff ξ ν = EditScript (TermXFamily ξ ν) (TermX ξ ν) (TermX ξ ν)
+type TermDiff ξ = EditScript (TermXFamily ξ) (TermX ξ Variable) (TermX ξ Variable)
 
-data TermXFamily ξ ν :: * -> * -> * where
-  Annot' :: TermXFamily ξ ν (TermX ξ ν) (Cons (TermX ξ ν) (Cons (TypeX ξ ν) Nil))
-  App'   :: TermXFamily ξ ν (TermX ξ ν) (Cons (TermX ξ ν) (Cons (TermX ξ ν) Nil))
-  Hole'  :: TermXFamily ξ ν (TermX ξ ν) Nil
-  Lam'   :: TermXFamily ξ ν (TermX ξ ν) (Cons (NameScope (TermX ξ) ν) Nil)
-  Let'   :: TermXFamily ξ ν (TermX ξ ν) (Cons (TermX ξ ν) (Cons (NameScope (TermX ξ) ν) Nil))
-  Pi'    :: TermXFamily ξ ν (TermX ξ ν) (Cons (TypeX ξ ν) (Cons (NameScope (TypeX ξ) ν) Nil))
-  Type'  :: TermXFamily ξ ν (TermX ξ ν) Nil
-  Var'   :: TermXFamily ξ ν (TermX ξ ν) (Cons ν Nil)
-  Scope' :: NameScope (TermX ξ) ν -> TermXFamily ξ ν (NameScope (TermX ξ) ν) Nil
-  Binder'   :: Binder ν -> TermXFamily ξ ν (Binder ν) Nil
-  Variable' :: Variable -> TermXFamily ξ ν Variable Nil
+data TermXFamily ξ :: * -> * -> * where
+  Annot' :: TermXFamily ξ (TermX ξ Variable)             (Cons (TermX ξ Variable)                  (Cons (TypeX ξ Variable)             Nil))
+  App'   :: TermXFamily ξ (TermX ξ Variable)             (Cons (TermX ξ Variable)                  (Cons (TermX ξ Variable)             Nil))
+  Hole'  :: TermXFamily ξ (TermX ξ Variable)                                                                                            Nil
+  Lam'   :: TermXFamily ξ (TermX ξ Variable)             (Cons (NameScope (TermX ξ) Variable)                                           Nil)
+  Let'   :: TermXFamily ξ (TermX ξ Variable)             (Cons (TermX ξ Variable)                  (Cons (NameScope (TermX ξ) Variable) Nil))
+  Pi'    :: TermXFamily ξ (TermX ξ Variable)             (Cons (TypeX ξ Variable)                  (Cons (NameScope (TypeX ξ) Variable) Nil))
+  Type'  :: TermXFamily ξ (TermX ξ Variable)                                                                                            Nil
+  Var'   :: TermXFamily ξ (TermX ξ Variable)             (Cons Variable                                                                 Nil)
+  Scope' :: TermXFamily ξ (NameScope (TermX ξ) Variable) (Cons (Name Variable ())                   (Cons (TermX ξ Variable)             Nil))
+  Name'  :: Name Variable () -> TermXFamily ξ (Name Variable ()) Nil
+  Binder'   :: Binder Variable -> TermXFamily ξ (Binder Variable) Nil
+  Variable' :: Variable -> TermXFamily ξ Variable Nil
 
 instance
-  (Default ξ, Eq ξ, Eq ν, Show ξ, Show ν) =>
-  Family (TermXFamily ξ ν) where
+  (Default ξ, Eq ξ, Show ξ) =>
+  Family (TermXFamily ξ) where
 
   decEq Annot' Annot' = Just (Refl, Refl)
   decEq   App'   App' = Just (Refl, Refl)
@@ -43,9 +45,10 @@ instance
   decEq    Pi'    Pi' = Just (Refl, Refl)
   decEq  Type'  Type' = Just (Refl, Refl)
   decEq   Var'   Var' = Just (Refl, Refl)
-  decEq (Scope' s1) (Scope' s2)
-    | s1 == s2 = Just (Refl, Refl)
-    | otherwise = Nothing
+  decEq Scope' Scope' = Just (Refl, Refl)
+  decEq (Name' n1) (Name' n2)
+    | on (==) name n1 n2 = Just (Refl, Refl)
+    | otherwise         = Nothing
   decEq (Binder' b1) (Binder' b2)
     | b1 == b2 = Just (Refl, Refl)
     | otherwise = Nothing
@@ -62,9 +65,16 @@ instance
   fields    Pi' (Pi    _ τ1 bτ2) = Just (CCons τ1 (CCons bτ2 CNil))
   fields  Type' (Type)           = Just CNil
   fields   Var' (Var     v)      = Just (CCons v CNil)
+  fields Scope' s =
+    case bindings s of
+      []  -> error "No binding!?"
+      [n] ->
+        let t = instantiate1Name (Var (name n)) s in
+        Just (CCons n (CCons t CNil))
+      _ -> error $ "More than 1 binding!?" ++ show (bindings s)
+  fields (Name'     _) _ = Just CNil
   fields (Binder'   _) _ = Just CNil
   fields (Variable' _) _ = Just CNil
-  fields (Scope' _) _ = Just CNil
   fields _ _ = Nothing
 
   apply Annot' (CCons t (CCons τ CNil))    = Annot def t τ
@@ -75,10 +85,11 @@ instance
   apply    Pi' (CCons τ1 (CCons bτ2 CNil)) = Pi    def τ1 bτ2
   apply  Type' CNil                        = Type
   apply   Var' (CCons v CNil)              = Var   v
+  apply Scope' (CCons n (CCons t CNil))    = abstract1Name (name n) t
+  --apply (Scope' s) (CCons t CNil) = s
+  apply (Name'     n) CNil = n
   apply (Binder'   b) CNil = b
   apply (Variable' v) CNil = v
-  --apply (Scope' s) (CCons t CNil) = s
-  apply (Scope' s) CNil = s
 
   string  Annot' = "Annot"
   string    App' = "App"
@@ -88,36 +99,36 @@ instance
   string     Pi' = "Pi"
   string   Type' = "Type"
   string    Var' = "Var"
+  string  Scope' = "Scope"
+  string (Name'     n) = show n
   string (Binder'   b) = show b
   string (Variable' v) = show v
-  string (Scope' s) = show s
 
-instance (Default ξ, Eq ξ, Eq ν, Show ξ, Show ν) => Type (TermXFamily ξ ν) Variable where
+instance (Default ξ, Eq ξ, Show ξ) => Type (TermXFamily ξ) Variable where
   constructors = [ Abstr Variable' ]
 
-instance (Default ξ, Eq ξ, Eq ν, Show ξ, Show ν) => Type (TermXFamily ξ ν) (Binder ν) where
+instance (Default ξ, Eq ξ, Show ξ) => Type (TermXFamily ξ) (Binder Variable) where
   constructors = [ Abstr Binder' ]
 
-instance
-  ( Default ξ
-  , Eq ξ
-  , Eq ν
-  , Show ξ
-  , Show ν
-  , Type (TermXFamily ξ ν) ν
-  ) =>
-  Type (TermXFamily ξ ν) (NameScope (TermX ξ) ν) where
-  constructors = [ Abstr Scope' ]
+instance (Default ξ, Eq ξ, Show ξ) => Type (TermXFamily ξ) (Name Variable ()) where
+  constructors = [ Abstr Name' ]
 
 instance
   ( Default ξ
   , Eq ξ
-  , Eq ν
   , Show ξ
-  , Show ν
-  , Type (TermXFamily ξ ν) ν
+  , Type (TermXFamily ξ) (Name Variable ())
   ) =>
-  Type (TermXFamily ξ ν) (TermX ξ ν) where
+  Type (TermXFamily ξ) (NameScope (TermX ξ) Variable) where
+  constructors = [ Concr Scope' ]
+
+instance
+  ( Default ξ
+  , Eq ξ
+  , Show ξ
+  , Type (TermXFamily ξ) (Name Variable ())
+  ) =>
+  Type (TermXFamily ξ) (TermX ξ Variable) where
     constructors =
       [ Concr Annot'
       , Concr   App'

@@ -114,10 +114,10 @@ ab = unsafeParseRaw "(b : T) → a b"
 τUTT = unsafeParseRaw "U → T → T"
 τTUT = unsafeParseRaw "T → U → T"
 
-rawDiff :: Raw.Term Variable -> Raw.Term Variable -> TermDiff Raw Variable
+rawDiff :: Raw.Term Variable -> Raw.Term Variable -> TermDiff Raw
 rawDiff = diff
 
-diff12, diff13, diff23 :: TermDiff Raw Variable
+diff12, diff13, diff23 :: TermDiff Raw
 diff12 = diff τTT τUTT
 diff13 = diff τTT τTUT
 diff23 = diff τUTT τTUT
@@ -131,7 +131,7 @@ patchAtomic _τ atomic = \case
   _ -> Just atomic
 -}
 
-type TermDiffL ξ ν = EditScriptL (TermXFamily ξ ν) (TermX ξ ν) (TermX ξ ν)
+type TermDiffL ξ ν = EditScriptL (TermXFamily ξ) (TermX ξ ν) (TermX ξ ν)
 
 {-
 patchTactic :: TermX ξ ν -> Tactic ν -> TermDiff ψ ν -> Maybe (Tactic ν)
