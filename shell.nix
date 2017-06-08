@@ -6,7 +6,6 @@ nixpkgs.stdenv.lib.overrideDerivation chick (old: {
     coq_8_6
   ]);
   shellHook = ''
-    export NIXSHELL="$NIXSHELL\[chick\]"
     export SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
   '';
 })
