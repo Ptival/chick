@@ -13,6 +13,6 @@ unBinder :: ∀ ν. Binder ν -> Maybe ν
 unBinder (Binder b) = b
 
 instance prettyPrintableBinder :: PrettyPrintable ν => PrettyPrintable (Binder ν) where
-  prettyDoc (Binder Nothing)  = text "_"
+  prettyDoc (Binder Nothing)  = text ignoreSymbol
   prettyDoc (Binder (Just v)) = prettyDoc v
   prettyStr t = prettyStrDefault t
