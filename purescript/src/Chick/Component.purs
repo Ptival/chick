@@ -9,7 +9,7 @@ import Control.Monad.Aff.Console (CONSOLE)
 import Data.Maybe (Maybe(..))
 import Halogen.HTML.CSS (style)
 import PrettyPrint.PrettyPrintable1 (prettyStr1)
-import StandardLibrary.Prelude (tId, τId)
+import StandardLibrary.Prelude (tFlip, tId, τFlip, τId)
 
 data Query a
   = Init a
@@ -34,8 +34,11 @@ render state =
   [ style $ do
        CSS.fontFaceFamily $ "monospace"
   ]
-  [ HH.text $ show $ prettyStr1 <$> τId
-  , HH.text $ show $ prettyStr1 <$> tId
+  [ HH.text $ show $ prettyStr1 <$> τFlip
+  -- [ HH.text $ show $ prettyStr1 <$> τId
+  -- , HH.text $ show $ prettyStr1 <$> tId
+  -- , HH.text $ show $ prettyStr1 <$> τFlip
+  -- , HH.text $ show $ prettyStr1 <$> tFlip
   ]
 
 type DSL = H.ComponentDSL State Query Message

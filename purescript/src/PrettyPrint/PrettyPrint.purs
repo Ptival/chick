@@ -35,7 +35,8 @@ module PrettyPrint.PrettyPrint where
 import Prelude
 import Data.List as List
 import Control.Apply (lift2)
-import Data.Array (replicate)
+import Control.Monad.Rec.Class (Step(..), tailRec)
+import Data.Array (replicate, uncons, (:))
 import Data.Foldable (class Foldable, foldl)
 import Data.Int (round, toNumber)
 import Data.Maybe (Maybe(..))
@@ -162,12 +163,34 @@ nicest1 n k p r x' y = if fits (min n k) wid x' then x' else y
 parens :: ∀ a. Doc a -> Doc a
 parens = enclose lparen rparen
 
+renderCompact :: ∀ a. Doc a -> SimpleDoc a
+renderCompact x
+    = scan SEmpty 0 [x]
+    where
+      scan z k l0 = case uncons l0 of
+        Nothing -> z
+        Just { head : d, tail : ds } ->
+          case d of
+            Empty         -> scan z k ds
+            Char c        -> let k' = k+1 in SChar c (scan z k' ds)
+            Text l s      -> let k' = k+l in SText l s (scan z k' ds)
+            Annotate a d' -> SPushAnn a (scan (SPopAnn a $ scan z k ds) k [d'])
+            Line          -> SLine 0 (scan z 0 ds)
+            FlatAlt y _   -> scan z k (y:ds)
+            Cat y z'      -> scan z k (y:z':ds)
+            Nest _ y      -> scan z k (y:ds)
+            Union _ y     -> scan z k (y:ds)
+            Column f      -> scan z k (f k:ds)
+            Nesting f     -> scan z k (f 0:ds)
+            Columns f     -> scan z k (f Nothing:ds)
+            Ribbon  f     -> scan z k (f Nothing:ds)
+
 renderFits ::
   ∀ a.
   (Int -> Int -> Int -> Int -> SimpleDoc a -> SimpleDoc a -> SimpleDoc a) ->
   Number -> Int -> Doc a -> SimpleDoc a
 renderFits nicest rfrac w x
-    = best 0 0 (\_ _ -> SEmpty) (Cons 0 x Nil)
+    = tailRec best { n : 0, k : 0, z : (\_ _ -> SEmpty), d : (Cons 0 x Nil), finally : id }
     where
       -- r :: the ribbon width in characters
       r  = max 0 (min w (round (toNumber w * rfrac)))
@@ -175,24 +198,35 @@ renderFits nicest rfrac w x
       -- best :: n = indentation of current line
       --         k = current column
       --        (ie. (k >= n) && (k - n == count of inserted characters)
-      best n k z Nil           = z n k
-      best n k z (Cons i d ds) =
+      best { n, k, z, d : Nil, finally } = Done $ finally $ z n k
+      best { n, k, z, d : Cons i d ds, finally } =
         case d of
-          Empty         -> best n k z ds
-          Char c        -> let k' = k+1 in SChar c (best n k' z ds)
-          Text l s      -> let k' = k+l in SText l s (best n k' z ds)
-          Line          -> SLine i (best i i z ds)
-          FlatAlt l _   -> best n k z (Cons i l ds)
-          Cat x' y      -> best n k z (Cons i x' (Cons i y ds))
-          Nest j x'     -> let i' = i+j in best n k z (Cons i' x' ds)
-          Annotate a d' -> let z' n' k' = SPopAnn a $ best n' k' z ds
-                           in SPushAnn a (best n k z' (Cons i d' Nil))
-          Union p q     -> nicest n k w r (best n k z (Cons i p ds))
-                                          (best n k z (Cons i q ds))
-          Column f      -> best n k z (Cons i (f k) ds)
-          Nesting f     -> best n k z (Cons i (f i) ds)
-          Columns f     -> best n k z (Cons i (f $ Just w) ds)
-          Ribbon f      -> best n k z (Cons i (f $ Just r) ds)
+          Empty         -> Loop { n, k, z, d : ds, finally }
+          Char c        -> Loop { n, k : k + 1, z, d : ds, finally : finally <<< SChar c }
+          Text l s      -> Loop { n, k : k + l, z, d : ds, finally : finally <<< SText l s }
+          Line          -> Loop { n : i, k : i, z, d : ds, finally : finally <<< SLine i }
+          FlatAlt l _   -> Loop { n, k, z, d : Cons i l ds, finally }
+          Cat x' y      -> Loop { n, k, z, d : Cons i x' (Cons i y ds), finally }
+          Nest j x'     -> Loop { n, k, z, d : Cons (i + j) x' ds, finally }
+          Annotate a d' -> let z' n' k' = tailRec best { n : n', k : k', z, d : ds, finally : SPopAnn a }
+                           in Loop { n, k, z : z', d : Cons i d' Nil, finally : finally <<< SPushAnn a }
+          Union p q     -> Done $ finally $ nicest n k w r
+                           (tailRec best { n, k, z, d : Cons i p ds, finally : id })
+                           (tailRec best { n, k, z, d : Cons i q ds, finally : id })
+          Column f      -> Loop { n, k, z, d : Cons i (f k) ds, finally }
+          Nesting f     -> Loop { n, k, z, d : Cons i (f i) ds, finally }
+          Columns f     -> Loop { n, k, z, d : Cons i (f $ Just w) ds, finally }
+          Ribbon f      -> Loop { n, k, z, d : Cons i (f $ Just r) ds, finally }
+
+
+--           Annotate a d' -> let z' n' k' = SPopAnn a $ best n' k' z ds
+--                            in SPushAnn a (best n k z' (Cons i d' Nil))
+--           Union p q     -> nicest n k w r (best n k z (Cons i p ds))
+--                                           (best n k z (Cons i q ds))
+--           Column f      -> best n k z (Cons i (f k) ds)
+--           Nesting f     -> best n k z (Cons i (f i) ds)
+--           Columns f     -> best n k z (Cons i (f $ Just w) ds)
+--           Ribbon f      -> best n k z (Cons i (f $ Just r) ds)
 
 renderPretty :: ∀ a. Number -> Int -> Doc a -> SimpleDoc a
 renderPretty = renderFits nicest1
