@@ -30,7 +30,7 @@
 -- | or otherwise) arising in any way out of the use of this software, even
 -- | if advised of the possibility of such damage.
 
-module PrettyPrint.PrettyPrint where
+module PrettyPrint.PrettyPrint.Alternative where
 
 import Prelude
 import Data.List.Lazy as LazyList
