@@ -34,11 +34,10 @@ render state =
   [ style $ do
        CSS.fontFaceFamily $ "monospace"
   ]
-  [ HH.text $ show $ prettyStr1 <$> τFlip
-  -- [ HH.text $ show $ prettyStr1 <$> τId
-  -- , HH.text $ show $ prettyStr1 <$> tId
-  -- , HH.text $ show $ prettyStr1 <$> τFlip
-  -- , HH.text $ show $ prettyStr1 <$> tFlip
+  [ HH.text $ show $ prettyStr1 <$> τId
+  , HH.text $ show $ prettyStr1 <$> tId
+  , HH.text $ show $ prettyStr1 <$> τFlip
+  , HH.text $ show $ prettyStr1 <$> tFlip
   ]
 
 type DSL = H.ComponentDSL State Query Message

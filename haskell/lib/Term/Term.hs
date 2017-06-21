@@ -246,7 +246,7 @@ abstractBinder b =
 
 unscopeTerm :: Scope (Name Variable ()) (TermX ξ) Variable -> (Binder Variable, TermX ξ Variable)
 unscopeTerm t =
-  let Name n _ : _ = bindings t in
+  let n = getName t in
   let b = if unVariable n == "_" then Nothing else Just n in
   (Binder b, instantiate1Name (Var n) t)
 
@@ -272,6 +272,12 @@ instance (Show α) => Show1 (TermX α) where
 
 instance (PrintfArg α, Show α) => PrintfArg (TermX α Variable) where
   formatArg t = formatString (show t)
+
+getName :: Foldable t => Scope (Name Variable ()) t a -> Variable
+getName t =
+  case bindings t of
+    Name n () : _ -> n
+    _ -> Variable "_"
 
 prettyTermDocPrec ::
   forall a ξ. PrecedenceTable -> TermX ξ Variable -> (Doc a, Precedence)
@@ -305,7 +311,7 @@ prettyTermDocPrec precs = goTerm
       l@(Lam _ _) -> (goLams [] l, PrecLam)
 
       Let _ t1 bt2 ->
-        let [Name n ()] = bindings bt2 in
+        let n = getName bt2 in
         (fillSep
          [ text "let"
          , prettyDoc n
@@ -317,7 +323,7 @@ prettyTermDocPrec precs = goTerm
         , PrecLet)
 
       Pi _ τ1 bτ2 ->
-        let [Name n ()] = bindings bτ2 in
+        let n = getName bτ2 in
           case unVariable n of
             "_" ->
               (fillSep
@@ -345,7 +351,7 @@ prettyTermDocPrec precs = goTerm
     goLams :: [Doc a] -> TermX ξ Variable -> Doc a
     goLams l = \case
       Lam _ bt ->
-        let [Name n ()] = bindings bt in
+        let n = getName bt in
         goLams (prettyDoc n : l) (instantiate1Name (Var n) bt)
       t -> fillSep
           [ char 'λ'

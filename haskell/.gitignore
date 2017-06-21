@@ -2,6 +2,6 @@
 *.ho
 *.o
 chick.nix
+.gcroots/
 .stack-work/
 dist/
-gcroots/

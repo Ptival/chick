@@ -10,20 +10,22 @@ module Term.TypeErrored where
 
 --import Control.Monad.Identity
 import Data.Bifunctor
+--import Data.Convertible
 
 --import           DictMeta
 --import           DictMetaHead
 --import           DictMetaId
 --import           DictMetaMap
 --import           DictMetaMapId
-import qualified Term.Raw            as Raw
+import qualified Term.Raw            as R
 import           Term.Term
-import qualified Term.TypeChecked    as TypeChecked
+import qualified Term.TypeChecked    as C
 import           TypeCheckingFailure
 
-type TypeError = TypeCheckingFailure Raw.Term
+type TypeError = TypeCheckingFailure R.Term
 
-type Term ν = TermX (Either (TypeError ν) (TypeChecked.Checked ν)) ν
+type Annotation ν = (Either (TypeError ν) (C.Checked ν))
+type Term ν = TermX (Annotation ν) ν
 type Type ν = Term ν
 
 {-
@@ -33,5 +35,5 @@ with the error `e`
 annotateError :: TypeError ν -> TermX α ν -> Term ν
 annotateError e t = annotateHead (Left e) (first (const (Left Unchecked)) t)
 
-getTypeError :: Term ν -> Maybe (Either (TypeError ν) (TypeChecked.Checked ν))
+getTypeError :: Term ν -> Maybe (Either (TypeError ν) (C.Checked ν))
 getTypeError = annotationOf

@@ -1,7 +1,9 @@
 module Main where
 
---import Language
---import Work
+import PrettyPrinting.PrettyPrintableUnannotated
+import StandardLibrary
+-- import Work
 
 main :: IO ()
-main = return ()
+main = do
+  putStrLn $ prettyStrU stdlib

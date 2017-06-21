@@ -1,15 +1,18 @@
 {-# language OverloadedStrings #-}
+{-# language PartialTypeSignatures #-}
 
 module StandardLibrary where
 
 import Control.Monad
+import Control.Monad.Reader
+import Data.Default
 
 import Inductive.Constructor
 import Inductive.Inductive
 import Parsing
---import PrettyPrinting.PrettyPrintable
+import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
---import PrettyPrinting.Utils
+import PrettyPrinting.Utils
 import Term.Binder
 import Term.Raw                                  as Raw
 import Term.Term
@@ -20,9 +23,9 @@ import Typing.GlobalEnvironment
 import Typing.Inductive
 import Work
 
-main :: IO ()
-main = forM_ (unGlobalEnvironment stdlib) $ \ d ->
-  putStrLn $ prettyStrU d
+-- main :: IO ()
+-- main = forM_ (unGlobalEnvironment stdlib) $ \ d ->
+--   putStrLn $ prettyStrU d
 
 addTerm ::
   Variable -> (Raw.Term Variable, Raw.Type Variable) ->
@@ -30,11 +33,22 @@ addTerm ::
   Either String (GlobalEnvironment (Checked Variable) Variable)
 addTerm v (t, τ) ge =
   case tc (checkF (toLocalContext ge) t τ id) of
-  Left  _ ->
+  Left  e ->
     Left $
-    printf "Could not typecheck %s at type %s"
-    (prettyStrU t) (prettyStrU τ)
+    printf "Could not typecheck %s : %s at type %s\n%s"
+    (prettyStr v) (prettyStrU t) (prettyStrU τ) (prettyStrU e)
   Right r -> Right $ addGlobalAssum (Binder (Just v), r) ge
+
+traceTypeChecking ::
+  GlobalEnvironment (Checked Variable) Variable ->
+  TermX ξ Variable -> TermX ψ Variable -> IO ()
+traceTypeChecking ge t τ = do
+  let trace = tcTrace stepTypeCheckerF (checkF (toLocalContext ge) t τ id)
+  forM_ trace $ \ item -> do
+    putStrLn $ doc2String $ runReader (prettyTypeCheckerF item) def
+
+debug :: IO ()
+debug = traceTypeChecking (GlobalEnvironment []) tId τId
 
 stdlib :: GlobalEnvironment (Checked Variable) Variable
 stdlib =

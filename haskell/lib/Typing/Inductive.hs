@@ -51,8 +51,8 @@ checkConstructor ps is (Constructor n args inds) = do
     case tc (checkF ctxt τ Type id) of
       Left  l ->
         throwError $
-        printf "In constructor %s: could not typecheck argument %s\nFail: %s"
-        (prettyStr n) (prettyStrU τ) (show l)
+        printf "In constructor %s: could not typecheck argument %s\nFail: %s\nContext: %s"
+        (prettyStr n) (prettyStrU τ) (show l) (show ctxt)
       Right r -> do
         addBinder (b, r)
         return (b, r)

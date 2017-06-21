@@ -266,7 +266,7 @@ runSynth' γ = \case
     sFun <- synthM γ fun
            (\ fFun -> App (Left AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
-    Checked τFun <- typeOf sFun `orElse`
+    τFun <- typeOf sFun `orElse`
            (App (Left AppFunctionFailed) ((!->)sFun) ((~!) arg))
     Pi _ τIn bτOut <-
       isPi τFun `orElse`
@@ -324,9 +324,9 @@ runCheck' γ t τ = case t of
 
   -- conversion rule
   _ -> do
-    t' <- synthM γ t            (\ t' -> t')
-    Checked τ' <- typeOf t'   `orElse`  annotateError TODO t
-    () <- (τ' `eqβ` τ) `orElse'` annotateError IncompatibleTypes t
+    t' <- synthM γ t                  (\ t' -> t')
+    τ' <- typeOf t' `orElse`  annotateError TODO t
+    () <- (τ' `eqβ` τ)      `orElse'` annotateError IncompatibleTypes t
     return t'
 
 runTypeCheckerF ::

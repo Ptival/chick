@@ -33,218 +33,388 @@
 module PrettyPrint.PrettyPrint where
 
 import Prelude
-import Data.List as List
-import Control.Apply (lift2)
+import Data.List.Lazy as LazyList
+import Data.String as S
+import Control.Alternative ((<|>))
 import Control.Monad.Rec.Class (Step(..), tailRec)
-import Data.Array (replicate, uncons, (:))
-import Data.Foldable (class Foldable, foldl)
+import Data.Array (fromFoldable, replicate, uncons, (:))
+import Data.Foldable (class Foldable, foldl, foldr)
 import Data.Int (round, toNumber)
+import Data.List.Lazy (repeat)
 import Data.Maybe (Maybe(..))
 import Data.Monoid (class Monoid, mempty)
-import Data.String (fromCharArray, length, singleton)
+import Data.Tuple (Tuple(..))
 
-data Doc a
-  = Empty
+data PageWidth
+  = AvailablePerLine Int Number
+  | Unbounded
+
+data Doc ann
+  = Fail
+  | Empty
   | Char Char
   | Text Int String
   | Line
-  | FlatAlt (Doc a) (Doc a)
-  | Cat (Doc a) (Doc a)
-  | Nest Int (Doc a)
-  | Union (Doc a) (Doc a)
-  | Annotate a (Doc a)
-  | Column  (Int -> Doc a)
-  | Nesting (Int -> Doc a)
-  | Columns (Maybe Int -> Doc a)
-  | Ribbon  (Maybe Int -> Doc a)
+  | FlatAlt (Doc ann) (Doc ann)
+  | Cat (Doc ann) (Doc ann)
+  | Nest Int (Doc ann)
+  | Union (Doc ann) (Doc ann)
+  | Column (Int -> Doc ann)
+  | WithPageWidth (PageWidth -> Doc ann)
+  | Nesting (Int -> Doc ann)
+  | Annotated ann (Doc ann)
 
-derive instance functorDoc :: Functor Doc
+instance semigroupDoc :: Semigroup (Doc ann) where
+    append = Cat
+    -- sconcat (x :| xs) = hcat (x:xs)
 
-instance semigroupDoc :: Semigroup (Doc a) where
-  append = Cat
+instance monoidDoc :: Monoid (Doc ann) where
+  mempty = emptyDoc
+  --mconcat = hcat
 
-instance monoidDoc :: Monoid (Doc a) where
-  mempty = Empty
+data SimpleDocStream ann
+  = SFail
+  | SEmpty
+  | SChar Char (SimpleDocStream ann)
+  | SText Int String (SimpleDocStream ann)
+  | SLine Int (SimpleDocStream ann)
+  | SAnnPush ann (SimpleDocStream ann)
+  | SAnnPop (SimpleDocStream ann)
 
-data Docs a e
+newtype LayoutOptions = LayoutOptions { layoutPageWidth :: PageWidth }
+
+newtype FittingPredicate ann
+  = FittingPredicate (PageWidth -> Int -> Maybe Int -> SimpleDocStream ann -> Boolean)
+
+data LayoutPipeline ann
   = Nil
-  | Cons Int (Doc a) (Docs a e)
+  | Cons Int (Doc ann) (LayoutPipeline ann)
+  | UndoAnn (LayoutPipeline ann)
 
-data SimpleDoc a
-  = SEmpty
-  | SChar Char (SimpleDoc a)
-  | SText Int String (SimpleDoc a)
-  | SLine Int (SimpleDoc a)
-  | SPushAnn a (SimpleDoc a)
-  | SPopAnn  a (SimpleDoc a)
+layoutPretty ::
+  ∀ ann.
+  LayoutOptions ->
+  Doc ann ->
+  SimpleDocStream ann
+layoutPretty = layoutWadlerLeijen
+    (FittingPredicate (\_pWidth _minNestingLevel maxWidth sdoc -> case maxWidth of
+        Nothing -> true
+        Just w -> fits w sdoc ))
+  where
+    fits :: Int -- ^ Width in which to fit the first line
+         -> SimpleDocStream ann
+         -> Boolean
+    fits w _ | w < 0      = false
+    fits _ SFail          = false
+    fits _ SEmpty         = true
+    fits w (SChar _ x)    = fits (w - 1) x
+    fits w (SText l _t x) = fits (w - l) x
+    fits _ (SLine _ _)    = true
+    fits w (SAnnPush _ x) = fits w x
+    fits w (SAnnPop x)    = fits w x
 
-char :: ∀ a. Char -> Doc a
-char '\n' = line
-char c = Char c
+layoutSmart
+    :: ∀ ann. LayoutOptions
+    -> Doc ann
+    -> SimpleDocStream ann
+layoutSmart = layoutWadlerLeijen
+    (FittingPredicate (\pWidth minNestingLevel maxWidth sdoc -> case maxWidth of
+        Nothing -> false
+        Just w -> fits pWidth minNestingLevel w sdoc ))
+  where
+    -- Search with more lookahead: assuming that nesting roughly corresponds to
+    -- syntactic depth, @fits@ checks that not only the current line fits, but
+    -- the entire syntactic structure being formatted at this level of
+    -- indentation fits. If we were to remove the second case for @SLine@, we
+    -- would check that not only the current structure fits, but also the rest
+    -- of the document, which would be slightly more intelligent but would have
+    -- exponential runtime (and is prohibitively expensive in practice).
+    fits :: PageWidth
+         -> Int -- ^ Minimum nesting level to fit in
+         -> Int -- ^ Width in which to fit the first line
+         -> SimpleDocStream ann
+         -> Boolean
+    fits _ _ w _ | w < 0                    = false
+    fits _ _ _ SFail                        = false
+    fits _ _ _ SEmpty                       = true
+    fits pw m w (SChar _ x)                 = fits pw m (w - 1) x
+    fits pw m w (SText l _t x)              = fits pw m (w - l) x
+    fits pw m _ (SLine i x)
+      | m < i, AvailablePerLine cpl _ <- pw = fits pw m (cpl - i) x
+      | otherwise                           = true
+    fits pw m w (SAnnPush _ x)              = fits pw m w x
+    fits pw m w (SAnnPop x)                 = fits pw m w x
 
-displayDecoratedA ::
-  ∀ a f o.
-  Applicative f => Monoid o =>
-  (a -> f o) -> (a -> f o) -> (String -> f o) -> SimpleDoc a -> f o
-displayDecoratedA push pop str = go
- where
-  go SEmpty         = pure mempty
-  go (SChar c x)    = lift2 append (str (singleton c)) (go x)
-  go (SText _ s x)  = lift2 append (str s) (go x)
-  go (SLine i x)    = lift2 append (str (singleton '\n' <> spaces i)) (go x)
-  go (SPushAnn a x) = lift2 append (push a) (go x)
-  go (SPopAnn  a x) = lift2 append (pop a) (go x)
+layoutWadlerLeijen
+    :: forall ann. FittingPredicate ann
+    -> LayoutOptions
+    -> Doc ann
+    -> SimpleDocStream ann
+layoutWadlerLeijen
+    fittingPredicate
+    (LayoutOptions { layoutPageWidth : pWidth })
+    doc
+  = best 0 0 (Cons 0 doc Nil)
+  where
 
-displayS :: ∀ a. SimpleDoc a -> String -> String
-displayS = displayDecoratedA ci ci (<>)
-  where ci = const id
+    -- * current column >= current nesting level
+    -- * current column - current indentaion = number of chars inserted in line
+    best
+        :: Int -- Current nesting level
+        -> Int -- Current column, i.e. "where the cursor is"
+        -> LayoutPipeline ann -- Documents remaining to be handled (in order)
+        -> SimpleDocStream ann
+    best _ _ Nil           = SEmpty
+    best nl cc (UndoAnn ds)  = SAnnPop (best nl cc ds)
+    best nl cc (Cons i d ds) = case d of
+        Fail            -> SFail
+        Empty           -> best nl cc ds
+        Char c          -> let cc' = cc+1 in SChar c (best nl cc' ds)
+        Text l t        -> let cc' = cc+l in SText l t (best nl cc' ds)
+        Line            -> SLine i (best i i ds)
+        FlatAlt x _     -> best nl cc (Cons i x ds)
+        Cat x y         -> best nl cc (Cons i x (Cons i y ds))
+        Nest j x        -> let ij = i+j in best nl cc (Cons ij x ds)
+        Union x y       -> let x' = best nl cc (Cons i x ds)
+                               y' = best nl cc (Cons i y ds)
+                           in selectNicer fittingPredicate nl cc x' y'
+        Column f        -> best nl cc (Cons i (f cc) ds)
+        WithPageWidth f -> best nl cc (Cons i (f pWidth) ds)
+        Nesting f       -> best nl cc (Cons i (f i) ds)
+        Annotated ann x -> SAnnPush ann (best nl cc (Cons i x (UndoAnn ds)))
 
-display :: ∀ a. SimpleDoc a -> String
-display = flip displayS ""
+    selectNicer
+        :: FittingPredicate ann
+        -> Int           -- ^ Current nesting level
+        -> Int           -- ^ Current column
+        -> SimpleDocStream ann -- ^ Choice A. Invariant: first lines should not be longer than B's.
+        -> SimpleDocStream ann -- ^ Choice B.
+        -> SimpleDocStream ann -- ^ Choice A if it fits, otherwise B.
+    selectNicer (FittingPredicate fits) lineIndent currentColumn x y =
+      if fits pWidth minNestingLevel availableWidth x then x else y
+      where
+        minNestingLevel = min lineIndent currentColumn
+        ribbonWidth = case pWidth of
+            AvailablePerLine lineLength ribbonFraction ->
+                (Just <<< max 0 <<< min lineLength <<< round)
+                    (toNumber lineLength * ribbonFraction)
+            Unbounded -> Nothing
+        availableWidth = do
+            columnsLeftInLine <- case pWidth of
+                AvailablePerLine cpl _ribbonFrac -> Just (cpl - currentColumn)
+                Unbounded -> Nothing
+            columnsLeftInRibbon <- do
+                li <- Just lineIndent
+                rw <- ribbonWidth
+                cc <- Just currentColumn
+                Just (li + rw - cc)
+            Just (min columnsLeftInLine columnsLeftInRibbon)
 
-enclose :: ∀ a. Doc a -> Doc a -> Doc a -> Doc a
+layoutCompact :: ∀ ann. Doc ann -> SimpleDocStream ann
+layoutCompact doc = scan 0 [doc]
+  where
+    scan col l0 = case uncons l0 of
+      Nothing -> SEmpty
+      Just { head : d, tail : ds } ->
+        case d of
+          Fail            -> SFail
+          Empty           -> scan col ds
+          Char c          -> SChar c (scan (col+1) ds)
+          Text l t        -> let col' = col+l in SText l t (scan col' ds)
+          FlatAlt x _     -> scan col (x:ds)
+          Line            -> SLine 0 (scan 0 ds)
+          Cat x y         -> scan col (x:y:ds)
+          Nest _ x        -> scan col (x:ds)
+          Union _ y       -> scan col (y:ds)
+          Column f        -> scan col (f col:ds)
+          WithPageWidth f -> scan col (f Unbounded : ds)
+          Nesting f       -> scan col (f 0 : ds)
+          Annotated _ x   -> scan col (x:ds)
+
+class Pretty a where
+    pretty :: ∀ ann. a -> Doc ann
+    prettyList :: ∀ ann. Array a -> Doc ann
+
+prettyListDefault :: ∀ a ann. Pretty a => Array a -> Doc ann
+prettyListDefault = list <<< map pretty
+
+instance prettyChar :: Pretty Char where
+    pretty '\n' = line
+    pretty c = Char c
+    prettyList = pretty <<< S.fromCharArray
+
+instance prettyString :: Pretty String where
+  pretty = vsep <<< map unsafeTextWithoutNewlines <<< S.split (S.Pattern "\n")
+  prettyList l = prettyListDefault l
+
+-- | Smart constructors
+
+align :: ∀ ann. Doc ann -> Doc ann
+align d = column (\k -> nesting (\i -> nest (k - i) d)) -- nesting might be negative!
+
+cat :: ∀ ann. Array (Doc ann) -> Doc ann
+cat = group <<< vcat
+
+char :: ∀ ann. Char -> Doc ann
+char c = pretty c
+
+changesUponFlattening :: ∀ ann. Doc ann -> Maybe (Doc ann)
+changesUponFlattening = case _ of
+    FlatAlt _ y     -> Just (flatten y)
+    Line            -> Just Fail
+    Union x _       -> changesUponFlattening x <|> Just x
+    Nest i x        -> map (Nest i) (changesUponFlattening x)
+    Annotated ann x -> map (Annotated ann) (changesUponFlattening x)
+
+    Column f        -> Just (Column (flatten <<< f))
+    Nesting f       -> Just (Nesting (flatten <<< f))
+    WithPageWidth f -> Just (WithPageWidth (flatten <<< f))
+
+    Cat x y -> case Tuple (changesUponFlattening x) (changesUponFlattening y) of
+        Tuple Nothing Nothing -> Nothing
+        Tuple (Just x') Nothing -> Just (Cat x' y )
+        Tuple Nothing (Just y') -> Just (Cat x  y')
+        Tuple (Just x') (Just y') -> Just (Cat x' y')
+
+    Empty  -> Nothing
+    Char _ -> Nothing
+    Text _ _ -> Nothing
+    Fail   -> Nothing
+  where
+    -- Flatten, but don’t report whether anything changes.
+    flatten :: Doc ann -> Doc ann
+    flatten = case _ of
+        FlatAlt _ y     -> flatten y
+        Cat x y         -> Cat (flatten x) (flatten y)
+        Nest i x        -> Nest i (flatten x)
+        Line            -> Fail
+        Union x _       -> flatten x
+        Column f        -> Column (flatten <<< f)
+        WithPageWidth f -> WithPageWidth (flatten <<< f)
+        Nesting f       -> Nesting (flatten <<< f)
+        Annotated ann x -> Annotated ann (flatten x)
+
+        x@Fail   -> x
+        x@Empty  -> x
+        x@(Char _) -> x
+        x@(Text _ _) -> x
+
+column :: ∀ ann. (Int -> Doc ann) -> Doc ann
+column = Column
+
+concatWith :: ∀ ann t. Foldable t => (Doc ann -> Doc ann -> Doc ann) -> t (Doc ann) -> Doc ann
+concatWith f ds = case uncons $ fromFoldable ds of
+  Nothing -> mempty
+  Just { head, tail } -> foldl f head tail
+
+emptyDoc :: ∀ ann. Doc ann
+emptyDoc = Empty
+
+enclose
+    :: ∀ ann. Doc ann -- ^ L
+    -> Doc ann -- ^ R
+    -> Doc ann -- ^ x
+    -> Doc ann -- ^ LxR
 enclose l r x = l <> x <> r
 
-fillSep :: ∀ f a. Foldable f => f (Doc a) -> Doc a
-fillSep = mfoldl1 (</>)
-  where
-    mfoldl1 :: (Doc a -> Doc a -> Doc a) -> f (Doc a) -> Doc a
-    mfoldl1 f xs =
-      -- not efficient but heh
-      case List.fromFoldable xs of
-        List.Nil   -> mempty
-        h List.: t -> foldl f h t
+encloseSep
+    :: ∀ ann. Doc ann   -- ^ left delimiter
+    -> Doc ann   -- ^ right delimiter
+    -> Doc ann   -- ^ separator
+    -> Array (Doc ann) -- ^ input documents
+    -> Doc ann
+encloseSep l r s ds = case ds of
+    []  -> l <> r
+    [d] -> l <> d <> r
+    _   -> align (cat (fromFoldable (LazyList.zipWith (<>) (l LazyList.: repeat s) (LazyList.fromFoldable ds))) <> r)
 
-flatten :: ∀ a. Doc a -> Doc a
-flatten (FlatAlt _ y)  = y
-flatten (Cat x y)      = Cat (flatten x) (flatten y)
-flatten (Nest i x)     = Nest i (flatten x)
-flatten (Union x _)    = flatten x
-flatten (Annotate a x) = Annotate a (flatten x)
-flatten (Column f)     = Column  (flatten <<< f)
-flatten (Nesting f)    = Nesting (flatten <<< f)
-flatten (Columns f)    = Columns (flatten <<< f)
-flatten (Ribbon f)     = Ribbon  (flatten <<< f)
-flatten a@Empty        = a
-flatten a@(Char _)     = a
-flatten a@(Text _ _)   = a
-flatten a@Line         = a
+fillSep :: ∀ ann. Array (Doc ann) -> Doc ann
+fillSep = concatWith (\ x y -> x <> softline <> y)
 
-group :: ∀ a. Doc a -> Doc a
-group x = Union (flatten x) x
+flatAlt
+    :: ∀ ann. Doc ann -- ^ Default
+    -> Doc ann -- ^ Fallback when 'group'ed
+    -> Doc ann
+flatAlt = FlatAlt
 
-line :: ∀ a. Doc a
+group :: ∀ ann. Doc ann -> Doc ann
+-- See note [Group: special flattening]
+group x = case changesUponFlattening x of
+    Nothing -> x
+    Just x' -> Union x' x
+
+hcat :: ∀ ann. Array (Doc ann) -> Doc ann
+hcat = concatWith (<>)
+
+line :: ∀ ann. Doc ann
 line = FlatAlt Line space
-  where
-    char' :: Char -> Doc a
-    char' '\n' = line
-    char' c = Char c
-    space :: Doc a
-    space = char' ' '
 
-lparen :: ∀ a. Doc a
-lparen = char '('
+line' :: ∀ ann. Doc ann
+line' = FlatAlt Line mempty
 
-nest :: ∀ a. Int -> Doc a -> Doc a
-nest = Nest
+list :: ∀ ann. Array (Doc ann) -> Doc ann
+list = group <<< encloseSep (flatAlt (pretty "[ ") (pretty "[")) (flatAlt (pretty " ]") (pretty "]")) (pretty ", ")
 
-nicest1 :: ∀ a. Int -> Int -> Int -> Int -> SimpleDoc a -> SimpleDoc a -> SimpleDoc a
-nicest1 n k p r x' y = if fits (min n k) wid x' then x' else y
-  where
-    wid = min (p - k) (r - k + n)
-    fits _ w _        | w < 0 = false
-    fits _ _ SEmpty           = true
-    fits m w (SChar _ x)      = fits m (w - 1) x
-    fits m w (SText l _ x)    = fits m (w - l) x
-    fits _ _ (SLine _ _)      = true
-    fits m w (SPushAnn _ x)   = fits m w x
-    fits m w (SPopAnn  _ x)   = fits m w x
+lparen :: ∀ ann. Doc ann
+lparen = pretty "("
 
-parens :: ∀ a. Doc a -> Doc a
+nest
+    :: ∀ ann. Int -- ^ Change of nesting level
+    -> Doc ann
+    -> Doc ann
+nest 0 x = x -- Optimization
+nest i x = Nest i x
+
+nesting :: ∀ ann. (Int -> Doc ann) -> Doc ann
+nesting = Nesting
+
+parens :: ∀ ann. Doc ann -> Doc ann
 parens = enclose lparen rparen
 
-renderCompact :: ∀ a. Doc a -> SimpleDoc a
-renderCompact x
-    = scan SEmpty 0 [x]
-    where
-      scan z k l0 = case uncons l0 of
-        Nothing -> z
-        Just { head : d, tail : ds } ->
-          case d of
-            Empty         -> scan z k ds
-            Char c        -> let k' = k+1 in SChar c (scan z k' ds)
-            Text l s      -> let k' = k+l in SText l s (scan z k' ds)
-            Annotate a d' -> SPushAnn a (scan (SPopAnn a $ scan z k ds) k [d'])
-            Line          -> SLine 0 (scan z 0 ds)
-            FlatAlt y _   -> scan z k (y:ds)
-            Cat y z'      -> scan z k (y:z':ds)
-            Nest _ y      -> scan z k (y:ds)
-            Union _ y     -> scan z k (y:ds)
-            Column f      -> scan z k (f k:ds)
-            Nesting f     -> scan z k (f 0:ds)
-            Columns f     -> scan z k (f Nothing:ds)
-            Ribbon  f     -> scan z k (f Nothing:ds)
+rparen :: ∀ ann. Doc ann
+rparen = pretty ")"
 
-renderFits ::
-  ∀ a.
-  (Int -> Int -> Int -> Int -> SimpleDoc a -> SimpleDoc a -> SimpleDoc a) ->
-  Number -> Int -> Doc a -> SimpleDoc a
-renderFits nicest rfrac w x
-    = tailRec best { n : 0, k : 0, z : (\_ _ -> SEmpty), d : (Cons 0 x Nil), finally : id }
-    where
-      -- r :: the ribbon width in characters
-      r  = max 0 (min w (round (toNumber w * rfrac)))
-
-      -- best :: n = indentation of current line
-      --         k = current column
-      --        (ie. (k >= n) && (k - n == count of inserted characters)
-      best { n, k, z, d : Nil, finally } = Done $ finally $ z n k
-      best { n, k, z, d : Cons i d ds, finally } =
-        case d of
-          Empty         -> Loop { n, k, z, d : ds, finally }
-          Char c        -> Loop { n, k : k + 1, z, d : ds, finally : finally <<< SChar c }
-          Text l s      -> Loop { n, k : k + l, z, d : ds, finally : finally <<< SText l s }
-          Line          -> Loop { n : i, k : i, z, d : ds, finally : finally <<< SLine i }
-          FlatAlt l _   -> Loop { n, k, z, d : Cons i l ds, finally }
-          Cat x' y      -> Loop { n, k, z, d : Cons i x' (Cons i y ds), finally }
-          Nest j x'     -> Loop { n, k, z, d : Cons (i + j) x' ds, finally }
-          Annotate a d' -> let z' n' k' = tailRec best { n : n', k : k', z, d : ds, finally : SPopAnn a }
-                           in Loop { n, k, z : z', d : Cons i d' Nil, finally : finally <<< SPushAnn a }
-          Union p q     -> Done $ finally $ nicest n k w r
-                           (tailRec best { n, k, z, d : Cons i p ds, finally : id })
-                           (tailRec best { n, k, z, d : Cons i q ds, finally : id })
-          Column f      -> Loop { n, k, z, d : Cons i (f k) ds, finally }
-          Nesting f     -> Loop { n, k, z, d : Cons i (f i) ds, finally }
-          Columns f     -> Loop { n, k, z, d : Cons i (f $ Just w) ds, finally }
-          Ribbon f      -> Loop { n, k, z, d : Cons i (f $ Just r) ds, finally }
-
-
---           Annotate a d' -> let z' n' k' = SPopAnn a $ best n' k' z ds
---                            in SPushAnn a (best n k z' (Cons i d' Nil))
---           Union p q     -> nicest n k w r (best n k z (Cons i p ds))
---                                           (best n k z (Cons i q ds))
---           Column f      -> best n k z (Cons i (f k) ds)
---           Nesting f     -> best n k z (Cons i (f i) ds)
---           Columns f     -> best n k z (Cons i (f $ Just w) ds)
---           Ribbon f      -> best n k z (Cons i (f $ Just r) ds)
-
-renderPretty :: ∀ a. Number -> Int -> Doc a -> SimpleDoc a
-renderPretty = renderFits nicest1
-
-rparen :: ∀ a. Doc a
-rparen = char ')'
-
-softconcat :: ∀ a. Doc a -> Doc a -> Doc a
-softconcat x y = x <> softline <> y
-infixr 5 softconcat as </>
-
-softline :: ∀ a. Doc a
+softline :: ∀ ann. Doc ann
 softline = group line
 
-spaces :: Int -> String
-spaces n | n <= 0    = ""
-         | otherwise = fromCharArray $ replicate n ' '
+space :: ∀ ann. Doc ann
+space = pretty " "
 
-text :: ∀ a. String -> Doc a
-text "" = Empty
-text s  = Text (length s) s
+text :: ∀ ann. String -> Doc ann
+text t = pretty t
+
+unsafeTextWithoutNewlines :: ∀ ann. String -> Doc ann
+unsafeTextWithoutNewlines text0 = case S.uncons text0 of
+    Nothing -> Empty
+    Just { head : t, tail : ext } -> if S.null ext then Char t else Text (S.length text0) text0
+
+vcat :: ∀ ann. Array (Doc ann) -> Doc ann
+vcat = concatWith (\x y -> x <> line' <> y)
+
+vsep :: ∀ ann. Array (Doc ann) -> Doc ann
+vsep = concatWith (\x y -> x <> line <> y)
+
+showChar :: Char -> String -> String
+showChar c s = S.singleton c <> s
+
+showString :: String -> String -> String
+showString s1 s2 = s1 <> s2
+
+renderShowS :: ∀ ann. SimpleDocStream ann -> String -> String
+renderShowS = case _ of
+  SFail        -> const "PANIC: Uncaught Fail"
+  SEmpty       -> id
+  SChar c x    -> showChar c <<< renderShowS x
+  SText _l t x -> showString t <<< renderShowS x
+  SLine i x    -> showString (S.fromCharArray ('\n' : replicate i ' ')) <<< renderShowS x
+  SAnnPush _ x -> renderShowS x
+  SAnnPop x    -> renderShowS x
+
+renderCompact :: ∀ ann. Doc ann -> SimpleDocStream ann
+renderCompact = layoutCompact
+
+renderPretty :: ∀ ann. Number -> Int -> Doc ann -> SimpleDocStream ann
+renderPretty x s = layoutPretty (LayoutOptions { layoutPageWidth : AvailablePerLine s x })
+
+display :: ∀ ann. SimpleDocStream ann -> String
+display s = renderShowS s ""

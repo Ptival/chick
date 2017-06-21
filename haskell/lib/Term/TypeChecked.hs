@@ -12,11 +12,14 @@ import GHC.Generics
 import           Term.Term
 --import qualified Term.Raw  as Raw
 
-data Checked ν = Checked (TermX (Checked ν) ν)
+-- need data here to allow the recursion
+data Checked ν = Checked { unChecked :: (TermX (Checked ν) ν) }
   deriving (Eq, Generic, Show)
 
+type Annotation ν = Checked ν
 type Term ν = TermX (Checked ν) ν
 type Type ν = Term ν
 
-typeOf :: Term ν -> Maybe (Checked ν)
-typeOf = annotationOf
+typeOf :: Term ν -> Maybe (Term ν)
+typeOf Type = Just $ Type
+typeOf t    = unChecked <$> annotationOf t

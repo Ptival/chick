@@ -4,6 +4,8 @@ module TypeCheckingFailure where
 
 import Text.Printf    (printf)
 
+import Term.Term
+
 data TypeCheckingFailure t ν
   = AppArgumentFailed
   | AppFunctionFailed
@@ -35,3 +37,7 @@ displayTypeCheckingFailure = \case
   UnboundVariable v -> printf "Unbound variable: %s" (show v)
   Unchecked ->
     "This term was not type-checked"
+
+sadAppArg     = App (Left AppArgumentFailed)
+sadAppFun     = App (Left AppFunctionFailed)
+sadAppFunType = App (Left AppFunctionFailed)
