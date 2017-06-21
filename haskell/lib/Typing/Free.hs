@@ -77,6 +77,9 @@ synth t = send $ Synth t
 (^||) :: Member (Exc Error) r => Maybe a -> Error -> Eff r a
 (^||) m e = maybe (throwError e) pure m
 
+(?||) :: Member (Exc Error) r => Bool -> Error -> Eff r ()
+(?||) b e = if b then return () else throwError e
+
 -- | Stands for "not checked lambda"
 (~!\) :: NameScope (TermX ν) Variable -> NameScope (TermX (E.Annotation Variable)) Variable
 (~!\) s =
@@ -138,9 +141,9 @@ handleSynth t = case t of
 
   Pi _ τIn bτOut -> do
     let (b, τOut) = unscopeTerm bτOut
-    τIn'  <- check τIn Type       ||| (const $ error TODO)
+    τIn'  <- check τIn Type       ||| \ fτIn  -> sadPiTODO fτIn       ((~!\) bτOut)
     ()    <- addAssumption b τIn'
-    τOut' <- check τOut Type      ||| (const $ error TODO)
+    τOut' <- check τOut Type      ||| \ fτOut -> sadPiTODO ((!) τIn') (abstractBinder b fτOut)
     return $ Pi (C.Checked Type) τIn' (abstractBinder b τOut')
 
   Type -> pure $ Type

@@ -41,3 +41,4 @@ displayTypeCheckingFailure = \case
 sadAppArg     = App (Left AppArgumentFailed)
 sadAppFun     = App (Left AppFunctionFailed)
 sadAppFunType = App (Left AppFunctionFailed)
+sadPiTODO     = Pi  (Left TODO)

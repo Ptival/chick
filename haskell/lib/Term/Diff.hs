@@ -66,12 +66,12 @@ instance
   fields  Type' (Type)           = Just CNil
   fields   Var' (Var     v)      = Just (CCons v CNil)
   fields Scope' s =
-    case bindings s of
-      []  -> error "No binding!?"
-      [n] ->
-        let t = instantiate1Name (Var (name n)) s in
-        Just (CCons n (CCons t CNil))
-      _ -> error $ "More than 1 binding!?" ++ show (bindings s)
+    let (b, t) = unscopeTerm s in
+    let n = case unBinder b of
+          Nothing -> Variable "_"
+          Just v  -> v
+    in
+    Just (CCons (Name n ()) (CCons t CNil))
   fields (Name'     _) _ = Just CNil
   fields (Binder'   _) _ = Just CNil
   fields (Variable' _) _ = Just CNil

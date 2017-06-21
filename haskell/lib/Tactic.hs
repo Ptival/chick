@@ -154,7 +154,7 @@ runAtomic ge a (Goal hyps concl) =
     pure <$> -- i.e. returns just the one goal produced
       case concl of
       Let _ t1 bt2 -> do
-        Checked τ1 <- typeOf t1 `orElse` "could not figure out the type of let-bound variable"
+        τ1 <- typeOf t1 `orElse` "could not figure out the type of let-bound variable"
         let (b, t2) = unscopeTerm bt2
         runIntro τ1 t2 (flip LocalDef t1) (mi, unBinder b)
       Pi  _ τ1 bτ2 -> do
