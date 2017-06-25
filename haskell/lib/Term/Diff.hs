@@ -8,7 +8,7 @@
 module Term.Diff where
 
 import Bound.Name
-import Bound.Scope
+-- import Bound.Scope
 import Data.Default
 import Data.Function
 import Data.Generic.Diff

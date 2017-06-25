@@ -17,7 +17,7 @@ import Text.Megaparsec
 
 import Parsing.Tactic
 --import PrettyPrinting.PrettyPrintable
-import PrettyPrinting.PrettyPrintableUnannotated
+--import PrettyPrinting.PrettyPrintableUnannotated
 --import PrettyPrinting.Tactic
 --import PrettyPrinting.Utils
 import Tactic

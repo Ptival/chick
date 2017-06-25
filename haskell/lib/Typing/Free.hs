@@ -1,22 +1,27 @@
+{-# language DataKinds #-}
 {-# language FlexibleContexts #-}
 {-# language GADTs #-}
 {-# language LambdaCase #-}
+{-# language ScopedTypeVariables #-}
 {-# language TemplateHaskell #-}
+{-# language TypeOperators #-}
 {-# language TypeSynonymInstances #-}
 {-# language RankNTypes #-}
 
 module Typing.Free where
 
-import           Control.Applicative
--- import Control.Eff
--- import Control.Eff.Exception
---import Control.Monad.Free.TH
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Internal
+import           Control.Monad.Freer.State
+import           Control.Monad.Freer.Trace
 import           Data.Bifunctor
+import           Text.Printf
 
+import           PrettyPrinting.PrettyPrintableUnannotated
+import           StandardLibrary
 import           Term.Binder
-import qualified Term.Raw as Raw
+--import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.TypeChecked as C
 import qualified Term.TypeErrored as E
@@ -32,33 +37,31 @@ type Env     = GE.GlobalEnvironment (C.Checked Variable) Variable
 type Error   = E.Term Variable
 type Term α  = TermX α Variable
 
-{-
-data TypeCheck a where
-  Check :: Ctxt -> Term α -> Term β -> TypeCheck (Either Error Checked)
-  Synth :: Ctxt -> Term α ->           TypeCheck (Either Error Checked)
-
-data TypeCheckFail a where
-  ThrowError :: Error -> TypeCheckFail a
-
-check :: (Member TypeCheck r, Member TypeCheckFail r) => Ctxt -> Term α -> Term β -> Eff r Checked
-check γ t τ = (send $ Check γ t τ) >>= either (send . ThrowError) pure
-
-synth :: (Member TypeCheck r, Member TypeCheckFail r) => Ctxt -> Term α -> Eff r Checked
-synth γ t = (send $ Synth γ t) >>= either (send . ThrowError) pure
-
-throwError :: Member TypeCheckFail r => Error -> Eff r a
-throwError e = send $ ThrowError e
--}
-
 data WithLocalContext a where
-  AddAssumption :: Binder Variable -> Checked -> WithLocalContext ()
-  LookupType :: Variable -> WithLocalContext Checked
+  AddAssumption   :: Binder Variable -> Checked -> WithLocalContext ()
+  GetLocalContext ::                               WithLocalContext Ctxt
+  LookupType      :: Variable ->                   WithLocalContext Checked
+  SetLocalContext :: Ctxt ->                       WithLocalContext ()
 
 addAssumption :: Member WithLocalContext r => Binder Variable -> Checked -> Eff r ()
 addAssumption b τ = send $ AddAssumption b τ
 
+getLocalContext :: Member WithLocalContext r => Eff r Ctxt
+getLocalContext = send $ GetLocalContext
+
 lookupType :: Member WithLocalContext r => Variable -> Eff r Checked
 lookupType v = send $ LookupType v
+
+setLocalContext :: Member WithLocalContext r => Ctxt -> Eff r ()
+setLocalContext γ = send $ SetLocalContext γ
+
+withAssumption :: Member WithLocalContext r => Binder Variable -> Checked -> Eff r a -> Eff r a
+withAssumption b τ e = do
+  γ   <- getLocalContext
+  ()  <- addAssumption b τ
+  res <- e
+  ()  <- setLocalContext γ
+  return res
 
 data TypeCheck a where
   Check :: Term α -> Term β -> TypeCheck Checked
@@ -95,7 +98,7 @@ synth t = send $ Synth t
 (!) = first Right
 
 eqβ :: TermX α ν -> TermX β ν -> Bool
-_ `eqβ` _ = error "TODO: eqβ"
+t1 `eqβ` t2 = True
 
 handleCheck ::
   ( Member WithLocalContext r
@@ -106,11 +109,12 @@ handleCheck t τ = case t of
 
   Lam _ bt -> do
     let (bLam, tLam) = unscopeTerm bt
-    τ'             <- check τ  Type          ||| \ _τ' -> E.annotateError NotAType t
-    Pi _ τIn bτOut <- isPi  τ'               ^||          E.annotateError TODO t
-    let (bOut, τOut) = unscopeTerm bτOut
-    ()             <- addAssumption bLam τIn
-    tLam'          <- check tLam τOut        ||| \ _t' -> E.annotateError TODO t
+    τ'             <- check τ  Type      ||| \ _τ' -> E.annotateError NotAType t
+    Pi _ τIn bτOut <- isPi  τ'           ^||          E.annotateError TODO t
+    let (_bOut, τOut) = unscopeTerm bτOut
+    tLam'          <-
+      withAssumption bLam τIn $ do
+      check tLam τOut                    ||| \ _t' -> E.annotateError TODO t
     return $ Lam (C.Checked τ') (abstractBinder bLam tLam')
 
   _ -> do -- conversion rule
@@ -142,8 +146,9 @@ handleSynth t = case t of
   Pi _ τIn bτOut -> do
     let (b, τOut) = unscopeTerm bτOut
     τIn'  <- check τIn Type       ||| \ fτIn  -> sadPiTODO fτIn       ((~!\) bτOut)
-    ()    <- addAssumption b τIn'
-    τOut' <- check τOut Type      ||| \ fτOut -> sadPiTODO ((!) τIn') (abstractBinder b fτOut)
+    τOut' <-
+      withAssumption b τIn' $ do
+      check τOut Type             ||| \ fτOut -> sadPiTODO ((!) τIn') (abstractBinder b fτOut)
     return $ Pi (C.Checked Type) τIn' (abstractBinder b τOut')
 
   Type -> pure $ Type
@@ -151,3 +156,68 @@ handleSynth t = case t of
   Var name -> lookupType name
 
   _ -> throwError $ (~!) t
+
+interpretWithLocalContext :: forall r a.
+  Member (Exc Error) r =>
+  Eff (WithLocalContext ': r) a -> Eff (State Ctxt ': r) a
+interpretWithLocalContext = replaceRelay return $ \case
+  -- (>>=) $ foo   stands for   \ arr -> foo >>= arr
+  AddAssumption   b τ -> (>>=) $ modify (LC.addLocalAssum (b, τ))
+  GetLocalContext     -> (>>=) $ get
+  LookupType      v   -> (>>=) $ interpretLookup v
+  SetLocalContext γ   -> (>>=) $ put γ
+  where
+    interpretLookup v = do
+      γ <- get
+      case LC.lookupType v (γ :: Ctxt) of
+        Nothing -> (throwError :: Error -> Eff (State Ctxt ': r) x) $ Var v
+        Just τ  -> return τ
+
+type Dummy a b = a ': b
+
+traceTypeCheck ::
+  ( Member Trace r
+  , Member TypeCheck r
+  ) => Eff r a -> Eff r a
+traceTypeCheck = interpose pure $ \case
+  Check t τ -> \ arr -> do
+    trace (printf "Checking (%s : %s)" (prettyStrU t) (prettyStrU τ))
+    check t τ >>= traceTypeCheck . arr
+  Synth t   -> \ arr -> do
+    trace (printf "Synthesizing %s" (prettyStrU t))
+    synth t >>= traceTypeCheck . arr
+
+runTraceTypeCheck ::
+  ( Member (Exc Error) r
+  , Member Trace r
+  , Member WithLocalContext r
+  ) =>
+  Eff (TypeCheck ': r) a -> Eff r a
+runTraceTypeCheck = handleRelay pure $ \case
+  Check t τ -> \ arr -> do
+    trace (printf "Checking (%s : %s)" (prettyStrU t) (prettyStrU τ))
+    runTraceTypeCheck (handleCheck t τ) >>= arr
+  Synth t   -> \ arr -> do
+    trace (printf "Synthesizing %s" (prettyStrU t))
+    runTraceTypeCheck (handleSynth t) >>= arr
+
+runTypeCheck ::
+  ( Member (Exc Error) r
+  , Member WithLocalContext r
+  ) =>
+  Eff (TypeCheck ': r) a -> Eff r a
+runTypeCheck = handleRelay pure $ \case
+  Check t τ -> (>>=) $ runTypeCheck $ handleCheck t τ
+  Synth t   -> (>>=) $ runTypeCheck $ handleSynth t
+
+runCheck :: Term α -> Term β -> Eff '[Trace] (Either Error (Checked, Ctxt))
+runCheck t τ =
+  runError
+  . flip runState (LC.LocalContext [])
+  . interpretWithLocalContext
+  . runTypeCheck
+  . runTraceTypeCheck
+  $ handleCheck t τ
+
+foo :: IO (Either Error (Checked, Ctxt))
+foo = runTrace $ runCheck tId τId
