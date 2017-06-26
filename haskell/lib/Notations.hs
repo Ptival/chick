@@ -11,42 +11,42 @@ import Term.Variable
 
 -- Annot
 infix 0 ^::
-(^::) :: Default ξ => TypeX ξ ν -> TermX ξ ν -> TermX ξ ν
+(^::) :: Default α => TypeX α ν -> TermX α ν -> TermX α ν
 t ^:: τ = Annot def t τ
 
 -- App
 infixl 9 ^$
-(^$) :: Default ξ => TermX ξ ν -> TermX ξ ν -> TermX ξ ν
+(^$) :: Default α => TermX α ν -> TermX α ν -> TermX α ν
 t1 ^$ t2 = App def t1 t2
 
 -- Hole
-hole :: Default ξ => TermX ξ ν
+hole :: Default α => TermX α ν
 hole = Hole def
 
 -- Lam
-(^\) :: (Default ξ) => [Variable] -> TermX ξ Variable -> TermX ξ Variable
+(^\) :: (Default α) => [Variable] -> TermX α Variable -> TermX α Variable
 (^\) []       t = t
 (^\) (n : ns) t = Lam def (abstract1Name n ((^\) ns t))
 
 -- Let
-let' :: (Default ξ) => [(Variable, TermX ξ Variable)] -> TermX ξ Variable -> TermX ξ Variable
+let' :: (Default α) => [(Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
 let' []             t  = t
 let' ((n, t1) : ns) t2 = Let def t1 (abstract1Name n (let' ns t2))
 
 -- Pi (named)
-π :: (Default ξ) => [(Variable, TypeX ξ Variable)] -> TermX ξ Variable -> TermX ξ Variable
+π :: (Default α) => [(Variable, TypeX α Variable)] -> TermX α Variable -> TermX α Variable
 π []             t = t
 π ((n, τ) : nτs) t = Pi def τ (abstract1Name n (π nτs t))
 
 -- Pi (anonymous)
 infixr 1 ^->
-(^->) :: Default ξ => TypeX ξ Variable -> TermX ξ Variable -> TermX ξ Variable
+(^->) :: Default α => TypeX α Variable -> TermX α Variable -> TermX α Variable
 τ ^-> t = Pi def τ (abstractAnonymous t)
 
 -- Type
-type' :: Default ξ => TypeX ξ ν
+type' :: Default α => TypeX α ν
 type' = Type
 
 -- Var
-var :: Default ξ => ν -> TermX ξ ν
-var = Var
+var :: Default α => ν -> TermX α ν
+var = Var (Just def)

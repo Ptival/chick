@@ -156,7 +156,7 @@ typeP :: Parser (Raw.Term Variable)
 typeP = Type <$ rword "Type"
 
 varP :: Parser (Raw.Term Variable)
-varP = Var <$> variableP
+varP = Var Nothing <$> variableP
 
 -- Running parsers
 

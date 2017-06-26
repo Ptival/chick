@@ -2,12 +2,14 @@
 
 module Main where
 
+import Data.Monoid
+
 import PrettyPrinting.PrettyPrintableUnannotated
 import Typing.Free
-import StandardLibrary
+--import StandardLibrary (foo)
 
 main :: IO ()
 main = do
   foo >>= \case
-    Left e       -> putStrLn $ show e
-    Right (t, γ) -> putStrLn $ prettyStrU t
+    Left e       -> putStrLn $ "FAILURE: " <> show e
+    Right (t, γ) -> putStrLn $ "SUCCESS: " <> prettyStrU t

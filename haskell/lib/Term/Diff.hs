@@ -64,7 +64,7 @@ instance
   fields   Let' (Let   _ t1 bt2) = Just (CCons t1 (CCons bt2 CNil))
   fields    Pi' (Pi    _ τ1 bτ2) = Just (CCons τ1 (CCons bτ2 CNil))
   fields  Type' (Type)           = Just CNil
-  fields   Var' (Var     v)      = Just (CCons v CNil)
+  fields   Var' (Var   _ v)      = Just (CCons v CNil)
   fields Scope' s =
     let (b, t) = unscopeTerm s in
     let n = case unBinder b of
@@ -84,7 +84,7 @@ instance
   apply   Let' (CCons t1 (CCons bt2 CNil)) = Let   def t1 bt2
   apply    Pi' (CCons τ1 (CCons bτ2 CNil)) = Pi    def τ1 bτ2
   apply  Type' CNil                        = Type
-  apply   Var' (CCons v CNil)              = Var   v
+  apply   Var' (CCons v CNil)              = Var   def v
   apply Scope' (CCons n (CCons t CNil))    = abstract1Name (name n) t
   --apply (Scope' s) (CCons t CNil) = s
   apply (Name'     n) CNil = n

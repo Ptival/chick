@@ -71,7 +71,10 @@ data TermX α ν
   | Let   α (TermX α ν) (NameScope (TermX α) ν)
   | Pi    α (TypeX α ν) (NameScope (TypeX α) ν)
   | Type
-  | Var   ν
+  -- it's really annoying not to have annotations on Var when type-checking
+  -- but having α makes it not an applicative (can't come up with arbitrary α)
+  -- so (Maybe α) lets us put stuff there when handy, but not always
+  | Var   (Maybe α) ν
   deriving
     ( Foldable
     , Functor
@@ -94,7 +97,7 @@ instance Bifunctor TermX where
       Let   a t1 bt2 -> Let   (l a) (go t1) (bimapScope bt2)
       Pi    a τ1 bτ2 -> Pi    (l a) (go τ1) (bimapScope bτ2)
       Type           -> Type
-      Var   v        -> Var   (r v)
+      Var   a v      -> Var   (l <$> a) (r v)
 
 instance Eq1 (TermX α) where
   liftEq eqVar term1 term2 =
@@ -107,7 +110,7 @@ instance Eq1 (TermX α) where
       (Let _ t1 bt2, Let _ t1' bt2') -> t1 === t1' && liftEq eqVar bt2 bt2'
       (Pi _ τ1 bτ2,  Pi _ τ1' bτ2')  -> τ1 === τ1' && liftEq eqVar bτ2 bτ2'
       (Type,         Type)           -> True
-      (Var v,        Var v')         -> eqVar v v'
+      (Var _ v,      Var _ v')       -> eqVar v v'
       (_,            _)              -> False
 
 instance (Eq ν) => Eq (TermX α ν) where
@@ -118,18 +121,18 @@ instance (Eq ν) => Eq (TermX α ν) where
   Let _ t1 bt2 == Let _ t1' bt2' = t1 == t1' && bt2 == bt2'
   Pi _ τ1 bτ2 == Pi _ τ1' bτ2' = τ1 == τ1' && bτ2 == bτ2'
   Type == Type = True
-  Var v == Var v' = v == v'
+  Var _ v == Var _ v' = v == v'
   _ == _ = False
 
 --deriving instance (ForallX (Serial m) α, Monad m) => Serial m  (TermX α ν)
 --deriving instance  ForallX Out        α           => Out       (TermX α ν)
 
 instance Applicative (TermX α) where
-  pure = Var
+  pure = Var Nothing
   (<*>) = ap
 
 instance Monad (TermX α) where
-  return = Var
+  return = Var Nothing
   Annot a t  τ   >>= f = Annot a (t   >>= f) (τ  >>= f)
   App   a t1 t2  >>= f = App   a (t1  >>= f) (t2 >>= f)
   Hole  a        >>= _ = Hole  a
@@ -137,7 +140,7 @@ instance Monad (TermX α) where
   Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (bt2 >>>= f)
   Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (bτ2 >>>= f)
   Type           >>= _ = Type
-  Var   v        >>= f = f v
+  Var   _ v      >>= f = f v
 
 --deriving instance Foldable (TermX α)
 --deriving instance Traversable (TermX α)
@@ -218,7 +221,7 @@ annotationOf = \case
   Let   a _ _ -> Just a
   Pi    a _ _ -> Just a
   Type        -> Nothing -- removed annotation because it makes TypeChecked infinite
-  Var     _   -> Nothing -- removed annotation to make TermX applicative
+  Var   a _   -> a -- maybe-d annotation to make TermX applicative
 
 annotateHead :: α -> TermX β ν -> TermX α ν
 annotateHead a = bimap (const a) id
@@ -248,7 +251,7 @@ unscopeTerm :: Scope (Name Variable ()) (TermX ξ) Variable -> (Binder Variable,
 unscopeTerm t =
   let n = getName t in
   let b = if unVariable n == "_" then Nothing else Just n in
-  (Binder b, instantiate1Name (Var n) t)
+  (Binder b, instantiate1Name (Var Nothing n) t)
 
 instance PrettyPrintableUnannotated (TermX ξ) where
   prettyDocU t = do
@@ -268,7 +271,7 @@ instance (Show α) => Show1 (TermX α) where
         Let   a t1 bt2 -> showString "Let ("   . shows a . showString ") (" . liftShowsPrec sP sL p t1 . showString ") (" . liftShowsPrec sP sL p bt2 . showString ")"
         Pi    a τ1 bτ2 -> showString "Pi ("    . shows a . showString ") (" . liftShowsPrec sP sL p τ1 . showString ") (" . liftShowsPrec sP sL p bτ2 . showString ")"
         Type           -> showString "Type"
-        Var   v        -> showString "Var (" . sP p v . showString ")"
+        Var   a v      -> showString "Var (" . shows a . showString ") (" . sP p v . showString ")"
 
 instance (PrintfArg α, Show α) => PrintfArg (TermX α Variable) where
   formatArg t = formatString (show t)
@@ -318,7 +321,7 @@ prettyTermDocPrec precs = goTerm
          , char '='
          , go (PrecMin, TolerateEqual) t1
          , text "in"
-         , go (PrecLet, TolerateEqual) (instantiate1Name (Var n) bt2)
+         , go (PrecLet, TolerateEqual) (instantiate1Name (Var Nothing n) bt2)
          ]
         , PrecLet)
 
@@ -329,7 +332,7 @@ prettyTermDocPrec precs = goTerm
               (fillSep
                [ go (PrecArrow, TolerateHigher) τ1
                , char '→'
-               , go (PrecArrow, TolerateEqual) (instantiate1Name (Var n) bτ2)
+               , go (PrecArrow, TolerateEqual) (instantiate1Name (Var Nothing n) bτ2)
                ]
               , PrecArrow)
             _ ->
@@ -340,19 +343,19 @@ prettyTermDocPrec precs = goTerm
                  , go (PrecMin, TolerateEqual) τ1
                  ]
                , char '→'
-               , go (PrecArrow, TolerateEqual) (instantiate1Name (Var n) bτ2)
+               , go (PrecArrow, TolerateEqual) (instantiate1Name (Var Nothing n) bτ2)
                ]
               , PrecArrow)
 
       Type -> (text "Type", PrecAtom)
 
-      Var v -> (prettyDoc v, PrecAtom)
+      Var _ v -> (prettyDoc v, PrecAtom)
 
     goLams :: [Doc a] -> TermX ξ Variable -> Doc a
     goLams l = \case
       Lam _ bt ->
         let n = getName bt in
-        goLams (prettyDoc n : l) (instantiate1Name (Var n) bt)
+        goLams (prettyDoc n : l) (instantiate1Name (Var Nothing n) bt)
       t -> fillSep
           [ char 'λ'
           , fillSep . reverse $ l

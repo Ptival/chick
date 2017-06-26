@@ -128,7 +128,7 @@ isInductive ge = go
     go τ =
       case τ of
         App _ l _ -> go l
-        Var v   ->
+        Var _ v   ->
           case lookupDecl v ge of
             Just (GlobalInd i) -> Just i
             _ -> Nothing

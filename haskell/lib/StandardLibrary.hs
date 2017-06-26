@@ -106,7 +106,7 @@ inductiveNat :: Inductive () Variable
 inductiveNat =
   Inductive "ℕ" [] []
   [ Constructor "zero"  [] []
-  , Constructor "succ" [(Binder (Just "n"), Var "ℕ")] []
+  , Constructor "succ" [(Binder (Just "n"), Var (Just ()) "ℕ")] []
   ]
 
 {-
@@ -119,8 +119,8 @@ inductiveList =
   Inductive "List" [("A", Type)] []
   [ Constructor "nil"  [] []
   , Constructor "cons"
-    [ (Binder (Just "x"), Var "A")
-    , (Binder (Just "xs"), App () (Var "List") (Var "A"))
+    [ (Binder (Just "x"), Var (Just ()) "A")
+    , (Binder (Just "xs"), App () (Var (Just ()) "List") (Var (Just ()) "A"))
     ]
     []
   ]
@@ -132,15 +132,15 @@ inductive Fin : ℕ → Type where
 -}
 inductiveFin :: Inductive () Variable
 inductiveFin =
-  Inductive "Fin" [] [Var "ℕ"]
+  Inductive "Fin" [] [Var (Just()) "ℕ"]
   [ Constructor "zero"
-    [ (Binder (Just "n"), Var "ℕ") ]
-    [ App () (Var "succ") (Var "n") ]
+    [ (Binder (Just "n"), Var (Just()) "ℕ") ]
+    [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
   , Constructor "succ"
-    [ (Binder (Just "n"), Var "ℕ")
-    , (Binder (Just "i"), App () (Var "Fin") (Var "n"))
+    [ (Binder (Just "n"), Var (Just()) "ℕ")
+    , (Binder (Just "i"), App () (Var (Just()) "Fin") (Var (Just()) "n"))
     ]
-    [ App () (Var "succ") (Var "n") ]
+    [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
   ]
 
 {-
@@ -150,14 +150,14 @@ inductive Vec (A : Type) : ℕ → Type where
 -}
 inductiveVec :: Inductive () Variable
 inductiveVec =
-  Inductive "Vec" [("A", Type)] [Var "ℕ"]
-  [ Constructor "nil"  [] [Var "zero"]
+  Inductive "Vec" [("A", Type)] [Var (Just()) "ℕ"]
+  [ Constructor "nil"  [] [Var (Just()) "zero"]
   , Constructor "cons"
-    [ (Binder (Just "n"), Var "ℕ")
-    , (Binder (Just "x"), Var "A")
-    , (Binder (Just "xs"), App () (App () (Var "Vec") (Var "A")) (Var "n"))
+    [ (Binder (Just "n"), Var (Just()) "ℕ")
+    , (Binder (Just "x"), Var (Just()) "A")
+    , (Binder (Just "xs"), App () (App () (Var (Just()) "Vec") (Var (Just()) "A")) (Var (Just()) "n"))
     ]
-    [ App () (Var "succ") (Var "n") ]
+    [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
   ]
 
 {-

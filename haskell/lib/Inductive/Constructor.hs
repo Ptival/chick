@@ -31,7 +31,7 @@ rawConstructorType ind indps ps is =
   foldr onParam (
     foldr onIndex (
         foldr onIndParam
-        (Var ind)
+        (Var (Just ()) ind)
         indps)
     is)
   ps
@@ -41,7 +41,7 @@ rawConstructorType ind indps ps is =
     onParam :: (Binder Variable, TermX ξ Variable) -> Raw.Term Variable -> Raw.Term Variable
     onParam (b, p) t = Pi () (raw p) (abstractBinder b t)
     onIndParam :: (Binder Variable, TermX ξ Variable) -> Raw.Term Variable -> Raw.Term Variable
-    onIndParam (Binder (Just v), _) t = App () (raw t) (Var v)
+    onIndParam (Binder (Just v), _) t = App () (raw t) (Var (Just ()) v)
     onIndParam (Binder Nothing,  _) t = App () (raw t) (Hole ())
 
 constructorTypeChecked ::
@@ -52,7 +52,7 @@ constructorTypeChecked ind indps ps is =
   foldr onParam (
     foldr onIndex (
         foldr onIndParam
-        (Var ind)
+        (Var Nothing ind) -- TODO: this Nothing could be replace by the right Type -> ... -> Type
         indps)
     is)
   ps
@@ -62,7 +62,7 @@ constructorTypeChecked ind indps ps is =
     onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
     onParam (b, p) t = Pi (Checked Type) p (abstractBinder b t)
     onIndParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onIndParam (Binder (Just v), _) t = App (Checked Type) t (Var v)
+    onIndParam (Binder (Just v), _) t = App (Checked Type) t (Var Nothing v)
     onIndParam (Binder Nothing,  τ) t = App (Checked Type) t (Hole (Checked τ))
 
 {-

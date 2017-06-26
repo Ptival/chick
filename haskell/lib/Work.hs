@@ -284,9 +284,9 @@ runSynth' γ = \case
       Nothing ->
         return $ App (Checked τOut) sFun cArg
 
-  Var name ->
+  Var _ name ->
     case lookupType name γ of
-    Nothing -> throwError $ Var name
+    Nothing -> throwError $ Var Nothing name
     Just τ -> return τ
 
   Pi _ τIn bτOut -> do
