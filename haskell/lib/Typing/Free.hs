@@ -217,7 +217,7 @@ runCheck t τ =
   . interpretWithLocalContext
   . runTypeCheck
   . runTraceTypeCheck
-  $ handleCheck t τ
+  $ check t τ
 
 foo :: IO (Either Error (Checked, Ctxt))
 foo = runTrace $ runCheck tId τId
