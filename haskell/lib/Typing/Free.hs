@@ -216,8 +216,6 @@ interpretWithLocalContext = replaceRelay return $ \case
         Nothing -> (throwError :: Error -> Eff (State Ctxt ': r) x) $ Var Nothing v
         Just τ  -> return τ
 
-type Dummy a b = a ': b
-
 {-
 traceTypeCheck ::
   ( Member Trace r
