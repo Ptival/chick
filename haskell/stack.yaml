@@ -14,8 +14,9 @@ packages:
     extra-dep: true
 nix:
   enable: true
-  packages:
-    - binutils
-    - git
-    - ncurses
+  #packages:
+  #  - binutils
+  #  - git
+  #  - ncurses
   path: [nixpkgs=/home/ptival/nixpkgs]
+  shell-file: shell.nix

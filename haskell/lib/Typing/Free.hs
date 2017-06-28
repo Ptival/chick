@@ -50,6 +50,5 @@ runCheck' t τ =
 runCheck :: Term α -> Term β -> Either Error (Checked, Ctxt)
 runCheck t τ = skipTrace $ runCheck' t τ
 
--- runCheck :: Term α -> Term β -> Eff '[Trace] (Either Error (Checked, Ctxt))
 traceCheck :: Term α -> Term β -> IO (Either Error (Checked, Ctxt))
 traceCheck t τ = runTrace $ runCheck' t τ
