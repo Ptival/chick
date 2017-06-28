@@ -5,7 +5,10 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Typing.GlobalDeclaration where
+module Typing.GlobalDeclaration
+  ( GlobalDeclaration(..)
+  , nameOf
+  )where
 
 import Text.PrettyPrint.Annotated.WL
 

@@ -43,27 +43,26 @@ Library
                  -- transformers              >= 0.5.2 && < 0.6,
                  -- unbound-generics          >= 0.3   && < 0.4,
                  wl-pprint-annotated       >= 0.0   && < 0.1
-  exposed-modules: Diff
+  exposed-modules: Atomic
+                   Diff
+                   Goal
                    Notations
                    Parsing
                    Playground
                    Precedence
                    PrettyPrinting.PrettyPrintableUnannotated
                    StandardLibrary
-                   Substitutable
                    Tactic
                    Term.AlphaEquivalence
                    Term.AlphaRenaming
-                   --Term.Fold
                    Term.Free
                    Term.Fresh
-                   --Term.Numbered
                    Term.Raw
-                   --Term.Substitution
                    Term.Term
-                   --Term.TypeChecked
-                   --Term.TypeErrored
                    Typing.Free
+                   Typing.LocalContextOps
+                   Typing.TypeCheckOps
+                   Typing.Utils
                    WellFormed
                    Work
   other-modules: DictMetaOut

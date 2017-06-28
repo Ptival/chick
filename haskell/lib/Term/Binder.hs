@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Term.Binder where
+module Term.Binder
+  ( Binder(..)
+  ) where
 
 import Data.String
 import GHC.Generics

@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module PrettyPrinting.PrettyPrintable where
+module PrettyPrinting.PrettyPrintable
+  ( PrettyPrintable(..)
+  ) where
 
 import Text.PrettyPrint.Annotated.WL
 

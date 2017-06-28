@@ -6,10 +6,10 @@ import Data.Monoid
 
 import PrettyPrinting.PrettyPrintableUnannotated
 import Typing.Free
---import StandardLibrary (foo)
+import StandardLibrary (tId, τId)
 
 main :: IO ()
 main = do
-  foo >>= \case
-    Left e       -> putStrLn $ "FAILURE: " <> show e
-    Right (t, γ) -> putStrLn $ "SUCCESS: " <> prettyStrU t
+  traceCheck tId τId >>= \case
+    Left e        -> putStrLn $ "FAILURE: " <> show e
+    Right (t, _γ) -> putStrLn $ "SUCCESS: " <> prettyStrU t

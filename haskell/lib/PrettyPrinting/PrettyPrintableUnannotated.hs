@@ -4,7 +4,9 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module PrettyPrinting.PrettyPrintableUnannotated where
+module PrettyPrinting.PrettyPrintableUnannotated
+  ( PrettyPrintableUnannotated(..)
+  ) where
 
 import Control.Monad.Reader
 import Data.Default

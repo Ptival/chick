@@ -12,7 +12,9 @@
 {-# language TypeOperators #-}
 {-# language UndecidableInstances #-}
 
-module Term.Variable where
+module Term.Variable
+  ( Variable(..)
+  ) where
 
 import Data.String
 import GHC.Generics

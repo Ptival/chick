@@ -1,5 +1,8 @@
 
-module Parsing.Tactic where
+module Parsing.Tactic
+  ( atomicP
+  , tacticP
+  ) where
 
 import Text.Megaparsec.Combinator
 import Text.Megaparsec.String

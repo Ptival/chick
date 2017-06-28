@@ -16,9 +16,22 @@
 -- {-# language TypeOperators #-}
 -- {-# language UndecidableInstances #-}
 
-module Term.Term where
+module Term.Term
+  ( NameScope
+  , TermX(..)
+  , TypeX
+  , abstractAnonymous
+  , abstractBinder
+  , annotateHead
+  , annotationOf
+  , annotSymbol
+  , holeSymbol
+  , simultaneousSubstitute
+  , substitute
+  , unscopeTerm
+  ) where
 
-import Bound
+import Bound ((>>>=))
 import Bound.Name
 import Bound.Scope
 import Control.Monad

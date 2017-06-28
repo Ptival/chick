@@ -6,10 +6,17 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Typing.LocalContext where
+module Typing.LocalContext
+  ( LocalContext(..)
+  , TypeCheckedLocalContext
+  , addHyp
+  , addLocalAssum
+  , boundNames
+  , lookupType
+  ) where
 
 import Control.Monad
-
+import Control.Monad.Except
 import Text.PrettyPrint.Annotated.WL
 
 import Typing.LocalDeclaration
@@ -27,6 +34,13 @@ newtype LocalContext ξ ν =
 instance PrettyPrintableUnannotated (TermX ξ) =>
          PrettyPrintableUnannotated (LocalContext ξ) where
   prettyDocU (LocalContext ctxt) = vsep <$> mapM prettyDocU (reverse ctxt)
+
+addHyp ::
+  (Eq ν, MonadError String m) =>
+  LocalDeclaration α ν -> LocalContext α ν -> m (LocalContext α ν)
+addHyp hyp (LocalContext hyps)
+  | nameOf hyp `elem` map nameOf hyps = throwError "addHyp: name conflict"
+  | otherwise = return . LocalContext $ hyp:hyps
 
 addLocalAssum :: (Binder ν, TypeX ξ ν) -> LocalContext ξ ν -> LocalContext ξ ν
 addLocalAssum (Binder Nothing , _) γ = γ

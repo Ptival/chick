@@ -2,7 +2,13 @@
 {-# language DeriveGeneric #-}
 {-# language LambdaCase #-}
 
-module Precedence where
+module Precedence
+  ( Precedence(..)
+  , PrecedenceTable(..)
+  , Tolerance(..)
+  , isTolerable
+  , tableToOrdering
+  ) where
 
 import Data.Default
 import Data.List

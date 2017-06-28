@@ -1,11 +1,14 @@
-
-module Parsing.Atomic where
+module Parsing.Atomic
+  ( admitP
+  , exactP
+  , introP
+  ) where
 
 import Text.Megaparsec
 import Text.Megaparsec.String
 
+import Atomic
 import Parsing
-import Tactic
 import Term.Variable
 
 admitP :: Parser (Atomic Variable)
