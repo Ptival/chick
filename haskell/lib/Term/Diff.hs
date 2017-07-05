@@ -5,7 +5,10 @@
 {-# language MultiParamTypeClasses #-}
 {-# language UndecidableInstances #-}
 
-module Term.Diff where
+module Term.Diff
+  ( TermDiff
+  , TermXFamily(..)
+  )where
 
 import Bound.Name
 -- import Bound.Scope
@@ -17,25 +20,25 @@ import Term.Binder
 import Term.Variable
 import Term.Term
 
-type TermDiff ξ = EditScript (TermXFamily ξ) (TermX ξ Variable) (TermX ξ Variable)
+type TermDiff α = EditScript (TermXFamily α) (TermX α Variable) (TermX α Variable)
 
-data TermXFamily ξ :: * -> * -> * where
-  Annot' :: TermXFamily ξ (TermX ξ Variable)             (Cons (TermX ξ Variable)                  (Cons (TypeX ξ Variable)             Nil))
-  App'   :: TermXFamily ξ (TermX ξ Variable)             (Cons (TermX ξ Variable)                  (Cons (TermX ξ Variable)             Nil))
-  Hole'  :: TermXFamily ξ (TermX ξ Variable)                                                                                            Nil
-  Lam'   :: TermXFamily ξ (TermX ξ Variable)             (Cons (NameScope (TermX ξ) Variable)                                           Nil)
-  Let'   :: TermXFamily ξ (TermX ξ Variable)             (Cons (TermX ξ Variable)                  (Cons (NameScope (TermX ξ) Variable) Nil))
-  Pi'    :: TermXFamily ξ (TermX ξ Variable)             (Cons (TypeX ξ Variable)                  (Cons (NameScope (TypeX ξ) Variable) Nil))
-  Type'  :: TermXFamily ξ (TermX ξ Variable)                                                                                            Nil
-  Var'   :: TermXFamily ξ (TermX ξ Variable)             (Cons Variable                                                                 Nil)
-  Scope' :: TermXFamily ξ (NameScope (TermX ξ) Variable) (Cons (Name Variable ())                   (Cons (TermX ξ Variable)             Nil))
-  Name'  :: Name Variable () -> TermXFamily ξ (Name Variable ()) Nil
-  Binder'   :: Binder Variable -> TermXFamily ξ (Binder Variable) Nil
-  Variable' :: Variable -> TermXFamily ξ Variable Nil
+data TermXFamily α :: * -> * -> * where
+  Annot' :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (TypeX α Variable)             Nil))
+  App'   :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (TermX α Variable)             Nil))
+  Hole'  :: TermXFamily α (TermX α Variable)                                                                                            Nil
+  Lam'   :: TermXFamily α (TermX α Variable)             (Cons (NameScope (TermX α) Variable)                                           Nil)
+  Let'   :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (NameScope (TermX α) Variable) Nil))
+  Pi'    :: TermXFamily α (TermX α Variable)             (Cons (TypeX α Variable)                  (Cons (NameScope (TypeX α) Variable) Nil))
+  Type'  :: TermXFamily α (TermX α Variable)                                                                                            Nil
+  Var'   :: TermXFamily α (TermX α Variable)             (Cons Variable                                                                 Nil)
+  Scope' :: TermXFamily α (NameScope (TermX α) Variable) (Cons (Name Variable ())                  (Cons (TermX α Variable)             Nil))
+  Name'     :: Name Variable () -> TermXFamily α (Name Variable ()) Nil
+  Binder'   :: Binder Variable  -> TermXFamily α (Binder Variable)  Nil
+  Variable' :: Variable         -> TermXFamily α Variable           Nil
 
 instance
-  (Default ξ, Eq ξ, Show ξ) =>
-  Family (TermXFamily ξ) where
+  (Default α, Eq α, Show α) =>
+  Family (TermXFamily α) where
 
   decEq Annot' Annot' = Just (Refl, Refl)
   decEq   App'   App' = Just (Refl, Refl)
@@ -104,31 +107,31 @@ instance
   string (Binder'   b) = show b
   string (Variable' v) = show v
 
-instance (Default ξ, Eq ξ, Show ξ) => Type (TermXFamily ξ) Variable where
+instance (Default α, Eq α, Show α) => Type (TermXFamily α) Variable where
   constructors = [ Abstr Variable' ]
 
-instance (Default ξ, Eq ξ, Show ξ) => Type (TermXFamily ξ) (Binder Variable) where
+instance (Default α, Eq α, Show α) => Type (TermXFamily α) (Binder Variable) where
   constructors = [ Abstr Binder' ]
 
-instance (Default ξ, Eq ξ, Show ξ) => Type (TermXFamily ξ) (Name Variable ()) where
+instance (Default α, Eq α, Show α) => Type (TermXFamily α) (Name Variable ()) where
   constructors = [ Abstr Name' ]
 
 instance
-  ( Default ξ
-  , Eq ξ
-  , Show ξ
-  , Type (TermXFamily ξ) (Name Variable ())
+  ( Default α
+  , Eq α
+  , Show α
+  , Type (TermXFamily α) (Name Variable ())
   ) =>
-  Type (TermXFamily ξ) (NameScope (TermX ξ) Variable) where
+  Type (TermXFamily α) (NameScope (TermX α) Variable) where
   constructors = [ Concr Scope' ]
 
 instance
-  ( Default ξ
-  , Eq ξ
-  , Show ξ
-  , Type (TermXFamily ξ) (Name Variable ())
+  ( Default α
+  , Eq α
+  , Show α
+  , Type (TermXFamily α) (Name Variable ())
   ) =>
-  Type (TermXFamily ξ) (TermX ξ Variable) where
+  Type (TermXFamily α) (TermX α Variable) where
     constructors =
       [ Concr Annot'
       , Concr   App'
@@ -142,8 +145,8 @@ instance
 
 {-
 instance
-  (ForallX Default ξ, Type (TermXFamily ξ ν) ν) =>
-  Type (TermXFamily ξ ν) (TermX ξ (Var () (TermX ξ ν))) where
+  (ForallX Default α, Type (TermXFamily α ν) ν) =>
+  Type (TermXFamily α ν) (TermX α (Var () (TermX α ν))) where
     constructors =
       [ Concr Annot'
       , Concr   App'

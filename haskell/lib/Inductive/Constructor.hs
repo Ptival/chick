@@ -5,7 +5,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Inductive.Constructor where
+module Inductive.Constructor
+  ( Constructor(..)
+  , constructorTypeChecked
+  , rawConstructorType
+  ) where
 
 import Term.Binder
 import Term.Term
@@ -13,19 +17,19 @@ import Term.Variable
 import Term.TypeChecked as TypeChecked
 import Term.Raw         as Raw
 
-data Constructor ξ ν =
+data Constructor α ν =
   Constructor
   { name       :: ν
-  , parameters :: [(Binder ν, TypeX ξ ν)]
-  , indices    :: [TypeX ξ ν]
+  , parameters :: [(Binder ν, TypeX α ν)]
+  , indices    :: [TypeX α ν]
   }
 
-deriving instance (Eq ξ, Eq ν) => Eq (Constructor ξ ν)
-deriving instance (Show ξ, Show ν) => Show (Constructor ξ ν)
+deriving instance (Eq α, Eq ν) => Eq (Constructor α ν)
+deriving instance (Show α, Show ν) => Show (Constructor α ν)
 
 rawConstructorType ::
-  Variable -> [(Binder Variable, TermX ξ Variable)] ->
-  [(Binder Variable, TermX ξ Variable)] -> [TermX ξ Variable] ->
+  Variable -> [(Binder Variable, TermX α Variable)] ->
+  [(Binder Variable, TermX α Variable)] -> [TermX α Variable] ->
   TypeX () Variable
 rawConstructorType ind indps ps is =
   foldr onParam (
@@ -36,11 +40,11 @@ rawConstructorType ind indps ps is =
     is)
   ps
   where
-    onIndex :: TermX ξ Variable -> Raw.Term Variable -> Raw.Term Variable
+    onIndex :: TermX α Variable -> Raw.Term Variable -> Raw.Term Variable
     onIndex i t = App () (raw t) (raw i)
-    onParam :: (Binder Variable, TermX ξ Variable) -> Raw.Term Variable -> Raw.Term Variable
+    onParam :: (Binder Variable, TermX α Variable) -> Raw.Term Variable -> Raw.Term Variable
     onParam (b, p) t = Pi () (raw p) (abstractBinder b t)
-    onIndParam :: (Binder Variable, TermX ξ Variable) -> Raw.Term Variable -> Raw.Term Variable
+    onIndParam :: (Binder Variable, TermX α Variable) -> Raw.Term Variable -> Raw.Term Variable
     onIndParam (Binder (Just v), _) t = App () (raw t) (Var (Just ()) v)
     onIndParam (Binder Nothing,  _) t = App () (raw t) (Hole ())
 
@@ -88,9 +92,9 @@ H : H T (S n) (vcons n h xs)
 
 {-
 constructorTerm ::
-  Variable -> [(Binder Variable, TypeX ξ Variable)] ->
-  [(Binder Variable, TypeX ξ Variable)] -> [TypeX ξ Variable] ->
-  Constructor ξ Variable -> TermX ξ Variable
+  Variable -> [(Binder Variable, TypeX α Variable)] ->
+  [(Binder Variable, TypeX α Variable)] -> [TypeX α Variable] ->
+  Constructor α Variable -> TermX α Variable
 constructorTerm ind indps ips iis (Constructor c ps is) =
   foldr onParam (
     foldr onIndex (

@@ -3,7 +3,10 @@
 {-# language TypeFamilies #-}
 {-# language UndecidableInstances #-}
 
-module Inductive.Inductive where
+module Inductive.Inductive
+  ( Inductive(..)
+  , inductiveType
+  ) where
 
 import Control.Monad.Reader.Class
 

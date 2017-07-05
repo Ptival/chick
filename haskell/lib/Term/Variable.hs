@@ -18,12 +18,13 @@ module Term.Variable
 
 import Data.String
 import GHC.Generics
-import PrettyPrinting.PrettyPrintable
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 import Test.SmallCheck.Series
 import Text.PrettyPrint.Annotated.WL
 import Text.PrettyPrint.GenericPretty (Out)
+
+import PrettyPrinting.PrettyPrintable
 
 newtype Variable
   = Variable { unVariable :: String }

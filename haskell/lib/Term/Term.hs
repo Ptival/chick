@@ -38,6 +38,7 @@ import Control.Monad
 import Control.Monad.Reader.Class
 import Data.Bifunctor
 import Data.Functor.Classes
+import Data.String
 import Data.Typeable
 --import GHC.Exts                  (Constraint)
 import GHC.Generics
@@ -265,6 +266,9 @@ unscopeTerm t =
   let n = getName t in
   let b = if unVariable n == "_" then Nothing else Just n in
   (Binder b, instantiate1Name (Var Nothing n) t)
+
+instance IsString (TermX α Variable) where
+  fromString s = Var Nothing (fromString s)
 
 instance PrettyPrintableUnannotated (TermX ξ) where
   prettyDocU t = do
