@@ -10,7 +10,7 @@ import Control.Monad.Freer.Exception
 
 data Diff t dt
   = Same
-  | Add    t  (Diff t dt)
+  | Insert t  (Diff t dt)
   | Change dt (Diff t dt)
   | Flip      (Diff t dt)
   | Keep      (Diff t dt)
@@ -24,7 +24,7 @@ patch patchElem = go
   where
     go l d = case d of
       Same         -> return l
-      Add     e d' -> go l d' >>= return . (e :)
+      Insert e  d' -> go l d' >>= return . (e :)
       Change da d' -> case l of
         h : t -> do
           ph <- patchElem h da

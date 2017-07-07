@@ -1,13 +1,24 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DataKinds #-}
+
 module Utils
   ( isPi
   , orElse
   , orElse'
+  , skipTrace
   , splitList
   ) where
 
+import Control.Monad.Freer
+import Control.Monad.Freer.Internal
+import Control.Monad.Freer.Trace
 import Control.Monad.Error.Class
 
 import Term.Term
+
+isPi :: TermX ξ ν -> Maybe (TermX ξ ν)
+isPi t@(Pi _ _ _) = Just t
+isPi _            = Nothing
 
 orElse :: MonadError e m => Maybe a -> e -> m a
 orElse Nothing  e = throwError e
@@ -17,9 +28,11 @@ orElse' :: MonadError e m => Bool -> e -> m ()
 orElse' False e = throwError e
 orElse' True  _ = return ()
 
-isPi :: TermX ξ ν -> Maybe (TermX ξ ν)
-isPi t@(Pi _ _ _) = Just t
-isPi _            = Nothing
+skipTrace :: Eff '[Trace] a -> a
+skipTrace (Val x) = x
+skipTrace (E u q) =
+  case extract u of
+    Trace _ -> skipTrace (qApp q ())
 
 splitList
    :: Int -> [a] -> Maybe ([a], a, [a])

@@ -15,7 +15,6 @@ module Typing.Free
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Internal
 import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 
@@ -26,17 +25,12 @@ import           Term.Variable
 import qualified Typing.LocalContext as LC
 import           Typing.LocalContextOps
 import           Typing.TypeCheckOps
+import           Utils
 
 type Checked = C.Term Variable
 type Ctxt    = LC.LocalContext (C.Checked Variable) Variable
 type Error   = E.Term Variable
 type Term α  = TermX α Variable
-
-skipTrace :: Eff '[Trace] a -> a
-skipTrace (Val x) = x
-skipTrace (E u q) =
-  case extract u of
-    Trace _ -> skipTrace (qApp q ())
 
 runCheck' :: Term α -> Term β -> Eff '[Trace] (Either Error (Checked, Ctxt))
 runCheck' t τ =
