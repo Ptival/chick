@@ -56,3 +56,7 @@ instance
 nameOf :: LocalDeclaration ξ ν -> ν
 nameOf (LocalAssum v _)   = v
 nameOf (LocalDef   v _ _) = v
+
+typeOf :: LocalDeclaration α ν -> TypeX α ν
+typeOf (LocalAssum _ τ) = τ
+typeOf (LocalDef _ _ τ) = τ

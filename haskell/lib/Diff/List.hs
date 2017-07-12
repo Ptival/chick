@@ -1,4 +1,5 @@
 {-# language FlexibleContexts #-}
+{-# language LambdaCase #-}
 
 module Diff.List
   ( Diff(..)
@@ -7,14 +8,17 @@ module Diff.List
 
 import Control.Monad.Freer
 import Control.Monad.Freer.Exception
+import Text.Printf
 
-data Diff t dt
+import Diff.Utils
+
+data Diff t δt
   = Same
-  | Insert t  (Diff t dt)
-  | Change dt (Diff t dt)
-  | Flip      (Diff t dt)
-  | Keep      (Diff t dt)
-  | Remove    (Diff t dt)
+  | Insert   t    (Diff t δt)
+  | Change  δt    (Diff t δt)
+  | Permute [Int] (Diff t δt)
+  | Keep          (Diff t δt)
+  | Remove        (Diff t δt)
   deriving (Show)
 
 patch ::
@@ -22,19 +26,22 @@ patch ::
   (a -> da -> Eff r a) -> [a] -> Diff a da -> Eff r [a]
 patch patchElem = go
   where
-    go l d = case d of
-      Same         -> return l
-      Insert e  d' -> go l d' >>= return . (e :)
-      Change da d' -> case l of
+    failWith = throwExc . printf "[Diff.List.patch] %s"
+    go l = \case
+      Same        -> return l
+      Insert e  δ -> go l δ >>= return . (e :)
+      Change δe δ -> case l of
         h : t -> do
-          ph <- patchElem h da
-          pt <- go t d'
+          ph <- patchElem h δe
+          pt <- go t δ
           return $ ph : pt
-        _     -> throwError "Change: empty list"
-      Flip      d' -> case l of
-        h1 : h2 : t -> go (h2 : h1 : t) d'
-        _           -> throwError "Flip: < 2 elements list"
-      Keep      d' -> case l of
-        h : t -> go t d' >>= return . (h :)
-        _     -> throwError "Keep: empty list"
-      Remove    d' -> go (tail l) d'
+        _     -> failWith "Change, empty list"
+      Permute p δ ->
+        let ll = length l in
+        if ll > length p || ll < maximum p
+        then failWith "Permut, permutation exceeds list size"
+        else go (permute p l) δ
+      Keep      δ -> case l of
+        h : t -> go t δ >>= return . (h :)
+        _     -> failWith "Keep, empty list"
+      Remove    δ -> go (tail l) δ

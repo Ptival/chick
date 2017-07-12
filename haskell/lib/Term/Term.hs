@@ -31,7 +31,7 @@ module Term.Term
   , unscopeTerm
   ) where
 
-import Bound ((>>>=), makeBound)
+import Bound ((>>>=))
 import Bound.Name
 import Bound.Scope
 import Control.Monad

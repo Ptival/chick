@@ -1,10 +1,13 @@
-{-# language DataKinds #-}
-{-# language FlexibleContexts #-}
-{-# language GADTs #-}
-{-# language LambdaCase #-}
-{-# language RankNTypes #-}
-{-# language ScopedTypeVariables #-}
-{-# language TypeOperators #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Typing.LocalContextOps
   ( LocalContextOps(..)
@@ -30,42 +33,43 @@ import qualified Term.TypeErrored as E
 import           Term.Variable
 import qualified Typing.LocalContext as LC
 
-type Checked = C.Term Variable
-type Ctxt    = LC.LocalContext (C.Checked Variable) Variable
+type Term α  = TermX α Variable
+--type Checked = C.Term Variable
+type Ctxt α  = LC.LocalContext α Variable
 type Error   = E.Term Variable
 
-data LocalContextOps a where
-  AddAssumption   :: Binder Variable -> Checked -> LocalContextOps ()
-  Fresh           :: [Variable] ->                 LocalContextOps Variable
-  GetLocalContext ::                               LocalContextOps Ctxt
-  LookupType      :: Variable ->                   LocalContextOps Checked
-  SetLocalContext :: Ctxt ->                       LocalContextOps ()
+data LocalContextOps α a where
+  AddAssumption   :: Binder Variable -> Term α -> LocalContextOps α ()
+  Fresh           :: [Variable] ->                LocalContextOps α Variable
+  GetLocalContext ::                              LocalContextOps α (Ctxt α)
+  LookupType      :: Variable ->                  LocalContextOps α (Term α)
+  SetLocalContext :: Ctxt α ->                    LocalContextOps α ()
 
-addAssumption :: Member LocalContextOps r => Binder Variable -> Checked -> Eff r ()
+addAssumption :: Member (LocalContextOps α) r => Binder Variable -> Term α -> Eff r ()
 addAssumption b τ = send $ AddAssumption b τ
 
-fresh :: Member LocalContextOps r => [Variable] -> Eff r Variable
-fresh l = send $ Fresh l
+fresh :: ∀ α r. Member (LocalContextOps α) r => [Variable] -> Eff r Variable
+fresh l = send $ Fresh @α l
 
-freshBinder :: Member LocalContextOps r => [Binder Variable] -> Eff r (Binder Variable)
-freshBinder l = Binder . Just <$> fresh (concatMap (maybeToList . unBinder) l)
+freshBinder :: ∀ α r. Member (LocalContextOps α) r => [Binder Variable] -> Eff r (Binder Variable)
+freshBinder l = Binder . Just <$> fresh @α (concatMap (maybeToList . unBinder) l)
 
-getLocalContext :: Member LocalContextOps r => Eff r Ctxt
+getLocalContext :: Member (LocalContextOps α) r => Eff r (Ctxt α)
 getLocalContext = send $ GetLocalContext
 
-lookupType :: Member LocalContextOps r => Variable -> Eff r Checked
-lookupType v = send $ LookupType v
+lookupType :: ∀ α r. Member (LocalContextOps α) r => Variable -> Eff r (Term α)
+lookupType v = send $ LookupType @α v
 
-setLocalContext :: Member LocalContextOps r => Ctxt -> Eff r ()
+setLocalContext :: Member (LocalContextOps α) r => Ctxt α -> Eff r ()
 setLocalContext γ = send $ SetLocalContext γ
 
-withAssumption ::
+withAssumption :: ∀ α r a.
   -- ( Member Trace r
-  ( Member LocalContextOps r
-  ) => Binder Variable -> Checked -> Eff r a -> Eff r a
+  ( Member (LocalContextOps α) r
+  ) => Binder Variable -> Term α -> Eff r a -> Eff r a
 withAssumption b τ e = do
-  γ   <- getLocalContext
-  ()  <- addAssumption b τ
+  γ   <- getLocalContext @α
+  ()  <- addAssumption @α b τ
   -- trace $ printf "Added assumption %s : %s" (prettyStr b) (prettyStrU τ)
   res <- e
   -- trace "Removing assumption"
@@ -76,9 +80,9 @@ withAssumption b τ e = do
 identifiers :: [String]
 identifiers = [ c : s | s <- "" : identifiers, c <- ['a'..'z'] ]
 
-interpretLocalContextOps :: forall r a.
+interpretLocalContextOps :: ∀ α r a.
   Member (Exc Error) r =>
-  Eff (LocalContextOps ': r) a -> Eff (State Ctxt ': r) a
+  Eff (LocalContextOps α ': r) a -> Eff (State (Ctxt α) ': r) a
 interpretLocalContextOps = replaceRelay return $ \case
   -- (>>=) $ foo   stands for   \ arr -> foo >>= arr
   AddAssumption   b τ -> (>>=) $ modify (LC.addLocalAssum (b, τ))
@@ -87,12 +91,14 @@ interpretLocalContextOps = replaceRelay return $ \case
   LookupType      v   -> (>>=) $ interpretLookup v
   SetLocalContext γ   -> (>>=) $ put γ
   where
+    interpretFresh :: [Variable] -> Eff (State (Ctxt α) ': r) Variable
     interpretFresh suggestions = do
-      γ :: Ctxt <- get
+      γ :: Ctxt α <- get
       let candidates = suggestions ++ (Variable <$> identifiers)
       return $ head $ candidates \\ LC.boundNames γ
+    interpretLookup :: Variable -> Eff (State (Ctxt α) ': r) (Term α)
     interpretLookup v = do
-      γ :: Ctxt <- get
+      γ :: Ctxt α <- get
       case LC.lookupType v γ of
-        Nothing -> (throwError :: Error -> Eff (State Ctxt ': r) x) $ Var Nothing v
+        Nothing -> (throwError :: Error -> Eff (State (Ctxt α) ': r) x) $ Var Nothing v
         Just τ  -> return τ
