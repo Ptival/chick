@@ -20,11 +20,12 @@ import           Term.Variable
 
 type Parser1 a = Parser a -> Parser  a
 type Parser2 a = Parser a -> Parser1 a
+type Parser3 a = Parser a -> Parser2 a
 
 data Associativity = LeftAssociative | RightAssociative | NonAssociative
 
 data ModularParser a
-  = SelfNextParser (Parser2 a)
+  = TopSelfNextParser (Parser3 a)
   | BinaryOpParser Associativity String (a -> a -> a)
   | AtomParser (Parser a)
 
@@ -36,38 +37,38 @@ binOpN = BinaryOpParser NonAssociative
 parser :: [[ModularParser (Raw.Term Variable)]]
 parser =
   -- low precedence
-  [ [SelfNextParser letP, SelfNextParser lamP]
+  [ [TopSelfNextParser letP, TopSelfNextParser lamP]
   , [binOpN annotSymbol (Annot ())]
-  , [SelfNextParser namedPiP, binOpR "→" (\ τ1 τ2 -> Pi () τ1 (abstractAnonymous τ2))]
+  , [TopSelfNextParser namedPiP, binOpR "→" (\ τ1 τ2 -> Pi () τ1 (abstractAnonymous τ2))]
   , [binOpL "" (App ())]
   , [AtomParser holeP, AtomParser typeP, AtomParser varP]
   ]
   -- high precedence
 
-unModularP :: ModularParser a -> Parser2 a
-unModularP (SelfNextParser p) = p
+unModularP :: ModularParser a -> Parser3 a
+unModularP (TopSelfNextParser p) = p
 unModularP (BinaryOpParser LeftAssociative  s p) = binOpLP s p
 unModularP (BinaryOpParser RightAssociative s p) = binOpRP s p
 unModularP (BinaryOpParser NonAssociative   s p) = binOpNP s p
-unModularP (AtomParser p) = \ _selfP _nextP -> p
+unModularP (AtomParser p) = \ _topP _selfP _nextP -> p
 
-choiceOrNextP :: [ModularParser a] -> Parser1 a
-choiceOrNextP ps nextP =
-  fix $ \ selfP -> choice $ map (\ p -> unModularP p selfP nextP) ps ++ [nextP]
+choiceOrNextP :: Parser a -> [ModularParser a] -> Parser1 a
+choiceOrNextP topP ps nextP =
+  fix $ \ selfP -> choice $ map (\ p -> unModularP p topP selfP nextP) ps ++ [nextP]
 
 foldP :: [[ModularParser a]] -> Parser a
-foldP ps = fix $ \ self -> foldr ($) (parens self) (map choiceOrNextP ps)
+foldP ps = fix $ \ topP -> foldr ($) (parens topP) (map (choiceOrNextP topP) ps)
 
 termP :: Parser (Raw.Term Variable)
 termP = foldP parser
 
 -- Binary operator parsers
 
-binOpLP :: String -> (a -> a -> a) -> Parser2 a
-binOpLP s k _selfP nextP = chainl1 nextP (symbol s *> return k)
+binOpLP :: String -> (a -> a -> a) -> Parser3 a
+binOpLP s k _topP _selfP nextP = chainl1 nextP (symbol s *> return k)
 
-binOpRP :: String -> (a -> a -> a) -> Parser2 a
-binOpRP s k selfP nextP = k <$> try (nextP <* symbol s) <*> selfP
+binOpRP :: String -> (a -> a -> a) -> Parser3 a
+binOpRP s k _topP selfP nextP = k <$> try (nextP <* symbol s) <*> selfP
 
 {-
 -- short for:
@@ -80,7 +81,7 @@ binOpRP s k selfP nextP = do
   return $ k l r
 -}
 
-binOpNP :: String -> (a -> a -> a) -> Parser2 a
+binOpNP :: String -> (a -> a -> a) -> Parser3 a
 binOpNP s k _selfP nextP = binOpRP s k nextP nextP
 
 -- Individual parsers (alphabetically)
@@ -94,8 +95,8 @@ binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> variableP))
 holeP :: Parser (Raw.Term Variable)
 holeP = Hole () <$ symbol holeSymbol
 
-lamP :: Parser2 (Raw.Term Variable)
-lamP selfP _nextP =
+lamP :: Parser3 (Raw.Term Variable)
+lamP _topP selfP _nextP =
   lams
   <$> (try (symbol "λ") *> some binderP)
   <*> (symbol "." *> selfP)
@@ -113,12 +114,12 @@ lamP selfP _nextP =
     lams []       t = t
     lams (b : bs) t = Lam () (abstractBinder b (lams bs t))
 
-letP :: Parser2 (Raw.Term Variable)
-letP selfP _nextP = do
+letP :: Parser3 (Raw.Term Variable)
+letP topP selfP _nextP = do
   try $ rword "let"
   b <- binderP
   symbol "="
-  t1 <- termP
+  t1 <- topP
   rword "in"
   t2 <- selfP
   return $ Let () t1 (abstractBinder b t2)
@@ -135,13 +136,13 @@ letP selfP _nextP = do
   return $ Let () b t1 t2
 -}
 
-namedPiP :: Parser2 (Raw.Term Variable)
-namedPiP selfP _nextP = do
+namedPiP :: Parser3 (Raw.Term Variable)
+namedPiP topP selfP _nextP = do
   (bs, τ1) <- try $ do
     symbol "("
     bs <- some binderP
     symbol ":"
-    τ1 <- termP
+    τ1 <- topP
     symbol ")"
     symbol "→" -- I don't think we can commit prior to this, unfortunately
     return (bs, τ1)
