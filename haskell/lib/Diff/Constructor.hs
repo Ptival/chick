@@ -47,7 +47,7 @@ patch c@(Constructor n ps is) d = case d of
 test :: String
 test =
   let Inductive i ips _ [_, cons] =  inductiveVec in
-  let d = Change (DA.Change (Variable "snoc")) (DL.Keep (DL.Flip DL.Same)) DL.Same in
+  let d = Change (DA.Change (Variable "snoc")) (DL.Keep (DL.Permute [1, 0] DL.Same)) DL.Same in
   case run . runError $ patch cons d of
     Left e -> e
     Right (Constructor n ps is) ->

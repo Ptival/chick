@@ -51,7 +51,7 @@ findLocalDeclarationDiff v γ = \case
         then return δτ
         else findLocalDeclarationDiff v (LocalContext γ') δ
 
-  DL.Flip _ -> error "TODO: Flip"
+  DL.Permute _ _ -> error "TODO: Permute"
 
   DL.Keep δ ->
     case unLocalContext γ of
