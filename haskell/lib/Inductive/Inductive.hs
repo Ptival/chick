@@ -12,6 +12,7 @@ import Control.Monad.Reader.Class
 
 import Inductive.Constructor
 import Precedence
+import PrettyPrinting.Term ()
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Binder

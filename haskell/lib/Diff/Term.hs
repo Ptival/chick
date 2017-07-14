@@ -22,6 +22,7 @@ import           Text.Printf
 
 import qualified Diff.Atom as DA
 import           Diff.Utils
+import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Binder
 import           Term.Term

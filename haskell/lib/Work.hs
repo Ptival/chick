@@ -22,6 +22,7 @@ import Prelude                                   hiding (or)
 import Text.PrettyPrint.Annotated.WL
 
 import Precedence
+import PrettyPrinting.Term ()
 import PrettyPrinting.PrettyPrintableUnannotated
 import Typing.LocalContext
 import Term.Binder
