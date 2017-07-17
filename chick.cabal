@@ -54,10 +54,12 @@ Library
                    Diff.List
                    Diff.LocalContext
                    Diff.LocalDeclaration
+                   Diff.Script
                    Diff.State
                    Diff.Term
                    Diff.Utils
                    Diff.Variable
+                   Diff.Vernacular
                    Goal
                    Inductive.Constructor
                    Inductive.Inductive
@@ -75,6 +77,7 @@ Library
                    PrettyPrinting.PrettyPrintableUnannotated
                    PrettyPrinting.Tactic
                    PrettyPrinting.Utils
+                   Script
                    StandardLibrary
                    Tactic
                    Term.AlphaEquivalence
@@ -100,6 +103,7 @@ Library
                    Typing.TypeChecker
                    Typing.Utils
                    Utils
+                   Vernacular
                    WellFormed
                    Work
 

@@ -18,6 +18,7 @@ import           Data.Foldable
 import           Text.Printf
 
 import qualified Diff.Atom as DA
+-- import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.LocalContext as DLC
 import qualified Diff.LocalDeclaration as DLD
 import qualified Diff.List as DL
@@ -30,7 +31,8 @@ import           Term.Binder
 import           Term.Term
 import qualified Term.Raw as Raw
 import           Term.Variable
-import           Typing.LocalContext
+import qualified Typing.GlobalEnvironment as GE
+import qualified Typing.LocalContext as LC
 import           Typing.LocalDeclaration
 import           StandardLibrary
 import           Utils
@@ -120,15 +122,15 @@ diffProof t τ δτ =
           Var _ v -> do
             s <- get
             let γ  = view DS.context s
-            let δγ = view DS.contextDiff s
+            let δγ = view DS.δcontext s
             γ' <- DLC.patch γ δγ
-            τv <- case lookupType v γ of
+            τv <- case LC.lookupType v γ of
               Nothing ->
                 throwExc $ printf
                   "Could not find the type of the function in the old context: %s"
                   (show γ)
               Just τv -> return τv
-            _τv' <- case lookupType v γ' of
+            _τv' <- case LC.lookupType v γ' of
               Nothing  -> throwExc "Could not find the type of the function in the new context"
               Just τv' -> return τv'
             δτv <- DLC.findLocalDeclarationDiff v γ δγ
@@ -142,8 +144,8 @@ diffProof t τ δτ =
         let (b, tlam) = unscopeTerm bt
         (_, τ1, _, τ2) <- DT.extractPi τ
         withState
-          (   over DS.context     (addLocalAssum (b, τ1))
-          >>> over DS.contextDiff (DL.Keep)
+          (   over DS.context  (LC.addLocalAssum (b, τ1))
+          >>> over DS.δcontext (DL.Keep)
           ) $ do
           DT.CpyLam DA.Same <$> diffProof tlam τ2 DT.Same
 
@@ -169,8 +171,8 @@ diffProof t τ δτ =
       (Lam _ bt, Pi _ τ1 bτ2) -> do
         let (b, _) = unscopeTerm bt
         withState
-          (   over DS.context     (addLocalAssum (b, τ1))
-          >>> over DS.contextDiff (DL.Change (DLD.Change DA.Same d1))
+          (   over DS.context  (LC.addLocalAssum (b, τ1))
+          >>> over DS.δcontext (DL.Change (DLD.Change DA.Same d1))
           ) $ do
           DT.CpyLam DA.Same <$> diffProof (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
       _ -> throwExc "diffProof: CpyPi Same"
@@ -184,15 +186,15 @@ diffProof t τ δτ =
     -- - recursively diff by substituting b' for b
     s <- get
     let varsFreeInTerm = foldr (\ v -> (v :)) [] t
-    let varsBoundInContext = boundNames (view DS.context s)
+    let varsBoundInContext = LC.boundNames (view DS.context s)
     trace $ printf "Variables free  in the term:    %s" (show . map prettyStr $ varsFreeInTerm)
     trace $ printf "Variables bound in the context: %s" (show . map prettyStr $ varsBoundInContext)
     let v :: Variable = "todo"
     let b = Binder (Just v)
     τ1' <- DT.patch τ d1
     withState
-      (   over DS.context     id
-      >>> over DS.contextDiff (DL.Insert (LocalAssum v τ1'))
+      (   over DS.context  id
+      >>> over DS.δcontext (DL.Insert (LocalAssum v τ1'))
       ) $ DT.InsLam () b <$> diffProof t τ d2
 
   DT.PermutPis p d1      -> do
@@ -210,7 +212,7 @@ patchProof t τ δτ = runAll diffProofThenPatch
     runAll =
       runError
       . liftM fst
-      . flip runState (DS.State (LocalContext []) DL.Same)
+      . flip runState (DS.State (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same :: DS.State)
     diffProofThenPatch = diffProof t τ δτ >>= DT.patch t
 
 patchProofTrace ::
