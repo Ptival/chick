@@ -1,7 +1,0 @@
-*.aux
-*.glob
-*.v.d
-*.vo
-Makefile.coq
-/HaysTac
-/SquiggleEq
