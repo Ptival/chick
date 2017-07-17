@@ -11,8 +11,6 @@ import           Text.Printf
 
 import qualified Diff.Atom as DA
 import qualified Diff.List as DL
-import qualified Diff.Term as DT
-import qualified Diff.Variable as DV
 import           Inductive.Constructor
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
@@ -20,7 +18,6 @@ import           PrettyPrinting.PrettyPrintableUnannotated
 import           StandardLibrary
 import           Term.Binder
 import           Term.Term
-import qualified Term.Raw as Raw
 import           Term.Variable
 
 type Term α = TypeX α Variable
@@ -32,6 +29,7 @@ data Diff α
     (DA.Diff Variable)
     (DL.Diff (Parameter α) (DA.Diff (Parameter α)))
     (DL.Diff (Term α)      (DA.Diff (Term α)))
+  deriving (Show)
 
 patch ::
   Member (Exc String) r =>

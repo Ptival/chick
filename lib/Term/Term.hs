@@ -36,20 +36,14 @@ import Bound ((>>>=))
 import Bound.Name
 import Bound.Scope
 import Control.Monad
-import Control.Monad.Reader.Class
 import Data.Bifunctor
 import Data.Functor.Classes
 import Data.String
 import Data.Typeable
 --import GHC.Exts                  (Constraint)
 import GHC.Generics
-import Text.PrettyPrint.Annotated.WL
 import Text.Printf
 
-import Precedence
-import PrettyPrinting.PrettyPrintable
-import PrettyPrinting.PrettyPrintableUnannotated
-import PrettyPrinting.Utils
 import Term.Binder
 import Term.Variable
 

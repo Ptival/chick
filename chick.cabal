@@ -48,6 +48,9 @@ Library
                    Diff.Atom
                    Diff.Constructor
                    Diff.Diff
+                   Diff.GlobalDeclaration
+                   Diff.GlobalEnvironment
+                   Diff.Inductive
                    Diff.List
                    Diff.LocalContext
                    Diff.LocalDeclaration

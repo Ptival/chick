@@ -59,7 +59,7 @@ withState f e = do
 -- | `δτ` is the diff for `τ` to become the new telescope
 updateArgs ::
   ( Member (Exc String) r
-  , Member Trace        r
+  , Member Trace r
   ) =>
   Raw.Term Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 updateArgs = go DT.Same
@@ -90,8 +90,8 @@ updateArgs = go DT.Same
 -- | `diffProof t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff describing
 -- | how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt` has type `patch τ δτ`.
 diffProof ::
-  ( Member (Exc String)               r
-  , Member Trace                      r
+  ( Member (Exc String) r
+  , Member Trace r
   , Member (State DS.State) r
   ) =>
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
@@ -139,20 +139,20 @@ diffProof t τ δτ =
 
       -- even though the diff is same, something inside might need updating
       Lam _ bt -> do
-        let (b, t) = unscopeTerm bt
+        let (b, tlam) = unscopeTerm bt
         (_, τ1, _, τ2) <- DT.extractPi τ
         withState
           (   over DS.context     (addLocalAssum (b, τ1))
           >>> over DS.contextDiff (DL.Keep)
           ) $ do
-          DT.CpyLam DA.Same <$> diffProof t τ2 DT.Same
+          DT.CpyLam DA.Same <$> diffProof tlam τ2 DT.Same
 
       _ -> do
-        s <- get
+        -- s :: DS.State <- get
         -- trace $ printf "SAME:        %s" (prettyStrU t)
-        let γ = view DS.context s
+        -- let γ = view DS.context s
         -- trace $ printf "CONTEXT BEF:\n%s" (prettyStrU γ)
-        γ' <- DLC.patch γ (view DS.contextDiff s)
+        -- γ' <- DLC.patch γ (view DS.contextDiff s)
         -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
         return DT.Same
 
