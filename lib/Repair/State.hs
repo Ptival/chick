@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Diff.State
+module Repair.State
   ( State (..)
   , context
   , δcontext

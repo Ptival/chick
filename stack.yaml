@@ -19,4 +19,4 @@ nix:
   #  - git
   #  - ncurses
   path: [nixpkgs=/home/ptival/nixpkgs]
-  shell-file: shell.nix
+  shell-file: shell-stack.nix

@@ -1,5 +1,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Utils
   ( isPi
@@ -7,10 +8,12 @@ module Utils
   , orElse'
   , skipTrace
   , splitList
+  , withState
   ) where
 
 import Control.Monad.Freer
 import Control.Monad.Freer.Internal
+import Control.Monad.Freer.State
 import Control.Monad.Freer.Trace
 import Control.Monad.Error.Class
 
@@ -44,3 +47,14 @@ splitList n xs =
     go _ []    = Nothing
     prependL h (revl, x, r) = (h:revl, x, r)
     revL (l, x, r) = (reverse l, x, r)
+
+-- | `withState` localizes a modification of the state to a given effectful computation
+withState ::
+  Member (State s) r =>
+  (s -> s) -> Eff r a -> Eff r a
+withState f e = do
+  s <- get
+  put (f s)
+  r <- e
+  put s
+  return r
