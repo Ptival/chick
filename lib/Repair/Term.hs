@@ -15,7 +15,7 @@ import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
-import qualified Diff.LocalContext as DLC
+-- import qualified Diff.LocalContext as DLC
 import qualified Diff.LocalDeclaration as DLD
 import qualified Diff.List as DL
 import qualified Diff.Term as DT
@@ -82,6 +82,7 @@ repair ::
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 repair t τ δτ =
   let exc (reason :: String) = throwExc $ printf "Repair.Term/repair: %s" reason in
+
   -- (do
   --     s <- get
   --     let γ = view RS.context s
@@ -103,16 +104,16 @@ repair t τ δτ =
         case fun of
 
           Var _ v -> do
-            s <- get
-            let γ  = view RS.context s
-            let δγ = view RS.δcontext s
-            γ' <- DLC.patch γ δγ
+            -- s <- get
+            -- let γ  = view RS.context s
+            -- let δγ = view RS.δcontext s
+            -- γ' <- DLC.patch γ δγ
             τv <- lookupType v
             δτv <- findDeclarationDiff v
             -- trace $ printf "About to update args with: %s" (show δτ)
             repairArgs τv δτv
 
-          _ -> throwExc "repair, Same, App, Not Var"
+          _ -> exc "repair, Same, App, Not Var"
 
       -- even though the diff is same, something inside might need updating
       Lam _ bt -> do
