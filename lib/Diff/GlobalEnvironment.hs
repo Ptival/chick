@@ -54,6 +54,15 @@ findGlobalDeclarationDiff v e δe =
           then return δτ
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
+    DL.Change (DGD.ChangeGlobalDef δv _ δτ) δ ->
+      case unGlobalEnvironment e of
+        []    -> exc "DL.Change but empty environment"
+        h : e' -> do
+          v' <- DA.patch (nameOf h) δv
+          if v' == v
+          then return δτ
+          else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
+
     DL.Change (DGD.ChangeGlobalInd _δind) _δ -> exc "TODO: patch GlobalInd"
 
     DL.Permute _ _ -> exc "TODO: Permute"

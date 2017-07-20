@@ -7,15 +7,14 @@ module Diff.Constructor
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
-import           Text.Printf
 
 import qualified Diff.Atom as DA
 import qualified Diff.List as DL
 import           Inductive.Constructor
-import           Inductive.Inductive
-import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.PrettyPrintableUnannotated
-import           StandardLibrary
+-- import           Inductive.Inductive
+-- import           PrettyPrinting.PrettyPrintable
+-- import           PrettyPrinting.PrettyPrintableUnannotated
+-- import           StandardLibrary
 import           Term.Binder
 import           Term.Term
 import           Term.Variable
@@ -42,12 +41,12 @@ patch c@(Constructor n ps is) d = case d of
     is' <- DL.patch DA.patch is dis
     return $ Constructor n' ps' is'
 
-test :: String
-test =
-  let Inductive i ips _ [_, cons] =  inductiveVec in
-  let d = Change (DA.Change (Variable "snoc")) (DL.Keep (DL.Permute [1, 0] DL.Same)) DL.Same in
-  case run . runError $ patch cons d of
-    Left e -> e
-    Right (Constructor n ps is) ->
-      let ct = rawConstructorType i ips ps is in
-      printf "%s : %s" (prettyStr n) (prettyStrU ct)
+-- test :: String
+-- test =
+--   let Inductive i ips _ [_, cons] =  inductiveVec in
+--   let d = Change (DA.Change (Variable "snoc")) (DL.Keep (DL.Permute [1, 0] DL.Same)) DL.Same in
+--   case run . runError $ patch cons d of
+--     Left e -> e
+--     Right (Constructor n ps is) ->
+--       let ct = rawConstructorType i ips ps is in
+--       printf "%s : %s" (prettyStr n) (prettyStrU ct)

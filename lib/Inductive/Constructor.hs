@@ -8,7 +8,7 @@
 module Inductive.Constructor
   ( Constructor(..)
   , constructorTypeChecked
-  , rawConstructorType
+  , constructorRawType
   ) where
 
 import Term.Binder
@@ -27,11 +27,11 @@ data Constructor α ν =
 deriving instance (Eq α, Eq ν) => Eq (Constructor α ν)
 deriving instance (Show α, Show ν) => Show (Constructor α ν)
 
-rawConstructorType ::
+constructorRawType ::
   Variable -> [(Binder Variable, TermX α Variable)] ->
   [(Binder Variable, TermX α Variable)] -> [TermX α Variable] ->
-  TypeX () Variable
-rawConstructorType ind indps ps is =
+  Raw.Type Variable
+constructorRawType ind indps ps is =
   foldr onParam (
     foldr onIndex (
         foldr onIndParam

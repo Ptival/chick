@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Repair.State
-  ( State (..)
+  ( RepairState (..)
   , context
   , δcontext
   , environment
@@ -17,11 +17,11 @@ import           Term.Variable
 import           Typing.GlobalEnvironment
 import           Typing.LocalContext
 
-data State = State
+data RepairState = RepairState
   { _context      :: LocalContext      Raw.Raw Variable
   , _δcontext     :: DLC.Diff          Raw.Raw
   , _environment  :: GlobalEnvironment Raw.Raw Variable
   , _δenvironment :: DGE.Diff          Raw.Raw
   }
 
-makeLenses ''State
+makeLenses ''RepairState

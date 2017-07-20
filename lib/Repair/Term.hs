@@ -22,6 +22,7 @@ import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import qualified Repair.State as RS
+import           Repair.Utils
 import           Term.Binder
 import           Term.Term
 import qualified Term.Raw as Raw
@@ -76,11 +77,11 @@ repairArgs = go DT.Same
 repair ::
   ( Member (Exc String) r
   , Member Trace r
-  , Member (State RS.State) r
+  , Member (State RS.RepairState) r
   ) =>
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 repair t τ δτ =
-
+  let exc (reason :: String) = throwExc $ printf "Repair.Term/repair: %s" reason in
   -- (do
   --     s <- get
   --     let γ = view RS.context s
@@ -106,16 +107,8 @@ repair t τ δτ =
             let γ  = view RS.context s
             let δγ = view RS.δcontext s
             γ' <- DLC.patch γ δγ
-            τv <- case LC.lookupType v γ of
-              Nothing ->
-                throwExc $ printf
-                  "Could not find the type of the function in the old context: %s"
-                  (show γ)
-              Just τv -> return τv
-            _τv' <- case LC.lookupType v γ' of
-              Nothing  -> throwExc "Could not find the type of the function in the new context"
-              Just τv' -> return τv'
-            δτv <- DLC.findLocalDeclarationDiff v γ δγ
+            τv <- lookupType v
+            δτv <- findDeclarationDiff v
             -- trace $ printf "About to update args with: %s" (show δτ)
             repairArgs τv δτv
 

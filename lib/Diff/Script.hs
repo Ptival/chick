@@ -7,8 +7,6 @@ module Diff.Script
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
--- import           Text.Printf
 
 import qualified Diff.List as DL
 import qualified Diff.Vernacular as DV

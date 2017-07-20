@@ -21,6 +21,7 @@ data Diff α
   = Same
   | ChangeDefinition (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
   | ChangeInductive (DI.Diff α)
+  deriving (Show)
 
 patch ::
   Member (Exc String) r =>

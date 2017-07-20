@@ -45,7 +45,6 @@ Library
                  wl-pprint-annotated       >= 0.0   && < 0.1
   exposed-modules: Atomic
                    DictMetaOut
-
                    Diff.Atom
                    Diff.Constructor
                    Diff.GlobalDeclaration
@@ -59,20 +58,16 @@ Library
                    Diff.Utils
                    Diff.Variable
                    Diff.Vernacular
-
                    Goal
                    Inductive.Constructor
                    Inductive.Inductive
                    Notations
-
                    Parsing
                    Parsing.Atomic
                    Parsing.Tactic
                    Parsing.Utils
-
                    Playground
                    Precedence
-
                    PrettyPrinting.Chick.Term
                    PrettyPrinting.Term
                    PrettyPrinting.PrettyPrintable
@@ -80,16 +75,14 @@ Library
                    PrettyPrinting.PrettyPrintableUnannotated
                    PrettyPrinting.Tactic
                    PrettyPrinting.Utils
-
                    Repair.Benchmark
                    Repair.Script
                    Repair.State
                    Repair.Term
-
+                   Repair.Utils
                    Script
                    StandardLibrary
                    Tactic
-
                    Term.AlphaEquivalence
                    Term.AlphaRenaming
                    Term.Binder
@@ -101,9 +94,7 @@ Library
                    Term.TypeChecked
                    Term.TypeErrored
                    Term.Variable
-
                    TypeCheckingFailure
-
                    Typing.Free
                    Typing.GlobalDeclaration
                    Typing.GlobalEnvironment
@@ -114,7 +105,6 @@ Library
                    Typing.TypeCheckOps
                    Typing.TypeChecker
                    Typing.Utils
-
                    Utils
                    Vernacular
                    WellFormed

@@ -20,10 +20,11 @@ import           Typing.LocalContext
 import           Typing.LocalDeclaration
 import           Typing.GlobalDeclaration
 import           Term.Binder
+import qualified Term.Raw as Raw
 import           Term.Term
-import           Term.TypeChecked                          as TypeChecked
+import           Term.TypeChecked as TypeChecked
 import           Term.Variable
-import qualified Typing.LocalContext                       as LocalContext
+import qualified Typing.LocalContext as LocalContext
 
 newtype GlobalEnvironment ξ ν
   = GlobalEnvironment
@@ -35,14 +36,22 @@ instance PrettyPrintableUnannotated (TermX ξ) =>
   prettyDocU (GlobalEnvironment γ) = vsep <$> mapM prettyDocU (reverse γ)
 
 addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
-addGlobalAssum (Binder Nothing , _) γ = γ
-addGlobalAssum (Binder (Just v), τ) (GlobalEnvironment γ) =
-  GlobalEnvironment ((GlobalAssum v τ) : γ)
+addGlobalAssum (Binder Nothing,  _) γ = γ
+addGlobalAssum (Binder (Just v), τ) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalAssum v τ) : γ)
+
+addGlobalDef :: (Binder ν, TermX ξ ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
+addGlobalDef (Binder Nothing,  _, _) γ = γ
+addGlobalDef (Binder (Just v), t, τ) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalDef v t τ) : γ)
 
 addGlobalInd :: Inductive ξ ν -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalInd i (GlobalEnvironment γ) = GlobalEnvironment (GlobalInd i : γ)
 
--- type TypeCheckedGlobalEnvironment = GlobalEnvironment TypeChecked
+unwrapRawInductive :: Inductive Raw.Raw Variable -> [GlobalDeclaration Raw.Raw Variable]
+unwrapRawInductive (Inductive v ps is cs) =
+  GlobalAssum v (inductiveRawType ps is Type) : map constructorAssumption cs
+  where
+    constructorAssumption (Constructor cv cps cis) =
+      GlobalAssum cv (constructorRawType v ps cps cis)
 
 {-|
 An inductive brings into scope:
@@ -77,10 +86,22 @@ lookupDecl target = find found . unGlobalEnvironment
       GlobalInd   i     | Inductive.Inductive.name i == target -> True
       _ -> False
 
-{-| 'lookupType v ge' tries to find a construct named 'v' in 'ge.  It
-will find either a global assumption, a global declaration, an
-inductive type, or a constructor, and will return its type.
--}
+lookupRawType ::
+  Variable -> GlobalEnvironment Raw.Raw Variable ->
+  Maybe (TypeX Raw.Raw Variable)
+lookupRawType target = go . unGlobalEnvironment
+  where
+    go = msum . map found
+    found = \case
+      GlobalAssum v τ   | v == target -> Just τ
+      GlobalDef   v _ τ | v == target -> Just τ
+      GlobalInd   i -> go (unwrapRawInductive i)
+      _ -> Nothing
+
+{-| `lookupType v ge` tries to find a construct named `v` in `ge`. It will find
+either a global assumption, a global declaration, an inductive type, or a
+constructor, and will return its type. |-}
+
 lookupType ::
   Variable -> GlobalEnvironment (Checked Variable) Variable ->
   Maybe (TypeChecked.Type Variable)

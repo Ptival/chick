@@ -5,21 +5,23 @@
 
 module Inductive.Inductive
   ( Inductive(..)
+  , inductiveRawType
   , inductiveType
   ) where
 
-import Control.Monad.Reader.Class
+import           Control.Monad.Reader.Class
 
-import Inductive.Constructor
-import Precedence
-import PrettyPrinting.Term ()
-import PrettyPrinting.PrettyPrintable
-import PrettyPrinting.PrettyPrintableUnannotated
-import Term.Binder
-import Term.Term
-import Term.TypeChecked      as TypeChecked
-import Term.Variable
-import Text.PrettyPrint.Annotated.WL
+import           Inductive.Constructor
+import           Precedence
+import           PrettyPrinting.Term ()
+import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.PrettyPrintableUnannotated
+import           Term.Binder
+import qualified Term.Raw as Raw
+import           Term.Term
+import           Term.TypeChecked as TypeChecked
+import           Term.Variable
+import           Text.PrettyPrint.Annotated.WL
 
 data Inductive ξ ν =
   Inductive
@@ -32,8 +34,23 @@ data Inductive ξ ν =
 deriving instance (Eq ξ, Eq ν) => Eq (Inductive ξ ν)
 deriving instance (Show ξ, Show ν) => Show (Inductive ξ ν)
 
+inductiveRawType ::
+  [(Binder Variable, Raw.Type Variable)] ->
+  [Raw.Type Variable] ->
+  Raw.Type Variable ->
+  Raw.Type Variable
+inductiveRawType ps is o =
+  foldr onParam (foldr onIndex o is) ps
+  where
+    onIndex :: Raw.Type Variable -> Raw.Type Variable -> Raw.Type Variable
+    onIndex i      t = Pi () i (abstractAnonymous t)
+    onParam :: (Binder Variable, Raw.Type Variable) -> Raw.Type Variable -> Raw.Type Variable
+    onParam (b, p) t = Pi () p (abstractBinder b t)
+
 inductiveType ::
-  [(Binder Variable, TypeChecked.Type Variable)] -> [TypeChecked.Type Variable] -> TypeChecked.Type Variable ->
+  [(Binder Variable, TypeChecked.Type Variable)] ->
+  [TypeChecked.Type Variable] ->
+  TypeChecked.Type Variable ->
   TypeChecked.Type Variable
 inductiveType ps is o =
   foldr onParam (foldr onIndex o is) ps
@@ -92,7 +109,7 @@ prettyConstructorDocU ::
 prettyConstructorDocU ind indps (Constructor n ps is) = do
   -- it's annoying because to build the term we need annotations
   -- that we then discard when printing...
-  cDoc <- prettyDocU (rawConstructorType ind indps ps is)
+  cDoc <- prettyDocU (constructorRawType ind indps ps is)
   return $ fillSep
     [ prettyDoc n
     , text ":"

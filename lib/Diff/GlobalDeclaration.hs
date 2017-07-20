@@ -19,7 +19,8 @@ import           Typing.GlobalDeclaration
 data Diff α
   = Same
   | ChangeGlobalAssum (DA.Diff Variable) (DT.Diff α)
-  | ChangeGlobalInd (DI.Diff α)
+  | ChangeGlobalDef   (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
+  | ChangeGlobalInd   (DI.Diff α)
   deriving (Show)
 
 patch ::
@@ -35,6 +36,11 @@ patch gd δgd =
       case gd of
         GlobalAssum v τ -> GlobalAssum <$> DA.patch v δv <*> DT.patch τ δτ
         _               -> exc $ "ChangeGlobalAssum: not a GlobalAssum"
+
+    ChangeGlobalDef δv δt δτ ->
+      case gd of
+        GlobalDef v t τ -> GlobalDef <$> DA.patch v δv <*> DT.patch t δt <*> DT.patch τ δτ
+        _               -> exc $ "ChangeGlobalDef: not a GlobalDef"
 
     ChangeGlobalInd δind ->
       case gd of
