@@ -29,6 +29,8 @@ data Diff α
     (DL.Diff (Term α)      (DA.Diff (Term α)))
   deriving (Show)
 
+-- | Note: `patch` does not replace the reference to `Inductive` in the constructor. The caller must
+-- | finish tying the knot!
 patch ::
   Member (Exc String) r =>
   Constructor α Variable ->
