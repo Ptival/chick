@@ -17,7 +17,11 @@ import Term.Variable
 
 data LocalDeclaration ξ ν
   = LocalAssum ν (TypeX ξ ν)
-  | LocalDef   ν (TermX ξ ν) (TypeX ξ ν)
+  | LocalDef
+    { localDefName :: ν
+    , localDefType :: TypeX ξ ν
+    , localDefTerm :: TermX ξ ν
+    }
 
 deriving instance (Eq ξ, Eq ν) => Eq (LocalDeclaration ξ ν)
 deriving instance (Show ξ, Show ν) => Show (LocalDeclaration ξ ν)
@@ -42,15 +46,15 @@ instance
         , char ':'
         , τDoc
         ]
-    LocalDef (Variable v) t τ -> do
-      tDoc <- prettyDocU t
+    LocalDef (Variable v) τ t -> do
       τDoc <- prettyDocU τ
+      tDoc <- prettyDocU t
       return $ fillSep
         [ text v
-        , text ":="
-        , tDoc
         , char ':'
         , τDoc
+        , text ":="
+        , tDoc
         ]
 
 nameOf :: LocalDeclaration ξ ν -> ν
@@ -58,5 +62,5 @@ nameOf (LocalAssum v _)   = v
 nameOf (LocalDef   v _ _) = v
 
 typeOf :: LocalDeclaration α ν -> TypeX α ν
-typeOf (LocalAssum _ τ) = τ
-typeOf (LocalDef _ _ τ) = τ
+typeOf (LocalAssum _ τ  ) = τ
+typeOf (LocalDef   _ τ _) = τ

@@ -93,7 +93,7 @@ runAtomic ge a (Goal hyps concl) =
       Let _ t1 bt2 -> do
         τ1 <- C.typeOf t1 `orElse` "could not figure out the type of let-bound variable"
         let (b, t2) = unscopeTerm bt2
-        runIntro τ1 t2 (flip LocalDef t1) (mi, unBinder b)
+        runIntro τ1 t2 (\ v τ -> LocalDef v τ t1) (mi, unBinder b)
       Pi  _ τ1 bτ2 -> do
         let (b, τ2) = unscopeTerm bτ2
         runIntro τ1 τ2 LocalAssum (mi, unBinder b)

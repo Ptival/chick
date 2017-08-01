@@ -1,17 +1,27 @@
 {-# language FlexibleContexts #-}
+{-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
 {-# language TypeFamilies #-}
 {-# language UndecidableInstances #-}
+{-# language UnicodeSyntax #-}
 
 module Inductive.Inductive
-  ( Inductive(..)
+  ( Constructor(..)
+  , Inductive(..)
+  , constructorCheckedType
+  , constructorCheckedType'
+  , constructorRawType
+  , constructorRawType'
   , inductiveRawType
+  , inductiveRawType'
   , inductiveType
+  , inductiveType'
   ) where
 
+import           Control.Lens
 import           Control.Monad.Reader.Class
 
-import           Inductive.Constructor
+-- import           Inductive.Constructor
 import           Precedence
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
@@ -19,70 +29,133 @@ import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
-import           Term.TypeChecked as TypeChecked
+import qualified Term.TypeChecked as C
 import           Term.Variable
 import           Text.PrettyPrint.Annotated.WL
 
-data Inductive ξ ν =
+data Inductive α ν =
   Inductive
-  { name         :: ν
-  , parameters   :: [(Binder ν, TypeX ξ ν)]
-  , indices      :: [TypeX ξ ν]
-  , constructors :: [Constructor ξ ν]
+  { inductiveName         :: ν
+  , inductiveParameters   :: [(Binder ν, TypeX α ν)]
+  , inductiveIndices      :: [(Binder ν, TypeX α ν)]
+  , inductiveConstructors :: [Constructor α ν]
   }
 
-deriving instance (Eq ξ, Eq ν) => Eq (Inductive ξ ν)
-deriving instance (Show ξ, Show ν) => Show (Inductive ξ ν)
+deriving instance (Eq α, Eq ν) => Eq (Inductive α ν)
+deriving instance (Show α, Show ν) => Show (Inductive α ν)
 
-inductiveRawType ::
-  [(Binder Variable, Raw.Type Variable)] ->
-  [Raw.Type Variable] ->
-  Raw.Type Variable ->
+data Constructor α ν =
+  Constructor
+  { constructorInductive  :: Inductive α ν
+  , constructorName       :: ν
+  , constructorParameters :: [(Binder ν, TypeX α ν)]
+  , constructorIndices    :: [TypeX α ν]
+  }
+
+deriving instance (Eq α, Eq ν) => Eq (Constructor α ν)
+deriving instance (Show α, Show ν) => Show (Constructor α ν)
+
+constructorType' :: ∀ α.
+  α ->
+  Variable ->
+  [(Binder Variable, TermX α Variable)] ->
+  [(Binder Variable, TermX α Variable)] ->
+  [TermX α Variable] ->
+  TypeX α Variable
+constructorType' α indName indParams consParams consIndices =
+  foldr onParam (
+    foldr onIndex (
+        foldr onIndParam
+        (Var Nothing indName)
+        indParams)
+    consIndices)
+  consParams
+  where
+    onIndex :: TermX α Variable -> TermX α Variable -> TermX α Variable
+    onIndex i t = App α t i --(Raw.raw t) (Raw.raw i)
+    onParam :: (Binder Variable, TermX α Variable) -> TermX α Variable -> TermX α Variable
+    onParam (b, p) t = Pi α p (abstractBinder b t)
+    onIndParam :: (Binder Variable, TermX α Variable) -> TermX α Variable -> TermX α Variable
+    onIndParam (Binder (Just v), _) t = App α t (Var Nothing v)
+    onIndParam (Binder Nothing,  _) t = App α t (Hole α)
+
+constructorRawType' ::
+  Variable ->
+  [(Binder Variable, TermX α Variable)] ->
+  [(Binder Variable, TermX α Variable)] ->
+  [TermX α Variable] ->
   Raw.Type Variable
-inductiveRawType ps is o =
-  foldr onParam (foldr onIndex o is) ps
+constructorRawType' indName indParams consParams consIndices =
+  constructorType' () indName indParams' consParams' consIndices'
   where
-    onIndex :: Raw.Type Variable -> Raw.Type Variable -> Raw.Type Variable
-    onIndex i      t = Pi () i (abstractAnonymous t)
-    onParam :: (Binder Variable, Raw.Type Variable) -> Raw.Type Variable -> Raw.Type Variable
-    onParam (b, p) t = Pi () p (abstractBinder b t)
+    indParams'   = map (over _2 Raw.raw) indParams
+    consParams'  = map (over _2 Raw.raw) consParams
+    consIndices' = map Raw.raw consIndices
 
-inductiveType ::
-  [(Binder Variable, TypeChecked.Type Variable)] ->
-  [TypeChecked.Type Variable] ->
-  TypeChecked.Type Variable ->
-  TypeChecked.Type Variable
-inductiveType ps is o =
-  foldr onParam (foldr onIndex o is) ps
+constructorRawType :: Constructor Raw.Raw Variable -> Raw.Type Variable
+constructorRawType (Constructor (Inductive indName indParams _ _) _ consParams consIndices) =
+  constructorRawType' indName indParams consParams consIndices
+
+-- | Constructs the type of the inductive type
+inductiveRawType' ::
+  [(Binder Variable, Raw.Type Variable)] ->
+  [(Binder Variable, Raw.Type Variable)] ->
+  Raw.Type Variable
+inductiveRawType' indParams indIndices =
+  foldr onIndexOrParam Type (indParams ++ indIndices)
   where
-    onIndex :: TypeChecked.Type Variable -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onIndex i      t = Pi (Checked Type) i (abstractAnonymous t)
-    onParam :: (Binder Variable, TypeChecked.Type Variable) -> TypeChecked.Type Variable -> TypeChecked.Type Variable
-    onParam (b, p) t = Pi (Checked Type) p (abstractBinder b t)
+    -- onIndexOrParam :: (Binder Variable, Raw.Type Variable) -> Raw.Type Variable -> Raw.Type Variable
+    onIndexOrParam (b, ip) t = Pi () ip (abstractBinder b t)
+
+-- | Constructs the type of the inductive type
+inductiveRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
+inductiveRawType (Inductive _ ps is _) = inductiveRawType' ps is
+
+constructorCheckedType' ::
+  Variable ->
+  [(Binder Variable, C.Type Variable)] ->
+  [(Binder Variable, C.Type Variable)] ->
+  [C.Type Variable] ->
+  C.Type Variable
+constructorCheckedType' = constructorType' (C.Checked Type)
+
+constructorCheckedType :: Constructor (C.Checked Variable) Variable -> C.Type Variable
+constructorCheckedType (Constructor (Inductive indName indParams _ _) _ consParams consIndices) =
+  constructorCheckedType' indName indParams consParams consIndices
+
+-- | Sometimes, we can't call `inductiveType` because the constructors are not checked yet.
+-- | `inductiveType'` lets us call with just the minimal information.
+inductiveType' ::
+  [(Binder Variable, C.Type Variable)] ->
+  [(Binder Variable, C.Type Variable)] ->
+  C.Type Variable
+inductiveType' ps is =
+  foldr onIndexOrParam Type (ps ++ is)
+  where
+    -- onIndexOrParam :: C.Type Variable -> C.Type Variable -> C.Type Variable
+    onIndexOrParam (b, ip) t = Pi (C.Checked Type) ip (abstractBinder b t)
+
+inductiveType :: Inductive (C.Checked Variable) Variable -> C.Type Variable
+inductiveType (Inductive _ ps is _) = inductiveType' ps is
 
 arrows :: [Doc a] -> Doc a
 arrows = encloseSep mempty mempty (text " →")
 
 prettyBindingDocU ::
   MonadReader PrecedenceTable m =>
-  (Binder Variable, TermX ξ Variable) -> m (Doc ())
+  (Binder Variable, TermX α Variable) -> m (Doc ())
 prettyBindingDocU (Binder b, t) =
   case b of
     Nothing -> prettyDocU t
     Just v -> do
       tDoc <- prettyDocU t
-      return $ parens . fillSep $
-        [ prettyDoc v
-        , text ":"
-        , tDoc
-        ]
+      return $ parens . fillSep $ [ prettyDoc v, text ":", tDoc ]
 
-instance
-  PrettyPrintableUnannotated (Inductive ξ) where
+instance PrettyPrintableUnannotated (Inductive α) where
   prettyDocU (Inductive n ps is cs) = do
     psDoc <- mapM prettyBindingDocU ps
-    csDoc <- mapM (prettyConstructorDocU n ps) cs
-    isDoc <- mapM prettyDocU is
+    csDoc <- mapM prettyDocU cs
+    isDoc <- mapM prettyBindingDocU is
     return $ vsep $
       [ fillSep $
         [ text "inductive"
@@ -102,23 +175,11 @@ instance
         ]
       ] ++ (map (indent 2) csDoc)
 
-prettyConstructorDocU ::
-  MonadReader PrecedenceTable m =>
-  Variable -> [(Binder Variable, TypeX ξ Variable)] ->
-  Constructor ξ Variable -> m (Doc ())
-prettyConstructorDocU ind indps (Constructor n ps is) = do
-  -- it's annoying because to build the term we need annotations
-  -- that we then discard when printing...
-  cDoc <- prettyDocU (constructorRawType ind indps ps is)
-  return $ fillSep
-    [ prettyDoc n
-    , text ":"
-    , cDoc
-      {-
-, arrows (map (prettyBindingDoc dict precs) ps)
-, text "→"
-, prettyVariableDoc ind
-, encloseSep mempty mempty mempty
-(map (par precs (PrecApp, TolerateHigher) . prettyTermDocPrec dict precs) is)
--}
-    ]
+instance PrettyPrintableUnannotated (Constructor α) where
+  prettyDocU (Constructor (Inductive indName indParams _ _) cName cParams cIndices) = do
+    cDoc <- prettyDocU (constructorRawType' indName indParams cParams cIndices)
+    return $ fillSep
+      [ prettyDoc cName
+      , text ":"
+      , cDoc
+      ]

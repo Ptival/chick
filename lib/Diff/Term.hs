@@ -37,6 +37,7 @@ data Diff α
   | InsApp  α (Diff α) (Diff α)
   | InsLam  α (Binder Variable) (Diff α)
   | InsPi   α (Diff α) (Binder Variable) (Diff α)
+  | PermutApps [Int] (Diff α)
   | PermutLams [Int] (Diff α)
   | PermutPis  [Int] (Diff α)
   deriving (Show)
@@ -75,6 +76,10 @@ patch t d =
     InsLam a b d1 -> Lam a . abstractBinder b <$> patch t d1
 
     InsPi a d1 b d2 -> Pi a <$> patch t d1 <*> (abstractBinder b <$> patch t d2)
+
+    PermutApps p δ' -> do
+      (fun, args) <- extractApps t
+      patch (mkApps fun (permute p args)) δ'
 
     PermutLams p d' -> do
       (lams, rest) <- extractSomeLams (length p) t
@@ -126,8 +131,7 @@ extractSomePis n (Pi a τ1 bτ2) = do
   (l, rest) <- extractSomePis (n - 1) τ2
   return ((a, b, τ1) : l, rest)
 extractSomePis _ t              =
-  let e :: String = printf "extractPis: not a Pi: %s" (prettyStrU t)
-  in throwExc e
+  throwExc $ printf "extractPis: not a Pi: %s" (prettyStrU t)
 
 extractPis ::
   Member (Exc String) r =>
@@ -147,6 +151,10 @@ extractPi = \case
     let (b, τ2) = unscopeTerm bτ2
     return (a, τ1, b, τ2)
   t -> throwExc $ printf "extracePi: not a Pi: %s" (prettyStrU t)
+
+mkApps :: TermX α Variable -> [(α, TermX α Variable)] -> TermX α Variable
+mkApps f []           = f
+mkApps f ((a, e) : t) = mkApps (App a f e) t
 
 mkLams :: [(α, Binder Variable)] -> TermX α Variable -> TermX α Variable
 mkLams []          rest = rest

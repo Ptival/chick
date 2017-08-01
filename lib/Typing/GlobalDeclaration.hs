@@ -17,19 +17,23 @@ import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
 import Term.Variable
 
-data GlobalDeclaration ξ ν
-  = GlobalAssum ν (TypeX ξ ν)
+data GlobalDeclaration α ν
+  = GlobalAssum ν (TypeX α ν)
   -- careful, the term and type arguments are convertible
-  -- v := t : τ
-  | GlobalDef   ν (TermX ξ ν) (TypeX ξ ν)
-  | GlobalInd   (Inductive ξ ν)
+  -- v : τ := t
+  | GlobalDef
+    { globalDefName :: ν
+    , globalDefType :: TypeX α ν
+    , globalDefDefn :: TermX α ν
+    }
+  | GlobalInd   (Inductive α ν)
 
-deriving instance (Eq ξ, Eq ν) => Eq (GlobalDeclaration ξ ν)
-deriving instance (Show ξ, Show ν) => Show (GlobalDeclaration ξ ν)
+deriving instance (Eq α, Eq ν) => Eq (GlobalDeclaration α ν)
+deriving instance (Show α, Show ν) => Show (GlobalDeclaration α ν)
 
 instance
-  PrettyPrintableUnannotated (TermX ξ) =>
-  PrettyPrintableUnannotated (GlobalDeclaration ξ) where
+  PrettyPrintableUnannotated (TermX α) =>
+  PrettyPrintableUnannotated (GlobalDeclaration α) where
   prettyDocU = \case
     GlobalAssum (Variable v) τ -> do
       τDoc <- prettyDocU τ
@@ -38,29 +42,19 @@ instance
         , char ':'
         , τDoc
         ]
-    GlobalDef (Variable v) t τ -> do
-      tDoc <- prettyDocU t
+    GlobalDef (Variable v) τ t -> do
       τDoc <- prettyDocU τ
+      tDoc <- prettyDocU t
       return $ fillSep
         [ text v
-        , text ":="
-        , tDoc
         , char ':'
         , τDoc
+        , text ":="
+        , tDoc
         ]
     GlobalInd i -> prettyDocU i
 
-nameOf :: GlobalDeclaration ξ ν -> ν
+nameOf :: GlobalDeclaration α ν -> ν
 nameOf (GlobalAssum v _) = v
 nameOf (GlobalDef v _ _) = v
 nameOf (GlobalInd (Inductive v _ _ _)) = v
-
-{-
-instance Substitutable GlobalDeclaration where
-  subst target replacement = \case
-    GlobalAssum v τ   -> GlobalAssum v (s τ)
-    GlobalDef   v t τ -> GlobalDef   v (s t) (s τ)
-    GlobalInd   i     -> GlobalInd   i
-    where
-      s = subst target replacement
--}

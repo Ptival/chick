@@ -6,19 +6,24 @@
 
 module Repair.Benchmark where
 
-
+import           Control.Lens ((&))
 import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
+import           Control.Monad.Identity
 import           Data.Foldable
 import           Text.Printf
 
 import qualified Diff.Atom as DA
+import qualified Diff.Inductive as DI
 import qualified Diff.List as DL
 import qualified Diff.Script as DS
 import qualified Diff.Term as DT
+import qualified Diff.Vernacular as DV
+import qualified Inductive.Constructor as C
+import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.Script as RS
 import           Repair.State
@@ -151,7 +156,10 @@ repairScript s δs = runAll repairThenPatch
       runError
       . liftM fst
       . flip runState (RepairState (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same :: RepairState)
-    repairThenPatch = RS.repair s δs >>= DS.patch s
+    repairThenPatch = do
+      δs' <- RS.repair s δs
+      trace $ show δs'
+      DS.patch s δs'
 
 data RepairScriptBenchmark = RepairScriptBenchmark
   { repairScriptFromScript :: Script  Raw.Raw Variable
@@ -163,18 +171,57 @@ repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
   [ RepairScriptBenchmark
     { repairScriptFromScript = Script
-      [ Definition "foo" (unsafeParseRaw "A → B → A") (unsafeParseRaw "λ a b . a")
-      , Definition "bar" (unsafeParseRaw "B → A → A") (unsafeParseRaw "λ b a . foo a b")
+      [ Definition "foo" (unsafeParseRaw "A → B → C → D → A") (unsafeParseRaw "λ a b c d . a")
+      , Definition "bar" (unsafeParseRaw "A → B → C → D → A") (unsafeParseRaw "λ a b c d . foo a b c d")
       ]
-    , repairScriptDiff = DL.Same
+    , repairScriptDiff =
+        DL.Change
+        (DV.ChangeDefinition
+          DA.Same
+          (DT.PermutPis [3, 1, 0, 2] DT.Same)
+          DT.Same
+        )
+        $
+        DL.Same
     }
+
+  , RepairScriptBenchmark
+    { repairScriptFromScript = Script
+      [ Inductive inductiveBool
+      , Definition "ifthenelse"
+        (unsafeParseRaw "𝔹 → T → T → T" )
+        (unsafeParseRaw "λ b t e . t")
+      , Definition "negb"
+        (unsafeParseRaw "𝔹 → 𝔹")
+        (unsafeParseRaw "λ b . ifthenelse b false true")
+      ]
+    , repairScriptDiff =
+      DL.Change
+      (DV.ChangeInductive
+        (DI.Change
+          DA.Same
+          DL.Same
+          DL.Same
+          (DL.Permute [1, 0] DL.Same)
+        )
+      )
+      DL.Same
+    }
+
   ]
 
 repairScriptBenchmark :: IO ()
 repairScriptBenchmark = do
-  for_ repairScriptBenchmarks $ \ (RepairScriptBenchmark fromScript diff) -> do
+  for_ repairScriptBenchmarks $ \ (RepairScriptBenchmark s δs) -> do
+    putStrLn $ replicate 80 '='
+    putStrLn $ printf "Before:\n%s" (prettyStrU s)
+    s' <- case run . runError $ DS.patch s δs of
+      Left  (e :: String) -> error "..."
+      Right s'            -> return s'
+    putStrLn $ printf "Changed:\n%s" (prettyStrU s')
     putStrLn $ printf "Attempting to patch script"
-    runTrace (repairScript fromScript diff) >>= \case
-      Left  e -> putStrLn $ printf "Patching failed: %s" e
-      Right r ->
-        putStrLn $ printf "Patching succeeded: %s" (show r)
+    -- skipTrace (repairScript s δs) & \case
+    runTrace (repairScript s δs) >>= \case
+      Left  e   -> putStrLn $ printf "Patching failed: %s" e
+      Right s'' ->
+        putStrLn $ printf "Patching succeeded:\n%s" (prettyStrU s'')

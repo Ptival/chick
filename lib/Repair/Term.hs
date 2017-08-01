@@ -21,6 +21,7 @@ import qualified Diff.List as DL
 import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.State as RS
 import           Repair.Utils
 import           Term.Binder
@@ -46,10 +47,13 @@ repairArgs ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
-  Raw.Term Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
+  Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 repairArgs = go DT.Same
-
   where
+
+    exc (reason :: String) = throwExc $ printf "Repair.Term/repairArgs: %s" reason
+
+    -- go accumulates the resulting diff in an unintuitive way
     go acc τ δτ =
 
       -- (do
@@ -60,14 +64,31 @@ repairArgs = go DT.Same
       -- >>
 
       case δτ of
-      DT.Same -> return acc
-      DT.CpyPi _ _ d2    -> do
-        (_, _, _, τ2) <- DT.extractPi τ
-        go (DT.CpyApp acc DT.Same) τ2 d2
-      DT.InsPi _ d1 _ d2 -> do
-        τ2 <- DT.patch τ d2
-        go (DT.InsApp () acc (hole d1)) τ2 d2
-      _ -> throwExc "repairArgs: TODO"
+
+        DT.Same -> return acc
+
+        --        | TYPE             | TERM
+        -- BEFORE | (x : X) → Ys → R | acc x ys
+        -- AFTER  | (x : X) → Zs → R | acc x zs
+        DT.CpyPi _ _ d2 -> do
+          (_, _, _, τ2) <- DT.extractPi τ
+          go (DT.CpyApp acc DT.Same) τ2 d2
+
+        DT.InsPi _ d1 _ d2 -> do
+          τ2 <- DT.patch τ d2
+          go (DT.InsApp () acc (hole d1)) τ2 d2
+
+        --        | TYPE             | TERM
+        -- BEFORE | A1 → A2 → Bs → R | acc a1 a2 bs
+        -- AFTER  | A2 → A1 → Bs → R | acc a2 a1 bs
+        DT.PermutPis p δτ' -> do
+          DT.PermutApps p <$> go acc τ δτ'
+        -- TODO: this is wrong because we need the permutations to happen from within the
+        -- innermost App rather than the outermost ones
+
+
+        _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)
+
     hole = \case
       DT.Change τ' -> DT.Change (Annot () (Hole ()) τ')
       _            -> DT.Change (Hole ())
@@ -81,6 +102,8 @@ repair ::
   ) =>
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 repair t τ δτ =
+  trace (printf "Repair.Term/repair:\nt: %s\nτ: %s\nδτ: %s\n" (prettyStrU t) (prettyStrU τ) (show δτ)) >>
+  RS.traceState >>
   let exc (reason :: String) = throwExc $ printf "Repair.Term/repair: %s" reason in
 
   -- (do
@@ -95,7 +118,7 @@ repair t τ δτ =
 
   -- even though the type has not changed, the term might still need updating to deal with the
   -- changes in the context
-  DT.Same                ->
+  DT.Same ->
     case t of
       -- f x y z   is   (((f x) y) z)
       App _ _ _ -> do
@@ -110,7 +133,8 @@ repair t τ δτ =
             -- γ' <- DLC.patch γ δγ
             τv <- lookupType v
             δτv <- findDeclarationDiff v
-            -- trace $ printf "About to update args with: %s" (show δτ)
+            trace $ printf "About to update args with:\nv: %s\nτv: %s\nδτv: %s\n"
+              (show v) (prettyStrU τv) (show δτv)
             repairArgs τv δτv
 
           _ -> exc "repair, Same, App, Not Var"
@@ -134,7 +158,7 @@ repair t τ δτ =
         -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
         return DT.Same
 
-  DT.Change τ'      -> return $ DT.Change $ Annot () (Hole ()) τ'
+  DT.Change τ' -> return $ DT.Change $ Annot () (Hole ()) τ'
 
   DT.CpyApp _ _     -> throwExc "repair: CpyApp"
   DT.CpyLam _ _     -> throwExc "repair: CpyLam"

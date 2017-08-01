@@ -7,6 +7,7 @@ import           Control.Applicative
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
+import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.GlobalEnvironment as DGE
@@ -34,6 +35,7 @@ lookupType target = do
 
 findDeclarationDiff ::
   ( Member (Exc String) r
+  , Member Trace r
   , Member (State RepairState) r
   ) =>
   Variable -> Eff r (DT.Diff Raw.Raw)

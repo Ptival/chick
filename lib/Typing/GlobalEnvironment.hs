@@ -13,7 +13,6 @@ import           Control.Monad
 import           Data.List
 import           Text.PrettyPrint.Annotated.WL
 
-import           Inductive.Constructor
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Typing.LocalContext
@@ -39,19 +38,19 @@ addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalE
 addGlobalAssum (Binder Nothing,  _) γ = γ
 addGlobalAssum (Binder (Just v), τ) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalAssum v τ) : γ)
 
-addGlobalDef :: (Binder ν, TermX ξ ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
+addGlobalDef :: (Binder ν, TypeX ξ ν, TermX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalDef (Binder Nothing,  _, _) γ = γ
-addGlobalDef (Binder (Just v), t, τ) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalDef v t τ) : γ)
+addGlobalDef (Binder (Just v), τ, t) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalDef v τ t) : γ)
 
 addGlobalInd :: Inductive ξ ν -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalInd i (GlobalEnvironment γ) = GlobalEnvironment (GlobalInd i : γ)
 
 unwrapRawInductive :: Inductive Raw.Raw Variable -> [GlobalDeclaration Raw.Raw Variable]
-unwrapRawInductive (Inductive v ps is cs) =
-  GlobalAssum v (inductiveRawType ps is Type) : map constructorAssumption cs
+unwrapRawInductive ind@(Inductive indName _ _ cs) =
+  GlobalAssum indName (inductiveRawType ind) : map constructorAssumption cs
   where
-    constructorAssumption (Constructor cv cps cis) =
-      GlobalAssum cv (constructorRawType v ps cps cis)
+    constructorAssumption cons@(Constructor _ cv _ _) =
+      GlobalAssum cv (constructorRawType cons)
 
 {-|
 An inductive brings into scope:
@@ -64,11 +63,11 @@ TODO: - recursors
 -}
 unwrapInductive ::
   Inductive (Checked Variable) Variable -> [GlobalDeclaration (Checked Variable) Variable]
-unwrapInductive (Inductive v ps is cs) =
-  GlobalAssum v (inductiveType ps is Type) : map constructorAssumption cs
+unwrapInductive ind@(Inductive n _ _ cs) =
+  GlobalAssum n (inductiveType ind) : map constructorAssumption cs
   where
-    constructorAssumption (Constructor cv cps cis) =
-      GlobalAssum cv (constructorTypeChecked v ps cps cis)
+    constructorAssumption cons@(Constructor _ cv _ _) =
+      GlobalAssum cv (constructorCheckedType cons)
 
 {-| 'lookupDecl v ge' tries to find a top-level declaration named 'v' in
 'ge'.  It will find either a global assumption, a global declaration,
@@ -81,9 +80,9 @@ lookupDecl ::
 lookupDecl target = find found . unGlobalEnvironment
   where
     found = \case
-      GlobalAssum v _   | v                          == target -> True
-      GlobalDef   v _ _ | v                          == target -> True
-      GlobalInd   i     | Inductive.Inductive.name i == target -> True
+      GlobalAssum v _   | v               == target -> True
+      GlobalDef   v _ _ | v               == target -> True
+      GlobalInd   i     | inductiveName i == target -> True
       _ -> False
 
 lookupRawType ::
@@ -94,7 +93,7 @@ lookupRawType target = go . unGlobalEnvironment
     go = msum . map found
     found = \case
       GlobalAssum v τ   | v == target -> Just τ
-      GlobalDef   v _ τ | v == target -> Just τ
+      GlobalDef   v τ _ | v == target -> Just τ
       GlobalInd   i -> go (unwrapRawInductive i)
       _ -> Nothing
 
@@ -110,7 +109,7 @@ lookupType target = go . unGlobalEnvironment
     go = msum . map found
     found = \case
       GlobalAssum v τ   | v == target -> Just τ
-      GlobalDef   v _ τ | v == target -> Just τ
+      GlobalDef   v τ _ | v == target -> Just τ
       GlobalInd   i -> go (unwrapInductive i)
       _ -> Nothing
 
@@ -125,7 +124,7 @@ toLocalContext =
       [LocalDeclaration (Checked Variable) Variable]
     localize = \case
       GlobalAssum v τ   -> [LocalAssum v τ]
-      GlobalDef   v t τ -> [LocalDef v t τ]
+      GlobalDef   v τ t -> [LocalDef v τ t]
       GlobalInd   i     -> concatMap localize (unwrapInductive i)
 
 envInductives :: GlobalEnvironment ξ ν -> [Inductive ξ ν]

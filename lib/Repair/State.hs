@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Repair.State
@@ -6,12 +7,19 @@ module Repair.State
   , δcontext
   , environment
   , δenvironment
+  , traceState
   ) where
 
-import           Control.Lens.TH
+import           Control.Lens
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.State
+import           Control.Monad.Freer.Trace
+import           Text.Printf
 
 import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.LocalContext as DLC
+import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Term.Raw as Raw
 import           Term.Variable
 import           Typing.GlobalEnvironment
@@ -25,3 +33,16 @@ data RepairState = RepairState
   }
 
 makeLenses ''RepairState
+
+traceState ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
+  ) =>
+  Eff r ()
+traceState = do
+  RepairState γ δγ e δe <- get
+  trace $ printf "γ:  %s" (prettyStrU γ)
+  trace $ printf "δγ: %s" (show δγ)
+  trace $ printf "e:  %s" (prettyStrU e)
+  trace $ printf "δe: %s" (show δe)

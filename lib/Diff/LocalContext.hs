@@ -1,5 +1,6 @@
 {-# language FlexibleContexts #-}
 {-# language LambdaCase #-}
+{-# language ScopedTypeVariables #-}
 
 module Diff.LocalContext
   ( Diff
@@ -9,6 +10,7 @@ module Diff.LocalContext
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
@@ -30,13 +32,19 @@ patch (LocalContext γ) d = do
   return $ LocalContext γ'
 
 findLocalDeclarationDiff ::
-  Member (Exc String) r =>
+  ( Member (Exc String) r
+  , Member Trace r
+  ) =>
   Variable -> LocalContext α Variable -> Diff α -> Eff r (DT.Diff α)
 findLocalDeclarationDiff v γ δγ =
-  let exc reason = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason in
+  trace (printf "findLocalDeclarationDiff %s" (show v)) >>
+  let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason in
   case δγ of
 
-    DL.Same -> return DT.Same
+    DL.Same ->
+      case lookupType v γ of
+        Nothing -> exc $ printf "Not found: %s" (show v)
+        Just _  -> return DT.Same
 
     DL.Insert ld δ ->
       if nameOf ld == v

@@ -10,8 +10,7 @@ import           Control.Monad.Freer.Exception
 
 import qualified Diff.Atom as DA
 import qualified Diff.List as DL
-import           Inductive.Constructor
--- import           Inductive.Inductive
+import           Inductive.Inductive
 -- import           PrettyPrinting.PrettyPrintable
 -- import           PrettyPrinting.PrettyPrintableUnannotated
 -- import           StandardLibrary
@@ -20,26 +19,28 @@ import           Term.Term
 import           Term.Variable
 
 type Term α = TypeX α Variable
-type Parameter α = (Binder Variable, Term α)
+type BoundTerm α = (Binder Variable, Term α)
 
 data Diff α
   = Same
   | Change
     (DA.Diff Variable)
-    (DL.Diff (Parameter α) (DA.Diff (Parameter α)))
+    (DL.Diff (BoundTerm α) (DA.Diff (BoundTerm α)))
     (DL.Diff (Term α)      (DA.Diff (Term α)))
   deriving (Show)
 
 patch ::
   Member (Exc String) r =>
-  Constructor α Variable -> Diff α -> Eff r (Constructor α Variable)
-patch c@(Constructor n ps is) d = case d of
+  Constructor α Variable ->
+  Diff α ->
+  Eff r (Constructor α Variable)
+patch c@(Constructor ind n ps is) d = case d of
   Same              -> return c
   Change dn dps dis -> do
     n'  <- DA.patch n dn
     ps' <- DL.patch DA.patch ps dps
     is' <- DL.patch DA.patch is dis
-    return $ Constructor n' ps' is'
+    return $ Constructor ind n' ps' is'
 
 -- test :: String
 -- test =

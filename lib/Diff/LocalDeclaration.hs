@@ -27,5 +27,5 @@ patch ::
 patch ld Same = return ld
 patch ld (Change dv dτ) =
   case ld of
-    LocalAssum v   τ -> LocalAssum <$> DA.patch v dv              <*> DT.patch τ dτ
-    LocalDef   v t τ -> LocalDef   <$> DA.patch v dv <*> return t <*> DT.patch τ dτ
+    LocalAssum v τ   -> LocalAssum <$> DA.patch v dv              <*> DT.patch τ dτ
+    LocalDef   v τ t -> LocalDef   <$> DA.patch v dv <*> DT.patch τ dτ <*> return t

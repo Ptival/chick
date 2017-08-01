@@ -53,7 +53,7 @@ lookupType target (LocalContext γ) = msum (map found γ)
   where
     found = \case
       LocalAssum v τ   | v == target -> Just τ
-      LocalDef   v _ τ | v == target -> Just τ
+      LocalDef   v τ _ | v == target -> Just τ
       _ -> Nothing
 
 boundNames :: LocalContext α ν -> [ν]

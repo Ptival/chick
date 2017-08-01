@@ -37,9 +37,9 @@ patch gd δgd =
         GlobalAssum v τ -> GlobalAssum <$> DA.patch v δv <*> DT.patch τ δτ
         _               -> exc $ "ChangeGlobalAssum: not a GlobalAssum"
 
-    ChangeGlobalDef δv δt δτ ->
+    ChangeGlobalDef δv δτ δt ->
       case gd of
-        GlobalDef v t τ -> GlobalDef <$> DA.patch v δv <*> DT.patch t δt <*> DT.patch τ δτ
+        GlobalDef v τ t -> GlobalDef <$> DA.patch v δv <*> DT.patch τ δτ <*> DT.patch t δt
         _               -> exc $ "ChangeGlobalDef: not a GlobalDef"
 
     ChangeGlobalInd δind ->

@@ -1,5 +1,6 @@
 {-# language FlexibleContexts #-}
 {-# language LambdaCase #-}
+{-# language ScopedTypeVariables #-}
 
 module Diff.GlobalEnvironment
   ( Diff
@@ -9,6 +10,7 @@ module Diff.GlobalEnvironment
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
@@ -16,6 +18,7 @@ import qualified Diff.List as DL
 import qualified Diff.GlobalDeclaration as DGD
 import qualified Diff.Term as DT
 import           Diff.Utils
+import qualified Term.Raw as Raw
 import           Term.Variable
 import           Typing.GlobalEnvironment
 import           Typing.GlobalDeclaration
@@ -29,14 +32,21 @@ patch (GlobalEnvironment e) δe = do
   e' <- DL.patch DGD.patch e δe
   return $ GlobalEnvironment e'
 
+-- annotation has to be Raw because of inductives
 findGlobalDeclarationDiff ::
-  Member (Exc String) r =>
-  Variable -> GlobalEnvironment α Variable -> Diff α -> Eff r (DT.Diff α)
+  ( Member (Exc String) r
+  , Member Trace r
+  ) =>
+  Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 findGlobalDeclarationDiff v e δe =
-  let exc reason = throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason in
+  trace (printf "findGlobalDeclarationDiff %s" (show v)) >>
+  let exc (reason :: String) = throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason in
   case δe of
 
-    DL.Same -> return DT.Same
+    DL.Same ->
+      case lookupRawType v e of
+        Nothing -> exc $ printf "Not found: %s" (show v)
+        Just _  -> return DT.Same
 
     DL.Insert ld δ ->
       if nameOf ld == v
@@ -54,7 +64,7 @@ findGlobalDeclarationDiff v e δe =
           then return δτ
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
-    DL.Change (DGD.ChangeGlobalDef δv _ δτ) δ ->
+    DL.Change (DGD.ChangeGlobalDef δv δτ _) δ ->
       case unGlobalEnvironment e of
         []    -> exc "DL.Change but empty environment"
         h : e' -> do

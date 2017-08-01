@@ -7,7 +7,6 @@ import Control.Monad
 import Control.Monad.Reader
 import Data.Default
 
-import Inductive.Constructor
 import Inductive.Inductive
 import Parsing
 import PrettyPrinting.PrettyPrintable
@@ -20,7 +19,6 @@ import Term.TypeChecked                          as Checked
 import Term.Variable
 import Text.Printf
 import Typing.GlobalEnvironment
-import Typing.Inductive
 import Work
 
 -- main :: IO ()
@@ -41,7 +39,7 @@ addTerm v (t, τ) ge =
 
 traceTypeChecking ::
   GlobalEnvironment (Checked Variable) Variable ->
-  TermX ξ Variable -> TermX ψ Variable -> IO ()
+  TermX α Variable -> TermX ψ Variable -> IO ()
 traceTypeChecking ge t τ = do
   let trace = tcTrace stepTypeCheckerF (checkF (toLocalContext ge) t τ id)
   forM_ trace $ \ item -> do
@@ -50,24 +48,24 @@ traceTypeChecking ge t τ = do
 debug :: IO ()
 debug = traceTypeChecking (GlobalEnvironment []) tId τId
 
-stdlib :: GlobalEnvironment (Checked Variable) Variable
-stdlib =
-  fromRight $ foldM (flip ($)) (GlobalEnvironment [])
-  [ addTerm "id" (tId, τId)
-  , addTerm "flip" (τFlip, tFlip)
-  , addInductives
-    [ inductiveBool
-    , inductiveNat
-    , inductiveList
-    , inductiveFin
-    , inductiveVec
-    , inductiveEmpty
-    , inductiveUnit
-    ]
-  ]
-  where
-    fromRight (Left  l) = error l
-    fromRight (Right r) = r
+-- stdlib :: GlobalEnvironment (Checked Variable) Variable
+-- stdlib =
+--   fromRight $ foldM (flip ($)) (GlobalEnvironment [])
+--   [ addTerm "id" (tId, τId)
+--   , addTerm "flip" (τFlip, tFlip)
+--   , addInductives
+--     [ inductiveBool
+--     , inductiveNat
+--     , inductiveList
+--     , inductiveFin
+--     , inductiveVec
+--     , inductiveEmpty
+--     , inductiveUnit
+--     ]
+--   ]
+--   where
+--     fromRight (Left  l) = error l
+--     fromRight (Right r) = r
 
 -- do not use `unsafeParseRaw` anywhere else!
 unsafeParseRaw :: String -> Raw.Term Variable
@@ -90,80 +88,103 @@ inductive Bool : Type where
   true  : Bool
   false : Bool
 -}
-inductiveBool :: Inductive ξ Variable
-inductiveBool =
+indBool :: Inductive Raw.Raw Variable
+indBool =
   Inductive "𝔹" [] []
-  [ Constructor "true"  [] []
-  , Constructor "false" [] []
+  [ trueBool
+  , falseBool
   ]
+
+trueBool, falseBool :: Constructor Raw.Raw Variable
+trueBool  = Constructor indBool "true"  [] []
+falseBool = Constructor indBool "false" [] []
 
 {-
 inductive ℕ : Type where
   zero : ℕ
   succ : (n : ℕ) → ℕ
 -}
-inductiveNat :: Inductive () Variable
-inductiveNat =
+indNat :: Inductive Raw.Raw Variable
+indNat =
   Inductive "ℕ" [] []
-  [ Constructor "zero"  [] []
-  , Constructor "succ" [(Binder (Just "n"), Var (Just ()) "ℕ")] []
+  [ zeroNat
+  , succNat
   ]
+
+zeroNat, succNat :: Constructor Raw.Raw Variable
+zeroNat = Constructor indNat "zero"  [] []
+succNat = Constructor indNat "succ" [(Binder (Just "n"), Var (Just ()) "ℕ")] []
 
 {-
 inductive List (A : Type) : Type where
   nil  :                         List A
   cons : (x : A) (xs : List A) → List A
 -}
-inductiveList :: Inductive () Variable
-inductiveList =
+indList :: Inductive Raw.Raw Variable
+indList =
   Inductive "List" [("A", Type)] []
-  [ Constructor "nil"  [] []
-  , Constructor "cons"
+  [ nilList
+  , consList
+  ]
+
+nilList, consList :: Constructor Raw.Raw Variable
+nilList  = Constructor indList "nil"  [] []
+consList = Constructor indList "cons"
     [ (Binder (Just "x"), Var (Just ()) "A")
     , (Binder (Just "xs"), App () (Var (Just ()) "List") (Var (Just ()) "A"))
     ]
     []
-  ]
 
 {-
 inductive Fin : ℕ → Type where
   zero : {n : ℕ} → Fin (suc n)
   suc  : {n : ℕ} (i : Fin n) → Fin (suc n)
 -}
-inductiveFin :: Inductive () Variable
-inductiveFin =
-  Inductive "Fin" [] [Var (Just()) "ℕ"]
-  [ Constructor "zero"
-    [ (Binder (Just "n"), Var (Just()) "ℕ") ]
-    [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
-  , Constructor "succ"
-    [ (Binder (Just "n"), Var (Just()) "ℕ")
-    , (Binder (Just "i"), App () (Var (Just()) "Fin") (Var (Just()) "n"))
-    ]
-    [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
+indFin :: Inductive Raw.Raw Variable
+indFin =
+  Inductive "Fin" [] [(Binder Nothing, Var (Just()) "ℕ")]
+  [ zeroFin
+  , succFin
   ]
+
+zeroFin, succFin :: Constructor Raw.Raw Variable
+zeroFin =
+  Constructor indFin "zero"
+  [ (Binder (Just "n"), Var (Just()) "ℕ") ]
+  [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
+succFin =
+  Constructor indFin "succ"
+  [ (Binder (Just "n"), Var (Just()) "ℕ")
+  , (Binder (Just "i"), App () (Var (Just()) "Fin") (Var (Just()) "n"))
+  ]
+  [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
 
 {-
 inductive Vec (A : Type) : ℕ → Type where
   nil  : Vec A zero
   cons : {n : ℕ} → (x : A) (xs : Vec A n) → Vec A (suc n)
 -}
-inductiveVec :: Inductive () Variable
-inductiveVec =
-  Inductive "Vec" [("A", Type)] [Var (Just()) "ℕ"]
-  [ Constructor "nil"  [] [Var (Just()) "zero"]
-  , Constructor "cons"
-    [ (Binder (Just "n"), Var (Just()) "ℕ")
-    , (Binder (Just "x"), Var (Just()) "A")
-    , (Binder (Just "xs"), App () (App () (Var (Just()) "Vec") (Var (Just()) "A")) (Var (Just()) "n"))
-    ]
-    [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
+indVec :: Inductive Raw.Raw Variable
+indVec =
+  Inductive "Vec" [("A", Type)] [(Binder Nothing, Var (Just()) "ℕ")]
+  [ nilVec
+  , consVec
   ]
+
+nilVec, consVec :: Constructor Raw.Raw Variable
+nilVec = Constructor indVec "nil"  [] [Var (Just()) "zero"]
+consVec =
+  Constructor indVec "cons"
+  [ (Binder (Just "n"), Var (Just()) "ℕ")
+  , (Binder (Just "x"), Var (Just()) "A")
+  , (Binder (Just "xs"), App () (App () (Var (Just()) "Vec") (Var (Just()) "A")) (Var (Just()) "n"))
+  ]
+  [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
 
 {-
 inductive ⊥ : Set where
 -}
-inductiveEmpty :: Inductive () Variable
+inductiveEmpty :: Inductive Raw.Raw Variable
 inductiveEmpty =
   Inductive "⊥" [] [] []
 
@@ -171,6 +192,9 @@ inductiveEmpty =
 inductive ⊤ : Set where
   tt : ⊤
 -}
-inductiveUnit :: Inductive () Variable
-inductiveUnit =
-  Inductive "⊤" [] [] [Constructor "tt" [] []]
+indUnit :: Inductive Raw.Raw Variable
+indUnit =
+  Inductive "⊤" [] [] [ttUnit]
+
+ttUnit :: Constructor Raw.Raw Variable
+ttUnit = Constructor indUnit "tt" [] []

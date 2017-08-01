@@ -59,7 +59,6 @@ Library
                    Diff.Variable
                    Diff.Vernacular
                    Goal
-                   Inductive.Constructor
                    Inductive.Inductive
                    Notations
                    Parsing
@@ -80,6 +79,7 @@ Library
                    Repair.State
                    Repair.Term
                    Repair.Utils
+                   Repair.Vernacular
                    Script
                    StandardLibrary
                    Tactic
