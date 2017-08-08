@@ -26,7 +26,6 @@ import qualified Diff.Script as DS
 import qualified Diff.Term as DT
 import           Diff.Utils
 import qualified Diff.Vernacular as DV
-import qualified Inductive.Constructor as C
 import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.State
@@ -44,10 +43,10 @@ import           Vernacular
 
 vernacularDiffToGlobalEnvironmentDiff :: DV.Diff Raw.Raw -> DGE.Diff Raw.Raw -> DGE.Diff Raw.Raw
 vernacularDiffToGlobalEnvironmentDiff = \case
-  DV.ChangeDefinition δn δτ δt -> DL.Change (DGD.ChangeGlobalDef δn δτ δt)
-  DV.ChangeInductive (DI.Change δn δps δis δcs) ->
+  DV.ModifyDefinition δn δτ δt -> DL.Modify (DGD.ModifyGlobalDef δn δτ δt)
+  DV.ModifyInductive (DI.Modify δn δps δis δcs) ->
     let δτ = DT.Same in
-    DL.Change (DGD.ChangeGlobalAssum δn δτ)
+    DL.Modify (DGD.ModifyGlobalAssum δn δτ)
   _ -> error "TODO: vernacularDiffToGlobalEnvironmentDiff"
 
 -- | `withStateFromVernacular v δv` takes a vernacular command `v` and its (assumed repaired) diff `δv`
@@ -68,12 +67,15 @@ withStateFromVernacular v δv e =
        over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv))
       $ e
 
-    (Inductive (I.Inductive indName ps _is cs), DV.ChangeInductive (DI.Change δindName δps _ δcs)) ->
+    (Inductive ind@(I.Inductive indName ps is cs), DV.ModifyInductive (DI.Modify δindName δps δis δcs)) -> do
+      let τind = I.inductiveRawType ind
+      trace $ printf "CHECK THIS: %d, %d" (length ps) (length is)
+      let δτind = DI.δinductiveRawType (length ps) δps (length is) δis
       withState
-      (over environment  (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
-       over δenvironment (DL.Change (DGD.ChangeGlobalAssum δn δτind))
-      ) $ do
-      e
+        (over environment  (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
+         over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
+        ) $ do
+        e
       -- let addConstructor (C.Constructor consName cps cis) =
       --       let τ = C.constructorRawType indName ps cps cis in
       --       over environment  (GE.addGlobalAssum (Binder (Just consName), τ))
@@ -95,14 +97,14 @@ repair ::
   ) =>
   Script Raw.Raw Variable -> DS.Diff Raw.Raw -> Eff r (DS.Diff Raw.Raw)
 repair (Script s) δs =
-  trace (printf "Repair.Script/repair:\ns: %s\nδs: %s\n" (prettyStrU (Script s)) (show δs)) >>
+  trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU (Script s)) (show δs)) >>
   let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
   case (s, δs) of
 
-    (v : s', DL.Change δv δs') -> do
+    (v : s', DL.Modify δv δs') -> do
       δv' <- RV.repair v δv
       withStateFromVernacular v δv' $
-        DL.Change δv' <$> repair (Script s') δs'
+        DL.Modify δv' <$> repair (Script s') δs'
 
     -- even if the diff is same, we still might need to do some repair to account for changes in the
     -- global environment
@@ -116,9 +118,9 @@ repair (Script s) δs =
           δt <- RT.repair t τ    δτ
           withState
             (over environment  (GE.addGlobalDef (Binder (Just n), τ, t)) >>>
-             over δenvironment (DL.Change (DGD.ChangeGlobalDef DA.Same δτ δt))
+             over δenvironment (DL.Modify (DGD.ModifyGlobalDef DA.Same δτ δt))
             ) $ do
-            DL.Change (DV.ChangeDefinition DA.Same δτ δt) <$> repair (Script cmds) DL.Same
+            DL.Modify (DV.ModifyDefinition DA.Same δτ δt) <$> repair (Script cmds) DL.Same
 
         Inductive _ind -> do
           -- I guess this one is weird:

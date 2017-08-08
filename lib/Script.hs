@@ -9,4 +9,4 @@ data Script α ν = Script [Vernacular α ν]
   deriving (Show)
 
 instance PrettyPrintableUnannotated (Script α) where
-  prettyDocU (Script s) = vsep <$> mapM prettyDocU s
+  prettyDocU (Script s) = encloseSep lbracket rbracket comma <$> mapM prettyDocU s

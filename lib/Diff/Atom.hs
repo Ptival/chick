@@ -7,10 +7,10 @@ import Control.Monad.Freer
 
 data Diff a
   = Same
-  | Change a
+  | Replace a
   deriving (Show)
 
 patch :: a -> Diff a -> Eff r a
 patch a d = case d of
-  Same      -> return a
-  Change a' -> return a'
+  Same       -> return a
+  Replace a' -> return a'

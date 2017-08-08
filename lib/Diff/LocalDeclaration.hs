@@ -16,7 +16,7 @@ import           Typing.LocalDeclaration
 
 data Diff α
   = Same
-  | Change
+  | Modify
     (DA.Diff Variable) -- the name
     (DT.Diff α)        -- the type
   deriving (Show)
@@ -25,7 +25,7 @@ patch ::
   ( Member (Exc String) r
   ) => LocalDeclaration α Variable -> Diff α -> Eff r (LocalDeclaration α Variable)
 patch ld Same = return ld
-patch ld (Change dv dτ) =
+patch ld (Modify dv dτ) =
   case ld of
     LocalAssum v τ   -> LocalAssum <$> DA.patch v dv              <*> DT.patch τ dτ
     LocalDef   v τ t -> LocalDef   <$> DA.patch v dv <*> DT.patch τ dτ <*> return t

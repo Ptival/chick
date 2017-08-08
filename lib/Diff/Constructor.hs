@@ -10,6 +10,8 @@ import           Control.Monad.Freer.Exception
 
 import qualified Diff.Atom as DA
 import qualified Diff.List as DL
+import qualified Diff.Pair as DP
+import qualified Diff.Term as DT
 import           Inductive.Inductive
 -- import           PrettyPrinting.PrettyPrintable
 -- import           PrettyPrinting.PrettyPrintableUnannotated
@@ -23,10 +25,10 @@ type BoundTerm α = (Binder Variable, Term α)
 
 data Diff α
   = Same
-  | Change
+  | Modify
     (DA.Diff Variable)
-    (DL.Diff (BoundTerm α) (DA.Diff (BoundTerm α)))
-    (DL.Diff (Term α)      (DA.Diff (Term α)))
+    (DL.Diff (BoundTerm α) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
+    (DL.Diff (Term α)      (DT.Diff α))
   deriving (Show)
 
 -- | Note: `patch` does not replace the reference to `Inductive` in the constructor. The caller must
@@ -38,10 +40,10 @@ patch ::
   Eff r (Constructor α Variable)
 patch c@(Constructor ind n ps is) d = case d of
   Same              -> return c
-  Change dn dps dis -> do
-    n'  <- DA.patch n dn
-    ps' <- DL.patch DA.patch ps dps
-    is' <- DL.patch DA.patch is dis
+  Modify δn δps δis -> do
+    n'  <- DA.patch n δn
+    ps' <- DL.patch (DP.patch DA.patch DT.patch) ps δps
+    is' <- DL.patch DT.patch is δis
     return $ Constructor ind n' ps' is'
 
 -- test :: String

@@ -33,7 +33,7 @@ newtype LocalContext α ν =
 
 instance PrettyPrintableUnannotated (TermX α) =>
          PrettyPrintableUnannotated (LocalContext α) where
-  prettyDocU (LocalContext ctxt) = vsep <$> mapM prettyDocU (reverse ctxt)
+  prettyDocU (LocalContext ctxt) = encloseSep lbracket rbracket comma <$> mapM prettyDocU (reverse ctxt)
 
 addHyp ::
   (Eq ν, MonadError String m) =>

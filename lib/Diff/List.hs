@@ -1,3 +1,4 @@
+{-# language DeriveFoldable #-}
 {-# language FlexibleContexts #-}
 {-# language LambdaCase #-}
 
@@ -15,7 +16,7 @@ import Diff.Utils
 data Diff t δt
   = Same
   | Insert   t    (Diff t δt)
-  | Change  δt    (Diff t δt)
+  | Modify  δt    (Diff t δt)
   | Permute [Int] (Diff t δt)
   | Keep          (Diff t δt)
   | Remove        (Diff t δt)
@@ -34,12 +35,12 @@ patch patchElem = go
 
       Insert e δ -> go l δ >>= return . (e :)
 
-      Change δe δ -> case l of
+      Modify δe δ -> case l of
         h : t -> do
           ph <- patchElem h δe
           pt <- go t δ
           return $ ph : pt
-        _     -> failWith "Change, empty list"
+        _     -> failWith "Modify, empty list"
 
       Permute p δ ->
         let ll = length l in

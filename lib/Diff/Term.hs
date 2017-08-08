@@ -30,7 +30,7 @@ import           Term.Variable
 
 data Diff α
   = Same
-  | Change (TermX α Variable)
+  | Replace (TermX α Variable)
   | CpyApp (Diff α) (Diff α)
   | CpyLam (DA.Diff (Binder Variable)) (Diff α)
   | CpyPi  (Diff α) (DA.Diff (Binder Variable)) (Diff α)
@@ -50,7 +50,7 @@ patch t d =
 
     Same -> return t
 
-    Change t' -> return t'
+    Replace t' -> return t'
 
     CpyApp d1 d2 ->
       case t of

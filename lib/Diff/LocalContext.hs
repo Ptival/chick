@@ -51,9 +51,9 @@ findLocalDeclarationDiff v γ δγ =
       then exc "TODO: this might be DLD.Change, but could be we want to skip..."
       else findLocalDeclarationDiff v γ δ
 
-    DL.Change DLD.Same δ -> findLocalDeclarationDiff v γ (DL.Keep δ)
+    DL.Modify DLD.Same δ -> findLocalDeclarationDiff v γ (DL.Keep δ)
 
-    DL.Change (DLD.Change δv δτ) δ ->
+    DL.Modify (DLD.Modify δv δτ) δ ->
       case unLocalContext γ of
         []    -> exc "DL.Change but empty context"
         h : γ' -> do
@@ -73,3 +73,5 @@ findLocalDeclarationDiff v γ δγ =
           else findLocalDeclarationDiff v (LocalContext γ') δ
 
     DL.Remove _ -> exc "TODO: Remove"
+
+    DL.Replace _ -> exc "TODO: Replace"

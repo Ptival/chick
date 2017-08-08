@@ -42,7 +42,5 @@ traceState ::
   Eff r ()
 traceState = do
   RepairState γ δγ e δe <- get
-  trace $ printf "γ:  %s" (prettyStrU γ)
-  trace $ printf "δγ: %s" (show δγ)
-  trace $ printf "e:  %s" (prettyStrU e)
-  trace $ printf "δe: %s" (show δe)
+  trace $ printf "RepairState: γ: %s,   δγ: %s,   e: %s,   δe: %s"
+    (prettyStrU γ) (show δγ) (prettyStrU e) (show δe)

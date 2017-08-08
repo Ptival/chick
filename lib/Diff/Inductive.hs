@@ -3,6 +3,7 @@
 
 module Diff.Inductive
   ( Diff(..)
+  , δinductiveRawType
   , patch
   ) where
 
@@ -13,6 +14,7 @@ import           Control.Monad.Freer.Exception
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
 import qualified Diff.List as DL
+import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
 import           Inductive.Inductive
 import           Term.Binder
@@ -25,10 +27,10 @@ type BoundTerm α = (Binder Variable, Term α)
 
 data Diff α
   = Same
-  | Change
+  | Modify
     (DA.Diff Variable)
-    (DL.Diff (BoundTerm α)            (DA.Diff (BoundTerm α)))
-    (DL.Diff (BoundTerm α)            (DA.Diff (BoundTerm α)))
+    (DL.Diff (BoundTerm α)            (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
+    (DL.Diff (BoundTerm α)            (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
     (DL.Diff (Constructor α Variable) (DC.Diff α))
   deriving (Show)
 
@@ -37,31 +39,43 @@ patch ::
   Inductive α Variable -> Diff α -> Eff r (Inductive α Variable)
 patch ind@(Inductive n ps is cs) = \case
   Same                  -> return ind
-  Change δn δps δis δcs -> do
+  Modify δn δps δis δcs -> do
     n'  <- DA.patch n δn
-    ps' <- DL.patch DA.patch ps δps
-    is' <- DL.patch DA.patch is δis
+    ps' <- DL.patch (DP.patch DA.patch DT.patch) ps δps
+    is' <- DL.patch (DP.patch DA.patch DT.patch) is δis
     cs' <- DL.patch DC.patch cs δcs -- note: the constructors still refer to the old inductive!
     return $ fix $ \ind' -> Inductive n' ps' is' $ map (updateConstructorInd ind') cs'
       where
-        updateConstructorInd ind' (Constructor _ n ps is) = Constructor ind' n ps is
+        updateConstructorInd ind' (Constructor _ cn cps cis) = Constructor ind' cn cps cis
 
 -- so, the output type is:
--- Pi p0 (Pi p1 (Pi p2 (Pi n (Pi i0 (Pi i1 (Pi i2))))))
+-- Pi p0 (Pi p1 (Pi p2 (Pi i0 (Pi i1 (Pi i2 Type))))))
 -- and becomes:
--- Pi p0' (Pi p1' (Pi n' (Pi i0' (Pi i1'))))
+-- Pi p0' (Pi p1' (Pi i0' (Pi i1' Type))))
 -- δps will tell us how to update the p-telescope
--- δn  will tell us how to update the n
 -- δis will tell us how to update the i-telescope
+-- Problem: if δps is Same, we can't return Same because maybe Raw.Rawis
+
 δinductiveRawType ::
-  (DA.Diff Variable) ->
-  (DL.Diff (BoundTerm α) (DA.Diff (BoundTerm α))) ->
-  (DL.Diff (Term α) (DA.Diff (Term α))) ->
-  DT.Diff α
-δinductiveRawType δn δps δis =
-  foldr onIndex (DT.CpyPi _ (Binder . Just <$> δn) (foldr onParam DT.Same ps)) is
+  Int ->
+  (DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw))) ->
+  Int ->
+  (DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw))) ->
+  DT.Diff Raw.Raw
+δinductiveRawType nPs δps nIs δis =
+  processPs nPs (processIs nIs δis) δps
+
   where
-    onIndex :: Raw.Type Variable -> DT.Diff α -> DT.Diff α
-    onIndex i      t = _ -- Pi () i (abstractAnonymous t)
-    onParam :: (Binder Variable, Raw.Type Variable) -> DT.Diff α -> DT.Diff α
-    onParam (b, p) t = _ -- Pi () p (abstractBinder b t)
+    -- processIs :: Int -> DL.Diff (BoundTerm Raw.Raw) (DA.Diff (BoundTerm Raw.Raw)) -> DT.Diff Raw.Raw
+    processIs n = \case
+      DL.Same -> nCpyPis n DT.Same
+      DL.Insert (b, τ) δ -> DT.InsPi () (DT.Replace τ) b $ processIs (n - 1) δ
+      DL.Modify _δt     _δ -> error "TODO"
+      _ -> error "TODO"
+
+    processPs n base = \case
+      DL.Same -> nCpyPis n base
+      _ -> error "TODO"
+
+    nCpyPis 0 base = base
+    nCpyPis n base = DT.CpyPi DT.Same DA.Same $ nCpyPis (n - 1) base

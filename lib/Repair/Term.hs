@@ -90,8 +90,8 @@ repairArgs = go DT.Same
         _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)
 
     hole = \case
-      DT.Change τ' -> DT.Change (Annot () (Hole ()) τ')
-      _            -> DT.Change (Hole ())
+      DT.Replace τ' -> DT.Replace (Annot () (Hole ()) τ')
+      _             -> DT.Replace (Hole ())
 
 -- | `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff describing
 -- | how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt` has type `patch τ δτ`.
@@ -102,8 +102,8 @@ repair ::
   ) =>
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 repair t τ δτ =
-  trace (printf "Repair.Term/repair:\nt: %s\nτ: %s\nδτ: %s\n" (prettyStrU t) (prettyStrU τ) (show δτ)) >>
   RS.traceState >>
+  trace (printf "Repair.Term/repair(t: %s, τ: %s, δτ: %s)" (prettyStrU t) (prettyStrU τ) (show δτ)) >>
   let exc (reason :: String) = throwExc $ printf "Repair.Term/repair: %s" reason in
 
   -- (do
@@ -133,8 +133,6 @@ repair t τ δτ =
             -- γ' <- DLC.patch γ δγ
             τv <- lookupType v
             δτv <- findDeclarationDiff v
-            trace $ printf "About to update args with:\nv: %s\nτv: %s\nδτv: %s\n"
-              (show v) (prettyStrU τv) (show δτv)
             repairArgs τv δτv
 
           _ -> exc "repair, Same, App, Not Var"
@@ -158,13 +156,14 @@ repair t τ δτ =
         -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
         return DT.Same
 
-  DT.Change τ' -> return $ DT.Change $ Annot () (Hole ()) τ'
+  DT.Replace τ' -> return $ DT.Replace $ Annot () (Hole ()) τ'
 
   DT.CpyApp _ _     -> throwExc "repair: CpyApp"
   DT.CpyLam _ _     -> throwExc "repair: CpyLam"
   DT.InsApp _ _ _   -> throwExc "repair: InsApp"
   DT.InsLam _ _ _   -> throwExc "repair: InsLam"
   DT.PermutLams _ _ -> throwExc "repair: PermutLams"
+  DT.PermutApps _ _ -> throwExc "repair: PermutApps"
 
   DT.CpyPi d1 DA.Same d2 ->
     case (t, τ) of
@@ -172,7 +171,7 @@ repair t τ δτ =
         let (b, _) = unscopeTerm bt
         withState
           (   over RS.context  (LC.addLocalAssum (b, τ1))
-          >>> over RS.δcontext (DL.Change (DLD.Change DA.Same d1))
+          >>> over RS.δcontext (DL.Modify (DLD.Modify DA.Same d1))
           ) $ do
           DT.CpyLam DA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
       _ -> throwExc "repair: CpyPi Same"

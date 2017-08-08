@@ -32,7 +32,7 @@ newtype GlobalEnvironment ξ ν
 
 instance PrettyPrintableUnannotated (TermX ξ) =>
          PrettyPrintableUnannotated (GlobalEnvironment ξ) where
-  prettyDocU (GlobalEnvironment γ) = vsep <$> mapM prettyDocU (reverse γ)
+  prettyDocU (GlobalEnvironment γ) = encloseSep lbracket rbracket comma <$> mapM prettyDocU (reverse γ)
 
 addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalAssum (Binder Nothing,  _) γ = γ

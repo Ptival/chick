@@ -53,6 +53,7 @@ Library
                    Diff.List
                    Diff.LocalContext
                    Diff.LocalDeclaration
+                   Diff.Pair
                    Diff.Script
                    Diff.Term
                    Diff.Utils

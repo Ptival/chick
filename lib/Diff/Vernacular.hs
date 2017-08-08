@@ -19,8 +19,8 @@ import           Vernacular
 
 data Diff α
   = Same
-  | ChangeDefinition (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
-  | ChangeInductive (DI.Diff α)
+  | ModifyDefinition (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
+  | ModifyInductive (DI.Diff α)
   deriving (Show)
 
 patch ::
@@ -30,11 +30,11 @@ patch v δv =
   let exc reason = throwExc $ printf "Diff.Vernacular/patch: %s" reason in
   case δv of
     Same -> return v
-    ChangeDefinition δn δτ δt ->
+    ModifyDefinition δn δτ δt ->
       case v of
         Definition n τ t -> Definition <$> DA.patch n δn <*> DT.patch τ δτ <*> DT.patch t δt
-        _ -> exc "ChangeDefinition: not a Definition"
-    ChangeInductive δind ->
+        _ -> exc "ModifyDefinition: not a Definition"
+    ModifyInductive δind ->
       case v of
         Inductive ind -> Inductive <$> DI.patch ind δind
-        _ -> exc "ChangeInductive: not an Inductive"
+        _ -> exc "ModifyInductive: not an Inductive"

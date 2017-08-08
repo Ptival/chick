@@ -50,30 +50,30 @@ findGlobalDeclarationDiff v e δe =
 
     DL.Insert ld δ ->
       if nameOf ld == v
-      then exc "TODO: this might be DLD.Change, but could be we want to skip..."
+      then exc "TODO: this might be DLD.Modify, but could be we want to skip..."
       else findGlobalDeclarationDiff v e δ
 
-    DL.Change DGD.Same δ -> findGlobalDeclarationDiff v e (DL.Keep δ)
+    DL.Modify DGD.Same δ -> findGlobalDeclarationDiff v e (DL.Keep δ)
 
-    DL.Change (DGD.ChangeGlobalAssum δv δτ) δ ->
+    DL.Modify (DGD.ModifyGlobalAssum δv δτ) δ ->
       case unGlobalEnvironment e of
-        []    -> exc "DL.Change but empty environment"
+        []    -> exc "DL.Modify but empty environment"
         h : e' -> do
           v' <- DA.patch (nameOf h) δv
           if v' == v
           then return δτ
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
-    DL.Change (DGD.ChangeGlobalDef δv δτ _) δ ->
+    DL.Modify (DGD.ModifyGlobalDef δv δτ _) δ ->
       case unGlobalEnvironment e of
-        []    -> exc "DL.Change but empty environment"
+        []    -> exc "DL.Modify but empty environment"
         h : e' -> do
           v' <- DA.patch (nameOf h) δv
           if v' == v
           then return δτ
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
-    DL.Change (DGD.ChangeGlobalInd _δind) _δ -> exc "TODO: patch GlobalInd"
+    DL.Modify (DGD.ModifyGlobalInd _δind) _δ -> exc "TODO: patch GlobalInd"
 
     DL.Permute _ _ -> exc "TODO: Permute"
 
@@ -86,3 +86,5 @@ findGlobalDeclarationDiff v e δe =
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
     DL.Remove _ -> exc "TODO: Remove"
+
+    DL.Replace _ -> exc "TODO: Replace"

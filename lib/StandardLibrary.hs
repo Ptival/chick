@@ -112,8 +112,8 @@ indNat =
   ]
 
 zeroNat, succNat :: Constructor Raw.Raw Variable
-zeroNat = Constructor indNat "zero"  [] []
-succNat = Constructor indNat "succ" [(Binder (Just "n"), Var (Just ()) "ℕ")] []
+zeroNat = Constructor indNat "zero" [] []
+succNat = Constructor indNat "succ" [("n", "ℕ")] []
 
 {-
 inductive List (A : Type) : Type where
@@ -130,8 +130,8 @@ indList =
 nilList, consList :: Constructor Raw.Raw Variable
 nilList  = Constructor indList "nil"  [] []
 consList = Constructor indList "cons"
-    [ (Binder (Just "x"), Var (Just ()) "A")
-    , (Binder (Just "xs"), App () (Var (Just ()) "List") (Var (Just ()) "A"))
+    [ ("x", "A")
+    , ("xs", App () "List" "A")
     ]
     []
 
@@ -142,7 +142,7 @@ inductive Fin : ℕ → Type where
 -}
 indFin :: Inductive Raw.Raw Variable
 indFin =
-  Inductive "Fin" [] [(Binder Nothing, Var (Just()) "ℕ")]
+  Inductive "Fin" [] [(Binder Nothing, "ℕ")]
   [ zeroFin
   , succFin
   ]
@@ -150,14 +150,14 @@ indFin =
 zeroFin, succFin :: Constructor Raw.Raw Variable
 zeroFin =
   Constructor indFin "zero"
-  [ (Binder (Just "n"), Var (Just()) "ℕ") ]
-  [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
+  [ ("n", "ℕ") ]
+  [ App () "succ" "n" ]
 succFin =
   Constructor indFin "succ"
-  [ (Binder (Just "n"), Var (Just()) "ℕ")
-  , (Binder (Just "i"), App () (Var (Just()) "Fin") (Var (Just()) "n"))
+  [ ("n", "ℕ")
+  , ("i", App () "Fin" "n")
   ]
-  [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
+  [ App () "succ" "n" ]
 
 {-
 inductive Vec (A : Type) : ℕ → Type where
@@ -166,7 +166,7 @@ inductive Vec (A : Type) : ℕ → Type where
 -}
 indVec :: Inductive Raw.Raw Variable
 indVec =
-  Inductive "Vec" [("A", Type)] [(Binder Nothing, Var (Just()) "ℕ")]
+  Inductive "Vec" [("A", Type)] [(Binder Nothing, "ℕ")]
   [ nilVec
   , consVec
   ]
@@ -175,11 +175,11 @@ nilVec, consVec :: Constructor Raw.Raw Variable
 nilVec = Constructor indVec "nil"  [] [Var (Just()) "zero"]
 consVec =
   Constructor indVec "cons"
-  [ (Binder (Just "n"), Var (Just()) "ℕ")
-  , (Binder (Just "x"), Var (Just()) "A")
-  , (Binder (Just "xs"), App () (App () (Var (Just()) "Vec") (Var (Just()) "A")) (Var (Just()) "n"))
+  [ ("n", "ℕ")
+  , ("x", "A")
+  , ("xs", App () (App () "Vec" "A") "n")
   ]
-  [ App () (Var (Just()) "succ") (Var (Just()) "n") ]
+  [ App () "succ" "n" ]
 
 {-
 inductive ⊥ : Set where
