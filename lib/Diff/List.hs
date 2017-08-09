@@ -9,6 +9,7 @@ module Diff.List
 
 import Control.Monad.Freer
 import Control.Monad.Freer.Exception
+import Control.Monad.Freer.Trace
 import Text.Printf
 
 import Diff.Utils
@@ -24,9 +25,15 @@ data Diff t δt
   deriving (Show)
 
 patch ::
-  Member (Exc String) r =>
-  (a -> da -> Eff r a) -> [a] -> Diff a da -> Eff r [a]
-patch patchElem = go
+  ( Member (Exc String) r
+  , Member Trace r
+  , Show a
+  , Show δa
+  ) =>
+  (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
+patch patchElem la δa =
+  trace (printf "Diff.List/patch(l: %s, δ: %s)" (show la) (show δa)) >>
+  go la δa
   where
     failWith = throwExc . printf "[Diff.List.patch] %s"
     go l = \case

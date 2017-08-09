@@ -18,6 +18,7 @@ import qualified Diff.List as DL
 import qualified Diff.LocalDeclaration as DLD
 import qualified Diff.Term as DT
 import           Diff.Utils
+import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Variable
 import           Typing.LocalContext
 import           Typing.LocalDeclaration
@@ -25,7 +26,10 @@ import           Typing.LocalDeclaration
 type Diff α = DL.Diff (LocalDeclaration α Variable) (DLD.Diff α)
 
 patch ::
-  Member (Exc String) r =>
+  ( Member (Exc String) r
+  , Member Trace r
+  , Show α
+  ) =>
   LocalContext α Variable -> Diff α -> Eff r (LocalContext α Variable)
 patch (LocalContext γ) d = do
   γ' <- DL.patch DLD.patch γ d
@@ -37,7 +41,7 @@ findLocalDeclarationDiff ::
   ) =>
   Variable -> LocalContext α Variable -> Diff α -> Eff r (DT.Diff α)
 findLocalDeclarationDiff v γ δγ =
-  trace (printf "findLocalDeclarationDiff %s" (show v)) >>
+  trace (printf "Diff.LocalContext/findLocalDeclarationDiff: Searching %s in %s" (show v) (prettyStrU γ)) >>
   let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason in
   case δγ of
 

@@ -7,6 +7,7 @@ module Diff.Constructor
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 
 import qualified Diff.Atom as DA
 import qualified Diff.List as DL
@@ -34,7 +35,10 @@ data Diff α
 -- | Note: `patch` does not replace the reference to `Inductive` in the constructor. The caller must
 -- | finish tying the knot!
 patch ::
-  Member (Exc String) r =>
+  ( Member (Exc String) r
+  , Member Trace r
+  , Show α
+  ) =>
   Constructor α Variable ->
   Diff α ->
   Eff r (Constructor α Variable)

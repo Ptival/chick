@@ -7,6 +7,7 @@ module Diff.Vernacular
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
@@ -24,7 +25,9 @@ data Diff α
   deriving (Show)
 
 patch ::
-  Member (Exc String) r =>
+  ( Member (Exc String) r
+  , Member Trace r
+  ) =>
   Vernacular Raw.Raw Variable -> Diff Raw.Raw -> Eff r (Vernacular Raw.Raw Variable)
 patch v δv =
   let exc reason = throwExc $ printf "Diff.Vernacular/patch: %s" reason in

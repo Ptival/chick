@@ -26,6 +26,7 @@ import qualified Repair.State as RS
 import           Repair.Utils
 import           Term.Binder
 import           Term.Term
+import qualified Term.TypeChecked as C
 import qualified Term.Raw as Raw
 import           Term.Variable
 import qualified Typing.LocalContext as LC
@@ -158,12 +159,21 @@ repair t τ δτ =
 
   DT.Replace τ' -> return $ DT.Replace $ Annot () (Hole ()) τ'
 
-  DT.CpyApp _ _     -> throwExc "repair: CpyApp"
-  DT.CpyLam _ _     -> throwExc "repair: CpyLam"
-  DT.InsApp _ _ _   -> throwExc "repair: InsApp"
-  DT.InsLam _ _ _   -> throwExc "repair: InsLam"
-  DT.PermutLams _ _ -> throwExc "repair: PermutLams"
-  DT.PermutApps _ _ -> throwExc "repair: PermutApps"
+  DT.CpyApp δ1 δ2     -> do
+    δ1' <- repair t τ δ1
+    δ2' <- repair t τ δ1
+    return $ DT.CpyApp δ1' δ2'
+
+  DT.CpyLam _ _     -> exc "repair: CpyLam"
+
+  DT.InsApp a δ1 δ2 -> do
+    δ1' <- repair t τ δ1
+    δ2' <- repair t τ δ2
+    return $ DT.InsApp a δ1' δ2'
+
+  DT.InsLam _ _ _   -> exc "repair: InsLam"
+  DT.PermutLams _ _ -> exc "repair: PermutLams"
+  DT.PermutApps _ _ -> exc "repair: PermutApps"
 
   DT.CpyPi d1 DA.Same d2 ->
     case (t, τ) of
@@ -174,9 +184,9 @@ repair t τ δτ =
           >>> over RS.δcontext (DL.Modify (DLD.Modify DA.Same d1))
           ) $ do
           DT.CpyLam DA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
-      _ -> throwExc "repair: CpyPi Same"
+      _ -> exc "repair: CpyPi Same"
 
-  DT.CpyPi _ _ _         -> throwExc "repair: CpyPi"
+  DT.CpyPi _ _ _         -> exc "repair: CpyPi"
 
   DT.InsPi _ d1 _b d2      -> do
     -- I think what we want here is:

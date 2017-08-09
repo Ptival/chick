@@ -13,11 +13,13 @@ import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
-import qualified Diff.Atom as DA
+-- import qualified Diff.Atom as DA
 import qualified Diff.List as DL
 import qualified Diff.GlobalDeclaration as DGD
 import qualified Diff.Term as DT
 import           Diff.Utils
+import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Term.Raw as Raw
 import           Term.Variable
 import           Typing.GlobalEnvironment
@@ -26,7 +28,10 @@ import           Typing.GlobalDeclaration
 type Diff α = DL.Diff (GlobalDeclaration α Variable) (DGD.Diff α)
 
 patch ::
-  Member (Exc String) r =>
+  ( Member (Exc String) r
+  , Member Trace r
+  , Show α
+  ) =>
   GlobalEnvironment α Variable -> Diff α -> Eff r (GlobalEnvironment α Variable)
 patch (GlobalEnvironment e) δe = do
   e' <- DL.patch DGD.patch e δe
@@ -39,7 +44,8 @@ findGlobalDeclarationDiff ::
   ) =>
   Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 findGlobalDeclarationDiff v e δe =
-  trace (printf "findGlobalDeclarationDiff %s" (show v)) >>
+  -- trace (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff:\nSearching %s in %s" (prettyStr v) (prettyStrU e)) >>
+  -- trace (printf "δe: %s" (show δe)) >>
   let exc (reason :: String) = throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason in
   case δe of
 
@@ -59,8 +65,8 @@ findGlobalDeclarationDiff v e δe =
       case unGlobalEnvironment e of
         []    -> exc "DL.Modify but empty environment"
         h : e' -> do
-          v' <- DA.patch (nameOf h) δv
-          if v' == v
+          -- v' <- DA.patch (nameOf h) δv
+          if nameOf h == v --v' == v
           then return δτ
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
@@ -68,8 +74,8 @@ findGlobalDeclarationDiff v e δe =
       case unGlobalEnvironment e of
         []    -> exc "DL.Modify but empty environment"
         h : e' -> do
-          v' <- DA.patch (nameOf h) δv
-          if v' == v
+          -- v' <- DA.patch (nameOf h) δv
+          if nameOf h == v --v' == v
           then return δτ
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 

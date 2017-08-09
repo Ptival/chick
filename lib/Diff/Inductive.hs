@@ -10,6 +10,7 @@ module Diff.Inductive
 import           Control.Monad.Fix
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
@@ -35,7 +36,10 @@ data Diff α
   deriving (Show)
 
 patch ::
-  Member (Exc String) r =>
+  ( Member (Exc String) r
+  , Member Trace r
+  , Show α
+  ) =>
   Inductive α Variable -> Diff α -> Eff r (Inductive α Variable)
 patch ind@(Inductive n ps is cs) = \case
   Same                  -> return ind
@@ -69,7 +73,7 @@ patch ind@(Inductive n ps is cs) = \case
     -- processIs :: Int -> DL.Diff (BoundTerm Raw.Raw) (DA.Diff (BoundTerm Raw.Raw)) -> DT.Diff Raw.Raw
     processIs n = \case
       DL.Same -> nCpyPis n DT.Same
-      DL.Insert (b, τ) δ -> DT.InsPi () (DT.Replace τ) b $ processIs (n - 1) δ
+      DL.Insert (b, τ) δ -> DT.InsPi () (DT.Replace τ) b $ processIs n δ
       DL.Modify _δt     _δ -> error "TODO"
       _ -> error "TODO"
 
@@ -77,5 +81,6 @@ patch ind@(Inductive n ps is cs) = \case
       DL.Same -> nCpyPis n base
       _ -> error "TODO"
 
-    nCpyPis 0 base = base
-    nCpyPis n base = DT.CpyPi DT.Same DA.Same $ nCpyPis (n - 1) base
+    nCpyPis 0 base         = base
+    nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
+    nCpyPis n base         = DT.CpyPi DT.Same DA.Same $ nCpyPis (n - 1) base

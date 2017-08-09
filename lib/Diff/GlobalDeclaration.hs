@@ -7,6 +7,7 @@ module Diff.GlobalDeclaration
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
@@ -25,6 +26,8 @@ data Diff α
 
 patch ::
   ( Member (Exc String) r
+  , Member Trace r
+  , Show α
   ) => GlobalDeclaration α Variable -> Diff α -> Eff r (GlobalDeclaration α Variable)
 patch gd δgd =
   let exc reason = throwExc $ printf "Diff.GlobalDeclaration/patch: %s" reason in

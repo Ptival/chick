@@ -42,5 +42,9 @@ traceState ::
   Eff r ()
 traceState = do
   RepairState γ δγ e δe <- get
-  trace $ printf "RepairState: γ: %s,   δγ: %s,   e: %s,   δe: %s"
+  trace $ printf "RepairState:\nγ: %s\nδγ: %s\ne: %s\nδe: %s"
     (prettyStrU γ) (show δγ) (prettyStrU e) (show δe)
+  γ' <- DLC.patch γ δγ
+  trace $ printf "γ': %s" (prettyStrU γ')
+  e' <- DGE.patch e δe
+  trace $ printf "e': %s" (prettyStrU e')

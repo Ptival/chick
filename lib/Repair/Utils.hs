@@ -26,7 +26,7 @@ lookupType ::
   , Member (State RepairState) r
   ) => Variable -> Eff r (Raw.Type Variable)
 lookupType target = do
-  let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/lookupType: %s" reason
+  let exc (reason :: String) = throwExc $ printf "Repair.Utils/lookupType: %s" reason
   RepairState γ _ e _ <- get
   let res = LC.lookupType target γ <|> GE.lookupRawType target e
   case res of
@@ -40,15 +40,17 @@ findDeclarationDiff ::
   ) =>
   Variable -> Eff r (DT.Diff Raw.Raw)
 findDeclarationDiff v = do
-  let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason
+  let exc (reason :: String) = throwExc $ printf "Repair.Utils/findDeclarationDiff: %s" reason
   RepairState γ δγ e δe <- get
   result <-
     DLC.findLocalDeclarationDiff  v γ δγ
     `catchError`
-    (\ (_ :: String) -> DGE.findGlobalDeclarationDiff v e δe)
-    `catchError`
-    (\ (_ :: String) -> exc $ printf
-                        "Could not find %s in either local context or global environment"
-                        (prettyStr v)
+    (\ (localError :: String) ->
+        DGE.findGlobalDeclarationDiff v e δe
+        `catchError`
+        (\ (globalError :: String) -> exc $ printf
+          "Could not find %s in either local context or global environment:\n  > %s\n  > %s"
+          (prettyStr v) localError globalError
+        )
     )
   return result

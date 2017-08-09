@@ -69,24 +69,21 @@ withStateFromVernacular v δv e =
 
     (Inductive ind@(I.Inductive indName ps is cs), DV.ModifyInductive (DI.Modify δindName δps δis δcs)) -> do
       let τind = I.inductiveRawType ind
-      trace $ printf "CHECK THIS: %d, %d" (length ps) (length is)
       let δτind = DI.δinductiveRawType (length ps) δps (length is) δis
       withState
         (over environment  (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
          over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
-        ) $ do
-        e
-      -- let addConstructor (C.Constructor consName cps cis) =
-      --       let τ = C.constructorRawType indName ps cps cis in
-      --       over environment  (GE.addGlobalAssum (Binder (Just consName), τ))
-      -- in
-      -- let addConstructors = foldr (\ c acc -> addConstructor c . acc) id cs in
-      -- do
-      --   withState
-      --     (addConstructors >>>
-      --      over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv)
-      --     )
-      --     $ e
+        ) $
+        let addConstructor c@(I.Constructor _ consName _ _) =
+              over environment (GE.addGlobalAssum (Binder (Just consName), I.constructorRawType c))
+        in
+        let addConstructors = foldl (\ acc c -> addConstructor c . acc) id cs in -- (\ c acc -> addConstructor c . acc) id cs in
+        do
+          withState
+            (addConstructors >>>
+             over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv)
+            )
+            $ e
 
 -- | `repair s δs` takes a script `s` and a script diff `δs`, and it computes a repaired script diff
 -- | `δs'`, that propagates changes down the line

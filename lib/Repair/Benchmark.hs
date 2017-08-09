@@ -246,7 +246,8 @@ repairScriptBenchmark = do
   for_ repairScriptBenchmarks $ \ (RepairScriptBenchmark s δs) -> do
     putStrLn $ replicate 80 '='
     putStrLn $ printf "Before:\n%s" (prettyStrU s)
-    s' <- case run . runError $ DS.patch s δs of
+    result <- runTrace . runError $ DS.patch s δs
+    s' <- case result of
       Left  (e :: String) -> error "..."
       Right s'            -> return s'
     putStrLn $ printf "Modified:\n%s" (prettyStrU s')
