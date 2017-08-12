@@ -44,10 +44,42 @@ import           Vernacular
 vernacularDiffToGlobalEnvironmentDiff :: DV.Diff Raw.Raw -> DGE.Diff Raw.Raw -> DGE.Diff Raw.Raw
 vernacularDiffToGlobalEnvironmentDiff = \case
   DV.ModifyDefinition δn δτ δt -> DL.Modify (DGD.ModifyGlobalDef δn δτ δt)
-  DV.ModifyInductive (DI.Modify δn δps δis δcs) ->
+  DV.ModifyInductive (DI.Modify δn _δps _δis _δcs) ->
     let δτ = DT.Same in
     DL.Modify (DGD.ModifyGlobalAssum δn δτ)
   _ -> error "TODO: vernacularDiffToGlobalEnvironmentDiff"
+
+withStateFromConstructors ::
+  ( Member (Exc String) r
+  , Member (State RepairState) r
+  , Member Trace r
+  ) =>
+  DT.Diff Raw.Raw ->
+  [I.Constructor Raw.Raw Variable] ->
+  DL.Diff (I.Constructor Raw.Raw Variable) (DC.Diff Raw.Raw) ->
+  Eff r a -> Eff r a
+withStateFromConstructors prefix l δl e =
+  let todo (s :: String) = error $ printf "TODO: Repair.Script/wSFC %s" s in
+  case (l, δl) of
+
+    ([], DL.Same) -> e
+
+    ([], _) -> todo "Empty list, other cases"
+
+    (c : cs, DL.Insert  _  _)   -> todo "Insert"
+    (c : cs, DL.Keep    _)      -> todo "Keep"
+
+    (c@(I.Constructor _ _ cps cis) : cs, DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
+      let δτc = DC.δconstructorRawType prefix (length cps) δcps (length cis) δcis in
+      go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs e
+
+    (c : cs, DL.Permute _  _)   -> todo "Permute"
+    (c : cs, DL.Remove  _)      -> todo "Remove"
+    (c : cs, DL.Replace _)      -> todo "Replace"
+    (c : cs, DL.Same)           -> todo "Same"
+  where
+    go c δge cs δcs e =
+      withState (over environment (GE.addConstructor c) >>> over δenvironment δge) $ withStateFromConstructors prefix cs δcs e
 
 -- | `withStateFromVernacular v δv` takes a vernacular command `v` and its (assumed repaired) diff `δv`
 -- | and modifies the global environment to accound for the effect in the vernacular command before and
@@ -70,20 +102,25 @@ withStateFromVernacular v δv e =
     (Inductive ind@(I.Inductive indName ps is cs), DV.ModifyInductive (DI.Modify δindName δps δis δcs)) -> do
       let τind = I.inductiveRawType ind
       let δτind = DI.δinductiveRawType (length ps) δps (length is) δis
-      withState
+      let prefix = DI.δinductiveRawConstructorPrefix δindName (length ps) δps
+      trace (printf "PREFIX: %s" (show prefix)) >>
+       (withState
         (over environment  (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
          over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
-        ) $
-        let addConstructor c@(I.Constructor _ consName _ _) =
-              over environment (GE.addGlobalAssum (Binder (Just consName), I.constructorRawType c))
-        in
-        let addConstructors = foldl (\ acc c -> addConstructor c . acc) id cs in -- (\ c acc -> addConstructor c . acc) id cs in
-        do
-          withState
-            (addConstructors >>>
-             over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv)
-            )
-            $ e
+        ) $ withStateFromConstructors prefix cs δcs e)
+        -- let addConstructor c@(I.Constructor _ consName _ _) =
+        --       over environment  (GE.addGlobalAssum (Binder (Just consName), I.constructorRawType c)) >>>
+        --       over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δconsName δτcons))
+        -- in
+        -- let addConstructors = foldl (\ acc c -> addConstructor c . acc) id cs in -- (\ c acc -> addConstructor c . acc) id cs in
+        -- do
+        --   withState
+        --     (addConstructors >>>
+        --      over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv)
+        --     )
+        --     $ e
+
+    (Inductive _, _) -> error "TODO: Repair.Script/withStateFromVernacular"
 
 -- | `repair s δs` takes a script `s` and a script diff `δs`, and it computes a repaired script diff
 -- | `δs'`, that propagates changes down the line

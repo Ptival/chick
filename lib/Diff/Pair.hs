@@ -9,11 +9,18 @@ module Diff.Pair
 
 import Control.Monad.Freer
 import Control.Monad.Freer.Exception
+import Text.PrettyPrint.Annotated.WL
+
+import PrettyPrinting.PrettyPrintable
 
 data Diff δl δr
   = Same
   | Modify δl δr
   deriving (Show)
+
+instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (Diff l r) where
+  prettyDoc Same         = text "Same"
+  prettyDoc (Modify l r) = fillSep [ lparen, prettyDoc l, comma, prettyDoc r, rparen ]
 
 patch ::
   Member (Exc String) row =>

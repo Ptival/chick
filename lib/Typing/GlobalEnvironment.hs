@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -13,7 +14,7 @@ import           Control.Monad
 import           Data.List
 import           Text.PrettyPrint.Annotated.WL
 
-import           Inductive.Inductive
+import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Typing.LocalContext
 import           Typing.LocalDeclaration
@@ -30,8 +31,8 @@ newtype GlobalEnvironment ξ ν
     { unGlobalEnvironment :: [GlobalDeclaration ξ ν]
     }
 
-instance PrettyPrintableUnannotated (TermX ξ) =>
-         PrettyPrintableUnannotated (GlobalEnvironment ξ) where
+instance PrettyPrintableUnannotated (TermX ξ Variable) =>
+         PrettyPrintableUnannotated (GlobalEnvironment ξ Variable) where
   prettyDocU (GlobalEnvironment γ) = encloseSep lbracket rbracket comma <$> mapM prettyDocU (reverse γ)
 
 addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
@@ -42,15 +43,15 @@ addGlobalDef :: (Binder ν, TypeX ξ ν, TermX ξ ν) -> GlobalEnvironment ξ ν
 addGlobalDef (Binder Nothing,  _, _) γ = γ
 addGlobalDef (Binder (Just v), τ, t) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalDef v τ t) : γ)
 
-addGlobalInd :: Inductive ξ ν -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
+addGlobalInd :: I.Inductive ξ ν -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalInd i (GlobalEnvironment γ) = GlobalEnvironment (GlobalInd i : γ)
 
-unwrapRawInductive :: Inductive Raw.Raw Variable -> [GlobalDeclaration Raw.Raw Variable]
-unwrapRawInductive ind@(Inductive indName _ _ cs) =
-  GlobalAssum indName (inductiveRawType ind) : map constructorAssumption cs
+unwrapRawInductive :: I.Inductive Raw.Raw Variable -> [GlobalDeclaration Raw.Raw Variable]
+unwrapRawInductive ind@(I.Inductive indName _ _ cs) =
+  GlobalAssum indName (I.inductiveRawType ind) : map constructorAssumption cs
   where
-    constructorAssumption cons@(Constructor _ cv _ _) =
-      GlobalAssum cv (constructorRawType cons)
+    constructorAssumption cons@(I.Constructor _ cv _ _) =
+      GlobalAssum cv (I.constructorRawType cons)
 
 {-|
 An inductive brings into scope:
@@ -62,12 +63,12 @@ An inductive brings into scope:
 TODO: - recursors
 -}
 unwrapInductive ::
-  Inductive (Checked Variable) Variable -> [GlobalDeclaration (Checked Variable) Variable]
-unwrapInductive ind@(Inductive n _ _ cs) =
-  GlobalAssum n (inductiveType ind) : map constructorAssumption cs
+  I.Inductive (Checked Variable) Variable -> [GlobalDeclaration (Checked Variable) Variable]
+unwrapInductive ind@(I.Inductive n _ _ cs) =
+  GlobalAssum n (I.inductiveType ind) : map constructorAssumption cs
   where
-    constructorAssumption cons@(Constructor _ cv _ _) =
-      GlobalAssum cv (constructorCheckedType cons)
+    constructorAssumption cons@(I.Constructor _ cv _ _) =
+      GlobalAssum cv (I.constructorCheckedType cons)
 
 {-| 'lookupDecl v ge' tries to find a top-level declaration named 'v' in
 'ge'.  It will find either a global assumption, a global declaration,
@@ -80,9 +81,9 @@ lookupDecl ::
 lookupDecl target = find found . unGlobalEnvironment
   where
     found = \case
-      GlobalAssum v _   | v               == target -> True
-      GlobalDef   v _ _ | v               == target -> True
-      GlobalInd   i     | inductiveName i == target -> True
+      GlobalAssum v _   | v                 == target -> True
+      GlobalDef   v _ _ | v                 == target -> True
+      GlobalInd   i     | I.inductiveName i == target -> True
       _ -> False
 
 lookupRawType ::
@@ -127,12 +128,12 @@ toLocalContext =
       GlobalDef   v τ t -> [LocalDef v τ t]
       GlobalInd   i     -> concatMap localize (unwrapInductive i)
 
-envInductives :: GlobalEnvironment ξ ν -> [Inductive ξ ν]
-envInductives = foldr addInductive [] . unGlobalEnvironment
+envInductives :: GlobalEnvironment ξ ν -> [I.Inductive ξ ν]
+envInductives = foldr addIfInductive [] . unGlobalEnvironment
   where
-    addInductive :: GlobalDeclaration ξ ν -> [Inductive ξ ν] -> [Inductive ξ ν]
-    addInductive (GlobalInd i) a = i : a
-    addInductive _             a = a
+    addIfInductive :: GlobalDeclaration ξ ν -> [I.Inductive ξ ν] -> [I.Inductive ξ ν]
+    addIfInductive (GlobalInd i) a = i : a
+    addIfInductive _             a = a
 
 {-| 'isInductive' checks whether the type is an instance of some
 inductive type in the global environment.  For instance, given '(List
@@ -142,7 +143,7 @@ Given '(A -> List T)', it should return 'None'.
 isInductive ::
   Eq ν =>
   GlobalEnvironment (Checked ν) ν -> TypeChecked.Type ν ->
-  Maybe (Inductive (Checked ν) ν)
+  Maybe (I.Inductive (Checked ν) ν)
 isInductive ge = go
   where
     go τ =
@@ -153,3 +154,14 @@ isInductive ge = go
             Just (GlobalInd i) -> Just i
             _ -> Nothing
         _ -> Nothing
+
+-- | Adds the type of an inductive to the global environment
+addInductive ::
+  I.Inductive Raw.Raw Variable ->
+  GlobalEnvironment Raw.Raw Variable -> GlobalEnvironment Raw.Raw Variable
+addInductive ind = addGlobalAssum (Binder $ Just $ I.inductiveName ind, I.inductiveRawType ind)
+
+addConstructor ::
+  I.Constructor Raw.Raw Variable ->
+  GlobalEnvironment Raw.Raw Variable -> GlobalEnvironment Raw.Raw Variable
+addConstructor c = addGlobalAssum (Binder $ Just $ I.constructorName c, I.constructorRawType c)

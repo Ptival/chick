@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# language FlexibleContexts #-}
+{-# language FlexibleInstances #-}
 {-# language LambdaCase #-}
 {-# language StandaloneDeriving #-}
 {-# language TypeFamilies #-}
@@ -36,8 +37,8 @@ instance (Arbitrary ξ) => Arbitrary (LocalDeclaration ξ) where
 -}
 
 instance
-  PrettyPrintableUnannotated (TermX ξ) =>
-  PrettyPrintableUnannotated (LocalDeclaration ξ) where
+  PrettyPrintableUnannotated (TermX α Variable) =>
+  PrettyPrintableUnannotated (LocalDeclaration α Variable) where
   prettyDocU = \case
     LocalAssum (Variable v) τ -> do
       τDoc <- prettyDocU τ

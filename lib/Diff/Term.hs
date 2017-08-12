@@ -19,10 +19,12 @@ import           Control.Lens
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Text.Printf
+import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
 import           Diff.Utils
 import           PrettyPrinting.Term ()
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Binder
 import           Term.Term
@@ -30,62 +32,75 @@ import           Term.Variable
 
 data Diff α
   = Same
-  | Replace (TermX α Variable)
-  | CpyApp (Diff α) (Diff α)
-  | CpyLam (DA.Diff (Binder Variable)) (Diff α)
-  | CpyPi  (Diff α) (DA.Diff (Binder Variable)) (Diff α)
-  | InsApp  α (Diff α) (Diff α)
-  | InsLam  α (Binder Variable) (Diff α)
-  | InsPi   α (Diff α) (Binder Variable) (Diff α)
+  | Replace    (TermX α Variable)
+  | CpyApp     (Diff α) (Diff α)
+  | CpyLam     (DA.Diff (Binder Variable)) (Diff α)
+  | CpyPi      (Diff α) (DA.Diff (Binder Variable)) (Diff α)
+  | CpyVar     (DA.Diff Variable)
+  | InsApp     α (Diff α) (Diff α)
+  | InsLam     α (Binder Variable) (Diff α)
+  | InsPi      α (Diff α) (Binder Variable) (Diff α)
   | PermutApps [Int] (Diff α)
   | PermutLams [Int] (Diff α)
   | PermutPis  [Int] (Diff α)
   deriving (Show)
 
+instance PrettyPrintable (Diff α) where
+  prettyDoc = \case
+    Same              -> text "Same"
+    Replace t         -> fillSep [ text "Replace", prettyDoc t ]
+    CpyApp δ1 δ2      -> fillSep [ text "CpyApp",  prettyDoc δ1, prettyDoc δ2 ]
+    CpyLam δ1 δ2      -> fillSep [ text "CpyLam",  prettyDoc δ1, prettyDoc δ2 ]
+    CpyPi  δ1 δ2 δ3   -> fillSep [ text "CpyPi",   prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
+    CpyVar δ1         -> fillSep [ text "CpyVar",  prettyDoc δ1 ]
+    InsApp _ δ1 δ2    -> fillSep [ text "CpyApp",  prettyDoc δ1, prettyDoc δ2 ]
+    InsLam _ δ1 δ2    -> fillSep [ text "CpyLam",  prettyDoc δ1, prettyDoc δ2 ]
+    InsPi  _ δ1 δ2 δ3 -> fillSep [ text "CpyPi",   prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
+    PermutApps p δ1   -> fillSep [ text "CpyApp",  (text $ show p), prettyDoc δ1 ]
+    PermutLams p δ1   -> fillSep [ text "CpyLam",  (text $ show p), prettyDoc δ1 ]
+    PermutPis  p δ1   -> fillSep [ text "CpyPi",   (text $ show p), prettyDoc δ1 ]
+
 patch ::
   Member (Exc String) r =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
 patch t d =
-  case d of
+  case (t, d) of
 
-    Same -> return t
+    (_, Same) -> return t
 
-    Replace t' -> return t'
+    (_, Replace t') -> return t'
 
-    CpyApp d1 d2 ->
-      case t of
-        App a t1 t2 -> App a <$> patch t1 d1 <*> patch t2 d2
-        _ -> throwExc "patch: CpyApp, not an App"
+    (App a t1 t2, CpyApp d1 d2) -> App a <$> patch t1 d1 <*> patch t2 d2
+    (_, CpyApp _ _) -> throwExc "patch: CpyApp, not an App"
 
-    CpyLam db dt ->
-      case t of
-        Lam a bt ->
-          let (b, t') = unscopeTerm bt in
-          Lam a <$> (abstractBinder <$> DA.patch b db <*> patch t' dt)
-        _ -> throwExc "patch: CpyLam, not a Lam"
+    (Lam a bt, CpyLam db dt) ->
+      let (b, t') = unscopeTerm bt in
+        Lam a <$> (abstractBinder <$> DA.patch b db <*> patch t' dt)
+    (_, CpyLam _ _) -> throwExc "patch: CpyLam, not a Lam"
 
-    CpyPi d1 db d2 ->
-      case t of
-        Pi a τ1 bτ2 ->
-          let (b, τ2) = unscopeTerm bτ2 in
-          Pi a <$> patch τ1 d1 <*> (abstractBinder <$> DA.patch b db <*> patch τ2 d2)
-        _ -> throwExc "patch: CpyPi, not a Pi"
+    (Pi a τ1 bτ2, CpyPi d1 db d2) ->
+      let (b, τ2) = unscopeTerm bτ2 in
+        Pi a <$> patch τ1 d1 <*> (abstractBinder <$> DA.patch b db <*> patch τ2 d2)
+    (_, CpyPi _ _ _) -> throwExc "patch: CpyPi, not a Pi"
 
-    InsApp a d1 d2 -> App a <$> patch t d1 <*> patch t d2
+    (Var a v, CpyVar δv) -> Var a <$> DA.patch v δv
+    (_, CpyVar _) -> throwExc "patch: CpyVar, not a Var"
 
-    InsLam a b d1 -> Lam a . abstractBinder b <$> patch t d1
+    (_, InsApp a d1 d2) -> App a <$> patch t d1 <*> patch t d2
 
-    InsPi a d1 b d2 -> Pi a <$> patch t d1 <*> (abstractBinder b <$> patch t d2)
+    (_, InsLam a b d1) -> Lam a . abstractBinder b <$> patch t d1
 
-    PermutApps p δ' -> do
+    (_, InsPi a d1 b d2) -> Pi a <$> patch t d1 <*> (abstractBinder b <$> patch t d2)
+
+    (_, PermutApps p δ') -> do
       (fun, args) <- extractApps t
       patch (mkApps fun (permute p args)) δ'
 
-    PermutLams p d' -> do
+    (_, PermutLams p d') -> do
       (lams, rest) <- extractSomeLams (length p) t
       patch (mkLams (permute p lams) rest) d'
 
-    PermutPis p d' -> do
+    (_, PermutPis p d') -> do
       (pis, rest) <- extractSomePis (length p) t
       patch (mkPis (permute p pis) rest) d'
 

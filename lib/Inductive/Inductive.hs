@@ -1,4 +1,5 @@
 {-# language FlexibleContexts #-}
+{-# language FlexibleInstances #-}
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
 {-# language TypeFamilies #-}
@@ -19,7 +20,8 @@ module Inductive.Inductive
   ) where
 
 import           Control.Lens
-import           Control.Monad.Reader.Class
+import           Control.Monad.Reader
+import           Data.Default
 
 -- import           Inductive.Constructor
 import           Precedence
@@ -32,6 +34,7 @@ import           Term.Term
 import qualified Term.TypeChecked as C
 import           Term.Variable
 import           Text.PrettyPrint.Annotated.WL
+import           Text.Printf
 
 data Inductive α ν =
   Inductive
@@ -53,7 +56,8 @@ data Constructor α ν =
   }
 
 deriving instance (Eq α, Eq ν) => Eq (Constructor α ν)
-deriving instance (Show α, Show ν) => Show (Constructor α ν)
+instance (Show α, Show ν) => Show (Constructor α ν) where
+  show (Constructor _ n ps is) = printf "Constructor _ %s %s %s" (show n) (show ps) (show is)
 
 constructorType' :: ∀ α.
   α ->
@@ -151,7 +155,7 @@ prettyBindingDocU (Binder b, t) =
       tDoc <- prettyDocU t
       return $ parens . fillSep $ [ prettyDoc v, text ":", tDoc ]
 
-instance PrettyPrintableUnannotated (Inductive α) where
+instance PrettyPrintableUnannotated (Inductive α Variable) where
   prettyDocU (Inductive n ps is cs) = do
     psDoc <- mapM prettyBindingDocU ps
     csDoc <- mapM prettyDocU cs
@@ -175,7 +179,7 @@ instance PrettyPrintableUnannotated (Inductive α) where
         ]
       ] ++ (map (indent 2) csDoc)
 
-instance PrettyPrintableUnannotated (Constructor α) where
+instance PrettyPrintableUnannotated (Constructor α Variable) where
   prettyDocU (Constructor (Inductive indName indParams _ _) cName cParams cIndices) = do
     cDoc <- prettyDocU (constructorRawType' indName indParams cParams cIndices)
     return $ fillSep
@@ -183,3 +187,9 @@ instance PrettyPrintableUnannotated (Constructor α) where
       , text ":"
       , cDoc
       ]
+
+instance PrettyPrintable (Constructor α Variable) where
+  prettyDoc c = runReader (prettyDocU c) def
+
+instance PrettyPrintable (Inductive α Variable) where
+  prettyDoc i = runReader (prettyDocU i) def

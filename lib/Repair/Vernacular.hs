@@ -60,7 +60,7 @@ repair v δv =
 
     (_, DV.ModifyDefinition _ _ _) -> exc "ModifyDefinition, but not a Definition"
 
-    (Inductive (I.Inductive _ ps is _), DV.ModifyInductive (DI.Modify δn δps δis δcs)) -> do
+    (Inductive (I.Inductive _ _ps _is _), DV.ModifyInductive (DI.Modify δn δps δis δcs)) -> do
       -- TODO: actually propagate repairs into params and constructors
       return $ DV.ModifyInductive (DI.Modify δn δps δis δcs)
 

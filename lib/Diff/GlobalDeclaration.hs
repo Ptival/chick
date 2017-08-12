@@ -22,7 +22,12 @@ data Diff α
   | ModifyGlobalAssum (DA.Diff Variable) (DT.Diff α)
   | ModifyGlobalDef   (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
   | ModifyGlobalInd   (DI.Diff α)
-  deriving (Show)
+
+instance Show α => Show (Diff α) where
+  show Same = "Same"
+  show (ModifyGlobalAssum δn δτ)    = printf "ModifyGlobalAssum %s %s"  (show δn) (show δτ)
+  show (ModifyGlobalDef   δn δτ δt) = printf "ModifyGlobalDef %s %s %s" (show δn) (show δτ) (show δt)
+  show (ModifyGlobalInd   δind)     = printf "ModifyGlobalInd %s"       (show δind)
 
 patch ::
   ( Member (Exc String) r

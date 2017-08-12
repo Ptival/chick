@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module PrettyPrinting.PrettyPrintableUnannotated
   ( PrettyPrintableUnannotated(..)
@@ -13,10 +14,11 @@ import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import Precedence
-import Term.Variable
+import PrettyPrinting.PrettyPrintable
+-- import Term.Variable
 
 class PrettyPrintableUnannotated t where
-  prettyDocU :: (MonadReader PrecedenceTable m) => t Variable -> m (Doc ())
-  prettyStrU :: t Variable -> String
+  prettyDocU :: (MonadReader PrecedenceTable m) => t -> m (Doc ())
+  prettyStrU :: t -> String
   prettyStrU t =
     display . renderPretty 1.0 80 . runReader (prettyDocU t) $ def

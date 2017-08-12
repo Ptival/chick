@@ -5,6 +5,7 @@
 {-# language RankNTypes #-}
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
+{-# language UnicodeSyntax #-}
 
 module PrettyPrinting.Chick.Term where
 
@@ -17,16 +18,15 @@ import PrettyPrinting.Utils
 import Term.Term
 import Term.Variable
 
-prettyTermDocPrec ::
-  forall a ξ. PrecedenceTable -> TermX ξ Variable -> (Doc a, Precedence)
+prettyTermDocPrec :: ∀ α. PrecedenceTable -> TermX α Variable -> (Doc (), Precedence)
 prettyTermDocPrec precs = goTerm
 
   where
 
-    go :: (Precedence, Tolerance) -> TermX ξ Variable -> Doc a
+    go :: (Precedence, Tolerance) -> TermX α Variable -> Doc ()
     go pt = par precs pt . prettyTermDocPrec precs
 
-    goTerm :: TermX ξ Variable -> (Doc a, Precedence)
+    goTerm :: TermX α Variable -> (Doc (), Precedence)
     goTerm = \case
 
       Annot _ t τ ->
@@ -86,7 +86,7 @@ prettyTermDocPrec precs = goTerm
 
       Var _ v -> (prettyDoc v, PrecAtom)
 
-    goLams :: [Doc a] -> TermX ξ Variable -> Doc a
+    goLams :: [Doc ()] -> TermX α Variable -> Doc ()
     goLams l = \case
       Lam _ bt ->
         let n = getName bt in

@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -24,15 +25,15 @@ import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Binder
 import Term.Term
 import Term.TypeChecked
---import Term.Variable
+import Term.Variable
 --import Term.Raw as Raw
 
 newtype LocalContext α ν =
   LocalContext { unLocalContext :: [LocalDeclaration α ν] }
   deriving (Eq, Monoid, Show)
 
-instance PrettyPrintableUnannotated (TermX α) =>
-         PrettyPrintableUnannotated (LocalContext α) where
+instance PrettyPrintableUnannotated (TermX α Variable) =>
+         PrettyPrintableUnannotated (LocalContext α Variable) where
   prettyDocU (LocalContext ctxt) = encloseSep lbracket rbracket comma <$> mapM prettyDocU (reverse ctxt)
 
 addHyp ::

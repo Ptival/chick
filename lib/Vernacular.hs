@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Vernacular
   ( Vernacular(..)
@@ -10,13 +11,14 @@ import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
+import           Term.Variable
 
 data Vernacular α ν
   = Definition ν (TypeX α ν) (TermX α ν)
   | Inductive (I.Inductive α ν)
   deriving (Show)
 
-instance PrettyPrintableUnannotated (Vernacular α) where
+instance PrettyPrintableUnannotated (Vernacular α Variable) where
   prettyDocU = \case
 
     Definition n τ t -> do

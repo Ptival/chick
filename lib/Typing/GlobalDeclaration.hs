@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -32,8 +33,8 @@ deriving instance (Eq α, Eq ν) => Eq (GlobalDeclaration α ν)
 deriving instance (Show α, Show ν) => Show (GlobalDeclaration α ν)
 
 instance
-  PrettyPrintableUnannotated (TermX α) =>
-  PrettyPrintableUnannotated (GlobalDeclaration α) where
+  PrettyPrintableUnannotated (TermX α Variable) =>
+  PrettyPrintableUnannotated (GlobalDeclaration α Variable) where
   prettyDocU = \case
     GlobalAssum (Variable v) τ -> do
       τDoc <- prettyDocU τ

@@ -4,6 +4,7 @@
 module Diff.Inductive
   ( Diff(..)
   , δinductiveRawType
+  , δinductiveRawConstructorPrefix
   , patch
   ) where
 
@@ -22,6 +23,7 @@ import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import           Term.Variable
+import           Text.Printf
 
 type Term α = TypeX α Variable
 type BoundTerm α = (Binder Variable, Term α)
@@ -33,7 +35,10 @@ data Diff α
     (DL.Diff (BoundTerm α)            (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
     (DL.Diff (BoundTerm α)            (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
     (DL.Diff (Constructor α Variable) (DC.Diff α))
-  deriving (Show)
+
+instance Show α => Show (Diff α) where
+  show Same             = "Same"
+  show (Modify _ _ _ _) = "Modify _ _ _ _"
 
 patch ::
   ( Member (Exc String) r
@@ -84,3 +89,21 @@ patch ind@(Inductive n ps is cs) = \case
     nCpyPis 0 base         = base
     nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
     nCpyPis n base         = DT.CpyPi DT.Same DA.Same $ nCpyPis (n - 1) base
+
+δinductiveRawConstructorPrefix ::
+  DA.Diff Variable ->
+  Int ->
+  DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw)) ->
+  DT.Diff Raw.Raw
+δinductiveRawConstructorPrefix δindName nPs δps =
+  processPs nPs (DT.CpyVar δindName) δps
+
+  where
+
+    processPs n base = \case
+      DL.Same -> nCpyApps n base
+      δ -> error $ printf "TODO: %s" (show δ)
+
+    nCpyApps 0 base         = base
+    nCpyApps n _    | n < 0 = error "nCpyApps: n became negative!"
+    nCpyApps n base         = DT.CpyApp (nCpyApps (n - 1) base) DT.Same

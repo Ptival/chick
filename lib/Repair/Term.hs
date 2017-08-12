@@ -87,7 +87,6 @@ repairArgs = go DT.Same
         -- TODO: this is wrong because we need the permutations to happen from within the
         -- innermost App rather than the outermost ones
 
-
         _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)
 
     hole = \case
