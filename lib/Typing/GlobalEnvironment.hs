@@ -11,10 +11,13 @@ module Typing.GlobalEnvironment where
 
 --import           Control.Applicative
 import           Control.Monad
+import           Control.Monad.Reader
+import           Data.Default
 import           Data.List
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Inductive.Inductive as I
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Typing.LocalContext
 import           Typing.LocalDeclaration
@@ -34,6 +37,10 @@ newtype GlobalEnvironment ξ ν
 instance PrettyPrintableUnannotated (TermX ξ Variable) =>
          PrettyPrintableUnannotated (GlobalEnvironment ξ Variable) where
   prettyDocU (GlobalEnvironment γ) = encloseSep lbracket rbracket comma <$> mapM prettyDocU (reverse γ)
+
+instance PrettyPrintableUnannotated (TermX ξ Variable) =>
+         PrettyPrintable (GlobalEnvironment ξ Variable) where
+  prettyDoc γ = runReader (prettyDocU γ) def
 
 addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalAssum (Binder Nothing,  _) γ = γ

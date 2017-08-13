@@ -18,9 +18,12 @@ module Typing.LocalContext
 
 import Control.Monad
 import Control.Monad.Except
+import Control.Monad.Reader
+import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import Typing.LocalDeclaration
+import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Binder
 import Term.Term
@@ -32,9 +35,15 @@ newtype LocalContext α ν =
   LocalContext { unLocalContext :: [LocalDeclaration α ν] }
   deriving (Eq, Monoid, Show)
 
-instance PrettyPrintableUnannotated (TermX α Variable) =>
-         PrettyPrintableUnannotated (LocalContext α Variable) where
+instance
+  PrettyPrintableUnannotated (TermX α Variable) =>
+  PrettyPrintableUnannotated (LocalContext α Variable) where
   prettyDocU (LocalContext ctxt) = encloseSep lbracket rbracket comma <$> mapM prettyDocU (reverse ctxt)
+
+instance
+  PrettyPrintableUnannotated (TermX α Variable) =>
+  PrettyPrintable (LocalContext α Variable) where
+  prettyDoc c = runReader (prettyDocU c) def
 
 addHyp ::
   (Eq ν, MonadError String m) =>

@@ -19,7 +19,8 @@ import           Text.Printf
 
 import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.LocalContext as DLC
-import           PrettyPrinting.PrettyPrintableUnannotated
+import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.Term
 import qualified Term.Raw as Raw
 import           Term.Variable
 import           Typing.GlobalEnvironment
@@ -42,9 +43,9 @@ traceState ::
   Eff r ()
 traceState = do
   RepairState γ δγ e δe <- get
-  trace $ printf "RepairState:\n> γ: %s\n> δγ: %s" (prettyStrU γ) (show δγ)
+  trace $ printf "RepairState:\n> γ: %s\n> δγ: %s" (prettyStr γ) (show δγ)
   γ' <- DLC.patch γ δγ
-  trace $ printf "> γ': %s" (prettyStrU γ')
-  trace $ printf "> e: %s\n> δe: %s" (prettyStrU e) (show δe)
+  trace $ printf "> γ': %s" (prettyStr γ')
+  trace $ printf "> e: %s\n> δe: %s" (prettyStr e) (prettyStr δe)
   e' <- DGE.patch e δe
-  trace $ printf "> e': %s\n" (prettyStrU e')
+  trace $ printf "> e': %s\n" (prettyStr e')

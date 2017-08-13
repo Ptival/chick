@@ -1,4 +1,5 @@
 {-# language FlexibleContexts #-}
+{-# language LambdaCase #-}
 
 module Diff.GlobalDeclaration
   ( Diff(..)
@@ -8,12 +9,14 @@ module Diff.GlobalDeclaration
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 
 import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
 import qualified Diff.Term as DT
 import           Diff.Utils
+import           PrettyPrinting.PrettyPrintable
 import           Term.Variable
 import           Typing.GlobalDeclaration
 
@@ -28,6 +31,13 @@ instance Show α => Show (Diff α) where
   show (ModifyGlobalAssum δn δτ)    = printf "ModifyGlobalAssum %s %s"  (show δn) (show δτ)
   show (ModifyGlobalDef   δn δτ δt) = printf "ModifyGlobalDef %s %s %s" (show δn) (show δτ) (show δt)
   show (ModifyGlobalInd   δind)     = printf "ModifyGlobalInd %s"       (show δind)
+
+instance PrettyPrintable (Diff α) where
+  prettyDoc = \case
+    Same -> text "Same"
+    ModifyGlobalAssum δ1 δ2    -> fillSep [ text "ModifyGlobalAssum", prettyDoc δ1, prettyDoc δ2 ]
+    ModifyGlobalDef   δ1 δ2 δ3 -> fillSep [ text "ModifyGlobalAssum", prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
+    ModifyGlobalInd   δ1       -> fillSep [ text "ModifyGlobalAssum", prettyDoc δ1 ]
 
 patch ::
   ( Member (Exc String) r

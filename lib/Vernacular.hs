@@ -5,6 +5,8 @@ module Vernacular
   ( Vernacular(..)
   ) where
 
+import           Control.Monad.Reader
+import           Data.Default
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Inductive.Inductive as I
@@ -17,6 +19,9 @@ data Vernacular α ν
   = Definition ν (TypeX α ν) (TermX α ν)
   | Inductive (I.Inductive α ν)
   deriving (Show)
+
+instance PrettyPrintable (Vernacular α Variable) where
+  prettyDoc v = runReader (prettyDocU v) def
 
 instance PrettyPrintableUnannotated (Vernacular α Variable) where
   prettyDocU = \case

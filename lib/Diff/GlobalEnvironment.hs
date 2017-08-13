@@ -11,6 +11,7 @@ module Diff.GlobalEnvironment
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 
 -- import qualified Diff.Atom as DA

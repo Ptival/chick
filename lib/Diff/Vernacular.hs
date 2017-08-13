@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Diff.Vernacular
   ( Diff(..)
@@ -8,12 +9,14 @@ module Diff.Vernacular
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 
 import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
 import qualified Diff.Term as DT
 import           Diff.Utils
+import           PrettyPrinting.PrettyPrintable
 import qualified Term.Raw as Raw
 import           Term.Variable
 import           Vernacular
@@ -23,6 +26,12 @@ data Diff α
   | ModifyDefinition (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
   | ModifyInductive (DI.Diff α)
   deriving (Show)
+
+instance PrettyPrintable (Diff α) where
+  prettyDoc = \case
+    Same                      -> text "Same"
+    ModifyDefinition δ1 δ2 δ3 -> fillSep [ text "ModifyDefinition", prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
+    ModifyInductive  δ1       -> fillSep [ text "ModifyInductive",  prettyDoc δ1 ]
 
 patch ::
   ( Member (Exc String) r

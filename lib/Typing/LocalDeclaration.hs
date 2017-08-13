@@ -8,33 +8,30 @@
 
 module Typing.LocalDeclaration where
 
---import Test.QuickCheck
-
+import Control.Monad.Reader
+import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
+import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
 import Term.Variable
 
-data LocalDeclaration ξ ν
-  = LocalAssum ν (TypeX ξ ν)
+data LocalDeclaration α ν
+  = LocalAssum ν (TypeX α ν)
   | LocalDef
     { localDefName :: ν
-    , localDefType :: TypeX ξ ν
-    , localDefTerm :: TermX ξ ν
+    , localDefType :: TypeX α ν
+    , localDefTerm :: TermX α ν
     }
 
-deriving instance (Eq ξ, Eq ν) => Eq (LocalDeclaration ξ ν)
-deriving instance (Show ξ, Show ν) => Show (LocalDeclaration ξ ν)
+deriving instance (Eq α, Eq ν) => Eq (LocalDeclaration α ν)
+deriving instance (Show α, Show ν) => Show (LocalDeclaration α ν)
 
-{-
-instance (Arbitrary ξ) => Arbitrary (LocalDeclaration ξ) where
-  arbitrary =
-    oneof
-    [ LocalAssum <$> arbitrary <*> genTerm 2
-    , LocalDef   <$> arbitrary <*> genTerm 2 <*> genTerm 2
-    ]
--}
+instance
+  PrettyPrintableUnannotated (TermX α Variable) =>
+  PrettyPrintable (LocalDeclaration α Variable) where
+  prettyDoc d = runReader (prettyDocU d) def
 
 instance
   PrettyPrintableUnannotated (TermX α Variable) =>
@@ -58,7 +55,7 @@ instance
         , tDoc
         ]
 
-nameOf :: LocalDeclaration ξ ν -> ν
+nameOf :: LocalDeclaration α ν -> ν
 nameOf (LocalAssum v _)   = v
 nameOf (LocalDef   v _ _) = v
 

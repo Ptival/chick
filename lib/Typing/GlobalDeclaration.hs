@@ -11,9 +11,12 @@ module Typing.GlobalDeclaration
   , nameOf
   )where
 
+import Control.Monad.Reader
+import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import Inductive.Inductive
+import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
 import Term.Variable
@@ -54,6 +57,11 @@ instance
         , tDoc
         ]
     GlobalInd i -> prettyDocU i
+
+instance
+  PrettyPrintable (TermX α Variable) =>
+  PrettyPrintable (GlobalDeclaration α Variable) where
+  prettyDoc d = runReader (prettyDocU d) def
 
 nameOf :: GlobalDeclaration α ν -> ν
 nameOf (GlobalAssum v _) = v

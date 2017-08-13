@@ -12,6 +12,7 @@ import           Control.Monad.Fix
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
@@ -19,6 +20,7 @@ import qualified Diff.List as DL
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
 import           Inductive.Inductive
+import           PrettyPrinting.PrettyPrintable
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
@@ -39,6 +41,11 @@ data Diff α
 instance Show α => Show (Diff α) where
   show Same             = "Same"
   show (Modify _ _ _ _) = "Modify _ _ _ _"
+
+instance PrettyPrintable (Diff α) where
+  prettyDoc = \case
+    Same               -> text "Same"
+    Modify δ1 δ2 δ3 δ4 -> fillSep [ text "Modify", prettyDoc δ1 , prettyDoc δ2, prettyDoc δ3, prettyDoc δ4 ]
 
 patch ::
   ( Member (Exc String) r
