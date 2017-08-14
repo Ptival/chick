@@ -35,9 +35,12 @@ instance Show α => Show (Diff α) where
 instance PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same -> text "Same"
-    ModifyGlobalAssum δ1 δ2    -> fillSep [ text "ModifyGlobalAssum", prettyDoc δ1, prettyDoc δ2 ]
-    ModifyGlobalDef   δ1 δ2 δ3 -> fillSep [ text "ModifyGlobalAssum", prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
-    ModifyGlobalInd   δ1       -> fillSep [ text "ModifyGlobalAssum", prettyDoc δ1 ]
+    ModifyGlobalAssum δ1 δ2    -> fillSep [ text "ModifyGlobalAssum", go δ1, go δ2 ]
+    ModifyGlobalDef   δ1 δ2 δ3 -> fillSep [ text "ModifyGlobalAssum", go δ1, go δ2, go δ3 ]
+    ModifyGlobalInd   δ1       -> fillSep [ text "ModifyGlobalAssum", go δ1 ]
+    where
+      go :: PrettyPrintable a => a -> Doc ()
+      go = parens . prettyDoc
 
 patch ::
   ( Member (Exc String) r

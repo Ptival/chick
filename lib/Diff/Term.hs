@@ -48,17 +48,21 @@ data Diff α
 instance PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same              -> text "Same"
-    Replace t         -> fillSep [ text "Replace", prettyDoc t ]
-    CpyApp δ1 δ2      -> fillSep [ text "CpyApp",  prettyDoc δ1, prettyDoc δ2 ]
-    CpyLam δ1 δ2      -> fillSep [ text "CpyLam",  prettyDoc δ1, prettyDoc δ2 ]
-    CpyPi  δ1 δ2 δ3   -> fillSep [ text "CpyPi",   prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
-    CpyVar δ1         -> fillSep [ text "CpyVar",  prettyDoc δ1 ]
-    InsApp _ δ1 δ2    -> fillSep [ text "CpyApp",  prettyDoc δ1, prettyDoc δ2 ]
-    InsLam _ δ1 δ2    -> fillSep [ text "CpyLam",  prettyDoc δ1, prettyDoc δ2 ]
-    InsPi  _ δ1 δ2 δ3 -> fillSep [ text "CpyPi",   prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
-    PermutApps p δ1   -> fillSep [ text "CpyApp",  (text $ show p), prettyDoc δ1 ]
-    PermutLams p δ1   -> fillSep [ text "CpyLam",  (text $ show p), prettyDoc δ1 ]
-    PermutPis  p δ1   -> fillSep [ text "CpyPi",   (text $ show p), prettyDoc δ1 ]
+    Replace t         -> fillSep [ text "Replace",    go t ]
+    CpyApp δ1 δ2      -> fillSep [ text "CpyApp",     go δ1, go δ2 ]
+    CpyLam δ1 δ2      -> fillSep [ text "CpyLam",     go δ1, go δ2 ]
+    CpyPi  δ1 δ2 δ3   -> fillSep [ text "CpyPi",      go δ1, go δ2, go δ3 ]
+    CpyVar δ1         -> fillSep [ text "CpyVar",     go δ1 ]
+    InsApp _ δ1 δ2    -> fillSep [ text "InsApp",     go δ1, go δ2 ]
+    InsLam _ δ1 δ2    -> fillSep [ text "InsLam",     go δ1, go δ2 ]
+    InsPi  _ δ1 δ2 δ3 -> fillSep [ text "InsPi",      go δ1, go δ2, go δ3 ]
+    PermutApps p δ1   -> fillSep [ text "PermutApp",  (text $ show p), go δ1 ]
+    PermutLams p δ1   -> fillSep [ text "PermutLam",  (text $ show p), go δ1 ]
+    PermutPis  p δ1   -> fillSep [ text "PermutPi",   (text $ show p), go δ1 ]
+
+    where
+      go :: PrettyPrintable a => a -> Doc ()
+      go = parens . prettyDoc
 
 patch ::
   Member (Exc String) r =>

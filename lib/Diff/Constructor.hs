@@ -81,8 +81,6 @@ patch c@(Constructor ind n ps is) d = case d of
   processPs nPs (processIs nIs prefix δis) δps
 
   where
-    processIndPs n = \case
-      _ -> error "TODO: processIndPs"
 
     processIs ::
       Int ->
@@ -90,8 +88,8 @@ patch c@(Constructor ind n ps is) d = case d of
       DL.Diff (Raw.Term Variable) (DT.Diff Raw.Raw) ->
       DT.Diff Raw.Raw
     processIs n base = \case
-      DL.Insert t δ -> DT.InsApp () (DT.Replace t) $ processIs n base δ
-      DL.Same -> nCpyApps n DT.Same
+      DL.Insert t δ -> DT.InsApp () (processIs n base δ) (DT.Replace t)
+      DL.Same -> nCpyApps n base
       δ -> error $ printf "TODO: processIs %s" (show δ)
 
     processPs ::

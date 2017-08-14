@@ -24,6 +24,7 @@ import qualified Diff.Term as DT
 import           Diff.Utils
 import qualified Diff.Vernacular as DV
 import qualified Inductive.Inductive as I
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.State
 import qualified Repair.Term as RT
@@ -46,7 +47,7 @@ repair ::
   ) =>
   Vernacular Raw.Raw Variable -> DV.Diff Raw.Raw -> Eff r (DV.Diff Raw.Raw)
 repair v δv =
-  trace (printf "Repair.Vernacular/repair:\nv: %s\nδv: %s\n" (prettyStrU v) (show δv)) >>
+  trace (printf "Repair.Vernacular/repair:\nv: %s\nδv: %s\n" (prettyStrU v) (prettyStr δv)) >>
   let exc (reason :: String) = throwExc $ printf "Repair.Vernacular/repair: %s" reason in
   case (v, δv) of
 
@@ -62,6 +63,7 @@ repair v δv =
 
     (Inductive (I.Inductive _ _ps _is _), DV.ModifyInductive (DI.Modify δn δps δis δcs)) -> do
       -- TODO: actually propagate repairs into params and constructors
+      trace "NOT DOING ANYTHING..."
       return $ DV.ModifyInductive (DI.Modify δn δps δis δcs)
 
     _ -> exc $ printf "TODO: %s" (show δv)

@@ -30,8 +30,12 @@ data Diff α
 instance PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same                      -> text "Same"
-    ModifyDefinition δ1 δ2 δ3 -> fillSep [ text "ModifyDefinition", prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
-    ModifyInductive  δ1       -> fillSep [ text "ModifyInductive",  prettyDoc δ1 ]
+    ModifyDefinition δ1 δ2 δ3 -> fillSep [ text "ModifyDefinition", go δ1, go δ2, go δ3 ]
+    ModifyInductive  δ1       -> fillSep [ text "ModifyInductive",  go δ1 ]
+
+    where
+      go :: PrettyPrintable a => a -> Doc ()
+      go = parens . prettyDoc
 
 patch ::
   ( Member (Exc String) r

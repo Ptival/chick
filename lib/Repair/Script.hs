@@ -27,6 +27,7 @@ import qualified Diff.Term as DT
 import           Diff.Utils
 import qualified Diff.Vernacular as DV
 import qualified Inductive.Inductive as I
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.State
 import qualified Repair.Term as RT
@@ -59,6 +60,10 @@ withStateFromConstructors ::
   DL.Diff (I.Constructor Raw.Raw Variable) (DC.Diff Raw.Raw) ->
   Eff r a -> Eff r a
 withStateFromConstructors prefix l δl e =
+
+  trace "ADDING A CONSTRUCTOR" >>
+  traceState >>
+
   let todo (s :: String) = error $ printf "TODO: Repair.Script/wSFC %s" s in
   case (l, δl) of
 
@@ -69,8 +74,13 @@ withStateFromConstructors prefix l δl e =
     (c : cs, DL.Insert  _  _)   -> todo "Insert"
     (c : cs, DL.Keep    _)      -> todo "Keep"
 
-    (c@(I.Constructor _ _ cps cis) : cs, DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
+    (c@(I.Constructor _ consName cps cis) : cs, DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
+      trace (printf "DOES THIS MATCH? %s %s" (prettyStr consName) (show δconsName)) >>
+      trace (printf "δconstructorRawType") >>
+      trace (printf "δcps: %s" (prettyStr δcps)) >>
+      trace (printf "δcis: %s" (prettyStr δcis)) >>
       let δτc = DC.δconstructorRawType prefix (length cps) δcps (length cis) δcis in
+      trace (printf "YO DAWG CHECK ZIS OUT %s" (prettyStr δτc)) >>
       go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs e
 
     (c : cs, DL.Permute _  _)   -> todo "Permute"
@@ -130,19 +140,27 @@ repair ::
   , Member (State RepairState) r
   ) =>
   Script Raw.Raw Variable -> DS.Diff Raw.Raw -> Eff r (DS.Diff Raw.Raw)
-repair (Script s) δs =
-  trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU (Script s)) (show δs)) >>
+repair script@(Script s) δs =
+
+  trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU script) (prettyStr δs)) >>
+  traceState >>
+
   let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
   case (s, δs) of
 
     (v : s', DL.Modify δv δs') -> do
       δv' <- RV.repair v δv
+      -- trace $ printf "Repair.Script/repair > δv' %s" (prettyStr δv')
+      v' <- DV.patch v δv'
+      trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
+      trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
       withStateFromVernacular v δv' $
         DL.Modify δv' <$> repair (Script s') δs'
 
     -- even if the diff is same, we still might need to do some repair to account for changes in the
     -- global environment
     ([], DL.Same) -> return DL.Same
+
     (cmd : cmds, DL.Same) ->
       case cmd of
 

@@ -243,17 +243,18 @@ repairScriptBenchmarks =
 
 repairScriptBenchmark :: IO ()
 repairScriptBenchmark = do
+  putStrLn $ replicate 100 '\n'
   for_ repairScriptBenchmarks $ \ (RepairScriptBenchmark s δs) -> do
     putStrLn $ replicate 80 '='
-    putStrLn $ printf "Before:\n%s" (prettyStrU s)
+    putStrLn $ printf "\n\n*** Before: ***\n\n%s" (prettyStrU s)
     result <- runTrace . runError $ DS.patch s δs
     s' <- case result of
       Left  (e :: String) -> error "..."
       Right s'            -> return s'
-    putStrLn $ printf "Modified:\n%s" (prettyStrU s')
-    putStrLn $ printf "Attempting to patch script"
+    putStrLn $ printf "\n\n*** Modified: ***\n\n%s" (prettyStrU s')
+    putStrLn $ printf "\n\n*** Attempting to patch script ***\n\n"
     -- skipTrace (repairScript s δs) & \case
     runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' ->
-        putStrLn $ printf "Patching succeeded:\n%s" (prettyStrU s'')
+        putStrLn $ printf "\n\n*** Patching succeeded: ***\n\n%s" (prettyStrU s'')

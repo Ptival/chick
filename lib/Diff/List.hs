@@ -28,22 +28,26 @@ data Diff t δt
   | Same
 
 instance (Show t, Show δt) => Show (Diff t δt) where
-  show (Insert t  δ) = printf "Insert %s\n%s"  (show t)  (show δ)
-  show (Keep      δ) = printf "Keep\n%s"                 (show δ)
-  show (Modify δt δ) = printf "Modify %s\n%s"  (show δt) (show δ)
-  show (Permute p δ) = printf "Permute %s\n%s" (show p)  (show δ)
-  show (Remove    δ) = printf "Remove\n%s"               (show δ)
-  show (Replace l)   = printf "Replace %s"     (show l)
-  show Same          = "Same"
+  show = \case
+    Insert t  δ -> printf "Insert %s\n%s"  (show t)  (show δ)
+    Keep      δ -> printf "Keep\n%s"                 (show δ)
+    Modify δt δ -> printf "Modify %s\n%s"  (show δt) (show δ)
+    Permute p δ -> printf "Permute %s\n%s" (show p)  (show δ)
+    Remove    δ -> printf "Remove\n%s"               (show δ)
+    Replace l   -> printf "Replace %s"     (show l)
+    Same        -> "Same"
 
 instance (PrettyPrintable t, PrettyPrintable δt) => PrettyPrintable (Diff t δt) where
-  prettyDoc (Insert t  δ) = fillSep [ text "Insert",  prettyDoc t,   prettyDoc δ ]
-  prettyDoc (Keep      δ) = fillSep [ text "Keep",                   prettyDoc δ ]
-  prettyDoc (Modify δt δ) = fillSep [ text "Modify",  prettyDoc δt,  prettyDoc δ ]
-  prettyDoc (Permute p δ) = fillSep [ text "Permute", text (show p), prettyDoc δ ]
-  prettyDoc (Remove    δ) = fillSep [ text "Remove",                 prettyDoc δ ]
-  prettyDoc (Replace l)   = fillSep [ text "Replace", encloseSep lbracket rbracket comma (map prettyDoc l) ]
-  prettyDoc Same          = text "Same"
+  prettyDoc = \case
+    Insert t  δ -> fillSep [ text "Insert",  go t,          go δ ]
+    Keep      δ -> fillSep [ text "Keep",                   go δ ]
+    Modify δt δ -> fillSep [ text "Modify",  go δt,         go δ ]
+    Permute p δ -> fillSep [ text "Permute", text (show p), go δ ]
+    Remove    δ -> fillSep [ text "Remove",                 go δ ]
+    Replace l   -> fillSep [ text "Replace", encloseSep lbracket rbracket comma (map prettyDoc l) ]
+    Same        -> text "Same"
+    where
+      go x = fillSep [ lparen, prettyDoc x, rparen ]
 
 instance Bifunctor Diff where
   bimap fa fb = \case
@@ -67,14 +71,16 @@ patch = patch' prettyStr prettyStr -- (const "?") (const "?")
 patch' ::
   ( Member (Exc String) r
   , Member Trace r
+  , PrettyPrintable a
+  , PrettyPrintable δa
   ) =>
   (a -> String) ->
   (δa -> String) ->
   (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
 patch' showElem showDiff patchElem la δa =
   trace (printf "Diff.List/patch(l: %s, δ: %s)"
-          (show $ map showElem la)
-          (show $ bimap showElem showDiff δa)
+          (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
+          (prettyStr δa)
         ) >>
   go la δa
   where

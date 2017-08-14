@@ -45,7 +45,11 @@ instance Show α => Show (Diff α) where
 instance PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same               -> text "Same"
-    Modify δ1 δ2 δ3 δ4 -> fillSep [ text "Modify", prettyDoc δ1 , prettyDoc δ2, prettyDoc δ3, prettyDoc δ4 ]
+    Modify δ1 δ2 δ3 δ4 -> fillSep [ text "Modify", go δ1 , go δ2, go δ3, go δ4 ]
+
+    where
+      go :: PrettyPrintable a => a -> Doc ()
+      go = parens . prettyDoc
 
 patch ::
   ( Member (Exc String) r
