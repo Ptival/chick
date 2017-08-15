@@ -128,7 +128,7 @@ repairTermBenchmark :: IO ()
 repairTermBenchmark = do
   for_ repairTermBenchmarks $ \ (RepairTermBenchmark fromTerm fromType toType diff expected) -> do
     putStrLn $ printf "Attempting to patch `%s` assumed to have type `%s` to type `%s`" (prettyStrU fromTerm) (prettyStrU fromType) (prettyStrU toType)
-    let diffed = run . runError $ DT.patch fromType diff
+    diffed <- runTrace . runError $ DT.patch fromType diff
     if diffed == (Right toType :: Either String (Raw.Type Variable))
       then
       runTrace (patchProof fromTerm fromType diff) >>= \case
@@ -160,7 +160,7 @@ repairScript s δs = runAll repairThenPatch
       . flip runState (RepairState (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same :: RepairState)
     repairThenPatch = do
       δs' <- RS.repair s δs
-      trace $ show δs'
+      trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
       DS.patch s δs'
 
 data RepairScriptBenchmark = RepairScriptBenchmark

@@ -8,6 +8,7 @@ module Diff.LocalDeclaration
 
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
@@ -31,7 +32,9 @@ instance PrettyPrintable (Diff α) where
 
 patch ::
   ( Member (Exc String) r
-  ) => LocalDeclaration α Variable -> Diff α -> Eff r (LocalDeclaration α Variable)
+  , Member Trace r
+  ) =>
+  LocalDeclaration α Variable -> Diff α -> Eff r (LocalDeclaration α Variable)
 patch ld Same = return ld
 patch ld (Modify dv dτ) =
   case ld of

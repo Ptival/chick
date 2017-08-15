@@ -66,7 +66,7 @@ repairArgs = go DT.Same
 
       case δτ of
 
-        DT.Same -> return acc
+        DT.CpyApp δ1 _ -> go acc τ δ1
 
         --        | TYPE             | TERM
         -- BEFORE | (x : X) → Ys → R | acc x ys
@@ -74,6 +74,10 @@ repairArgs = go DT.Same
         DT.CpyPi _ _ d2 -> do
           (_, _, _, τ2) <- DT.extractPi τ
           go (DT.CpyApp acc DT.Same) τ2 d2
+
+        DT.CpyVar _ -> return acc
+
+        DT.InsApp _ δ1 _ -> go acc τ δ1 -- to be confirmed
 
         DT.InsPi _ d1 _ d2 -> do
           τ2 <- DT.patch τ d2
@@ -86,6 +90,8 @@ repairArgs = go DT.Same
           DT.PermutApps p <$> go acc τ δτ'
         -- TODO: this is wrong because we need the permutations to happen from within the
         -- innermost App rather than the outermost ones
+
+        DT.Same -> return acc
 
         _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)
 

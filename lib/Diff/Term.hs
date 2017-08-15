@@ -15,9 +15,10 @@ module Diff.Term
   , patch
   ) where
 
-import           Control.Lens
+import           Control.Lens (_2, over)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 import           Text.Printf
 import           Text.PrettyPrint.Annotated.WL
 
@@ -65,9 +66,12 @@ instance PrettyPrintable (Diff α) where
       go = parens . prettyDoc
 
 patch ::
-  Member (Exc String) r =>
+  ( Member (Exc String) r
+  , Member Trace r
+  ) =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
 patch t d =
+  trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
   case (t, d) of
 
     (_, Same) -> return t

@@ -71,8 +71,8 @@ withStateFromConstructors prefix l δl e =
 
     ([], _) -> todo "Empty list, other cases"
 
-    (c : cs, DL.Insert  _  _)   -> todo "Insert"
-    (c : cs, DL.Keep    _)      -> todo "Keep"
+    (_c : _cs, DL.Insert  _  _)   -> todo "Insert"
+    (_c : _cs, DL.Keep    _)      -> todo "Keep"
 
     (c@(I.Constructor _ consName cps cis) : cs, DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
       trace (printf "DOES THIS MATCH? %s %s" (prettyStr consName) (show δconsName)) >>
@@ -81,15 +81,19 @@ withStateFromConstructors prefix l δl e =
       trace (printf "δcis: %s" (prettyStr δcis)) >>
       let δτc = DC.δconstructorRawType prefix (length cps) δcps (length cis) δcis in
       trace (printf "YO DAWG CHECK ZIS OUT %s" (prettyStr δτc)) >>
-      go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs e
+      go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs
 
-    (c : cs, DL.Permute _  _)   -> todo "Permute"
-    (c : cs, DL.Remove  _)      -> todo "Remove"
-    (c : cs, DL.Replace _)      -> todo "Replace"
-    (c : cs, DL.Same)           -> todo "Same"
-  where
-    go c δge cs δcs e =
-      withState (over environment (GE.addConstructor c) >>> over δenvironment δge) $ withStateFromConstructors prefix cs δcs e
+    (_c : _cs, DL.Modify _ _)     -> todo "Modify"
+    (_c : _cs, DL.Permute _  _)   -> todo "Permute"
+    (_c : _cs, DL.Remove  _)      -> todo "Remove"
+    (_c : _cs, DL.Replace _)      -> todo "Replace"
+    (_c : _cs, DL.Same)           -> todo "Same"
+
+    where
+    go c δge cs δcs =
+      withState (over environment (GE.addConstructor c) >>> over δenvironment δge)
+      $ withStateFromConstructors prefix cs δcs
+      $ e
 
 -- | `withStateFromVernacular v δv` takes a vernacular command `v` and its (assumed repaired) diff `δv`
 -- | and modifies the global environment to accound for the effect in the vernacular command before and
