@@ -43,41 +43,41 @@ findGlobalDeclarationDiff ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
-  Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
+  Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Eff r (DGD.Diff Raw.Raw)
 findGlobalDeclarationDiff v e δe =
-  -- trace (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff:\nSearching %s in %s" (prettyStr v) (prettyStrU e)) >>
-  -- trace (printf "δe: %s" (show δe)) >>
+  trace (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff:\nSearching %s in %s" (prettyStr v) (prettyStrU e)) >>
+  trace (printf "δe: %s" (show δe)) >>
   let exc (reason :: String) = throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason in
   case δe of
 
     DL.Same ->
       case lookupRawType v e of
         Nothing -> exc $ printf "Not found: %s" (show v)
-        Just _  -> return DT.Same
+        Just _  -> return DGD.Same
 
-    DL.Insert ld δ ->
-      if nameOf ld == v
-      then exc "TODO: this might be DLD.Modify, but could be we want to skip..."
+    DL.Insert gd δ ->
+      if nameOf gd == v
+      then exc "TODO: this might be DGE.Modify, but could be we want to skip..."
       else findGlobalDeclarationDiff v e δ
 
     DL.Modify DGD.Same δ -> findGlobalDeclarationDiff v e (DL.Keep δ)
 
-    DL.Modify (DGD.ModifyGlobalAssum δv δτ) δ ->
+    DL.Modify dgd@(DGD.ModifyGlobalAssum δv δτ) δ ->
       case unGlobalEnvironment e of
         []    -> exc "DL.Modify but empty environment"
         h : e' -> do
           -- v' <- DA.patch (nameOf h) δv
           if nameOf h == v --v' == v
-          then return δτ
+          then return dgd
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
-    DL.Modify (DGD.ModifyGlobalDef δv δτ _) δ ->
+    DL.Modify dgd@(DGD.ModifyGlobalDef δv δτ _) δ ->
       case unGlobalEnvironment e of
         []    -> exc "DL.Modify but empty environment"
         h : e' -> do
           -- v' <- DA.patch (nameOf h) δv
           if nameOf h == v --v' == v
-          then return δτ
+          then return dgd
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
     DL.Modify (DGD.ModifyGlobalInd _δind) _δ -> exc "TODO: patch GlobalInd"
@@ -89,7 +89,7 @@ findGlobalDeclarationDiff v e δe =
         []    -> exc "DL.Keep but empty context"
         h : e' -> do
           if nameOf h == v
-          then return DT.Same
+          then return DGD.Same
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
     DL.Remove _ -> exc "TODO: Remove"

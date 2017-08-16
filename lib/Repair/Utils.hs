@@ -10,8 +10,10 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
+import qualified Diff.GlobalDeclaration as DGD
 import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.LocalContext as DLC
+import qualified Diff.LocalDeclaration as DLD
 import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
@@ -38,15 +40,15 @@ findDeclarationDiff ::
   , Member Trace r
   , Member (State RepairState) r
   ) =>
-  Variable -> Eff r (DT.Diff Raw.Raw)
+  Variable -> Eff r (Either (DLD.Diff Raw.Raw) (DGD.Diff Raw.Raw))
 findDeclarationDiff v = do
   let exc (reason :: String) = throwExc $ printf "Repair.Utils/findDeclarationDiff: %s" reason
   RepairState γ δγ e δe <- get
   result <-
-    DLC.findLocalDeclarationDiff  v γ δγ
+    (Left <$> DLC.findLocalDeclarationDiff  v γ δγ)
     `catchError`
     (\ (localError :: String) ->
-        DGE.findGlobalDeclarationDiff v e δe
+        (Right <$> DGE.findGlobalDeclarationDiff v e δe)
         `catchError`
         (\ (globalError :: String) -> exc $ printf
           "Could not find %s in either local context or global environment:\n  > %s\n  > %s"

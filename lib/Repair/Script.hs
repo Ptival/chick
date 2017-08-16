@@ -8,7 +8,7 @@ module Repair.Script
   ) where
 
 import           Control.Arrow
-import           Control.Lens
+import           Control.Lens hiding (preview)
 -- import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
@@ -74,13 +74,8 @@ withStateFromConstructors prefix l δl e =
     (_c : _cs, DL.Insert  _  _)   -> todo "Insert"
     (_c : _cs, DL.Keep    _)      -> todo "Keep"
 
-    (c@(I.Constructor _ consName cps cis) : cs, DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
-      trace (printf "DOES THIS MATCH? %s %s" (prettyStr consName) (show δconsName)) >>
-      trace (printf "δconstructorRawType") >>
-      trace (printf "δcps: %s" (prettyStr δcps)) >>
-      trace (printf "δcis: %s" (prettyStr δcis)) >>
+    (c@(I.Constructor _ _consName cps cis) : cs, DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
       let δτc = DC.δconstructorRawType prefix (length cps) δcps (length cis) δcis in
-      trace (printf "YO DAWG CHECK ZIS OUT %s" (prettyStr δτc)) >>
       go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs
 
     (_c : _cs, DL.Modify _ _)     -> todo "Modify"
@@ -91,9 +86,10 @@ withStateFromConstructors prefix l δl e =
 
     where
     go c δge cs δcs =
-      withState (over environment (GE.addConstructor c) >>> over δenvironment δge)
-      $ withStateFromConstructors prefix cs δcs
-      $ e
+      withState (over environment (GE.addConstructor c) >>> over δenvironment δge) $ do
+      sanityCheck
+      withStateFromConstructors prefix cs δcs $ do
+        e
 
 -- | `withStateFromVernacular v δv` takes a vernacular command `v` and its (assumed repaired) diff `δv`
 -- | and modifies the global environment to accound for the effect in the vernacular command before and
@@ -111,7 +107,9 @@ withStateFromVernacular v δv e =
       withState
       (over environment  (GE.addGlobalDef (Binder (Just n), τ, t))   >>>
        over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv))
-      $ e
+      $ do
+      sanityCheck
+      e
 
     (Inductive ind@(I.Inductive indName ps is cs), DV.ModifyInductive (DI.Modify δindName δps δis δcs)) -> do
       let τind = I.inductiveRawType ind
@@ -121,7 +119,9 @@ withStateFromVernacular v δv e =
        (withState
         (over environment  (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
          over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
-        ) $ withStateFromConstructors prefix cs δcs e)
+        ) $ do
+           sanityCheck
+           withStateFromConstructors prefix cs δcs e)
         -- let addConstructor c@(I.Constructor _ consName _ _) =
         --       over environment  (GE.addGlobalAssum (Binder (Just consName), I.constructorRawType c)) >>>
         --       over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δconsName δτcons))
@@ -147,6 +147,7 @@ repair ::
 repair script@(Script s) δs =
 
   trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU script) (prettyStr δs)) >>
+  sanityCheck >>
   traceState >>
 
   let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
@@ -169,13 +170,22 @@ repair script@(Script s) δs =
       case cmd of
 
         -- eventually, might want to update the name in case of collision?
-        Definition n τ t -> do
+        def@(Definition n τ t) -> do
+          trace $ printf "*** Attempting to repair %s" (prettyStr def)
           δτ <- RT.repair τ Type DT.Same
+          trace $ printf "*** Repaired type, δτ: %s" (prettyStr δτ)
+          τ' <- DT.patch τ δτ
+          trace $ printf "*** Repaired type, τ': %s" (preview τ')
           δt <- RT.repair t τ    δτ
+          trace $ printf "*** Repaired term, δt: %s" (prettyStr δt)
+          t' <- DT.patch t δt
+          trace $ printf "*** Repaired term, t': %s" (preview t')
           withState
             (over environment  (GE.addGlobalDef (Binder (Just n), τ, t)) >>>
              over δenvironment (DL.Modify (DGD.ModifyGlobalDef DA.Same δτ δt))
             ) $ do
+            trace "Repair.Script:180"
+            sanityCheck
             DL.Modify (DV.ModifyDefinition DA.Same δτ δt) <$> repair (Script cmds) DL.Same
 
         Inductive _ind -> do

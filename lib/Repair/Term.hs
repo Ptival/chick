@@ -49,7 +49,10 @@ repairArgs ::
   , Member Trace r
   ) =>
   Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
-repairArgs = go DT.Same
+repairArgs τ0 δτ0 =
+  trace "Repair.Term/repairArgs with:" >>
+  trace (prettyStr δτ0) >>
+  go DT.Same τ0 δτ0
   where
 
     exc (reason :: String) = throwExc $ printf "Repair.Term/repairArgs: %s" reason
@@ -108,8 +111,8 @@ repair ::
   ) =>
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
 repair t τ δτ =
-  RS.traceState >>
   trace (printf "Repair.Term/repair(t: %s, τ: %s, δτ: %s)" (prettyStrU t) (prettyStrU τ) (show δτ)) >>
+  RS.traceState >>
   let exc (reason :: String) = throwExc $ printf "Repair.Term/repair: %s" reason in
 
   -- (do

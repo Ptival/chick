@@ -7,6 +7,7 @@ module Repair.State
   , δcontext
   , environment
   , δenvironment
+  , sanityCheck
   , traceState
   ) where
 
@@ -20,7 +21,7 @@ import           Text.Printf
 import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.LocalContext as DLC
 import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.Term
+-- import           PrettyPrinting.Term
 import qualified Term.Raw as Raw
 import           Term.Variable
 import           Typing.GlobalEnvironment
@@ -43,9 +44,25 @@ traceState ::
   Eff r ()
 traceState = do
   RepairState γ δγ e δe <- get
-  trace $ printf "RepairState:\n> γ: %s\n> δγ: %s" (prettyStr γ) (show δγ)
+  trace $ printf "RepairState:"
+  trace $ printf "> γ: %s" (prettyStr γ)
+  --trace $ printf "> δγ: %s" (prettyStr δγ)
   γ' <- DLC.patch γ δγ
   trace $ printf "> γ': %s" (prettyStr γ')
-  trace $ printf "> e: %s\n> δe: %s" (prettyStr e) (prettyStr δe)
+  trace $ printf "> e: %s" (prettyStr e)
+  --trace $ printf "> δe: %s" (prettyStr δe)
   e' <- DGE.patch e δe
-  trace $ printf "> e': %s\n" (prettyStr e')
+  trace $ printf "> e': %s" (prettyStr e')
+
+sanityCheck ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
+  ) =>
+  Eff r ()
+sanityCheck = do
+  trace "*** SANITY CHECK ***"
+  RepairState γ δγ e δe <- get
+  _ <- DLC.patch γ δγ
+  _ <- DGE.patch e δe
+  return ()

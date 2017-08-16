@@ -40,7 +40,7 @@ findLocalDeclarationDiff ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
-  Variable -> LocalContext α Variable -> Diff α -> Eff r (DT.Diff α)
+  Variable -> LocalContext α Variable -> Diff α -> Eff r (DLD.Diff α)
 findLocalDeclarationDiff v γ δγ =
   trace (printf "Diff.LocalContext/findLocalDeclarationDiff: Searching %s in %s" (prettyStr v) (prettyStrU γ)) >>
   let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason in
@@ -49,7 +49,7 @@ findLocalDeclarationDiff v γ δγ =
     DL.Same ->
       case lookupType v γ of
         Nothing -> exc $ printf "Not found: %s" (show v)
-        Just _  -> return DT.Same
+        Just _  -> return DLD.Same
 
     DL.Insert ld δ ->
       if nameOf ld == v
@@ -58,13 +58,13 @@ findLocalDeclarationDiff v γ δγ =
 
     DL.Modify DLD.Same δ -> findLocalDeclarationDiff v γ (DL.Keep δ)
 
-    DL.Modify (DLD.Modify δv δτ) δ ->
+    DL.Modify dld@(DLD.Modify δv δτ) δ ->
       case unLocalContext γ of
         []    -> exc "DL.Change but empty context"
         h : γ' -> do
           v' <- DA.patch (nameOf h) δv
           if v' == v
-          then return δτ
+          then return dld
           else findLocalDeclarationDiff v (LocalContext γ') δ
 
     DL.Permute _ _ -> exc "TODO: Permute"
@@ -74,7 +74,7 @@ findLocalDeclarationDiff v γ δγ =
         []    -> exc "DL.Keep but empty context"
         h : γ' -> do
           if nameOf h == v
-          then return DT.Same
+          then return DLD.Same
           else findLocalDeclarationDiff v (LocalContext γ') δ
 
     DL.Remove _ -> exc "TODO: Remove"

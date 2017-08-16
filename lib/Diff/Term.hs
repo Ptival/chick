@@ -71,7 +71,7 @@ patch ::
   ) =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
 patch t d =
-  trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
+  -- trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
   case (t, d) of
 
     (_, Same) -> return t
