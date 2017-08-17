@@ -7,7 +7,7 @@
 module Repair.Term where
 
 import           Control.Arrow
-import           Control.Lens
+import           Control.Lens hiding (preview)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
@@ -15,6 +15,7 @@ import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
+import qualified Diff.GlobalDeclaration as DGD
 -- import qualified Diff.LocalContext as DLC
 import qualified Diff.LocalDeclaration as DLD
 import qualified Diff.List as DL
@@ -41,18 +42,19 @@ import           Utils
 -- |                 ^^^^                                  ^^^^
 -- |                         ^^^^                    ^^^^
 
--- | `repairArgs τ δτ`
+-- | `repairArgs τ δτ δfun`
 -- | `τ`  is the type of the remaining Pi-telescope
 -- | `δτ` is the diff for `τ` to become the new telescope
+-- | `δfun` is the diff to apply to the actual function, which is the base of this "fold"
 repairArgs ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
-  Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
-repairArgs τ0 δτ0 =
+  Raw.Type Variable -> DT.Diff Raw.Raw -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
+repairArgs τ0 δτ0 δfun =
   trace "Repair.Term/repairArgs with:" >>
   trace (prettyStr δτ0) >>
-  go DT.Same τ0 δτ0
+  go δfun τ0 δτ0
   where
 
     exc (reason :: String) = throwExc $ printf "Repair.Term/repairArgs: %s" reason
@@ -141,8 +143,17 @@ repair t τ δτ =
             -- let δγ = view RS.δcontext s
             -- γ' <- DLC.patch γ δγ
             τv <- lookupType v
-            δτv <- findDeclarationDiff v
-            repairArgs τv δτv
+            (δv, δτv) <- findDeclarationDiff v >>= \case
+              Left  dld ->
+                case dld of
+                  DLD.Same          -> return (DA.Same, DT.Same)
+                  DLD.Modify δv δτv -> return (δv, δτv)
+              Right dgd -> case dgd of
+                  DGD.Same                     -> return (DA.Same, DT.Same)
+                  DGD.ModifyGlobalAssum δv δτv -> return (δv, δτv)
+                  DGD.ModifyGlobalDef   _ _ _  -> error "TODO if this happens"
+                  DGD.ModifyGlobalInd   _      -> error "TODO if this happens"
+            repairArgs τv δτv (DT.CpyVar δv)
 
           _ -> exc "repair, Same, App, Not Var"
 
@@ -167,17 +178,19 @@ repair t τ δτ =
 
   DT.Replace τ' -> return $ DT.Replace $ Annot () (Hole ()) τ'
 
-  DT.CpyApp δ1 δ2     -> do
-    δ1' <- repair t τ δ1
-    δ2' <- repair t τ δ1
-    return $ DT.CpyApp δ1' δ2'
+  DT.CpyApp δ1 δ2 -> error "TODO: CpyApp"
 
   DT.CpyLam _ _     -> exc "repair: CpyLam"
 
-  DT.InsApp a δ1 δ2 -> do
-    δ1' <- repair t τ δ1
-    δ2' <- repair t τ δ2
-    return $ DT.InsApp a δ1' δ2'
+  DT.CpyVar DA.Same -> exc "repair: CpyVar Same"
+
+  DT.CpyVar (DA.Replace δv) -> do
+    trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
+    return $ DT.Replace "TODO" -- TODO: confirm this is always good
+
+  DT.InsApp _ _ _ ->
+    -- not sure what to do here
+    repair t τ DT.Same
 
   DT.InsLam _ _ _   -> exc "repair: InsLam"
   DT.PermutLams _ _ -> exc "repair: PermutLams"

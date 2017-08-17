@@ -46,7 +46,7 @@ findGlobalDeclarationDiff ::
   Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Eff r (DGD.Diff Raw.Raw)
 findGlobalDeclarationDiff v e δe =
   trace (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff:\nSearching %s in %s" (prettyStr v) (prettyStrU e)) >>
-  trace (printf "δe: %s" (show δe)) >>
+  trace (printf "δe: %s" (prettyStr δe)) >>
   let exc (reason :: String) = throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason in
   case δe of
 
