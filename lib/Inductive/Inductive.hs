@@ -162,7 +162,7 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
     isDoc <- mapM prettyBindingDocU is
     return $ vsep $
       [ fillSep $
-        [ text "inductive"
+        [ text "Inductive"
         , prettyDoc n
         ]
         ++
@@ -175,9 +175,11 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
         ++
         [ text ":"
         , arrows (isDoc ++ [text "Type"])
-        , text "where"
+        , text ":="
         ]
-      ] ++ (map (indent 2) csDoc)
+      ]
+      ++ (map (\ x -> fillSep [ text "|", x]) csDoc)
+      ++ [ text "." ]
 
 instance PrettyPrintableUnannotated (Constructor α Variable) where
   prettyDocU (Constructor (Inductive indName indParams _ _) cName cParams cIndices) = do

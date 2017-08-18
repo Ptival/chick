@@ -37,6 +37,7 @@ instance PrettyPrintableUnannotated (Vernacular α Variable) where
         , τDoc
         , text ":="
         , tDoc
+        , text "."
         ]
 
     Inductive ind -> do

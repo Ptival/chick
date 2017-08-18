@@ -6,7 +6,7 @@
 
 module Repair.Benchmark where
 
--- import           Control.Lens ((&))
+import           Control.Lens ((&))
 import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
@@ -245,16 +245,16 @@ repairScriptBenchmark :: IO ()
 repairScriptBenchmark = do
   putStrLn $ replicate 100 '\n'
   for_ repairScriptBenchmarks $ \ (RepairScriptBenchmark s δs) -> do
-    putStrLn $ replicate 80 '='
-    putStrLn $ printf "\n\n*** Before: ***\n\n%s" (prettyStrU s)
+    putStrLn $ "(*" ++ replicate 70 '*' ++ "*)"
+    putStrLn $ printf "\n(*** Before: ***)\n%s" (prettyStrU s)
     result <- runTrace . runError $ DS.patch s δs
     s' <- case result of
       Left  (e :: String) -> error "..."
       Right s'            -> return s'
-    putStrLn $ printf "\n\n*** Modified: ***\n\n%s" (prettyStrU s')
-    putStrLn $ printf "\n\n*** Attempting to patch script ***\n\n"
-    -- skipTrace (repairScript s δs) & \case
-    runTrace (repairScript s δs) >>= \case
+    putStrLn $ printf "\n(*** Modified: ***)\n%s" (prettyStrU s')
+    putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
+    skipTrace (repairScript s δs) & \case
+    -- runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' ->
-        putStrLn $ printf "\n\n*** Patching succeeded: ***\n\n%s" (prettyStrU s'')
+        putStrLn $ printf "\n(*** Patching succeeded: ***)\n%s" (prettyStrU s'')

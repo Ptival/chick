@@ -104,6 +104,64 @@ repairArgs τ0 δτ0 δfun =
       DT.Replace τ' -> DT.Replace (Annot () (Hole ()) τ')
       _             -> DT.Replace (Hole ())
 
+-- | `genericRepair t τ` attempts to repair `t` without more information about how its type changed
+genericRepair ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RS.RepairState) r
+  ) =>
+  Raw.Term Variable -> Raw.Type Variable -> Eff r (DT.Diff Raw.Raw)
+genericRepair t τ =
+
+  let exc (reason :: String) = throwExc $ printf "Repair.Term/genericRepair: %s" reason in
+
+  case t of
+
+    -- f x y z   is   (((f x) y) z)
+    App _ _ _ -> do
+      -- (f, [x, y, z])
+      (fun, _args)   <- DT.extractApps t
+      case fun of
+
+        Var _ v -> do
+          -- s <- get
+          -- let γ  = view RS.context s
+          -- let δγ = view RS.δcontext s
+          -- γ' <- DLC.patch γ δγ
+          τv <- lookupType v
+          (δv, δτv) <- findDeclarationDiff v >>= \case
+            Left  dld -> case dld of
+              DLD.Same          -> return (DA.Same, DT.Same)
+              DLD.Modify δv δτv -> return (δv, δτv)
+            Right dgd -> case dgd of
+              DGD.Same                     -> return (DA.Same, DT.Same)
+              DGD.ModifyGlobalAssum δv δτv -> return (δv, δτv)
+              DGD.ModifyGlobalDef   _ _ _  -> error "TODO if this happens"
+              DGD.ModifyGlobalInd   _      -> error "TODO if this happens"
+          repairArgs τv δτv (DT.CpyVar δv)
+
+        _ -> exc "repair, Same, App, Not Var"
+
+    -- even though the diff is same, something inside might need updating
+    Lam _ bt -> do
+      let (b, tlam) = unscopeTerm bt
+      (_, τ1, _, τ2) <- DT.extractPi τ
+      withState
+        (   over RS.context  (LC.addLocalAssum (b, τ1))
+        >>> over RS.δcontext (DL.Keep)
+        ) $ do
+        DT.CpyLam DA.Same <$> repair tlam τ2 DT.Same
+
+    _ -> do
+      -- s :: RS.State <- get
+      -- trace $ printf "SAME:        %s" (prettyStrU t)
+      -- let γ = view RS.context s
+      -- trace $ printf "CONTEXT BEF:\n%s" (prettyStrU γ)
+      -- γ' <- DLC.patch γ (view RS.contextDiff s)
+      -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
+      return DT.Same
+
+
 -- | `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff describing
 -- | how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt` has type `patch τ δτ`.
 repair ::
@@ -129,52 +187,7 @@ repair t τ δτ =
 
   -- even though the type has not changed, the term might still need updating to deal with the
   -- changes in the context
-  DT.Same ->
-    case t of
-      -- f x y z   is   (((f x) y) z)
-      App _ _ _ -> do
-        -- (f, [x, y, z])
-        (fun, _args)   <- DT.extractApps t
-        case fun of
-
-          Var _ v -> do
-            -- s <- get
-            -- let γ  = view RS.context s
-            -- let δγ = view RS.δcontext s
-            -- γ' <- DLC.patch γ δγ
-            τv <- lookupType v
-            (δv, δτv) <- findDeclarationDiff v >>= \case
-              Left  dld ->
-                case dld of
-                  DLD.Same          -> return (DA.Same, DT.Same)
-                  DLD.Modify δv δτv -> return (δv, δτv)
-              Right dgd -> case dgd of
-                  DGD.Same                     -> return (DA.Same, DT.Same)
-                  DGD.ModifyGlobalAssum δv δτv -> return (δv, δτv)
-                  DGD.ModifyGlobalDef   _ _ _  -> error "TODO if this happens"
-                  DGD.ModifyGlobalInd   _      -> error "TODO if this happens"
-            repairArgs τv δτv (DT.CpyVar δv)
-
-          _ -> exc "repair, Same, App, Not Var"
-
-      -- even though the diff is same, something inside might need updating
-      Lam _ bt -> do
-        let (b, tlam) = unscopeTerm bt
-        (_, τ1, _, τ2) <- DT.extractPi τ
-        withState
-          (   over RS.context  (LC.addLocalAssum (b, τ1))
-          >>> over RS.δcontext (DL.Keep)
-          ) $ do
-          DT.CpyLam DA.Same <$> repair tlam τ2 DT.Same
-
-      _ -> do
-        -- s :: RS.State <- get
-        -- trace $ printf "SAME:        %s" (prettyStrU t)
-        -- let γ = view RS.context s
-        -- trace $ printf "CONTEXT BEF:\n%s" (prettyStrU γ)
-        -- γ' <- DLC.patch γ (view RS.contextDiff s)
-        -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
-        return DT.Same
+  DT.Same -> genericRepair t τ
 
   DT.Replace τ' -> return $ DT.Replace $ Annot () (Hole ()) τ'
 
@@ -188,9 +201,7 @@ repair t τ δτ =
     trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
     return $ DT.Replace "TODO" -- TODO: confirm this is always good
 
-  DT.InsApp _ _ _ ->
-    -- not sure what to do here
-    repair t τ DT.Same
+  DT.InsApp _ _ _ -> genericRepair t τ -- not sure what to do here
 
   DT.InsLam _ _ _   -> exc "repair: InsLam"
   DT.PermutLams _ _ -> exc "repair: PermutLams"
