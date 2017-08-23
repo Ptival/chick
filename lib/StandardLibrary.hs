@@ -172,9 +172,9 @@ indVec =
   ]
 
 nilVec, consVec :: Constructor Raw.Raw Variable
-nilVec = Constructor indVec "nil"  [] [Var (Just()) "zero"]
+nilVec = Constructor indVec "vnil"  [] [Var (Just()) "zero"]
 consVec =
-  Constructor indVec "cons"
+  Constructor indVec "vcons"
   [ ("n", "ℕ")
   , ("x", "A")
   , ("xs", App () (App () "Vec" "A") "n")

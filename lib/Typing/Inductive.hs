@@ -121,16 +121,16 @@ checkInductive (Inductive n ps is cs) = mfix $ \ ind' -> do
 
   return (Inductive n ps' is' cs')
 
-addInductive ::
-  Inductive Raw Variable -> GlobalEnvironment (Checked Variable) Variable ->
-  Either String (GlobalEnvironment (Checked Variable) Variable)
-addInductive i ge =
-  case runStateT (checkInductive i) (toLocalContext ge) of
-  Left  l       -> Left l
-  Right (i', _) -> Right $ addGlobalInd i' ge
-
--- add inductives from left to right
-addInductives ::
-  [Inductive Raw Variable] -> GlobalEnvironment (Checked Variable) Variable ->
-  Either String (GlobalEnvironment (Checked Variable) Variable)
-addInductives = flip $ foldM (flip addInductive)
+-- addInductive ::
+--   Inductive Raw Variable -> GlobalEnvironment (Checked Variable) Variable ->
+--   Either String (GlobalEnvironment (Checked Variable) Variable)
+-- addInductive i ge =
+--   case runStateT (checkInductive i) (toLocalContext ge) of
+--   Left  l       -> Left l
+--   Right (i', _) -> Right $ addGlobalInd i' ge
+--
+-- -- add inductives from left to right
+-- addInductives ::
+--   [Inductive Raw Variable] -> GlobalEnvironment (Checked Variable) Variable ->
+--   Either String (GlobalEnvironment (Checked Variable) Variable)
+-- addInductives = flip $ foldM (flip addInductive)

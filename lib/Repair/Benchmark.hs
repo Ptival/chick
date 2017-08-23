@@ -25,6 +25,7 @@ import qualified Diff.Script as DS
 import qualified Diff.Term as DT
 import qualified Diff.Vernacular as DV
 -- import qualified Inductive.Inductive as I
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.Script as RS
 import           Repair.State
@@ -164,8 +165,9 @@ repairScript s δs = runAll repairThenPatch
       DS.patch s δs'
 
 data RepairScriptBenchmark = RepairScriptBenchmark
-  { repairScriptFromScript :: Script  Raw.Raw Variable
+  { repairScriptFromScript :: Script Raw.Raw Variable
   , repairScriptDiff       :: DS.Diff Raw.Raw
+  , repairScriptExpected   :: Maybe (Script Raw.Raw Variable)
   }
   deriving (Show)
 
@@ -192,48 +194,31 @@ repairListToVec = RepairScriptBenchmark
     [ Inductive indList
     , Definition "list1" (unsafeParseRaw "List ℕ") (unsafeParseRaw "cons zero nil")
     ]
-
-  , repairScriptDiff =
-    DL.Modify
-    (DV.ModifyInductive
-      (DI.Modify
-        -- name
-        (DA.Replace "Vec")
-        -- params
-        DL.Same
-        -- indices
-        (DL.Insert (Binder Nothing, "ℕ") DL.Same)
-        -- constructors
-        (DL.Modify
-          -- nil
-          (DC.Modify
-            (DA.Replace "vnil")
-            DL.Same
-            (DL.Insert "zero" DL.Same)
-          )
-          -- cons
-          $ DL.Modify
-          (DC.Modify
-            (DA.Replace "vcons")
-            (DL.Insert ("n", "ℕ")
-              $ DL.Keep
-              $ DL.Modify
-              (DP.Modify DA.Same
-                (DT.InsApp ()
-                  (DT.CpyApp (DT.Replace "Vec") DT.Same)
-                  (DT.Replace "n")
-                )
-              )
-              $ DL.Same
-            )
-            (DL.Insert (App () (Var (Just ()) "succ") (Var (Just ()) "n")) DL.Same)
-          )
-          $ DL.Same
-        )
-      )
-    )
-    DL.Same
+  , repairScriptDiff = DL.Modify (DV.ModifyInductive (DI.Modify δn δps δis δcs)) DL.Same
+  , repairScriptExpected = Just $ Script
+    [ Inductive indVec
+    , Definition "list1" (unsafeParseRaw "Vec ℕ (? @ ℕ)") (unsafeParseRaw "vcons (? @ ℕ) zero nil")
+    ]
   }
+  where
+    δn = DA.Replace "Vec"
+    δps = DL.Same
+    δis = DL.Insert (Binder Nothing, "ℕ") DL.Same
+    δcs = DL.Modify δnil $ DL.Modify δcons $ DL.Same
+    δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert "zero" DL.Same)
+    δcons = DC.Modify (DA.Replace "vcons") δconsPs δconsIs
+    δconsPs =
+      DL.Insert ("n", "ℕ")
+        $ DL.Keep
+        $ DL.Modify
+        (DP.Modify DA.Same
+          (DT.InsApp ()
+            (DT.CpyApp (DT.Replace "Vec") DT.Same)
+            (DT.Replace "n")
+          )
+        )
+        $ DL.Same
+    δconsIs = DL.Insert (App () (Var (Just ()) "succ") (Var (Just ()) "n")) DL.Same
 
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
@@ -244,17 +229,34 @@ repairScriptBenchmarks =
 repairScriptBenchmark :: IO ()
 repairScriptBenchmark = do
   putStrLn $ replicate 100 '\n'
-  for_ repairScriptBenchmarks $ \ (RepairScriptBenchmark s δs) -> do
+  for_ repairScriptBenchmarks $ \ (RepairScriptBenchmark s δs me) -> do
     putStrLn $ "(*" ++ replicate 70 '*' ++ "*)"
-    putStrLn $ printf "\n(*** Before: ***)\n%s" (prettyStrU s)
+    putStrLn "\n(*** Before: ***)\n"
+    printScript s
     result <- runTrace . runError $ DS.patch s δs
     s' <- case result of
       Left  (e :: String) -> error "..."
       Right s'            -> return s'
-    putStrLn $ printf "\n(*** Modified: ***)\n%s" (prettyStrU s')
+    putStrLn "\n(*** Modified: ***)\n"
+    printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
     skipTrace (repairScript s δs) & \case
     -- runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
-      Right s'' ->
-        putStrLn $ printf "\n(*** Patching succeeded: ***)\n%s" (prettyStrU s'')
+      Right s'' -> case me of
+        Nothing -> do
+          putStrLn "\n(*** Patching succeeded: ***)\n"
+          printScript s''
+        Just e -> do
+          if s'' == e
+            then do
+            putStrLn "\n(*** Patching succeeded, and matched expectations: ***)\n"
+            printScript s''
+            else do
+            putStrLn "\n(*** Patching succeeded, BUT did not match expectations: ***)\n"
+            putStrLn "(*** Expected ***)\n"
+            printScript e
+            putStrLn "(*** Obtained ***)\n%s"
+            printScript s''
+  where
+    printScript (Script s) = forM_ s $ putStrLn . prettyStr

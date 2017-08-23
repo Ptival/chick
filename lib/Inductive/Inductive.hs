@@ -55,7 +55,11 @@ data Constructor α ν =
   , constructorIndices    :: [TypeX α ν]
   }
 
-deriving instance (Eq α, Eq ν) => Eq (Constructor α ν)
+-- /!\ DO NOT DERIVE ANY TYPECLASS FOR `Constructor` AS IT IS CYCLIC WITH `Inductive` /!\
+
+instance (Eq α, Eq ν) => Eq (Constructor α ν) where
+  (Constructor _ n ps is) == (Constructor _ n' ps' is') = (n, ps, is) == (n', ps', is')
+
 instance (Show α, Show ν) => Show (Constructor α ν) where
   show (Constructor _ n ps is) = printf "Constructor _ %s %s %s" (show n) (show ps) (show is)
 

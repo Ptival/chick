@@ -18,7 +18,7 @@ import           Term.Variable
 data Vernacular α ν
   = Definition ν (TypeX α ν) (TermX α ν)
   | Inductive (I.Inductive α ν)
-  deriving (Show)
+  deriving (Eq, Show)
 
 instance PrettyPrintable (Vernacular α Variable) where
   prettyDoc v = runReader (prettyDocU v) def
