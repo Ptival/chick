@@ -131,7 +131,7 @@ nilList, consList :: Constructor Raw.Raw Variable
 nilList  = Constructor indList "nil"  [] []
 consList = Constructor indList "cons"
     [ ("x", "A")
-    , ("xs", App () "List" "A")
+    , ("xs", unsafeParseRaw "List A")
     ]
     []
 
@@ -151,13 +151,13 @@ zeroFin, succFin :: Constructor Raw.Raw Variable
 zeroFin =
   Constructor indFin "zero"
   [ ("n", "ℕ") ]
-  [ App () "succ" "n" ]
+  [ unsafeParseRaw "succ n" ]
 succFin =
   Constructor indFin "succ"
   [ ("n", "ℕ")
-  , ("i", App () "Fin" "n")
+  , ("i", unsafeParseRaw "Fin n")
   ]
-  [ App () "succ" "n" ]
+  [ unsafeParseRaw "succ n" ]
 
 {-
 inductive Vec (A : Type) : ℕ → Type where
@@ -175,11 +175,11 @@ nilVec, consVec :: Constructor Raw.Raw Variable
 nilVec = Constructor indVec "vnil"  [] [Var (Just()) "zero"]
 consVec =
   Constructor indVec "vcons"
-  [ ("n", "ℕ")
-  , ("x", "A")
-  , ("xs", App () (App () "Vec" "A") "n")
+  [ ("h", "A")
+  , ("n", "ℕ")
+  , ("t", unsafeParseRaw "Vec A n")
   ]
-  [ App () "succ" "n" ]
+  [ unsafeParseRaw "succ n" ]
 
 {-
 inductive ⊥ : Set where

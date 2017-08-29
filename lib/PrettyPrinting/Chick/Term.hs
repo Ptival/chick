@@ -66,7 +66,7 @@ prettyTermDocPrec precs = goTerm
             "_" ->
               (fillSep
                [ go (PrecArrow, TolerateHigher) τ1
-               , char '→'
+               , text arrowSymbol
                , go (PrecArrow, TolerateEqual) (instantiate1Name (Var Nothing n) bτ2)
                ]
               , PrecArrow)
@@ -77,7 +77,7 @@ prettyTermDocPrec precs = goTerm
                  , char ':'
                  , go (PrecMin, TolerateEqual) τ1
                  ]
-               , char '→'
+               , text arrowSymbol
                , go (PrecArrow, TolerateEqual) (instantiate1Name (Var Nothing n) bτ2)
                ]
               , PrecArrow)
@@ -92,7 +92,7 @@ prettyTermDocPrec precs = goTerm
         let n = getName bt in
         goLams (prettyDoc n : l) (instantiate1Name (Var Nothing n) bt)
       t -> fillSep
-          [ char 'λ'
+          [ text lamSymbol
           , fillSep . reverse $ l
           , char '.'
           , go (PrecMin, TolerateEqual) t

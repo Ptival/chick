@@ -186,6 +186,7 @@ repairFlippedArguments = RepairScriptBenchmark
       )
       $
       DL.Same
+  , repairScriptExpected = Nothing
   }
 
 repairListToVec :: RepairScriptBenchmark
@@ -235,8 +236,8 @@ repairScriptBenchmark = do
     printScript s
     result <- runTrace . runError $ DS.patch s δs
     s' <- case result of
-      Left  (e :: String) -> error "..."
-      Right s'            -> return s'
+      Left  (_e :: String) -> error "..."
+      Right s'             -> return s'
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"

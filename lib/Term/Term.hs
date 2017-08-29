@@ -7,11 +7,13 @@
 -- {-# language FlexibleContexts #-}
 {-# language FlexibleInstances #-}
 -- {-# language GADTs #-}
+{-# language KindSignatures #-}
 {-# language LambdaCase #-}
 -- {-# language MultiParamTypeClasses #-}
 {-# language RankNTypes #-}
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
+-- {-# language TemplateHaskell #-}
 -- {-# language TypeFamilies #-}
 -- {-# language TypeOperators #-}
 -- {-# language UndecidableInstances #-}
@@ -22,14 +24,27 @@ module Term.Term
   , TypeX
   , abstractAnonymous
   , abstractBinder
+  , abstractVariable
   , annotateHead
   , annotationOf
   , annotSymbol
+  , arrowSymbol
   , getName
   , holeSymbol
+  , lamSymbol
+  , postLamSymbol
+--  , rAnnot
+--  , rApp
+--  , rHole
+--  , rLam
+--  , rLet
+--  , rPi
+--  , rType
+--  , rVar
   , simultaneousSubstitute
   , substitute
   , unscopeTerm
+  , wildcardSymbol
   ) where
 
 import Bound ((>>>=))
@@ -42,6 +57,7 @@ import Data.String
 import Data.Typeable
 --import GHC.Exts                  (Constraint)
 import GHC.Generics
+--import Text.Boomerang.TH
 import Text.Printf
 
 import Term.Binder
@@ -66,9 +82,13 @@ One could either:
 
 -}
 
-annotSymbol, holeSymbol :: String
+annotSymbol, arrowSymbol, holeSymbol, lamSymbol, postLamSymbol, wildcardSymbol :: String
 annotSymbol = "@"
+arrowSymbol = "→"
 holeSymbol  = "?"
+lamSymbol = "λ"
+postLamSymbol = "."
+wildcardSymbol = "_"
 
 type NameScope = Scope (Name Variable ())
 
@@ -93,6 +113,8 @@ data TermX α ν
     )
 
 type TypeX = TermX
+
+-- $(makeBoomerangs ''TermX)
 
 instance Bifunctor TermX where
   bimap l r =
@@ -123,15 +145,15 @@ instance Eq1 (TermX α) where
       (_,            _)              -> False
 
 instance (Eq ν) => Eq (TermX α ν) where
-  Annot _ t τ == Annot _ t' τ'= t == t' && τ == τ'
-  App _ t1 t2 == App _ t1' t2' = t1 == t1' && t2 == t2'
-  Hole _ == Hole _ = True
-  Lam _ bt == Lam _ bt' = bt == bt'
-  Let _ t1 bt2 == Let _ t1' bt2' = t1 == t1' && bt2 == bt2'
-  Pi _ τ1 bτ2 == Pi _ τ1' bτ2' = τ1 == τ1' && bτ2 == bτ2'
-  Type == Type = True
-  Var _ v == Var _ v' = v == v'
-  _ == _ = False
+  Annot _ t τ    == Annot _ t' τ'    = t  == t'  && τ  == τ'
+  App   _ t1 t2  == App   _ t1' t2'  = t1 == t1' && t2 == t2'
+  Hole  _        == Hole  _          = True
+  Lam   _ bt     == Lam   _ bt'      = bt == bt'
+  Let   _ t1 bt2 == Let   _ t1' bt2' = t1 == t1' && bt2 == bt2'
+  Pi    _ τ1 bτ2 == Pi    _ τ1' bτ2' = τ1 == τ1' && bτ2 == bτ2'
+  Type           == Type             = True
+  Var   _ v      == Var   _ v'       = v  == v'
+  _              == _ = False
 
 --deriving instance (ForallX (Serial m) α, Monad m) => Serial m  (TermX α ν)
 --deriving instance  ForallX Out        α           => Out       (TermX α ν)
@@ -255,6 +277,9 @@ abstractBinder b =
   case unBinder b of
     Nothing -> abstractAnonymous
     Just v  -> abstract1Name v
+
+abstractVariable :: (Monad f) => Eq ν => ν -> f ν -> Scope (Name ν ()) f ν
+abstractVariable = abstract1Name
 
 unscopeTerm :: Scope (Name Variable ()) (TermX ξ) Variable -> (Binder Variable, TermX ξ Variable)
 unscopeTerm t =

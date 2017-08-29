@@ -7,14 +7,14 @@ import           Control.Monad.Fix
 import           Data.Functor
 --import           Data.Maybe
 import           Text.Megaparsec
-import qualified Text.Megaparsec.Lexer  as L
+import qualified Text.Megaparsec.Lexer as L
 import           Text.Megaparsec.String
 import           Text.Printf
 
 import           Parsing.Utils
 import           Term.Binder
 --import           Term.Bound
-import           Term.Raw               as Raw
+import           Term.Raw as Raw
 import           Term.Term
 import           Term.Variable
 
@@ -39,7 +39,7 @@ parser =
   -- low precedence
   [ [TopSelfNextParser letP, TopSelfNextParser lamP]
   , [binOpN annotSymbol (Annot ())]
-  , [TopSelfNextParser namedPiP, binOpR "→" (\ τ1 τ2 -> Pi () τ1 (abstractAnonymous τ2))]
+  , [TopSelfNextParser namedPiP, binOpR arrowSymbol (\ τ1 τ2 -> Pi () τ1 (abstractAnonymous τ2))]
   , [binOpL "" (App ())]
   , [AtomParser holeP, AtomParser typeP, AtomParser varP]
   ]
@@ -90,7 +90,7 @@ variableP :: Parser Variable
 variableP = Variable <$> identifier
 
 binderP :: Parser (Binder Variable)
-binderP = Binder <$> ((Nothing <$ symbol "_") <|> (Just <$> variableP))
+binderP = Binder <$> ((Nothing <$ symbol wildcardSymbol) <|> (Just <$> variableP))
 
 holeP :: Parser (Raw.Term Variable)
 holeP = Hole () <$ symbol holeSymbol
@@ -98,8 +98,9 @@ holeP = Hole () <$ symbol holeSymbol
 lamP :: Parser3 (Raw.Term Variable)
 lamP _topP selfP _nextP =
   lams
-  <$> (try (symbol "λ") *> some binderP)
-  <*> (symbol "." *> selfP)
+  <$> (try (symbol lamSymbol) *> some binderP)
+  <*> (symbol postLamSymbol *> selfP)
+
 {-
 -- was:
   try $ do
