@@ -309,9 +309,10 @@ eliminatorType' α inductiveName inductiveParameters inductiveIndices constructo
     discriminee :: IsString a => a
     discriminee = "instance"
 
-    discrimineeType = applyVar inductiveIndices
-                    $ applyVar inductiveParameters
-                    $ Var Nothing inductiveName
+    discrimineeType =
+        applyVar inductiveIndices
+      $ applyVar inductiveParameters
+      $ Var Nothing inductiveName
 
     motive :: IsString a => a
     motive = "Motive"

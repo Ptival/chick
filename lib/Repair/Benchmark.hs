@@ -50,7 +50,14 @@ patchProof t τ δτ = runAll repairThenPatch
       runError
       . liftM fst
       . flip runState (RepairState (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same :: RepairState)
-    repairThenPatch = RT.repair t τ δτ >>= DT.patch t
+    repairThenPatch =
+      RT.repair t τ δτ
+      >>=
+      (\ δ -> do
+          trace $ printf "REPAIR COMPLETED: %s" $ prettyStr δ
+          return δ
+      )
+      >>= DT.patch t
 
 patchProofTrace ::
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw ->
@@ -70,60 +77,70 @@ data RepairTermBenchmark = RepairTermBenchmark
   , repairTermExpected :: Raw.Term Variable
   }
 
-repairTermBenchmarks :: [RepairTermBenchmark]
-repairTermBenchmarks =
+termBench1, termBench2, termBench3, termBench4, termBench5 :: RepairTermBenchmark
 
-  [ RepairTermBenchmark
-    { repairTermFromTerm = unsafeParseRaw "λ b . b"
-    , repairTermFromType = unsafeParseRaw "B → B"
-    , repairTermToType   = unsafeParseRaw "A → B → B"
-    , repairTermDiff     = DT.InsPi () (DT.Replace "A") (Binder Nothing) DT.Same
-    , repairTermExpected = unsafeParseRaw "λ _ b . b"
-    }
+termBench1 =
+  RepairTermBenchmark
+  { repairTermFromTerm = unsafeParseRaw "λ b . b"
+  , repairTermFromType = unsafeParseRaw "B → B"
+  , repairTermToType   = unsafeParseRaw "A → B → B"
+  , repairTermDiff     = DT.InsPi () (DT.Replace "A") (Binder Nothing) DT.Same
+  , repairTermExpected = unsafeParseRaw "λ _ b . b"
+  }
 
-  , RepairTermBenchmark
-    { repairTermFromTerm = unsafeParseRaw "λ b . b"
-    , repairTermFromType = unsafeParseRaw "B → B"
-    , repairTermToType   = unsafeParseRaw "B → A → B"
-    , repairTermDiff     = DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "A") (Binder Nothing) DT.Same)
-    , repairTermExpected = unsafeParseRaw "λ b _ . b"
-    }
+termBench2 =
+  RepairTermBenchmark
+  { repairTermFromTerm = unsafeParseRaw "λ b . b"
+  , repairTermFromType = unsafeParseRaw "B → B"
+  , repairTermToType   = unsafeParseRaw "B → A → B"
+  , repairTermDiff     = DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "A") (Binder Nothing) DT.Same)
+  , repairTermExpected = unsafeParseRaw "λ b _ . b"
+  }
 
-  , RepairTermBenchmark
-    { repairTermFromTerm = unsafeParseRaw "λ f a . f a"
-    , repairTermFromType = unsafeParseRaw "(A → B) → A → B"
-    , repairTermToType   = unsafeParseRaw "A → (A → B) → B"
-    , repairTermDiff     = DT.PermutPis [1, 0] DT.Same
-    , repairTermExpected = unsafeParseRaw "λ a f . f a"
-    }
+termBench3 =
+  RepairTermBenchmark
+  { repairTermFromTerm = unsafeParseRaw "λ f a . f a"
+  , repairTermFromType = unsafeParseRaw "(A → B) → A → B"
+  , repairTermToType   = unsafeParseRaw "A → (A → B) → B"
+  , repairTermDiff     = DT.PermutPis [1, 0] DT.Same
+  , repairTermExpected = unsafeParseRaw "λ a f . f a"
+  }
 
-  , RepairTermBenchmark
-    { repairTermFromTerm = unsafeParseRaw "λ f a . f a"
-    , repairTermFromType = unsafeParseRaw "(A → C) → A → C"
-    , repairTermToType   = unsafeParseRaw "(A → B → C) → A → B → C"
-    , repairTermDiff     =
+termBench4 =
+  RepairTermBenchmark
+  { repairTermFromTerm = unsafeParseRaw "λ f a . f a"
+  , repairTermFromType = unsafeParseRaw "(A → C) → A → C"
+  , repairTermToType   = unsafeParseRaw "(A → B → C) → A → B → C"
+  , repairTermDiff     =
       DT.CpyPi
       (DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same))
       DA.Same
       (DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same))
-    , repairTermExpected = unsafeParseRaw "λ f a _ . f a (? @ B)"
-    }
+  , repairTermExpected = unsafeParseRaw "λ f a _ . f a (? @ B)"
+  }
 
-  , RepairTermBenchmark
-    { repairTermFromTerm = unsafeParseRaw "λ f a c . f a c"
-    , repairTermFromType = unsafeParseRaw "(A → C → D) → A → C → D"
-    , repairTermToType   = unsafeParseRaw "(A → B → C → D) → A → B → C → D"
-    , repairTermDiff     =
+termBench5 =
+  RepairTermBenchmark
+  { repairTermFromTerm = unsafeParseRaw "λ f a c . f a c"
+  , repairTermFromType = unsafeParseRaw "(A → C → D) → A → C → D"
+  , repairTermToType   = unsafeParseRaw "(A → B → C → D) → A → B → C → D"
+  , repairTermDiff     =
       DT.CpyPi
       (DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "B") (Binder Nothing) (DT.CpyPi DT.Same DA.Same DT.Same)))
       DA.Same
       $ DT.CpyPi DT.Same DA.Same
       $ DT.InsPi () (DT.Replace "B") (Binder Nothing)
       $ DT.Same
-    , repairTermExpected = unsafeParseRaw "λ f a _ c . f a (? @ B) c"
-    }
+  , repairTermExpected = unsafeParseRaw "λ f a _ c . f a (? @ B) c"
+  }
 
-  ]
+repairTermBenchmarks :: [RepairTermBenchmark]
+repairTermBenchmarks = []
+  ++ [termBench1]
+  ++ [termBench2]
+  ++ [termBench3]
+  ++ [termBench4]
+  ++ [termBench5]
 
 repairTermBenchmark :: IO ()
 repairTermBenchmark = do
@@ -132,7 +149,8 @@ repairTermBenchmark = do
     diffed <- runTrace . runError $ DT.patch fromType diff
     if diffed == (Right toType :: Either String (Raw.Type Variable))
       then
-      runTrace (patchProof fromTerm fromType diff) >>= \case
+      skipTrace (patchProof fromTerm fromType diff) & \case
+      -- runTrace (patchProof fromTerm fromType diff) >>= \case
       Left  e -> putStrLn $ printf "Patching failed: %s" e
       Right r ->
         if r == expected
@@ -195,10 +213,14 @@ repairListToVec = RepairScriptBenchmark
     [ Inductive indList
     , Definition "list1" (unsafeParseRaw "List ℕ") (unsafeParseRaw "cons zero nil")
     ]
-  , repairScriptDiff = DL.Modify (DV.ModifyInductive (DI.Modify δn δps δis δcs)) DL.Same
+  , repairScriptDiff =
+      DL.Modify (DV.ModifyInductive (DI.Modify δn δps δis δcs))
+      $ DL.Same
   , repairScriptExpected = Just $ Script
     [ Inductive indVec
-    , Definition "list1" (unsafeParseRaw "Vec ℕ (? @ ℕ)") (unsafeParseRaw "vcons (? @ ℕ) zero nil")
+    , Definition "list1"
+      (unsafeParseRaw "Vec ℕ (? @ ℕ)")
+      (unsafeParseRaw "vcons zero (? @ ℕ) nil")
     ]
   }
   where
@@ -209,16 +231,16 @@ repairListToVec = RepairScriptBenchmark
     δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert "zero" DL.Same)
     δcons = DC.Modify (DA.Replace "vcons") δconsPs δconsIs
     δconsPs =
-      DL.Insert ("n", "ℕ")
-        $ DL.Keep
-        $ DL.Modify
-        (DP.Modify DA.Same
-          (DT.InsApp ()
-            (DT.CpyApp (DT.Replace "Vec") DT.Same)
-            (DT.Replace "n")
-          )
+      DL.Keep
+      $ DL.Insert ("n", "ℕ")
+      $ DL.Modify
+      (DP.Modify DA.Same
+        (DT.InsApp ()
+          (DT.CpyApp (DT.Replace "Vec") DT.Same)
+          (DT.Replace "n")
         )
-        $ DL.Same
+      )
+      $ DL.Same
     δconsIs = DL.Insert (App () (Var (Just ()) "succ") (Var (Just ()) "n")) DL.Same
 
 repairScriptBenchmarks :: [RepairScriptBenchmark]
@@ -241,8 +263,8 @@ repairScriptBenchmark = do
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
-    skipTrace (repairScript s δs) & \case
-    -- runTrace (repairScript s δs) >>= \case
+    -- skipTrace (repairScript s δs) & \case
+    runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' -> case me of
         Nothing -> do
@@ -257,7 +279,9 @@ repairScriptBenchmark = do
             putStrLn "\n(*** Patching succeeded, BUT did not match expectations: ***)\n"
             putStrLn "(*** Expected ***)\n"
             printScript e
-            putStrLn "(*** Obtained ***)\n%s"
+            putStrLn $ show e
+            putStrLn "(*** Obtained ***)\n"
             printScript s''
+            putStrLn $ show s''
   where
     printScript (Script s) = forM_ s $ putStrLn . prettyStr

@@ -71,6 +71,7 @@ patch ::
   ) =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
 patch t d =
+  let exc (s :: String) = throwExc $ printf "Diff.Term/patch: %s" s in
   -- trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
   case (t, d) of
 
@@ -79,20 +80,20 @@ patch t d =
     (_, Replace t') -> return t'
 
     (App a t1 t2, CpyApp d1 d2) -> App a <$> patch t1 d1 <*> patch t2 d2
-    (_, CpyApp _ _) -> throwExc "patch: CpyApp, not an App"
+    (_, CpyApp _ _) -> exc "CpyApp, not an App"
 
     (Lam a bt, CpyLam db dt) ->
       let (b, t') = unscopeTerm bt in
         Lam a <$> (abstractBinder <$> DA.patch b db <*> patch t' dt)
-    (_, CpyLam _ _) -> throwExc "patch: CpyLam, not a Lam"
+    (_, CpyLam _ _) -> exc "CpyLam, not a Lam"
 
     (Pi a τ1 bτ2, CpyPi d1 db d2) ->
       let (b, τ2) = unscopeTerm bτ2 in
         Pi a <$> patch τ1 d1 <*> (abstractBinder <$> DA.patch b db <*> patch τ2 d2)
-    (_, CpyPi _ _ _) -> throwExc "patch: CpyPi, not a Pi"
+    (_, CpyPi _ _ _) -> exc "CpyPi, not a Pi"
 
     (Var a v, CpyVar δv) -> Var a <$> DA.patch v δv
-    (_, CpyVar _) -> throwExc "patch: CpyVar, not a Var"
+    (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr t)
 
     (_, InsApp a d1 d2) -> App a <$> patch t d1 <*> patch t d2
 

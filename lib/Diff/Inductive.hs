@@ -34,8 +34,12 @@ data Diff α
   = Same
   | Modify
     (DA.Diff Variable)
-    (DL.Diff (BoundTerm α)            (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
-    (DL.Diff (BoundTerm α)            (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
+    (DL.Diff
+      (Variable, Term α)
+      (DP.Diff (DA.Diff Variable) (DT.Diff α)))
+    (DL.Diff
+      (BoundTerm α)
+      (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
     (DL.Diff (Constructor α Variable) (DC.Diff α))
 
 instance Show α => Show (Diff α) where
@@ -78,7 +82,7 @@ patch ind@(Inductive n ps is cs) = \case
 
 δinductiveRawType ::
   Int ->
-  (DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw))) ->
+  (DL.Diff (Variable, Term Raw.Raw) (DP.Diff (DA.Diff Variable) (DT.Diff Raw.Raw))) ->
   Int ->
   (DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw))) ->
   DT.Diff Raw.Raw
@@ -104,7 +108,7 @@ patch ind@(Inductive n ps is cs) = \case
 δinductiveRawConstructorPrefix ::
   DA.Diff Variable ->
   Int ->
-  DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw)) ->
+  DL.Diff (Variable, Term Raw.Raw) (DP.Diff (DA.Diff Variable) (DT.Diff Raw.Raw)) ->
   DT.Diff Raw.Raw
 δinductiveRawConstructorPrefix δindName nPs δps =
   processPs nPs (DT.CpyVar δindName) δps

@@ -96,7 +96,15 @@ repairArgs τ0 δτ0 δfun =
         -- TODO: this is wrong because we need the permutations to happen from within the
         -- innermost App rather than the outermost ones
 
-        DT.Same -> return acc
+        DT.Same -> do
+          -- even though it's Same, we still need to peel off ∀s from τ
+          -- before returning acc
+          trace $ printf "τ: %s" (prettyStr τ)
+          case τ of
+            Pi _ _ bτ' ->
+              let (_, τ') = unscopeTerm bτ' in
+              go (DT.CpyApp DT.Same acc) τ' DT.Same
+            _         -> return acc
 
         _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)
 
@@ -138,6 +146,8 @@ genericRepair t τ =
               DGD.ModifyGlobalAssum δv δτv -> return (δv, δτv)
               DGD.ModifyGlobalDef   _ _ _  -> error "TODO if this happens"
               DGD.ModifyGlobalInd   _      -> error "TODO if this happens"
+          -- trace $ printf "τv: %s" (prettyStr τv)
+          -- trace $ printf "δτv: %s" (prettyStr δτv)
           repairArgs τv δτv (DT.CpyVar δv)
 
         _ -> exc "repair, Same, App, Not Var"
