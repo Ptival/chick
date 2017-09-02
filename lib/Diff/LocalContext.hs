@@ -16,7 +16,7 @@ import           Text.Printf
 import qualified Diff.Atom as DA
 import qualified Diff.List as DL
 import qualified Diff.LocalDeclaration as DLD
-import qualified Diff.Term as DT
+-- import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
@@ -58,7 +58,7 @@ findLocalDeclarationDiff v γ δγ =
 
     DL.Modify DLD.Same δ -> findLocalDeclarationDiff v γ (DL.Keep δ)
 
-    DL.Modify dld@(DLD.Modify δv δτ) δ ->
+    DL.Modify dld@(DLD.Modify δv _δτ) δ ->
       case unLocalContext γ of
         []    -> exc "DL.Change but empty context"
         h : γ' -> do

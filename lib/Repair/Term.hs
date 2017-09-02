@@ -27,7 +27,7 @@ import qualified Repair.State as RS
 import           Repair.Utils
 import           Term.Binder
 import           Term.Term
-import qualified Term.TypeChecked as C
+-- import qualified Term.TypeChecked as C
 import qualified Term.Raw as Raw
 import           Term.Variable
 import qualified Typing.LocalContext as LC
@@ -201,7 +201,7 @@ repair t τ δτ =
 
   DT.Replace τ' -> return $ DT.Replace $ Annot () (Hole ()) τ'
 
-  DT.CpyApp δ1 δ2 -> error "TODO: CpyApp"
+  DT.CpyApp _δ1 _δ2 -> error "TODO: CpyApp"
 
   DT.CpyLam _ _     -> exc "repair: CpyLam"
 

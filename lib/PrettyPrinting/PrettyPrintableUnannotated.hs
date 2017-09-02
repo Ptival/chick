@@ -14,7 +14,7 @@ import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import Precedence
-import PrettyPrinting.PrettyPrintable
+-- import PrettyPrinting.PrettyPrintable
 -- import Term.Variable
 
 class PrettyPrintableUnannotated t where

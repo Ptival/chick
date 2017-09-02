@@ -241,7 +241,7 @@ repairListToVec = RepairScriptBenchmark
         )
       )
       $ DL.Same
-    δconsIs = DL.Insert (App () (Var (Just ()) "succ") (Var (Just ()) "n")) DL.Same
+    δconsIs = DL.Insert (App () (Var Nothing "succ") (Var Nothing "n")) DL.Same
 
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =

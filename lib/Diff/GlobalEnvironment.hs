@@ -11,13 +11,13 @@ module Diff.GlobalEnvironment
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Text.PrettyPrint.Annotated.WL
+-- import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 
 -- import qualified Diff.Atom as DA
 import qualified Diff.List as DL
 import qualified Diff.GlobalDeclaration as DGD
-import qualified Diff.Term as DT
+-- import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
@@ -62,7 +62,7 @@ findGlobalDeclarationDiff v e δe =
 
     DL.Modify DGD.Same δ -> findGlobalDeclarationDiff v e (DL.Keep δ)
 
-    DL.Modify dgd@(DGD.ModifyGlobalAssum δv δτ) δ ->
+    DL.Modify dgd@(DGD.ModifyGlobalAssum _δv _δτ) δ ->
       case unGlobalEnvironment e of
         []    -> exc "DL.Modify but empty environment"
         h : e' -> do
@@ -71,7 +71,7 @@ findGlobalDeclarationDiff v e δe =
           then return dgd
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
-    DL.Modify dgd@(DGD.ModifyGlobalDef δv δτ _) δ ->
+    DL.Modify dgd@(DGD.ModifyGlobalDef _δv _δτ _) δ ->
       case unGlobalEnvironment e of
         []    -> exc "DL.Modify but empty environment"
         h : e' -> do

@@ -21,4 +21,4 @@ raw = \case
   Let   _ t1 bt2 -> Let   () (raw t1) (hoistScope raw bt2)
   Pi    _ τ1 bτ2 -> Pi    () (raw τ1) (hoistScope raw bτ2)
   Type           -> Type
-  Var   _ v      -> Var   (Just ()) v
+  Var   _ v      -> Var   Nothing v

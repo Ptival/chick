@@ -14,7 +14,7 @@ import qualified Diff.GlobalDeclaration as DGD
 import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.LocalContext as DLC
 import qualified Diff.LocalDeclaration as DLD
-import qualified Diff.Term as DT
+-- import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           Repair.State

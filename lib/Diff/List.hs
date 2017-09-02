@@ -5,7 +5,6 @@
 module Diff.List
   ( Diff(..)
   , patch
-  , patch'
   ) where
 
 import Control.Monad.Freer
@@ -66,18 +65,7 @@ patch ::
   , PrettyPrintable δa
   ) =>
   (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
-patch = patch' prettyStr prettyStr -- (const "?") (const "?")
-
-patch' ::
-  ( Member (Exc String) r
-  , Member Trace r
-  , PrettyPrintable a
-  , PrettyPrintable δa
-  ) =>
-  (a -> String) ->
-  (δa -> String) ->
-  (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
-patch' showElem showDiff patchElem la δa =
+patch patchElem la δa =
 --   trace (printf "Diff.List/patch(l: %s, δ: %s)"
 --           (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
 --           (prettyStr δa)

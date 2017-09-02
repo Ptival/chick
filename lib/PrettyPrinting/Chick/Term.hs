@@ -15,6 +15,7 @@ import Text.PrettyPrint.Annotated.WL
 import Precedence
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Utils
+import Term.Binder
 import Term.Term
 import Term.Variable
 
@@ -61,26 +62,26 @@ prettyTermDocPrec precs = goTerm
         , PrecLet)
 
       Pi _ τ1 bτ2 ->
-        let n = getName bτ2 in
-          case unVariable n of
-            "_" ->
-              (fillSep
-               [ go (PrecArrow, TolerateHigher) τ1
-               , text arrowSymbol
-               , go (PrecArrow, TolerateEqual) (instantiate1Name (Var Nothing n) bτ2)
-               ]
-              , PrecArrow)
-            _ ->
-              (fillSep
-               [ parens $ fillSep
-                 [ prettyDoc n
-                 , char ':'
-                 , go (PrecMin, TolerateEqual) τ1
-                 ]
-               , text arrowSymbol
-               , go (PrecArrow, TolerateEqual) (instantiate1Name (Var Nothing n) bτ2)
-               ]
-              , PrecArrow)
+        let (b, τ2) = unscopeTerm bτ2 in
+        case unBinder b of
+          Nothing ->
+            (fillSep
+              [ go (PrecArrow, TolerateHigher) τ1
+              , text arrowSymbol
+              , go (PrecArrow, TolerateEqual) τ2
+              ]
+            , PrecArrow)
+          Just _ ->
+            (fillSep
+              [ parens $ fillSep
+                [ prettyDoc b
+                , char ':'
+                , go (PrecMin, TolerateEqual) τ1
+                ]
+              , text arrowSymbol
+              , go (PrecArrow, TolerateEqual) τ2
+              ]
+            , PrecArrow)
 
       Type -> (text "Type", PrecAtom)
 

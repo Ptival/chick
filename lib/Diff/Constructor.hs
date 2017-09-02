@@ -19,7 +19,7 @@ import qualified Diff.Term as DT
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
 -- import           PrettyPrinting.PrettyPrintableUnannotated
-import           PrettyPrinting.Term
+-- import           PrettyPrinting.Term
 -- import           StandardLibrary
 import           Term.Binder
 import qualified Term.Raw as Raw
@@ -106,7 +106,7 @@ patch c@(Constructor ind n ps is) d = case d of
       δ -> error $ printf "TODO: processPs %s" (show δ)
 
     nCpyApps 0 base         = base
-    nCpyApps n base | n < 0 = error "nCpyApps: n became negative!"
+    nCpyApps n _    | n < 0 = error "nCpyApps: n became negative!"
     nCpyApps n base         = DT.CpyApp (nCpyApps (n-1) base) DT.Same
 
     nCpyPis 0 base         = base

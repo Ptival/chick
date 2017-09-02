@@ -50,8 +50,14 @@ data Inductive α ν =
   , inductiveConstructors :: [Constructor α ν]
   }
 
-deriving instance (Eq α, Eq ν) => Eq (Inductive α ν)
 deriving instance (Show α, Show ν) => Show (Inductive α ν)
+
+-- Deriving Eq does not do what I want, because it does not equate two inductives
+-- when they differ over an unused binder name.  I'd rather use α-equivalence
+-- of all the things involved
+instance Eq (Inductive α Variable) where
+  indA == indB =
+    inductiveRawType (rawInductive indA) == inductiveRawType (rawInductive indB)
 
 data Constructor α ν =
   Constructor
@@ -63,11 +69,24 @@ data Constructor α ν =
 
 -- /!\ DO NOT DERIVE ANY TYPECLASS FOR `Constructor` AS IT IS CYCLIC WITH `Inductive` /!\
 
-instance (Eq α, Eq ν) => Eq (Constructor α ν) where
-  (Constructor _ n ps is) == (Constructor _ n' ps' is') = (n, ps, is) == (n', ps', is')
+instance Eq (Constructor α Variable) where
+  (Constructor _ n ps is) == (Constructor _ n' ps' is') =
+    (n, ps, is) == (n', ps', is')
 
 instance (Show α, Show ν) => Show (Constructor α ν) where
   show (Constructor _ n ps is) = printf "Constructor _ %s %s %s" (show n) (show ps) (show is)
+
+mapRawSnd :: [(a, TermX α ν)] -> [(a, Raw.Term ν)]
+mapRawSnd = map (over _2 Raw.raw)
+
+rawInductive :: Inductive α ν -> Inductive Raw.Raw ν
+rawInductive (Inductive n ps is cs) =
+  fix $ \ ind' ->
+          Inductive n (mapRawSnd ps) (mapRawSnd is) (map (rawConstructor ind') cs)
+
+rawConstructor :: Inductive Raw.Raw ν -> Constructor α ν -> Constructor Raw.Raw ν
+rawConstructor rawInd (Constructor _ n ps is) =
+  Constructor rawInd n (mapRawSnd ps) (map Raw.raw is)
 
 constructorType' :: ∀ α.
   α ->

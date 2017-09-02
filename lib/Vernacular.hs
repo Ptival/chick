@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Vernacular
   ( Vernacular(..)
@@ -18,7 +19,9 @@ import           Term.Variable
 data Vernacular α ν
   = Definition ν (TypeX α ν) (TermX α ν)
   | Inductive (I.Inductive α ν)
-  deriving (Eq, Show)
+  deriving (Show)
+
+deriving instance Eq (Vernacular α Variable)
 
 instance PrettyPrintable (Vernacular α Variable) where
   prettyDoc v = runReader (prettyDocU v) def
