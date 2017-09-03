@@ -15,7 +15,7 @@ import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
-import qualified Diff.GlobalDeclaration as DGD
+-- import qualified Diff.GlobalDeclaration as DGD
 -- import qualified Diff.LocalContext as DLC
 import qualified Diff.LocalDeclaration as DLD
 import qualified Diff.List as DL
@@ -141,15 +141,7 @@ genericRepair t τ = do
           -- let δγ = view RS.δcontext s
           -- γ' <- DLC.patch γ δγ
           τv <- lookupType v
-          (δv, δτv) <- findDeclarationDiff v >>= \case
-            Left  dld -> case dld of
-              DLD.Same          -> return (DA.Same, DT.Same)
-              DLD.Modify δv δτv -> return (δv, δτv)
-            Right dgd -> case dgd of
-              DGD.Same                     -> return (DA.Same, DT.Same)
-              DGD.ModifyGlobalAssum δv δτv -> return (δv, δτv)
-              DGD.ModifyGlobalDef   _ _ _  -> error "TODO if this happens"
-              DGD.ModifyGlobalInd   _      -> error "TODO if this happens"
+          (δv, δτv) <- unpackDeclarationDiff <$> findDeclarationDiff v
           -- trace $ printf "τv: %s" (prettyStr τv)
           -- trace $ printf "δτv: %s" (prettyStr δτv)
           repairArgs τv δτv (DT.CpyVar δv)
@@ -164,8 +156,6 @@ genericRepair t τ = do
         (   over RS.context  (LC.addLocalAssum (b, τ1))
         >>> over RS.δcontext (DL.Keep)
         ) $ do
-        RS.traceState
-        trace "SHIT GOES DOWN AFTER THIS?"
         DT.CpyLam DA.Same <$> repair tlam τ2 DT.Same
 
     _ -> do
@@ -229,7 +219,7 @@ repair t τ δτ =
         let (b, _) = unscopeTerm bt
         withState
           (   over RS.context  (LC.addLocalAssum (b, τ1))
-          >>> over RS.δcontext (DL.Modify (DLD.Modify DA.Same d1))
+          >>> over RS.δcontext (DL.Modify (DLD.ModifyLocalAssum DA.Same d1))
           ) $ do
           DT.CpyLam DA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
       _ -> exc "repair: CpyPi Same"
@@ -251,7 +241,7 @@ repair t τ δτ =
     τ1' <- DT.patch τ d1
     withState
       (   over RS.context  id
-      >>> over RS.δcontext (DL.Insert (LocalAssum v τ1'))
+      >>> over RS.δcontext (DL.Insert (LocalAssum (Binder (Just v)) τ1'))
       ) $ DT.InsLam () b <$> repair t τ d2
 
   DT.PermutPis p d1      -> do

@@ -20,6 +20,7 @@ import qualified Diff.LocalDeclaration as DLD
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
+import           Term.Binder
 import           Term.Variable
 import           Typing.LocalContext
 import           Typing.LocalDeclaration
@@ -56,20 +57,31 @@ findLocalDeclarationDiff v γ δγ =
         Just _  -> return DLD.Same
 
     DL.Insert ld δ ->
-      if nameOf ld == v
+      if nameOf ld == Just v
       then exc "TODO: this might be DLD.Change, but could be we want to skip..."
       else findLocalDeclarationDiff v γ δ
 
     DL.Modify DLD.Same δ -> findLocalDeclarationDiff v γ (DL.Keep δ)
 
-    DL.Modify dld@(DLD.Modify δv _δτ) δ ->
+    DL.Modify dld@(DLD.ModifyLocalAssum δb _δτ) δ ->
+      case unLocalContext γ of
+        [] -> exc "DL.Change but empty context"
+        LocalAssum b _ : γ' -> do
+          b' <- DA.patch b δb
+          if b' == Binder (Just v)
+          then return dld
+          else findLocalDeclarationDiff v (LocalContext γ') δ
+        _ -> exc "DLD.ModifyLocalAssum, but not LocalAssum"
+
+    DL.Modify dld@(DLD.ModifyLocalDef δv _δτ) δ ->
       case unLocalContext γ of
         []    -> exc "DL.Change but empty context"
-        h : γ' -> do
-          v' <- DA.patch (nameOf h) δv
+        LocalDef lv _ _ : γ' -> do
+          v' <- DA.patch lv δv
           if v' == v
           then return dld
           else findLocalDeclarationDiff v (LocalContext γ') δ
+        _ -> exc "DLD.ModifyLocalDef, but not LocalDef"
 
     DL.Permute _ _ -> exc "TODO: Permute"
 
@@ -77,7 +89,7 @@ findLocalDeclarationDiff v γ δγ =
       case unLocalContext γ of
         []    -> exc "DL.Keep but empty context"
         h : γ' -> do
-          if nameOf h == v
+          if nameOf h == Just v
           then return DLD.Same
           else findLocalDeclarationDiff v (LocalContext γ') δ
 

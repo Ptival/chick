@@ -191,10 +191,12 @@ data RepairScriptBenchmark = RepairScriptBenchmark
 
 repairFlippedArguments :: RepairScriptBenchmark
 repairFlippedArguments = RepairScriptBenchmark
+
   { repairScriptFromScript = Script
     [ Definition "foo" (unsafeParseRaw "A → B → C → D → A") (unsafeParseRaw "λ a b c d . a")
     , Definition "bar" (unsafeParseRaw "A → B → C → D → A") (unsafeParseRaw "λ a b c d . foo a b c d")
     ]
+
   , repairScriptDiff =
       DL.Modify
       (DV.ModifyDefinition
@@ -204,26 +206,35 @@ repairFlippedArguments = RepairScriptBenchmark
       )
       $
       DL.Same
+
   , repairScriptExpected = Nothing
   }
 
 repairListToVec :: RepairScriptBenchmark
 repairListToVec = RepairScriptBenchmark
+
   { repairScriptFromScript = Script
     [ Inductive indList
-    , Definition "list1" (unsafeParseRaw "List ℕ") (unsafeParseRaw "cons zero nil")
+    , Definition "list1"
+      (unsafeParseRaw "List ℕ")
+      (unsafeParseRaw "cons zero nil")
     ]
+
   , repairScriptDiff =
       DL.Modify (DV.ModifyInductive (DI.Modify δn δps δis δcs))
       $ DL.Same
+
   , repairScriptExpected = Just $ Script
     [ Inductive indVec
     , Definition "list1"
       (unsafeParseRaw "Vec ℕ (? @ ℕ)")
       (unsafeParseRaw "vcons zero (? @ ℕ) nil")
     ]
+
   }
+
   where
+
     δn = DA.Replace "Vec"
     δps = DL.Same
     δis = DL.Insert (Binder Nothing, "ℕ") DL.Same
