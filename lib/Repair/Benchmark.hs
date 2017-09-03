@@ -49,7 +49,13 @@ patchProof t τ δτ = runAll repairThenPatch
     runAll =
       runError
       . liftM fst
-      . flip runState (RepairState (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same :: RepairState)
+      . flip runState initialRepairState
+    initialRepairState =
+      RepairState
+      (LC.LocalContext [])
+      DL.Same
+      (GE.GlobalEnvironment [])
+      DL.Same
     repairThenPatch =
       RT.repair t τ δτ
       >>=
