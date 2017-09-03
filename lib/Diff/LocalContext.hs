@@ -42,7 +42,11 @@ findLocalDeclarationDiff ::
   ) =>
   Variable -> LocalContext α Variable -> Diff α -> Eff r (DLD.Diff α)
 findLocalDeclarationDiff v γ δγ =
-  trace (printf "Diff.LocalContext/findLocalDeclarationDiff: Searching %s in %s" (prettyStr v) (prettyStrU γ)) >>
+  trace (
+  printf
+    "Diff.LocalContext/findLocalDeclarationDiff: Searching %s in %s"
+    (prettyStr v) (prettyStrU γ)
+  ) >>
   let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason in
   case δγ of
 
