@@ -119,9 +119,13 @@ termBench4 =
   , repairTermToType   = unsafeParseRaw "(A → B → C) → A → B → C"
   , repairTermDiff     =
       DT.CpyPi
-      (DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same))
+      (DT.CpyPi DT.Same DA.Same
+       (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same)
+      )
       DA.Same
-      (DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same))
+      (DT.CpyPi DT.Same DA.Same
+       (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same)
+      )
   , repairTermExpected = unsafeParseRaw "λ f a _ . f a (? @ B)"
   }
 
@@ -132,11 +136,15 @@ termBench5 =
   , repairTermToType   = unsafeParseRaw "(A → B → C → D) → A → B → C → D"
   , repairTermDiff     =
       DT.CpyPi
-      (DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "B") (Binder Nothing) (DT.CpyPi DT.Same DA.Same DT.Same)))
+      ( DT.CpyPi DT.Same DA.Same
+      $ DT.InsPi () (DT.Replace "B") (Binder Nothing)
+      $ DT.CpyPi DT.Same DA.Same DT.Same
+      )
       DA.Same
-      $ DT.CpyPi DT.Same DA.Same
+      ( DT.CpyPi DT.Same DA.Same
       $ DT.InsPi () (DT.Replace "B") (Binder Nothing)
       $ DT.Same
+      )
   , repairTermExpected = unsafeParseRaw "λ f a _ c . f a (? @ B) c"
   }
 
@@ -150,8 +158,11 @@ repairTermBenchmarks = []
 
 repairTermBenchmark :: IO ()
 repairTermBenchmark = do
-  for_ repairTermBenchmarks $ \ (RepairTermBenchmark fromTerm fromType toType diff expected) -> do
-    putStrLn $ printf "Attempting to patch `%s` assumed to have type `%s` to type `%s`" (prettyStrU fromTerm) (prettyStrU fromType) (prettyStrU toType)
+  for_ repairTermBenchmarks $ \
+    (RepairTermBenchmark fromTerm fromType toType diff expected) -> do
+    putStrLn $
+      printf "Attempting to patch `%s` assumed to have type `%s` to type `%s`"
+      (prettyStrU fromTerm) (prettyStrU fromType) (prettyStrU toType)
     diffed <- runTrace . runError $ DT.patch fromType diff
     if diffed == (Right toType :: Either String (Raw.Type Variable))
       then
@@ -182,7 +193,9 @@ repairScript s δs = runAll repairThenPatch
     runAll =
       runError
       . liftM fst
-      . flip runState (RepairState (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same :: RepairState)
+      . flip runState initialRepairState
+    initialRepairState =
+      RepairState (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same
     repairThenPatch = do
       δs' <- RS.repair s δs
       trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
@@ -199,8 +212,12 @@ repairFlippedArguments :: RepairScriptBenchmark
 repairFlippedArguments = RepairScriptBenchmark
 
   { repairScriptFromScript = Script
-    [ Definition "foo" (unsafeParseRaw "A → B → C → D → A") (unsafeParseRaw "λ a b c d . a")
-    , Definition "bar" (unsafeParseRaw "A → B → C → D → A") (unsafeParseRaw "λ a b c d . foo a b c d")
+    [ Definition "foo"
+      (unsafeParseRaw "A → B → C → D → A")
+      (unsafeParseRaw "λ a b c d . a")
+    , Definition "bar"
+      (unsafeParseRaw "A → B → C → D → A")
+      (unsafeParseRaw "λ a b c d . foo a b c d")
     ]
 
   , repairScriptDiff =
