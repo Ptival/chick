@@ -71,47 +71,50 @@ patch ::
   ) =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
 patch t d =
+
   let exc (s :: String) = throwExc $ printf "Diff.Term/patch: %s" s in
+
   -- trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
+
   case (t, d) of
 
-    (_, Same) -> return t
+  (_, Same) -> return t
 
-    (_, Replace t') -> return t'
+  (_, Replace t') -> return t'
 
-    (App a t1 t2, CpyApp d1 d2) -> App a <$> patch t1 d1 <*> patch t2 d2
-    (_, CpyApp _ _) -> exc "CpyApp, not an App"
+  (App a t1 t2, CpyApp d1 d2) -> App a <$> patch t1 d1 <*> patch t2 d2
+  (_, CpyApp _ _) -> exc "CpyApp, not an App"
 
-    (Lam a bt, CpyLam db dt) ->
-      let (b, t') = unscopeTerm bt in
-        Lam a <$> (abstractBinder <$> DA.patch b db <*> patch t' dt)
-    (_, CpyLam _ _) -> exc "CpyLam, not a Lam"
+  (Lam a bt, CpyLam db dt) ->
+    let (b, t') = unscopeTerm bt in
+    Lam a <$> (abstractBinder <$> DA.patch b db <*> patch t' dt)
+  (_, CpyLam _ _) -> exc "CpyLam, not a Lam"
 
-    (Pi a τ1 bτ2, CpyPi d1 db d2) ->
-      let (b, τ2) = unscopeTerm bτ2 in
-        Pi a <$> patch τ1 d1 <*> (abstractBinder <$> DA.patch b db <*> patch τ2 d2)
-    (_, CpyPi _ _ _) -> exc "CpyPi, not a Pi"
+  (Pi a τ1 bτ2, CpyPi d1 db d2) ->
+    let (b, τ2) = unscopeTerm bτ2 in
+    Pi a <$> patch τ1 d1 <*> (abstractBinder <$> DA.patch b db <*> patch τ2 d2)
+  (_, CpyPi _ _ _) -> exc "CpyPi, not a Pi"
 
-    (Var a v, CpyVar δv) -> Var a <$> DA.patch v δv
-    (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr t)
+  (Var a v, CpyVar δv) -> Var a <$> DA.patch v δv
+  (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr t)
 
-    (_, InsApp a d1 d2) -> App a <$> patch t d1 <*> patch t d2
+  (_, InsApp a d1 d2) -> App a <$> patch t d1 <*> patch t d2
 
-    (_, InsLam a b d1) -> Lam a . abstractBinder b <$> patch t d1
+  (_, InsLam a b d1) -> Lam a . abstractBinder b <$> patch t d1
 
-    (_, InsPi a d1 b d2) -> Pi a <$> patch t d1 <*> (abstractBinder b <$> patch t d2)
+  (_, InsPi a d1 b d2) -> Pi a <$> patch t d1 <*> (abstractBinder b <$> patch t d2)
 
-    (_, PermutApps p δ') -> do
-      (fun, args) <- extractApps t
-      patch (mkApps fun (permute p args)) δ'
+  (_, PermutApps p δ') -> do
+    (fun, args) <- extractApps t
+    patch (mkApps fun (permute p args)) δ'
 
-    (_, PermutLams p d') -> do
-      (lams, rest) <- extractSomeLams (length p) t
-      patch (mkLams (permute p lams) rest) d'
+  (_, PermutLams p d') -> do
+    (lams, rest) <- extractSomeLams (length p) t
+    patch (mkLams (permute p lams) rest) d'
 
-    (_, PermutPis p d') -> do
-      (pis, rest) <- extractSomePis (length p) t
-      patch (mkPis (permute p pis) rest) d'
+  (_, PermutPis p d') -> do
+    (pis, rest) <- extractSomePis (length p) t
+    patch (mkPis (permute p pis) rest) d'
 
 -- | `f a b c` becomes `(f, [a, b, c])`
 extractApps ::
@@ -133,8 +136,8 @@ extractSomeLams n (Lam a bt) = do
   (l, rest) <- extractSomeLams (n - 1) t
   return ((a, b) : l, rest)
 extractSomeLams _ t              =
-  let e :: String = printf "extractLams: not a Lam: %s" (prettyStrU t)
-  in throwExc e
+  let e :: String = printf "extractLams: not a Lam: %s" (prettyStrU t) in
+  throwExc e
 
 extractLams ::
   Member (Exc String) r =>

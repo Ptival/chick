@@ -82,7 +82,7 @@ unpackDeclarationDiff = \case
         (δv, δτv)
       DLD.ModifyLocalDef δv δτv -> (δv, δτv)
   Right dgd ->case dgd of
-    DGD.Same                     -> (DA.Same, DT.Same)
-    DGD.ModifyGlobalAssum δv δτv -> (δv, δτv)
-    DGD.ModifyGlobalDef   _ _ _  -> error "TODO if this happens 1"
-    DGD.ModifyGlobalInd   _      -> error "TODO if this happens 2"
+    DGD.Same                       -> (DA.Same, DT.Same)
+    DGD.ModifyGlobalAssum δv δτv   -> (δv, δτv)
+    DGD.ModifyGlobalDef   δv δτv _ -> (δv, δτv)
+    DGD.ModifyGlobalInd   _        -> error "TODO if this happens 2"
