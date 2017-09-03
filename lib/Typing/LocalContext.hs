@@ -20,6 +20,7 @@ import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Default
+import Data.Maybe
 import Text.PrettyPrint.Annotated.WL
 
 import Typing.LocalDeclaration
@@ -53,8 +54,7 @@ addHyp hyp (LocalContext hyps)
   | otherwise = return . LocalContext $ hyp:hyps
 
 addLocalAssum :: (Binder ν, TypeX α ν) -> LocalContext α ν -> LocalContext α ν
-addLocalAssum (Binder Nothing , _) γ = γ
-addLocalAssum (Binder (Just v), τ) (LocalContext γ) = LocalContext (LocalAssum v τ : γ)
+addLocalAssum (b, τ) (LocalContext γ) = LocalContext (LocalAssum b τ : γ)
 
 type TypeCheckedLocalContext ν = LocalContext (Checked ν) ν
 
@@ -62,9 +62,9 @@ lookupType :: Eq ν => ν -> LocalContext α ν -> Maybe (TypeX α ν)
 lookupType target (LocalContext γ) = msum (map found γ)
   where
     found = \case
-      LocalAssum v τ   | v == target -> Just τ
-      LocalDef   v τ _ | v == target -> Just τ
+      LocalAssum (Binder (Just v)) τ   | v == target -> Just τ
+      LocalDef   v                 τ _ | v == target -> Just τ
       _ -> Nothing
 
 boundNames :: LocalContext α ν -> [ν]
-boundNames (LocalContext γ) = map nameOf γ
+boundNames (LocalContext γ) = catMaybes $ map nameOf γ

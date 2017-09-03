@@ -14,11 +14,12 @@ import Text.PrettyPrint.Annotated.WL
 
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
+import Term.Binder
 import Term.Term
 import Term.Variable
 
 data LocalDeclaration α ν
-  = LocalAssum ν (TypeX α ν)
+  = LocalAssum (Binder ν) (TypeX α ν)
   | LocalDef
     { localDefName :: ν
     , localDefType :: TypeX α ν
@@ -37,10 +38,10 @@ instance
   PrettyPrintableUnannotated (TermX α Variable) =>
   PrettyPrintableUnannotated (LocalDeclaration α Variable) where
   prettyDocU = \case
-    LocalAssum (Variable v) τ -> do
+    LocalAssum b τ -> do
       τDoc <- prettyDocU τ
       return $ fillSep
-        [ text v
+        [ prettyDoc b
         , char ':'
         , τDoc
         ]
@@ -55,9 +56,9 @@ instance
         , tDoc
         ]
 
-nameOf :: LocalDeclaration α ν -> ν
-nameOf (LocalAssum v _)   = v
-nameOf (LocalDef   v _ _) = v
+nameOf :: LocalDeclaration α ν -> Maybe ν
+nameOf (LocalAssum b _)   = unBinder b
+nameOf (LocalDef   v _ _) = Just v
 
 typeOf :: LocalDeclaration α ν -> TypeX α ν
 typeOf (LocalAssum _ τ  ) = τ

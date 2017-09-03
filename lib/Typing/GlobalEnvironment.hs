@@ -131,7 +131,7 @@ toLocalContext =
       GlobalDeclaration (Checked Variable) Variable ->
       [LocalDeclaration (Checked Variable) Variable]
     localize = \case
-      GlobalAssum v τ   -> [LocalAssum v τ]
+      GlobalAssum v τ   -> [LocalAssum (Binder (Just v)) τ]
       GlobalDef   v τ t -> [LocalDef v τ t]
       GlobalInd   i     -> concatMap localize (unwrapInductive i)
 

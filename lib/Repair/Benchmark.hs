@@ -246,8 +246,8 @@ repairListToVec = RepairScriptBenchmark
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
   []
-  -- ++ [repairFlippedArguments]
-  ++ [repairListToVec]
+  ++ [repairFlippedArguments]
+  -- ++ [repairListToVec]
 
 repairScriptBenchmark :: IO ()
 repairScriptBenchmark = do

@@ -119,9 +119,13 @@ genericRepair ::
   , Member (State RS.RepairState) r
   ) =>
   Raw.Term Variable -> Raw.Type Variable -> Eff r (DT.Diff Raw.Raw)
-genericRepair t τ =
+genericRepair t τ = do
 
-  let exc (reason :: String) = throwExc $ printf "Repair.Term/genericRepair: %s" reason in
+  let exc (reason :: String) =
+        throwExc $ printf "Repair.Term/genericRepair: %s" reason
+
+  trace $ printf "Repair.Term/genericRepair(t: %s, τ: %s)"
+    (prettyStrU t) (prettyStrU τ)
 
   case t of
 
@@ -160,6 +164,8 @@ genericRepair t τ =
         (   over RS.context  (LC.addLocalAssum (b, τ1))
         >>> over RS.δcontext (DL.Keep)
         ) $ do
+        RS.traceState
+        trace "SHIT GOES DOWN AFTER THIS?"
         DT.CpyLam DA.Same <$> repair tlam τ2 DT.Same
 
     _ -> do
