@@ -6,7 +6,7 @@
 
 module Repair.Benchmark where
 
-import           Control.Lens ((&))
+-- import           Control.Lens ((&))
 import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
@@ -163,10 +163,10 @@ repairTermBenchmark = do
     putStrLn $
       printf "Attempting to patch `%s` assumed to have type `%s` to type `%s`"
       (prettyStrU fromTerm) (prettyStrU fromType) (prettyStrU toType)
-    diffed <- runTrace . runError $ DT.patch fromType diff
+    diffed <- runSkipTrace . runError $ DT.patch fromType diff
     if diffed == (Right toType :: Either String (Raw.Type Variable))
       then
-      skipTrace (patchProof fromTerm fromType diff) & \case
+      runSkipTrace (patchProof fromTerm fromType diff) >>= \case
       -- runTrace (patchProof fromTerm fromType diff) >>= \case
       Left  e -> putStrLn $ printf "Patching failed: %s" e
       Right r ->
@@ -281,7 +281,7 @@ repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
   []
   ++ [repairFlippedArguments]
-  -- ++ [repairListToVec]
+  ++ [repairListToVec]
 
 repairScriptBenchmark :: IO ()
 repairScriptBenchmark = do
@@ -297,7 +297,7 @@ repairScriptBenchmark = do
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
-    -- skipTrace (repairScript s δs) & \case
+    -- runSkipTrace (repairScript s δs) >>= \case
     runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' -> case me of

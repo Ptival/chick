@@ -103,7 +103,7 @@ repairArgs τ0 δτ0 δfun =
           case τ of
             Pi _ _ bτ' ->
               let (_, τ') = unscopeTerm bτ' in
-              go (DT.CpyApp DT.Same acc) τ' DT.Same
+              go (DT.CpyApp acc DT.Same) τ' DT.Same
             _         -> return acc
 
         _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)

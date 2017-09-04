@@ -6,6 +6,7 @@ module Utils
   ( isPi
   , orElse
   , orElse'
+  , runSkipTrace
   , skipTrace
   , splitList
   , withState
@@ -30,6 +31,10 @@ orElse (Just a) _ = return a
 orElse' :: MonadError e m => Bool -> e -> m ()
 orElse' False e = throwError e
 orElse' True  _ = return ()
+
+-- dumb, but has the same signature as `runTrace`, so easier to interchange
+runSkipTrace :: Eff '[Trace] a -> IO a
+runSkipTrace = return <$> skipTrace
 
 skipTrace :: Eff '[Trace] a -> a
 skipTrace (Val x) = x
