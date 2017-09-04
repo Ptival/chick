@@ -16,6 +16,7 @@ module Inductive.Inductive
   , constructorCheckedType'
   , constructorRawType
   , constructorRawType'
+  , eliminatorName
   , inductiveRawType
   , inductiveRawType'
   , inductiveType
@@ -389,3 +390,6 @@ eliminatorRawType (Inductive n ps is cs) =
     instantiateConstructors = map instantiateConstructor
     instantiateConstructor (Constructor _ cn cps cis) =
       (cn, instantiateBinders "p" cps, cis)
+
+eliminatorName :: Variable -> Variable
+eliminatorName (Variable v) = Variable (v ++ "_rect")
