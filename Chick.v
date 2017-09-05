@@ -8,6 +8,7 @@ From Coq Require Import
 .
 
 Import ListNotations.
+Open Scope string.
 
 Class Desc (From : Type) :=
   {
@@ -194,10 +195,12 @@ Record δ (d : TypeD) :=
     patch : δτ -> denoteTypeD d -> option ⟦ d ⟧
   }.
 
+(*
 Definition δArrowD d1 d2 : δ (ArrowD d1 d2).
   refine {| δτ := False; patch := _; |}.
   destruct 1.
 Defined.
+*)
 
 Definition δBoolD : δ BoolD.
   apply Build_δ with (δτ := δAtom.D bool).
@@ -207,13 +210,77 @@ Defined.
 Definition Variable' := string.
 Definition Binder := option Variable'.
 
-Inductive Term : Type :=
-| App : ∀ (t1 t2 : Term), Term
-| Pi : ∀ (τ1 : Term) (b : Binder) (τ2 : Term), Term
+Inductive Term (ν : Type) : Type :=
+| App   : ∀ (t1 t2 : Term ν), Term ν
+| Pi    : ∀ (τ1 : Term ν) (b : Binder) (τ2 : Term ν), Term ν
+| Type' : Term ν
+| Var   : ∀ (v : ν), Term ν
 .
+Arguments Type' [ν].
 
-Definition mkPi '(b, τ) a := Pi τ b a.
+Definition mkPi '(b, τ) a : Term Variable' := Pi τ b a.
 
 Definition foldrWith T A f (l : list T) (a : A) := List.fold_right f a l.
 
 Definition quantifyBinders := foldrWith mkPi.
+
+Definition quantifyVariables l : Term Variable' -> Term Variable' :=
+  quantifyBinders (List.map (fun '(v, τ) => (Some v, τ)) l).
+
+Notation "f $ x" := (f x) (right associativity, at level 180, only parsing).
+
+Definition VTerms := list (Variable' * Term Variable').
+
+Definition mkMotiveType' indName (indParams indIndices : VTerms) universe :=
+
+  let onIndIndexOutside '(v, p) t       := Pi  p (Some v) t      in
+  let onIndParam        t       '(b, _) := App t (Var b) in
+  let onIndIndexInside  t       '(v, _) := App t (Var v) in
+
+  let inductive :=
+    List.fold_left
+      onIndIndexInside
+      indIndices
+      (List.fold_left
+         onIndParam
+         indParams
+         (Var indName)
+      )
+  in
+
+  List.fold_right
+    onIndIndexOutside
+    (Pi inductive None universe)
+    indIndices
+.
+
+Definition mkCase motive consName consParameters consIndices :=
+  quantifyBinders (concatMap addRecursiveMotive consParameters)
+                  $ applyTerm [applyVar consParameters (Var Nothing consName)]
+                  $ applyTerm consIndices
+                  $ motive.
+
+Definition quantifyCase motive (constructor : (Variable' * VTerms * list (Term Variable'))) acc :=
+  let '(consName, consParameters, consIndices) := constructor in
+  Pi (mkCase motive consName consParameters consIndices) None acc.
+
+Definition quantifyCases motive (constructors : list (Variable' * VTerms * list (Term Variable'))) :=
+  foldrWith (quantifyCase motive) constructors.
+
+Definition eliminatorType'
+           (inductiveName       : Variable')
+           (inductiveParameters : VTerms)
+           (inductiveIndices    : VTerms)
+           (constructors        : list (Variable' * VTerms * list (Term Variable')))
+  :=
+
+  let motive := "Motive" in
+  let motiveType := mkMotiveType' inductiveName inductiveParameters inductiveIndices Type' in
+
+    quantifyVariables inductiveParameters
+  $ quantifyVariables ([(motive, motiveType)])
+  $ quantifyCases motive constructors
+  $ quantifyVariables inductiveIndices
+  $ quantifyVariables [(discriminee, discrimineeType)]
+  $ outputType
+.

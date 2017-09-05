@@ -90,7 +90,9 @@ termBench1 =
   { repairTermFromTerm = unsafeParseRaw "λ b . b"
   , repairTermFromType = unsafeParseRaw "B → B"
   , repairTermToType   = unsafeParseRaw "A → B → B"
-  , repairTermDiff     = DT.InsPi () (DT.Replace "A") (Binder Nothing) DT.Same
+  , repairTermDiff     =
+    DT.InsPi () (DT.Replace "A") (Binder Nothing)
+    $ DT.Same
   , repairTermExpected = unsafeParseRaw "λ _ b . b"
   }
 
@@ -99,7 +101,10 @@ termBench2 =
   { repairTermFromTerm = unsafeParseRaw "λ b . b"
   , repairTermFromType = unsafeParseRaw "B → B"
   , repairTermToType   = unsafeParseRaw "B → A → B"
-  , repairTermDiff     = DT.CpyPi DT.Same DA.Same (DT.InsPi () (DT.Replace "A") (Binder Nothing) DT.Same)
+  , repairTermDiff     =
+    DT.CpyPi DT.Same DA.Same
+    $ DT.InsPi () (DT.Replace "A") (Binder Nothing)
+    $ DT.Same
   , repairTermExpected = unsafeParseRaw "λ b _ . b"
   }
 
@@ -108,7 +113,9 @@ termBench3 =
   { repairTermFromTerm = unsafeParseRaw "λ f a . f a"
   , repairTermFromType = unsafeParseRaw "(A → B) → A → B"
   , repairTermToType   = unsafeParseRaw "A → (A → B) → B"
-  , repairTermDiff     = DT.PermutPis [1, 0] DT.Same
+  , repairTermDiff     =
+    DT.PermutPis [1, 0]
+    $ DT.Same
   , repairTermExpected = unsafeParseRaw "λ a f . f a"
   }
 
