@@ -105,20 +105,31 @@ Module δAtom.
 
 End δAtom.
 
+Notation "f <$> x" := (option_map f x) (at level 60).
+
 Module δList.
 
   Inductive Δ (τ : Type) (Δτ : Type) : Type :=
-  | Same   : Δ τ Δτ
   | Insert : ∀ (h  : τ)  (Δt : Δ τ Δτ), Δ τ Δτ
+  | Keep   : ∀ (Δt : Δ τ Δτ), Δ τ Δτ
   | Modify : ∀ (Δh : Δτ) (Δt : Δ τ Δτ), Δ τ Δτ
+  | Same   : Δ τ Δτ
   .
   Arguments Same [τ Δτ].
 
   Fixpoint patch τ Δτ (patchτ : Δτ -> τ -> option τ)
            (δ : Δ τ Δτ) : list τ -> option (list τ) :=
     match δ with
-    | Same         => Some
-    | Insert h  δt => fun l => option_map (cons h) (patch patchτ δt l)
+
+    | Insert h  δt => fun l => cons h <$> patch patchτ δt l
+
+    | Keep δt =>
+      fun l =>
+        match l with
+        | h :: t => cons h <$> patch patchτ δt t
+        | _ => None
+        end
+
     | Modify δh δt =>
       fun l =>
         match l with
@@ -129,6 +140,9 @@ Module δList.
           | _ => None
           end
         end
+
+    | Same         => Some
+
     end.
 
 End δList.
@@ -179,29 +193,6 @@ Definition quantifyVariables l : Term Variable' -> Term Variable' :=
   quantifyBinders (List.map (fun '(v, τ) => (Some v, τ)) l).
 
 Notation "f $ x" := (f x) (right associativity, at level 180, only parsing).
-
-Definition mkMotiveType' indName (indParams indIndices : VTerms Variable') universe :=
-
-  let onIndIndexOutside '(v, p) t       := Pi  p (Some v) t      in
-  let onIndParam        t       '(b, _) := App t (Var b) in
-  let onIndIndexInside  t       '(v, _) := App t (Var v) in
-
-  let inductive :=
-    List.fold_left
-      onIndIndexInside
-      indIndices
-      (List.fold_left
-         onIndParam
-         indParams
-         (Var indName)
-      )
-  in
-
-  List.fold_right
-    onIndIndexOutside
-    (Pi inductive None universe)
-    indIndices
-.
 
 Fixpoint unpackFullyAppliedInductive' inductiveName term nbParams nbIndices acc :=
   match (term, nbParams, nbIndices) with
@@ -260,6 +251,29 @@ Definition quantifyCases
            inductiveName inductiveParameters inductiveIndices motive
            (constructors : list (Variable' * VTerms Variable' * list (Term Variable'))) :=
   foldrWith (quantifyCase inductiveName inductiveParameters inductiveIndices motive) constructors.
+
+Definition mkMotiveType' indName (indParams indIndices : VTerms Variable') universe :=
+
+  let onIndIndexOutside '(v, p) t       := Pi  p (Some v) t      in
+  let onIndParam        t       '(b, _) := App t (Var b) in
+  let onIndIndexInside  t       '(v, _) := App t (Var v) in
+
+  let inductive :=
+    List.fold_left
+      onIndIndexInside
+      indIndices
+      (List.fold_left
+         onIndParam
+         indParams
+         (Var indName)
+      )
+  in
+
+  List.fold_right
+    onIndIndexOutside
+    (Pi inductive None universe)
+    indIndices
+.
 
 Definition eliminatorType'
            (inductiveName       : Variable')
@@ -372,6 +386,7 @@ End δPair.
 Module δTerm.
 
   Inductive Δ (ν : Type) : Type :=
+  | CpyApp  : ∀ (δl : Δ ν) (δr : Δ ν), Δ ν
   | CpyPi   : ∀ (δl : Δ ν) (δb : δAtom.Δ (Binder ν)) (δr : Δ ν), Δ ν
   | InsPi   : ∀ (δl : Δ ν) (b : Binder ν) (δr : Δ ν), Δ ν
   | Replace : ∀ (r : Term ν), Δ ν
@@ -381,6 +396,17 @@ Module δTerm.
 
   Fixpoint patch ν (δ : Δ ν) : Term ν -> option (Term ν) :=
     match δ with
+
+    | CpyApp δl δr =>
+      fun t =>
+        match t with
+        | App l r =>
+          match (patch δl l, patch δr r) with
+          | (Some l', Some r') => Some (App l' r')
+          | _ => None
+          end
+        | _ => None
+        end
 
     | CpyPi δl δb δr =>
       fun t =>
@@ -517,6 +543,12 @@ End δInductive.
 
 Axiom TODO : string -> δTerm.Δ Variable'.
 
+Fixpoint nCpyApps ν n (b : δTerm.Δ ν) : δTerm.Δ ν :=
+  match n with
+  | 0 => b
+  | S n' => δTerm.CpyApp (nCpyApps n' b) δTerm.Same
+  end.
+
 Fixpoint nCpyPis ν n (b : δTerm.Δ ν) : δTerm.Δ ν :=
   match n with
   | 0 => b
@@ -524,29 +556,45 @@ Fixpoint nCpyPis ν n (b : δTerm.Δ ν) : δTerm.Δ ν :=
   end.
 
 Fixpoint δquantifyParameters
-         (δps : δInductive.Δps) (ps : VTerms Variable') (rest : δTerm.Δ Variable')
-  : δTerm.Δ Variable'
+         (δps : δInductive.Δps) (ps : VTerms Variable')
+  : option (δTerm.Δ Variable' -> δTerm.Δ Variable')
   :=
   match δps with
+
   | δList.Insert (b, τ) δps =>
-    δTerm.InsPi (δTerm.Replace τ) (Some b) (δquantifyParameters δps ps rest)
-  | δList.Modify _ _ => TODO "δList.Modify"
-  | δList.Same => nCpyPis (List.length ps) rest
+    (compose (δTerm.InsPi (δTerm.Replace τ) (Some b))) <$> δquantifyParameters δps ps
+
+  | δList.Keep δps =>
+    match ps with
+    | [] => None
+    | _ :: ps => (compose (δTerm.CpyPi δTerm.Same δAtom.Same)) <$> δquantifyParameters δps ps
+    end
+
+  | δList.Modify _ _ => Some (fun _ => TODO "δList.Modify")
+
+  | δList.Same => Some (nCpyPis (List.length ps))
+
+  end.
+
+Definition option_apply A B (of : option (A -> B)) (x : A) : option B :=
+  match of with
+  | None => None
+  | Some f => Some (f x)
   end.
 
 Definition δeliminatorType
-           (ind : Inductive' Variable') (δ : δInductive.Δ) : δTerm.Δ Variable' :=
+           (ind : Inductive' Variable') (δ : δInductive.Δ) : option (δTerm.Δ Variable') :=
   let '(Build_Inductive' n ps is cs) := ind in
   match δ with
-  | δInductive.Same => δTerm.Same
+  | δInductive.Same => Some δTerm.Same
   | δInductive.Modify δn δps δis δcs =>
     (* The outermost thing that happens is quantifying over the inductive parameters *)
-    δquantifyParameters δps ps
-                        $ δTerm.CpyPi δTerm.Same δAtom.Same
-                        $ TODO "δInductive.Modify"
+    option_apply (δquantifyParameters δps ps)
+                 $ δTerm.CpyPi δTerm.Same δAtom.Same
+                 $ TODO "δInductive.Modify"
   end.
 
-Theorem option_map_id : forall T (o : option T), option_map id o = o.
+Theorem option_map_id : forall T (o : option T), id <$> o = o.
 Proof.
   intros. destruct o; reflexivity.
 Qed.
@@ -591,8 +639,8 @@ Theorem δquantifyParameters_correct :
     δInductive.patchParameters δps ps = Some ps' ->
     ∀ δrest rest rest',
       δTerm.patch δrest rest = Some rest' ->
-      δTerm.patch (δquantifyParameters δps ps δrest) (quantifyVariables ps rest)
-      = Some (quantifyVariables ps' rest').
+      δquantifyParameters δps ps δrest = Some δqps ->
+      δTerm.patch δqps (quantifyVariables ps rest) = Some (quantifyVariables ps' rest').
 Proof.
   unfold δInductive.patchParameters.
   intros δps.
@@ -616,6 +664,28 @@ Proof.
   - admit.
 
 Admitted.
+
+Definition δindIndexInside (δis : δInductive.Δis) : δTerm.Δ Variable' -> δTerm.Δ Variable' :=
+  match δis with
+  | δList.Same => nCpyApps (length is)
+  end.
+
+Definition δmkMotiveType (δn : δInductive.Δn) (δps : δInductive.Δps) (δis : δInductive.Δis)
+  : δTerm.Δ Variable' :=
+  δindIndexInside δi (TODO "δmkMotiveType").
+
+Theorem δquantifyMotive_correct :
+  ∀ δn δps δis δmotiveType,
+    δmkMotiveType δn δps δis = δmotiveType ->
+    ∀ δrest rest rest' motive motiveType motiveType',
+      δTerm.patch δrest rest = Some rest' ->
+      δTerm.patch δmotiveType motiveType = Some motiveType' ->
+      δTerm.patch (δTerm.CpyPi δTerm.Same δAtom.Same δrest)
+                  (quantifyVariables [(motive, motiveType)] rest)
+      = Some (quantifyVariables [(motive, motiveType')] rest').
+Proof.
+
+Qed.
 
 Theorem δeliminatorType_correct : ∀ i δi δt,
     δeliminatorType i δi = δt ->
@@ -645,20 +715,7 @@ Proof.
 
     erewrite δquantifyParameters_correct in HδT; try eassumption;
       [ inversion_clear HδT; reflexivity | ].
-
-    TODO: WORKING ON THIS BELOW
-
-Theorem δquantifyMotive_correct :
-  ∀ δps ps ps',
-    δInductive.patchParameters δps ps = Some ps' ->
-    ∀ δrest rest rest',
-      δTerm.patch δrest rest = Some rest' ->
-      δTerm.patch (δquantifyParameters δps ps δrest) (quantifyVariables ps rest)
-      = Some (quantifyVariables ps' rest').
-Proof.
-  unfold δInductive.patchParameters.
-  intros δps.
-  induction δps; intros ps ps' HI δrest rest rest' HT; simpl in *.
+    clear HδT t'.
 
 
 
