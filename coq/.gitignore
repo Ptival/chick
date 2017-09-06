@@ -1,0 +1,6 @@
+*.aux
+*.glob
+*.v.d
+*.vo
+HaysTac
+Makefile.coq

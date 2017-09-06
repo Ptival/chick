@@ -10,189 +10,18 @@ From Coq Require Import
      Unicode.Utf8
 .
 
+From Chick Require Import
+     Diff.Atom
+     Diff.List
+     Notations
+     Syntax.Term
+.
+
+Module δAtom := Chick.Diff.Atom.
+Module δList := Chick.Diff.List.
+
 Import ListNotations.
 Open Scope string.
-
-Class Desc (From : Type) :=
-  {
-    To : Type;
-    denote : From -> To;
-  }.
-
-Notation "⟦ d ⟧" := (denote d).
-
-Inductive TypeD : Type :=
-| ArrowD : TypeD -> TypeD -> TypeD
-| BoolD  : TypeD
-| ListD  : TypeD -> TypeD
-| NatD   : TypeD
-.
-
-Fixpoint denoteTypeD d :=
-  match d with
-  | ArrowD dL dR => denoteTypeD dL -> denoteTypeD dR
-  | BoolD        => bool
-  | ListD  dT    => list (denoteTypeD dT)
-  | NatD         => nat
-  end.
-
-Global Instance Desc_TypeD : Desc TypeD:=
-  {
-    To := Type;
-    denote := denoteTypeD;
-  }.
-
-Notation "a --> b" := (ArrowD a b) (at level 99, right associativity).
-Notation "[ a ]d" := (ListD a).
-
-Check List.fold_left.
-
-Inductive OpD : TypeD -> Type :=
-| EvenD : OpD ( NatD --> BoolD )
-| FoldLeftD :
-    ∀ (A B : TypeD) (f : OpD (A --> B --> A)) (base : denoteTypeD A),
-      OpD ( [ B ]d --> A )
-| MapD :
-    ∀ (t1 t2 : TypeD) (f : OpD (t1 --> t2)),
-      OpD ( [ t1 ]d --> [ t2 ]d )
-.
-
-Fixpoint denote_OpD (d : TypeD) (opD : OpD d) : denoteTypeD d :=
-  match opD with
-  | EvenD         => Nat.even
-  | FoldLeftD f b => fun l => List.fold_left (denote_OpD f) l b
-  | MapD      f   => List.map (denote_OpD f)
-  end.
-
-Global Instance Desc_OpD d : Desc (OpD d) :=
-  {
-    To := ⟦ d ⟧;
-    denote := @denote_OpD d;
-  }.
-
-Definition mapType t1 t2 := (t1 -> t2) -> list t1 -> list t2.
-
-Theorem JustChecking :
-  ∀ A B (f : OpD (A --> B)) l,
-    ⟦ MapD f ⟧ l = List.map ⟦ f ⟧ l.
-Proof.
-  reflexivity.
-Qed.
-
-Module δAtom.
-
-  Inductive Δ (τ : Type) : Type :=
-  | Same    :      Δ τ
-  | Replace : τ -> Δ τ
-  .
-  Arguments Same [τ].
-
-  Definition patch τ (δ : Δ τ) : τ -> option τ :=
-    match δ with
-    | Same      => Some
-    | Replace r => fun _ => Some r
-    end.
-
-  Global Instance Desc_Δ τ : Desc (Δ τ) :=
-    {
-      To := τ -> τ;
-      denote δ :=
-        match δ with
-        | Same      => id
-        | Replace r => fun _ => r
-        end;
-    }.
-
-End δAtom.
-
-Notation "f <$> x" := (option_map f x) (at level 60).
-
-Module δList.
-
-  Inductive Δ (τ : Type) (Δτ : Type) : Type :=
-  | Insert : ∀ (h  : τ)  (Δt : Δ τ Δτ), Δ τ Δτ
-  | Keep   : ∀ (Δt : Δ τ Δτ), Δ τ Δτ
-  | Modify : ∀ (Δh : Δτ) (Δt : Δ τ Δτ), Δ τ Δτ
-  | Same   : Δ τ Δτ
-  .
-  Arguments Same [τ Δτ].
-
-  Fixpoint patch τ Δτ (patchτ : Δτ -> τ -> option τ)
-           (δ : Δ τ Δτ) : list τ -> option (list τ) :=
-    match δ with
-
-    | Insert h  δt => fun l => cons h <$> patch patchτ δt l
-
-    | Keep δt =>
-      fun l =>
-        match l with
-        | h :: t => cons h <$> patch patchτ δt t
-        | _ => None
-        end
-
-    | Modify δh δt =>
-      fun l =>
-        match l with
-        | []     => None
-        | h :: t =>
-          match (patchτ δh h, patch patchτ δt t) with
-          | (Some h', Some t') => Some (h' :: t')
-          | _ => None
-          end
-        end
-
-    | Same         => Some
-
-    end.
-
-End δList.
-
-Record Δ (D : TypeD) :=
-  {
-    δτ : Type;
-    patch : δτ -> denoteTypeD D -> option ⟦ D ⟧
-  }.
-
-Definition δBoolD : Δ BoolD.
-  apply Build_Δ with (δτ := δAtom.Δ bool).
-  apply δAtom.patch.
-Defined.
-
-Definition Variable' := string.
-Definition Binder ν := option ν.
-
-Inductive Term (ν : Type) : Type :=
-| App   : ∀ (t1 t2 : Term ν), Term ν
-| Pi    : ∀ (τ1 : Term ν) (b : Binder ν) (τ2 : Term ν), Term ν
-| Type' : Term ν
-| Var   : ∀ (v : ν), Term ν
-.
-Arguments Type' [ν].
-
-Definition mkApp a t : Term Variable' := App a t.
-
-Definition mkPi '(b, τ) a : Term Variable' := Pi τ b a.
-
-Definition foldlWith T A f (l : list T) (a : A) := List.fold_left f l a.
-
-Definition foldrWith T A f (l : list T) (a : A) := List.fold_right f a l.
-
-Definition applyTerm := foldlWith mkApp.
-
-Definition VTerm ν := (ν * Term ν)%type.
-Definition VTerms ν := list (VTerm ν).
-Definition BTerm ν := (Binder ν * Term ν)%type.
-Definition BTerms ν := list (BTerm ν).
-
-Definition applyVar (l : VTerms Variable') : Term Variable' -> Term Variable' :=
-  applyTerm (List.map (@Var _ ∘ fst) l).
-
-Definition quantifyBinders := foldrWith mkPi.
-
-Definition quantifyVariables l : Term Variable' -> Term Variable' :=
-  quantifyBinders (List.map (fun '(v, τ) => (Some v, τ)) l).
-
-Notation "f $ x" := (f x) (right associativity, at level 180, only parsing).
 
 Fixpoint unpackFullyAppliedInductive' inductiveName term nbParams nbIndices acc :=
   match (term, nbParams, nbIndices) with
@@ -217,6 +46,24 @@ Definition unpackFullyAppliedInductive
                                (List.length inductiveParameters)
                                (List.length inductiveIndices)
                                [].
+
+Definition mkApp l r : Term Variable' := App l r.
+
+Definition mkPi '(b, l) r : Term Variable' := Pi l b r.
+
+Definition foldlWith T A f (l : list T) (a : A) := List.fold_left f l a.
+
+Definition foldrWith T A f (l : list T) (a : A) := List.fold_right f a l.
+
+Definition applyTerm := foldlWith mkApp.
+
+Definition applyVar (l : VTerms Variable') : Term Variable' -> Term Variable' :=
+  applyTerm (List.map (@Var _ ∘ fst) l).
+
+Definition quantifyBinders := foldrWith mkPi.
+
+Definition quantifyVariables l : Term Variable' -> Term Variable' :=
+  quantifyBinders (List.map (fun '(v, τ) => (Some v, τ)) l).
 
 Definition addRecursiveMotive
            inductiveName inductiveParameters inductiveIndices motive (vτ : VTerm Variable')
@@ -250,72 +97,9 @@ Definition quantifyCase
 Definition quantifyCases
            inductiveName inductiveParameters inductiveIndices motive
            (constructors : list (Variable' * VTerms Variable' * list (Term Variable'))) :=
-  foldrWith (quantifyCase inductiveName inductiveParameters inductiveIndices motive) constructors.
-
-Definition mkMotiveType' indName (indParams indIndices : VTerms Variable') universe :=
-
-  let onIndIndexOutside '(v, p) t       := Pi  p (Some v) t      in
-  let onIndParam        t       '(b, _) := App t (Var b) in
-  let onIndIndexInside  t       '(v, _) := App t (Var v) in
-
-  let inductive :=
-    List.fold_left
-      onIndIndexInside
-      indIndices
-      (List.fold_left
-         onIndParam
-         indParams
-         (Var indName)
-      )
-  in
-
-  List.fold_right
-    onIndIndexOutside
-    (Pi inductive None universe)
-    indIndices
-.
-
-Definition eliminatorType'
-           (inductiveName       : Variable')
-           (inductiveParameters : VTerms Variable')
-           (inductiveIndices    : VTerms Variable')
-           (constructors        : list (Variable' * VTerms Variable' * list (Term Variable')))
-  :=
-
-    let discriminee := "instance" in
-    let discrimineeTerm := Var discriminee in
-    let discrimineeType := applyVar inductiveIndices
-                                    $ applyVar inductiveParameters
-                                    $ Var inductiveName
-    in
-
-    let motive := "Motive" in
-    let motiveTerm := Var motive in
-    let motiveType := mkMotiveType' inductiveName inductiveParameters inductiveIndices Type' in
-
-    let outputType := App (applyVar inductiveIndices motiveTerm) discrimineeTerm in
-
-    quantifyVariables inductiveParameters
-                      $ quantifyVariables ([(motive, motiveType)])
-                      $ quantifyCases inductiveName inductiveParameters inductiveIndices motiveTerm
-                      constructors
-                      $ quantifyVariables inductiveIndices
-                      $ quantifyVariables [(discriminee, discrimineeType)]
-                      $ outputType
-.
-
-Inductive Constructor ν :=
-  { constructorName       : ν
-  ; constructorParameters : BTerms ν
-  ; constructorIndices    : list (Term ν)
-  }.
-
-Inductive Inductive' ν :=
-  { inductiveName         : ν
-  ; inductiveParameters   : VTerms ν
-  ; inductiveIndices      : BTerms ν
-  ; inductiveConstructors : list (Constructor ν)
-  }.
+  foldrWith
+    (quantifyCase inductiveName inductiveParameters inductiveIndices motive)
+    constructors.
 
 Definition mapWithIndex (A B : Type) (f : A -> nat -> B) (l : list A) : list B :=
   fst $ List.fold_right (fun a '(acc, i) => (f a i :: acc, i + 1)) ([], 0) l.
@@ -346,6 +130,80 @@ Definition instantiateBinders prefix : BTerms Variable' -> VTerms Variable' :=
   in
   mapWithIndex instantiate.
 
+Definition onIndIndexInside t (i : VTerm Variable') := let '(v, _) := i in App t (Var v).
+
+Eval compute in
+    (
+      List.fold_left onIndIndexInside [("a", Type'); ("b", Type')] Type'
+    ).
+
+Definition mkMotiveType'
+           indName (indParams indIndices : VTerms Variable')
+           universe :=
+
+  let onIndIndexOutside '(v, p) t := Pi  p (Some v) t      in
+  let onIndParam t '(b, _) := App t (Var b) in
+
+  let inductive :=
+    List.fold_left onIndIndexInside indIndices
+                   $ List.fold_left onIndParam indParams
+                   $ Var indName
+  in
+
+  List.fold_right
+    onIndIndexOutside
+    (Pi inductive None universe)
+    indIndices
+
+.
+
+Definition
+  eliminatorType'
+  (inductiveName       : Variable')
+  (inductiveParameters : VTerms Variable')
+  (inductiveIndices    : VTerms Variable')
+  (constructors        : list (Variable' * VTerms Variable' * list (Term Variable')))
+  :=
+
+    (*let inductiveIndices' := instantiateBinders "i" inductiveIndices in*)
+
+    let discriminee := "instance" in
+    let discrimineeTerm := Var discriminee in
+    let discrimineeType :=
+        applyVar inductiveIndices
+                 $ applyVar inductiveParameters
+                 $ Var inductiveName
+    in
+
+    let motive := "Motive" in
+    let motiveTerm := Var motive in
+    let motiveType :=
+        mkMotiveType' inductiveName inductiveParameters inductiveIndices Type'
+    in
+
+    let outputType := App (applyVar inductiveIndices motiveTerm) discrimineeTerm in
+
+    quantifyVariables inductiveParameters
+                      $ quantifyVariables ([(motive, motiveType)])
+                      $ quantifyCases inductiveName inductiveParameters inductiveIndices motiveTerm
+                      constructors
+                      $ quantifyVariables inductiveIndices
+                      $ quantifyVariables [(discriminee, discrimineeType)]
+                      $ outputType
+.
+
+Inductive Constructor ν :=
+  { constructorName       : ν
+  ; constructorParameters : BTerms ν
+  ; constructorIndices    : list (Term ν)
+  }.
+
+Inductive Inductive' ν :=
+  { inductiveName         : ν
+  ; inductiveParameters   : VTerms ν
+  ; inductiveIndices      : VTerms ν (* should be BTerms but it's a PITA *)
+  ; inductiveConstructors : list (Constructor ν)
+  }.
 
 Definition instantiateConstructor '(Build_Constructor cn cps cis) :=
   (cn, instantiateBinders "p" cps, cis).
@@ -355,8 +213,7 @@ Definition instantiateConstructors := List.map instantiateConstructor.
 Definition eliminatorType (ind : Inductive' Variable') : Term Variable' :=
   let '(Build_Inductive' indName indParams indIndices indConstructors) := ind in
 
-  eliminatorType' indName indParams
-                  (instantiateBinders "i" indIndices)
+  eliminatorType' indName indParams indIndices
                   (instantiateConstructors indConstructors).
 
 Module δPair.
@@ -388,6 +245,7 @@ Module δTerm.
   Inductive Δ (ν : Type) : Type :=
   | CpyApp  : ∀ (δl : Δ ν) (δr : Δ ν), Δ ν
   | CpyPi   : ∀ (δl : Δ ν) (δb : δAtom.Δ (Binder ν)) (δr : Δ ν), Δ ν
+  | InsApp  : ∀ (δl : Δ ν) (δr : Δ ν), Δ ν
   | InsPi   : ∀ (δl : Δ ν) (b : Binder ν) (δr : Δ ν), Δ ν
   | Replace : ∀ (r : Term ν), Δ ν
   | Same    : Δ ν
@@ -416,6 +274,13 @@ Module δTerm.
           | (Some l', Some b', Some r') => Some (Pi l' b' r')
           | _ => None
           end
+        | _ => None
+        end
+
+    | InsApp δl δr =>
+      fun t =>
+        match (patch δl t, patch δr t) with
+        | (Some l', Some r') => Some (App l' r')
         | _ => None
         end
 
@@ -494,8 +359,13 @@ Module δInductive.
   Definition Δp := δPair.Δ (δAtom.Δ Variable') (δTerm.Δ Variable').
   Definition Δps := δList.Δ τp Δp.
 
+  (*
   Definition τi := BTerm Variable'.
   Definition Δi := δPair.Δ (δAtom.Δ (Binder Variable')) (δTerm.Δ Variable').
+  Definition Δis := δList.Δ τi Δi.
+   *)
+  Definition τi := VTerm Variable'.
+  Definition Δi := δPair.Δ (δAtom.Δ Variable') (δTerm.Δ Variable').
   Definition Δis := δList.Δ τi Δi.
 
   Definition τc := Constructor Variable'.
@@ -637,42 +507,143 @@ Qed.
 Theorem δquantifyParameters_correct :
   ∀ δps ps ps',
     δInductive.patchParameters δps ps = Some ps' ->
-    ∀ δrest rest rest',
+    ∀ δrest rest rest' δqps,
       δTerm.patch δrest rest = Some rest' ->
-      δquantifyParameters δps ps δrest = Some δqps ->
-      δTerm.patch δqps (quantifyVariables ps rest) = Some (quantifyVariables ps' rest').
+      δquantifyParameters δps ps = Some δqps ->
+      δTerm.patch (δqps δrest) (quantifyVariables ps rest)
+      = Some (quantifyVariables ps' rest').
 Proof.
   unfold δInductive.patchParameters.
   intros δps.
-  induction δps; intros ps ps' HI δrest rest rest' HT; simpl in *.
-
-  - rewrite nCpyPis_quantifyVariables.
-    rewrite HT.
-    simpl.
-    congruence.
+  pose δps as δps_was.
+  induction δps; intros ps ps' HI δrest rest rest' δqps HQ HT; simpl in *.
 
   - destruct h as (b, τ).
     apply option_map_Some in HI.
+    apply option_map_Some in HT.
     destruct HI as [ps'' [HI1 HI2]].
-    subst ps'.
+    destruct HT as [δqps' [HT1 HT2]].
+    subst ps' δqps.
     simpl in *.
     erewrite IHδps; try eassumption.
     unfold quantifyVariables.
     simpl.
     reflexivity.
 
-  - admit.
+  - destruct ps as [ | [v τ] ps ]; [ congruence | ].
+    apply option_map_Some in HI.
+    apply option_map_Some in HT.
+    destruct HI as [ps'' [HI1 HI2]].
+    destruct HT as [δqps' [HT1 HT2]].
+    subst ps' δqps.
+    simpl in *.
+    unfold quantifyVariables in *.
+    erewrite IHδps; try eassumption.
+    reflexivity.
+
+  - destruct ps as [ | [v τ] ps ]; [ congruence | ].
+    admit.
+
+  - inversion HT. subst δqps. clear HT.
+    inversion HI. subst ps'. clear HI.
+    rewrite nCpyPis_quantifyVariables.
+    rewrite HQ.
+    simpl.
+    reflexivity.
 
 Admitted.
 
-Definition δindIndexInside (δis : δInductive.Δis) : δTerm.Δ Variable' -> δTerm.Δ Variable' :=
+Fixpoint δindIndexInside
+         (is : VTerms Variable') (δis : δInductive.Δis) (base : δTerm.Δ Variable')
+  : δTerm.Δ Variable' :=
+
   match δis with
-  | δList.Same => nCpyApps (length is)
+
+  | δList.Insert (v, _) δis =>
+    δindIndexInside is δis (δTerm.InsApp base (δTerm.Replace (Var v)))
+
+  | δList.Keep δis =>
+    δindIndexInside is δis (δTerm.CpyApp base δTerm.Same)
+
+  | δList.Modify δpair δis =>
+    match δpair with
+    | δPair.Same => δindIndexInside is δis (δTerm.CpyApp base δTerm.Same)
+    | δPair.Modify δl _ =>
+      match δl with
+      | δAtom.Same => δindIndexInside is δis (δTerm.CpyApp base δTerm.Same)
+      | δAtom.Replace v =>
+        δindIndexInside is δis (δTerm.CpyApp base (δTerm.Replace (Var v)))
+      end
+    end
+
+  | δList.Same => nCpyApps (List.length is) base
+
   end.
 
-Definition δmkMotiveType (δn : δInductive.Δn) (δps : δInductive.Δps) (δis : δInductive.Δis)
+Lemma δindIndexInside_correct :
+  ∀ δis (is is' : VTerms Variable')
+    δresult δbase,
+    δindIndexInside is δis δbase = δresult ->
+    δInductive.patchIndices δis is = Some is' ->
+    ∀ base result base',
+      List.fold_left onIndIndexInside is base = result ->
+      δTerm.patch δbase base = Some base' ->
+      ∀ result',
+        List.fold_left onIndIndexInside is' base' = result' ->
+        δTerm.patch δresult result = Some result'.
+Proof.
+  intros δis.
+  pose δis as δis_was.
+  induction δis; intros is is' δresult δbase DI PI base result base' FL PB result' FL'.
+
+  - destruct h as [v t].
+    subst δresult.
+    simpl in *.
+    unfold δInductive.patchIndices in PI.
+    simpl in PI.
+    apply option_map_Some in PI.
+    destruct PI as [is'' [PI1 PI2]].
+    subst is'.
+    simpl in FL'.
+    erewrite IHδis; eauto.
+    simpl.
+    rewrite PB.
+    reflexivity.
+
+  -
+
+
+
+Qed.
+
+Definition δmkMotiveType
+           (δn : δInductive.Δn) (δps : δInductive.Δps) (δis : δInductive.Δis)
+           (is : BTerms Variable')
   : δTerm.Δ Variable' :=
-  δindIndexInside δi (TODO "δmkMotiveType").
+  δindIndexInside is δis (TODO "δmkMotiveType").
+
+Theorem δmkMotiveType_correct :
+  ∀ δn n n' δps ps ps' δis (is is' : BTerms Variable') (iis iis' : VTerms Variable')
+    δcs cs cs' δmotiveType u,
+
+    δmkMotiveType δn δps δis is = δmotiveType ->
+
+    iis  = instantiateBinders "i" is ->
+    iis' = instantiateBinders "i" is' ->
+
+    δInductive.patch
+      (δInductive.Modify δn δps δis δcs)
+      (Build_Inductive' n ps is cs)
+    = Some (Build_Inductive' n' ps' is' cs') ->
+
+    δTerm.patch δmotiveType (mkMotiveType' n ps iis u)
+    = Some (mkMotiveType' n ps' iis' u).
+
+Proof.
+
+
+
+Qed.
 
 Theorem δquantifyMotive_correct :
   ∀ δn δps δis δmotiveType,

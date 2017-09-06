@@ -1,0 +1,9 @@
+-R . Chick
+
+-Q HaysTac HaysTac
+
+./Diff/Atom.v
+./Diff/List.v
+./Syntax/Term.v
+./Chick.v
+./Notations.v
