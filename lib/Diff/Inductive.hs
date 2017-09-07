@@ -1,8 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Diff.Inductive
-  ( Diff(..)
+  ( Δis'
+  , Diff(..)
   , δinductiveRawType
   , δinductiveRawConstructorPrefix
   , patch
@@ -30,17 +32,27 @@ import           Text.Printf
 type Term α = TypeX α Variable
 type BoundTerm α = (Binder Variable, Term α)
 
+type Δn = DA.Diff Variable
+
+type Φp  α = (Variable, Term α)
+type Δp  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+type Δps α = DL.Diff (Φp α) (Δp α)
+
+type Φi  α = BoundTerm α
+type Δi  α = DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)
+type Δis α = DL.Diff (Φi α) (Δi α)
+
+type Φi'  α = (Variable, Term α)
+type Δi'  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+type Δis' α = DL.Diff (Φi' α) (Δi' α)
+
+type Φc  α = Constructor α Variable
+type Δc  α = DC.Diff α
+type Δcs α = DL.Diff (Φc α) (Δc α)
+
 data Diff α
   = Same
-  | Modify
-    (DA.Diff Variable)
-    (DL.Diff
-      (Variable, Term α)
-      (DP.Diff (DA.Diff Variable) (DT.Diff α)))
-    (DL.Diff
-      (BoundTerm α)
-      (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
-    (DL.Diff (Constructor α Variable) (DC.Diff α))
+  | Modify Δn (Δps α) (Δis α) (Δcs α)
 
 instance Show α => Show (Diff α) where
   show Same             = "Same"

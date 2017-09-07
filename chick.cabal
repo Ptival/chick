@@ -56,8 +56,10 @@ Library
                    Diff.GlobalEnvironment
                    Diff.Inductive
                    Diff.List
+                   Diff.ListFoldLeft
                    Diff.LocalContext
                    Diff.LocalDeclaration
+                   Diff.Motive
                    Diff.Pair
                    Diff.Script
                    Diff.Term
@@ -65,7 +67,10 @@ Library
                    Diff.Variable
                    Diff.Vernacular
                    Goal
+                   Inductive.Eliminator
                    Inductive.Inductive
+                   Inductive.Motive
+                   Inductive.Utils
                    Notations
                    Parsing
                    Parsing.Atomic
