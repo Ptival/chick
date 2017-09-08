@@ -14,9 +14,7 @@ import Term.Binder
 import Term.Raw as Raw
 import Term.Term
 import Term.TypeChecked as C
-import Term.Variable
 import Text.Printf
-import Typing.GlobalEnvironment
 import Typing.LocalContext
 import Work
 
@@ -33,8 +31,8 @@ checkConstructor ::
   , MonadError String m
   , MonadFix m
   ) =>
-  Φps Checked.Checked Variable ->
-  Φis Checked.Checked Variable ->
+  Φips (Checked Variable) Variable ->
+  Φiis (Checked Variable) Variable ->
   Inductive (Checked Variable) Variable ->
   Constructor Raw Variable ->
   m (Constructor (Checked Variable) Variable)
@@ -50,7 +48,7 @@ checkConstructor
     (prettyStr n) (show nbIndices)
 
   -- add all parameters as local variables
-  forM_ ps' addBinder
+  forM_ ps' addVariable
 
   -- check the arguments
   args' <- forM args $ \ (b, τ) -> do
@@ -66,14 +64,14 @@ checkConstructor
 
   -- check the indices
   ctxt <- get
-  inds' <- forM (zip is' inds) $ \ ((b, τ), t) -> do
+  inds' <- forM (zip is' inds) $ \ ((v, τ), t) -> do
     case tc (checkF ctxt t τ id) of
       Left  l ->
         throwError $
         printf "In constructor %s: could not typecheck index %s at type %s\nFail: %s"
         (prettyStr n) (prettyStrU t) (prettyStrU τ) (show l)
       Right r -> do
-        addBinder (b, r)
+        addVariable (v, r)
         return r
 
   return $ Constructor ind' n args' inds'

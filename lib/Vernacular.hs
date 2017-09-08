@@ -14,7 +14,6 @@ import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
-import           Term.Variable
 
 data Vernacular α ν
   = Definition ν (TypeX α ν) (TermX α ν)

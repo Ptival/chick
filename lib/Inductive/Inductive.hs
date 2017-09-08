@@ -49,7 +49,8 @@ import           Text.Printf
 type Φip  α ν = (ν, TypeX α ν)
 type Φips α ν = [Φip α ν]
 
-type Φii  α ν = (Binder ν, TypeX α ν)
+-- type Φii  α ν = (Binder ν, TypeX α ν)
+type Φii  α ν = (ν, TypeX α ν)
 type Φiis α ν = [Φii α ν]
 
 data Inductive α ν =
@@ -141,11 +142,14 @@ inductiveRawType' ::
   Φiis Raw.Raw Variable ->
   Raw.Type Variable
 inductiveRawType' indParams indIndices =
-  foldr onParam (foldr onIndex Type indIndices) indParams
+    foldrWith onParam indParams
+  $ foldrWith onIndex indIndices
+  $ Type
   where
     -- onIndexOrParam :: (Binder Variable, Raw.Type Variable) -> Raw.Type Variable -> Raw.Type Variable
     onParam (v, p) t = Pi () p (abstractVariable v t)
-    onIndex (b, i) t = Pi () i (abstractBinder   b t)
+    onIndex (v, i) t = Pi () i (abstractVariable v t)
+    -- onIndex (b, i) t = Pi () i (abstractBinder   b t)
 
 -- | Constructs the type of the inductive type
 inductiveRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
@@ -167,15 +171,18 @@ constructorCheckedType (Constructor (Inductive indName indParams _ _) _ consPara
 -- | Sometimes, we can't call `inductiveType` because the constructors are not checked yet.
 -- | `inductiveType'` lets us call with just the minimal information.
 inductiveType' ::
-  [(Variable, C.Type Variable)] ->
-  [(Binder Variable, C.Type Variable)] ->
+  Φips (C.Checked Variable) Variable ->
+  Φiis (C.Checked Variable) Variable ->
   C.Type Variable
 inductiveType' ps is =
-  foldr onParam (foldr onIndex Type is) ps
+    foldrWith onParam ps
+  $ foldrWith onIndex is
+  $ Type
   where
     -- onIndexOrParam :: C.Type Variable -> C.Type Variable -> C.Type Variable
     onParam (v, p) t = Pi (C.Checked Type) p (abstractVariable v t)
-    onIndex (b, i) t = Pi (C.Checked Type) i (abstractBinder   b t)
+    onIndex (v, i) t = Pi (C.Checked Type) i (abstractVariable v t)
+    --onIndex (b, i) t = Pi (C.Checked Type) i (abstractBinder   b t)
 
 inductiveType :: Inductive (C.Checked Variable) Variable -> C.Type Variable
 inductiveType (Inductive _ ps is _) = inductiveType' ps is
@@ -183,10 +190,10 @@ inductiveType (Inductive _ ps is _) = inductiveType' ps is
 arrows :: [Doc a] -> Doc a
 arrows = encloseSep mempty mempty (text " →")
 
-boundTermDocBinder ::
+_boundTermDocBinder ::
   MonadReader PrecedenceTable m =>
   (Binder Variable, TermX α Variable) -> m (Doc ())
-boundTermDocBinder (Binder b, t) =
+_boundTermDocBinder (Binder b, t) =
   case b of
     Nothing -> prettyDocU t
     Just v -> boundTermDocVariable (v, t)
@@ -202,7 +209,8 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
   prettyDocU (Inductive n ps is cs) = do
     psDoc <- mapM boundTermDocVariable ps
     csDoc <- mapM prettyDocU cs
-    isDoc <- mapM boundTermDocBinder is
+    -- isDoc <- mapM boundTermDocBinder is
+    isDoc <- mapM boundTermDocVariable is
     return $ vsep $
       [ fillSep $
         [ text "Inductive"

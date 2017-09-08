@@ -1,23 +1,17 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Diff.ListFoldLeft where
+module Diff.ListFoldLeft
+  ( module Diff.ListFold
+  , δListFoldLeft
+  )where
 
 import qualified Diff.List as DL
+import Diff.ListFold
 
-data ΔListFoldLeft τ δτ a = ΔListFoldLeft
-  { onInsert  ::     τ -> a -> a
-  , onKeep    ::          a -> a
-  , onModify  ::    δτ -> a -> a
-  , onPermute :: [Int] -> a -> a
-  , onRemove  ::          a -> a
-  , onReplace ::   [τ] -> a -> a
-  , onSame    ::          a -> a
-  }
-
-δListFoldLeft :: ΔListFoldLeft τ δτ a -> DL.Diff τ δτ -> a -> a
+δListFoldLeft :: ΔListFold τ δτ a -> DL.Diff τ δτ -> a -> a
 δListFoldLeft
-  (ΔListFoldLeft
+  (ΔListFold
    { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   ) = go
   where

@@ -6,8 +6,6 @@ import Term.TypeErrored         as TypeErrored
 import Typing.GlobalEnvironment
 import Work
 
-import Term.Variable
-
 typeCheck ::
   GlobalEnvironment (Checked Variable) Variable ->
   TermX ξ Variable -> TermX ψ Variable ->

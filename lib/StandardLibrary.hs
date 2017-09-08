@@ -141,7 +141,7 @@ inductive Fin : ℕ → Type where
 -}
 indFin :: Inductive Raw.Raw Variable
 indFin =
-  Inductive "Fin" [] [(Binder Nothing, "ℕ")]
+  Inductive "Fin" [] [("bound", "ℕ")]
   [ zeroFin
   , succFin
   ]
@@ -165,7 +165,7 @@ inductive Vec (A : Type) : ℕ → Type where
 -}
 indVec :: Inductive Raw.Raw Variable
 indVec =
-  Inductive "Vec" [("A", Type)] [(Binder Nothing, "ℕ")]
+  Inductive "Vec" [("A", Type)] [("size", "ℕ")]
   [ nilVec
   , consVec
   ]

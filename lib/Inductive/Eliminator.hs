@@ -122,7 +122,8 @@ eliminatorType' α inductiveName inductiveParameters inductiveIndices constructo
 
 eliminatorRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
 eliminatorRawType (Inductive n ps is cs) =
-  eliminatorType' () n ps (instantiateBinders "i" is) (instantiateConstructors cs)
+  eliminatorType' () n ps is (instantiateConstructors cs)
+  -- eliminatorType' () n ps (instantiateBinders "i" is) (instantiateConstructors cs)
   where
     instantiateConstructors = map instantiateConstructor
     instantiateConstructor (Constructor _ cn cps cis) =

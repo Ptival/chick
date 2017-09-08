@@ -6,9 +6,7 @@ module Inductive.Utils
 
 import Text.Printf
 
-import Term.Binder
 import Term.Term
-import Term.Variable
 
 foldlWith :: Foldable t => (b -> a -> b) -> t a -> b -> b
 foldlWith f l a = foldl f a l

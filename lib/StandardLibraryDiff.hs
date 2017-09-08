@@ -24,10 +24,12 @@ import qualified Term.Raw as Raw
 
     δn = DA.Replace "Vec"
     δps = DL.Same
-    δis = DL.Insert (Binder Nothing, "ℕ") DL.Same
+    δis = DL.Insert ("size", "ℕ") DL.Same
     δcs = DL.Modify δnil $ DL.Modify δcons $ DL.Same
+
     δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert "zero" DL.Same)
     δcons = DC.Modify (DA.Replace "vcons") δconsPs δconsIs
+
     δconsPs =
       DL.Keep
       $ DL.Insert ("n", "ℕ")

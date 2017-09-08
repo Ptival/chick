@@ -4,11 +4,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Diff.Inductive
-  ( Δis'
+  ( Δis
+  , Δps
   , Diff(..)
   , δinductiveRawType
   , δinductiveRawConstructorPrefix
-  , instantiateΔis
+  -- , instantiateΔis
   , patch
   ) where
 
@@ -16,7 +17,7 @@ import           Control.Monad.Fix
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Data.Bifunctor
+-- import           Data.Bifunctor
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
@@ -32,7 +33,7 @@ import           Term.Term
 import           Text.Printf
 
 type Term α = TypeX α Variable
-type BoundTerm α = (Binder Variable, Term α)
+-- type BoundTerm α = (Binder Variable, Term α)
 
 type Δn = DA.Diff Variable
 
@@ -40,19 +41,24 @@ type Φp  α = (Variable, Term α)
 type Δp  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
 type Δps α = DL.Diff (Φp α) (Δp α)
 
-type Φi  α = BoundTerm α
-type Δi  α = DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)
+type Φi  α = (Variable, Term α)
+type Δi  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
 type Δis α = DL.Diff (Φi α) (Δi α)
 
-type Φi'  α = (Variable, Term α)
-type Δi'  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
-type Δis' α = DL.Diff (Φi' α) (Δi' α)
+-- type Φi  α = BoundTerm α
+-- type Δi  α = DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)
+-- type Δis α = DL.Diff (Φi α) (Δi α)
 
+-- type Φi'  α = (Variable, Term α)
+-- type Δi'  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+-- type Δis' α = DL.Diff (Φi' α) (Δi' α)
+
+{-
 instantiateΔis :: Δis α -> Δis' α
 instantiateΔis = bimap f g
   where
     f :: Φi α -> Φi' α
-    f (b, τ) = (variableFromBinder b, τ)
+    f (b, τ) = (variableFromBinder b, τ) -- TODO: fix this
 
     g :: Δi α -> Δi' α
     g = _
@@ -61,6 +67,7 @@ instantiateΔis = bimap f g
     variableFromBinder (Binder b) = case b of
       Nothing -> "TODO"
       Just v  -> v
+-}
 
 type Φc  α = Constructor α Variable
 type Δc  α = DC.Diff α
@@ -110,21 +117,24 @@ patch ind@(Inductive n ps is cs) = \case
 
 δinductiveRawType ::
   Int ->
-  (DL.Diff (Variable, Term Raw.Raw) (DP.Diff (DA.Diff Variable) (DT.Diff Raw.Raw))) ->
+  Δps Raw.Raw ->
   Int ->
-  (DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw))) ->
+  Δis Raw.Raw ->
   DT.Diff Raw.Raw
 δinductiveRawType nPs δps nIs δis =
   processPs nPs (processIs nIs δis) δps
 
   where
-    -- processIs :: Int -> DL.Diff (BoundTerm Raw.Raw) (DA.Diff (BoundTerm Raw.Raw)) -> DT.Diff Raw.Raw
+
+    processIs :: Int -> Δis Raw.Raw -> DT.Diff Raw.Raw
     processIs n = \case
       DL.Same -> nCpyPis n DT.Same
-      DL.Insert (b, τ) δ -> DT.InsPi () (DT.Replace τ) b $ processIs n δ
+      DL.Insert (b, τ) δ ->
+        DT.InsPi () (DT.Replace τ) (Binder (Just b)) $ processIs n δ
       DL.Modify _δt     _δ -> error "TODO"
       _ -> error "TODO"
 
+    processPs :: Int -> DT.Diff Raw.Raw -> Δps Raw.Raw -> DT.Diff Raw.Raw
     processPs n base = \case
       DL.Same -> nCpyPis n base
       _ -> error "TODO"
@@ -136,7 +146,7 @@ patch ind@(Inductive n ps is cs) = \case
 δinductiveRawConstructorPrefix ::
   DA.Diff Variable ->
   Int ->
-  DL.Diff (Variable, Term Raw.Raw) (DP.Diff (DA.Diff Variable) (DT.Diff Raw.Raw)) ->
+  Δps Raw.Raw ->
   DT.Diff Raw.Raw
 δinductiveRawConstructorPrefix δindName nPs δps =
   processPs nPs (DT.CpyVar δindName) δps
