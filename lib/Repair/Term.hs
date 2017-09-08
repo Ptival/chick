@@ -29,7 +29,6 @@ import           Term.Binder
 import           Term.Term
 -- import qualified Term.TypeChecked as C
 import qualified Term.Raw as Raw
-import           Term.Variable
 import qualified Typing.LocalContext as LC
 import           Typing.LocalDeclaration
 import           Utils

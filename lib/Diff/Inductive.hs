@@ -1,12 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Diff.Inductive
   ( Δis'
   , Diff(..)
   , δinductiveRawType
   , δinductiveRawConstructorPrefix
+  , instantiateΔis
   , patch
   ) where
 
@@ -14,6 +16,7 @@ import           Control.Monad.Fix
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Data.Bifunctor
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
@@ -26,7 +29,6 @@ import           PrettyPrinting.PrettyPrintable
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
-import           Term.Variable
 import           Text.Printf
 
 type Term α = TypeX α Variable
@@ -45,6 +47,20 @@ type Δis α = DL.Diff (Φi α) (Δi α)
 type Φi'  α = (Variable, Term α)
 type Δi'  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
 type Δis' α = DL.Diff (Φi' α) (Δi' α)
+
+instantiateΔis :: Δis α -> Δis' α
+instantiateΔis = bimap f g
+  where
+    f :: Φi α -> Φi' α
+    f (b, τ) = (variableFromBinder b, τ)
+
+    g :: Δi α -> Δi' α
+    g = _
+
+    variableFromBinder :: Binder Variable -> Variable
+    variableFromBinder (Binder b) = case b of
+      Nothing -> "TODO"
+      Just v  -> v
 
 type Φc  α = Constructor α Variable
 type Δc  α = DC.Diff α

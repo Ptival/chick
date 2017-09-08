@@ -16,7 +16,6 @@ import           Term.Binder
 --import           Term.Bound
 import           Term.Raw as Raw
 import           Term.Term
-import           Term.Variable
 
 type Parser1 a = Parser a -> Parser  a
 type Parser2 a = Parser a -> Parser1 a

@@ -17,7 +17,6 @@ import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Utils
 import Term.Binder
 import Term.Term
-import Term.Variable
 
 prettyTermDocPrec :: ∀ α. PrecedenceTable -> TermX α Variable -> (Doc (), Precedence)
 prettyTermDocPrec precs = goTerm

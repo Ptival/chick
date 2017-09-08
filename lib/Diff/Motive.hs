@@ -5,7 +5,7 @@ import qualified Diff.Inductive as DI
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
 import           Diff.ListFoldLeft
-import Term.Term
+import           Term.Term
 
 δonInductiveIndexInside :: α -> DI.Δis' α -> DT.Diff α -> DT.Diff α
 δonInductiveIndexInside α =

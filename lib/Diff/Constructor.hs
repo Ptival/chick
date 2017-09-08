@@ -24,7 +24,6 @@ import           PrettyPrinting.PrettyPrintable
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
-import           Term.Variable
 import           Text.Printf
 
 type Term α = TypeX α Variable

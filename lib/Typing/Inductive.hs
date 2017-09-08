@@ -33,12 +33,14 @@ checkConstructor ::
   , MonadError String m
   , MonadFix m
   ) =>
-  [(Binder Variable, C.Type Variable)] ->
-  [(Binder Variable, C.Type Variable)] ->
+  Φps Checked.Checked Variable ->
+  Φis Checked.Checked Variable ->
   Inductive (Checked Variable) Variable ->
   Constructor Raw Variable ->
   m (Constructor (Checked Variable) Variable)
-checkConstructor ps' is' ind' (Constructor _ n args inds) = do
+checkConstructor
+  ps' is' ind' -- those have been checked already
+  (Constructor _ n args inds) = do
 
   -- constructors should specify all indices
   let nbIndices = length is'

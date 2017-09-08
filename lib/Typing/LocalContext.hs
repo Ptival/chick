@@ -29,8 +29,6 @@ import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Binder
 import Term.Term
 import Term.TypeChecked
-import Term.Variable
---import Term.Raw as Raw
 
 newtype LocalContext α ν =
   LocalContext { unLocalContext :: [LocalDeclaration α ν] }

@@ -1,4 +1,20 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
+
 module Inductive.Eliminator where
+
+import           Data.String
+
+import           Inductive.Inductive
+import           Inductive.Motive
+import           Inductive.Utils
+import           Term.Binder
+import           Term.Term
+import qualified Term.Raw as Raw
 
 -- forall (A : Type) (P : forall n : nat, Vec A n -> Set),
 --   P 0 (vnil A) ->

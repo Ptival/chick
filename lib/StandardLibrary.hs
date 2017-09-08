@@ -16,7 +16,6 @@ import Term.Binder
 import Term.Raw                                  as Raw
 import Term.Term
 import Term.TypeChecked                          as Checked
-import Term.Variable
 import Text.Printf
 import Typing.GlobalEnvironment
 import Work

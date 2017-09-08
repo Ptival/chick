@@ -26,6 +26,7 @@ import qualified Diff.Script as DS
 import qualified Diff.Term as DT
 import           Diff.Utils
 import qualified Diff.Vernacular as DV
+import           Inductive.Eliminator
 import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
@@ -36,7 +37,6 @@ import           Script
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
-import           Term.Variable
 import qualified Typing.GlobalEnvironment as GE
 -- import qualified Typing.LocalContext as LC
 import           Utils
@@ -122,8 +122,8 @@ withStateFromVernacular v δv e =
       )
       $ withState
       (over environment
-       (GE.addGlobalAssum (Binder (Just (I.eliminatorName indName)),
-                           I.eliminatorRawType ind
+       (GE.addGlobalAssum (Binder (Just (eliminatorName indName)),
+                           eliminatorRawType ind
                            )) >>>
        over δenvironment DL.Keep
       ) $ do

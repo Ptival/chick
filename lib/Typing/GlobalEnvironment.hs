@@ -26,7 +26,6 @@ import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import           Term.TypeChecked as TypeChecked
-import           Term.Variable
 import qualified Typing.LocalContext as LocalContext
 
 newtype GlobalEnvironment ξ ν

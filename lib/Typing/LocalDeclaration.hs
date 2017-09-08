@@ -16,7 +16,6 @@ import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Binder
 import Term.Term
-import Term.Variable
 
 data LocalDeclaration α ν
   = LocalAssum (Binder ν) (TypeX α ν)

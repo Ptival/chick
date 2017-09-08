@@ -19,7 +19,6 @@ import Inductive.Inductive
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
-import Term.Variable
 
 data GlobalDeclaration α ν
   = GlobalAssum ν (TypeX α ν)

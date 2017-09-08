@@ -12,7 +12,6 @@ import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Utils
 import Term.Term
-import Term.Variable
 
 instance PrettyPrintableUnannotated (TermX ξ Variable) where
   prettyDocU t = do

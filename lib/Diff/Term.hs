@@ -29,7 +29,6 @@ import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Binder
 import           Term.Term
-import           Term.Variable
 
 data Diff α
   = Same

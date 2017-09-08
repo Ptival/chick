@@ -10,7 +10,15 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Inductive.Inductive
-  ( Constructor(..)
+  ( Φip
+  , Φips
+  , Φii
+  , Φiis
+  , Φcp
+  , Φcps
+  , Φci
+  , Φcis
+  , Constructor(..)
   , Inductive(..)
   , constructorCheckedType
   , constructorCheckedType'
@@ -26,6 +34,7 @@ import           Control.Lens (_2, over)
 import           Control.Monad.Reader
 import           Data.Default
 
+import           Inductive.Utils
 import           Precedence
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
@@ -34,15 +43,20 @@ import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.TypeChecked as C
-import           Term.Variable
 import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
+
+type Φip  α ν = (ν, TypeX α ν)
+type Φips α ν = [Φip α ν]
+
+type Φii  α ν = (Binder ν, TypeX α ν)
+type Φiis α ν = [Φii α ν]
 
 data Inductive α ν =
   Inductive
   { inductiveName         :: ν
-  , inductiveParameters   :: [(ν, TypeX α ν)]
-  , inductiveIndices      :: [(Binder ν, TypeX α ν)]
+  , inductiveParameters   :: Φips α ν
+  , inductiveIndices      :: Φiis α ν
   , inductiveConstructors :: [Constructor α ν]
   }
 
@@ -55,12 +69,18 @@ instance Eq (Inductive α Variable) where
   indA == indB =
     inductiveRawType (rawInductive indA) == inductiveRawType (rawInductive indB)
 
+type Φcp  α ν = (Binder ν, TypeX α ν)
+type Φcps α ν = [Φcp α ν]
+
+type Φci  α ν = TypeX α ν
+type Φcis α ν = [Φci α ν]
+
 data Constructor α ν =
   Constructor
   { constructorInductive  :: Inductive α ν
   , constructorName       :: ν
-  , constructorParameters :: [(Binder ν, TypeX α ν)]
-  , constructorIndices    :: [TypeX α ν]
+  , constructorParameters :: Φcps α ν
+  , constructorIndices    :: Φcis α ν
   }
 
 -- /!\ DO NOT DERIVE ANY TYPECLASS FOR `Constructor` AS IT IS CYCLIC WITH `Inductive` /!\
@@ -70,7 +90,8 @@ instance Eq (Constructor α Variable) where
     (n, ps, is) == (n', ps', is')
 
 instance (Show α, Show ν) => Show (Constructor α ν) where
-  show (Constructor _ n ps is) = printf "Constructor _ %s %s %s" (show n) (show ps) (show is)
+  show (Constructor _ n ps is) =
+    printf "Constructor _ %s %s %s" (show n) (show ps) (show is)
 
 mapRawSnd :: [(a, TermX α ν)] -> [(a, Raw.Term ν)]
 mapRawSnd = map (over _2 Raw.raw)
@@ -78,40 +99,30 @@ mapRawSnd = map (over _2 Raw.raw)
 rawInductive :: Inductive α ν -> Inductive Raw.Raw ν
 rawInductive (Inductive n ps is cs) =
   fix $ \ ind' ->
-          Inductive n (mapRawSnd ps) (mapRawSnd is) (map (rawConstructor ind') cs)
+  Inductive n (mapRawSnd ps) (mapRawSnd is) (map (rawConstructor ind') cs)
 
 rawConstructor :: Inductive Raw.Raw ν -> Constructor α ν -> Constructor Raw.Raw ν
 rawConstructor rawInd (Constructor _ n ps is) =
   Constructor rawInd n (mapRawSnd ps) (map Raw.raw is)
 
 constructorType' :: ∀ α.
-  α ->
-  Variable ->
-  [(Variable, TermX α Variable)] ->
-  [(Binder Variable, TermX α Variable)] ->
-  [TermX α Variable] ->
+  α -> Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   TypeX α Variable
 constructorType' α indName indParams consParams consIndices =
-  foldr onParam (
-    foldr onIndex (
-        foldr onIndParam
-        (Var Nothing indName)
-        indParams)
-    consIndices)
-  consParams
+    foldrWith onParam consParams
+  $ foldrWith onIndex consIndices
+  $ foldrWith onIndParam indParams
+  $ Var Nothing indName
   where
-    onIndex :: TermX α Variable -> TermX α Variable -> TermX α Variable
+    onIndex :: Φci α Variable -> TermX α Variable -> TermX α Variable
     onIndex i t = App α t i --(Raw.raw t) (Raw.raw i)
-    onParam :: (Binder Variable, TermX α Variable) -> TermX α Variable -> TermX α Variable
+    onParam :: Φcp α Variable -> TermX α Variable -> TermX α Variable
     onParam (b, p) t = Pi α p (abstractBinder b t)
-    onIndParam :: (Variable, TermX α Variable) -> TermX α Variable -> TermX α Variable
+    onIndParam :: Φip α Variable -> TermX α Variable -> TermX α Variable
     onIndParam (v, _) t = App α t (Var Nothing v)
 
 constructorRawType' ::
-  Variable ->
-  [(Variable, TermX α Variable)] ->
-  [(Binder Variable, TermX α Variable)] ->
-  [TermX α Variable] ->
+  Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   Raw.Type Variable
 constructorRawType' indName indParams consParams consIndices =
   constructorType' () indName indParams' consParams' consIndices'
@@ -126,8 +137,8 @@ constructorRawType (Constructor (Inductive indName indParams _ _) _ consParams c
 
 -- | Constructs the type of the inductive type
 inductiveRawType' ::
-  [(Variable, Raw.Type Variable)] ->
-  [(Binder Variable, Raw.Type Variable)] ->
+  Φips Raw.Raw Variable ->
+  Φiis Raw.Raw Variable ->
   Raw.Type Variable
 inductiveRawType' indParams indIndices =
   foldr onParam (foldr onIndex Type indIndices) indParams
@@ -142,13 +153,14 @@ inductiveRawType (Inductive _ ps is _) = inductiveRawType' ps is
 
 constructorCheckedType' ::
   Variable ->
-  [(Variable, C.Type Variable)] ->
-  [(Binder Variable, C.Type Variable)] ->
-  [C.Type Variable] ->
+  Φips (C.Checked Variable) Variable ->
+  Φcps (C.Checked Variable) Variable ->
+  Φcis (C.Checked Variable) Variable ->
   C.Type Variable
 constructorCheckedType' = constructorType' (C.Checked Type)
 
-constructorCheckedType :: Constructor (C.Checked Variable) Variable -> C.Type Variable
+constructorCheckedType ::
+  Constructor (C.Checked Variable) Variable -> C.Type Variable
 constructorCheckedType (Constructor (Inductive indName indParams _ _) _ consParams consIndices) =
   constructorCheckedType' indName indParams consParams consIndices
 

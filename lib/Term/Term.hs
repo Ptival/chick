@@ -19,7 +19,9 @@
 -- {-# language UndecidableInstances #-}
 
 module Term.Term
-  ( NameScope
+  ( module Term.Binder
+  , module Term.Variable
+  , NameScope
   , TermX(..)
   , TypeX
   , abstractAnonymous

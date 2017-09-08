@@ -31,7 +31,6 @@ import Term.Raw                                  as Raw
 import Term.Term
 import Term.TypeChecked                          as TypeChecked
 import Term.TypeErrored                          as TypeErrored
-import Term.Variable
 import TypeCheckingFailure
 import Utils
 

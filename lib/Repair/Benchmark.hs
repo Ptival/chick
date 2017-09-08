@@ -1,8 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Repair.Benchmark where
 
@@ -17,10 +17,7 @@ import           Data.Foldable
 import           Text.Printf
 
 import qualified Diff.Atom as DA
-import qualified Diff.Constructor as DC
-import qualified Diff.Inductive as DI
 import qualified Diff.List as DL
-import qualified Diff.Pair as DP
 import qualified Diff.Script as DS
 import qualified Diff.Term as DT
 import qualified Diff.Vernacular as DV
@@ -32,10 +29,10 @@ import           Repair.State
 import qualified Repair.Term as RT
 import           Script
 import           StandardLibrary
+import           StandardLibraryDiff
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
-import           Term.Variable
 import qualified Typing.GlobalEnvironment as GE
 import qualified Typing.LocalContext as LC
 import           Utils
@@ -251,8 +248,8 @@ repairListToVec = RepairScriptBenchmark
     ]
 
   , repairScriptDiff =
-      DL.Modify (DV.ModifyInductive (DI.Modify δn δps δis δcs))
-      $ DL.Same
+    DL.Modify (DV.ModifyInductive δListToVec)
+    $ DL.Same
 
   , repairScriptExpected = Just $ Script
     [ Inductive indVec
@@ -262,27 +259,6 @@ repairListToVec = RepairScriptBenchmark
     ]
 
   }
-
-  where
-
-    δn = DA.Replace "Vec"
-    δps = DL.Same
-    δis = DL.Insert (Binder Nothing, "ℕ") DL.Same
-    δcs = DL.Modify δnil $ DL.Modify δcons $ DL.Same
-    δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert "zero" DL.Same)
-    δcons = DC.Modify (DA.Replace "vcons") δconsPs δconsIs
-    δconsPs =
-      DL.Keep
-      $ DL.Insert ("n", "ℕ")
-      $ DL.Modify
-      (DP.Modify DA.Same
-        (DT.InsApp ()
-          (DT.CpyApp (DT.Replace "Vec") DT.Same)
-          (DT.Replace "n")
-        )
-      )
-      $ DL.Same
-    δconsIs = DL.Insert (App () (Var Nothing "succ") (Var Nothing "n")) DL.Same
 
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
