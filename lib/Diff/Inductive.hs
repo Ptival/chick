@@ -128,7 +128,7 @@ patch ind@(Inductive n ps is cs) = \case
 
     processIs :: Int -> Δis Raw.Raw -> DT.Diff Raw.Raw
     processIs n = \case
-      DL.Same -> nCpyPis n DT.Same
+      DL.Same -> DT.nCpyPis n DT.Same
       DL.Insert (b, τ) δ ->
         DT.InsPi () (DT.Replace τ) (Binder (Just b)) $ processIs n δ
       DL.Modify _δt     _δ -> error "TODO"
@@ -136,12 +136,8 @@ patch ind@(Inductive n ps is cs) = \case
 
     processPs :: Int -> DT.Diff Raw.Raw -> Δps Raw.Raw -> DT.Diff Raw.Raw
     processPs n base = \case
-      DL.Same -> nCpyPis n base
+      DL.Same -> DT.nCpyPis n base
       _ -> error "TODO"
-
-    nCpyPis 0 base         = base
-    nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
-    nCpyPis n base         = DT.CpyPi DT.Same DA.Same $ nCpyPis (n - 1) base
 
 δinductiveRawConstructorPrefix ::
   DA.Diff Variable ->
@@ -154,9 +150,5 @@ patch ind@(Inductive n ps is cs) = \case
   where
 
     processPs n base = \case
-      DL.Same -> nCpyApps n base
+      DL.Same -> DT.nCpyApps n base
       δ -> error $ printf "TODO: %s" (show δ)
-
-    nCpyApps 0 base         = base
-    nCpyApps n _    | n < 0 = error "nCpyApps: n became negative!"
-    nCpyApps n base         = DT.CpyApp (nCpyApps (n - 1) base) DT.Same

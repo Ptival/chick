@@ -14,21 +14,18 @@ import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Term
-import qualified Term.Raw as Raw
+-- import qualified Term.Raw as Raw
 
 test :: IO ()
 test =
-  let (Inductive  n  ps  is  _cs) = indList in
-  let (DI.Modify _δn δps δis _δcs) = δListToVec in
-  -- let δis' = DI.instantiateΔis δis in
-  let  motive  =  mkMotiveType' () n  ps  is Type in
-  let δmotive  = δmkMotiveType' ()   δps δis in
-  let vecMotive = mkMotiveType () indVec Type in
+  let listMotive = mkMotiveType () indList Type in
+  let  vecMotive = mkMotiveType () indVec  Type in
+  let δlistMotive = δmkMotiveType () indList δListToVec in
   do
-    putStrLn $ prettyStr motive
-    putStrLn $ prettyStr δmotive
+    putStrLn $ prettyStr listMotive
+    putStrLn $ prettyStr δlistMotive
     putStrLn $ prettyStr vecMotive
-    (runTrace . runError $ DT.patch motive δmotive) >>= \case
+    (runTrace . runError $ DT.patch listMotive δlistMotive) >>= \case
       Left s -> do
         putStrLn s
       Right motive' -> do

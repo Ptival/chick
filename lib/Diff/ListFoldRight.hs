@@ -1,5 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.ListFoldRight
   ( module Diff.ListFold
@@ -8,18 +10,22 @@ module Diff.ListFoldRight
 
 import qualified Diff.List as DL
 import Diff.ListFold
+import Diff.Utils
 
-δListFoldRight :: ΔListFold τ δτ a -> DL.Diff τ δτ -> a -> a
+δListFoldRight :: ∀ τ δτ a. ΔListFold τ δτ a -> [τ] -> DL.Diff τ δτ -> a -> a
 δListFoldRight
   (ΔListFold
-   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
-  ) = go
+   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame })
+  = go
   where
-    go = \case
-      DL.Insert  t δt -> onInsert t  . go δt
-      DL.Keep      δt -> onKeep      . go δt
-      DL.Modify  δ δt -> onModify δ  . go δt
-      DL.Permute p δt -> onPermute p . go δt
-      DL.Remove    δt -> onRemove    . go δt
-      DL.Replace l    -> onReplace l
-      DL.Same         -> onSame
+    go :: [τ] -> DL.Diff τ δτ -> a -> a
+    go l δl = case (δl, l) of
+      (DL.Insert  t δt,     l') -> onInsert  t l . go l' δt
+      (DL.Keep      δt, _ : l') -> onKeep      l . go l' δt
+      (DL.Modify  δ δt, _ : l') -> onModify  δ l . go l' δt
+      (DL.Permute p δt,   _   ) -> onPermute p l . go l' δt
+        where l' = permute p l
+      (DL.Remove    δt, _ : l') -> onRemove    l . go l' δt
+      (DL.Replace r   ,   _   ) -> onReplace r l
+      (DL.Same        ,   _   ) -> onSame      l
+      _ -> error "δListFoldRight"

@@ -88,7 +88,7 @@ patch c@(Constructor ind n ps is) d = case d of
       DT.Diff Raw.Raw
     processIs n base = \case
       DL.Insert t δ -> DT.InsApp () (processIs n base δ) (DT.Replace t)
-      DL.Same -> nCpyApps n base
+      DL.Same -> DT.nCpyApps n base
       δ -> error $ printf "TODO: processIs %s" (show δ)
 
     processPs ::
@@ -101,13 +101,5 @@ patch c@(Constructor ind n ps is) d = case d of
       DL.Keep δ -> DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
       DL.Modify DP.Same δ -> DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
       DL.Modify (DP.Modify δl δr) δ -> DT.CpyPi δr δl (processPs (n-1) base δ)
-      DL.Same -> nCpyPis n base
+      DL.Same -> DT.nCpyPis n base
       δ -> error $ printf "TODO: processPs %s" (show δ)
-
-    nCpyApps 0 base         = base
-    nCpyApps n _    | n < 0 = error "nCpyApps: n became negative!"
-    nCpyApps n base         = DT.CpyApp (nCpyApps (n-1) base) DT.Same
-
-    nCpyPis 0 base         = base
-    nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
-    nCpyPis n base         = DT.CpyPi DT.Same DA.Same $ nCpyPis (n - 1) base

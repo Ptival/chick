@@ -12,6 +12,8 @@ module Diff.Term
   , extractSomeLams
   , mkLams
   , mkPis
+  , nCpyApps
+  , nCpyPis
   , patch
   ) where
 
@@ -189,3 +191,13 @@ mkLams ((a, b) : t) rest = Lam a (abstractBinder b (mkLams t rest))
 mkPis :: [(α, Binder Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
 mkPis []               rest = rest
 mkPis ((a, b, τ1) : t) rest = Pi a τ1 (abstractBinder b (mkPis t rest))
+
+nCpyApps :: Int -> Diff α -> Diff α
+nCpyApps 0 base         = base
+nCpyApps n _    | n < 0 = error "nCpyApps: n became negative!"
+nCpyApps n base         = CpyApp (nCpyApps (n-1) base) Same
+
+nCpyPis :: Int -> Diff α -> Diff α
+nCpyPis 0 base         = base
+nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
+nCpyPis n base         = CpyPi Same DA.Same $ nCpyPis (n - 1) base
