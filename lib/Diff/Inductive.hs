@@ -4,8 +4,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Diff.Inductive
-  ( Δis
-  , Δps
+  ( Δc
+  , Δcs
+  , Δii
+  , Δiis
+  , Δip
+  , Δips
   , Diff(..)
   , δinductiveRawType
   , δinductiveRawConstructorPrefix
@@ -32,18 +36,16 @@ import qualified Term.Raw as Raw
 import           Term.Term
 import           Text.Printf
 
-type Term α = TypeX α Variable
+-- type Term α = TypeX α Variable
 -- type BoundTerm α = (Binder Variable, Term α)
 
 type Δn = DA.Diff Variable
 
-type Φp  α = (Variable, Term α)
-type Δp  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
-type Δps α = DL.Diff (Φp α) (Δp α)
+type Δip  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+type Δips α = DL.Diff (Φip α Variable) (Δip α)
 
-type Φi  α = (Variable, Term α)
-type Δi  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
-type Δis α = DL.Diff (Φi α) (Δi α)
+type Δii  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+type Δiis α = DL.Diff (Φii α Variable) (Δii α)
 
 -- type Φi  α = BoundTerm α
 -- type Δi  α = DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)
@@ -75,7 +77,7 @@ type Δcs α = DL.Diff (Φc α) (Δc α)
 
 data Diff α
   = Same
-  | Modify Δn (Δps α) (Δis α) (Δcs α)
+  | Modify Δn (Δips α) (Δiis α) (Δcs α)
 
 instance Show α => Show (Diff α) where
   show Same             = "Same"
@@ -117,16 +119,16 @@ patch ind@(Inductive n ps is cs) = \case
 
 δinductiveRawType ::
   Int ->
-  Δps Raw.Raw ->
+  Δips Raw.Raw ->
   Int ->
-  Δis Raw.Raw ->
+  Δiis Raw.Raw ->
   DT.Diff Raw.Raw
 δinductiveRawType nPs δps nIs δis =
   processPs nPs (processIs nIs δis) δps
 
   where
 
-    processIs :: Int -> Δis Raw.Raw -> DT.Diff Raw.Raw
+    processIs :: Int -> Δiis Raw.Raw -> DT.Diff Raw.Raw
     processIs n = \case
       DL.Same -> DT.nCpyPis n DT.Same
       DL.Insert (b, τ) δ ->
@@ -134,7 +136,7 @@ patch ind@(Inductive n ps is cs) = \case
       DL.Modify _δt     _δ -> error "TODO"
       _ -> error "TODO"
 
-    processPs :: Int -> DT.Diff Raw.Raw -> Δps Raw.Raw -> DT.Diff Raw.Raw
+    processPs :: Int -> DT.Diff Raw.Raw -> Δips Raw.Raw -> DT.Diff Raw.Raw
     processPs n base = \case
       DL.Same -> DT.nCpyPis n base
       _ -> error "TODO"
@@ -142,7 +144,7 @@ patch ind@(Inductive n ps is cs) = \case
 δinductiveRawConstructorPrefix ::
   DA.Diff Variable ->
   Int ->
-  Δps Raw.Raw ->
+  Δips Raw.Raw ->
   DT.Diff Raw.Raw
 δinductiveRawConstructorPrefix δindName nPs δps =
   processPs nPs (DT.CpyVar δindName) δps

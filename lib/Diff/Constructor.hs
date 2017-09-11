@@ -2,7 +2,12 @@
 {-# LANGUAGE LambdaCase #-}
 
 module Diff.Constructor
-  ( Diff(..)
+  ( Δcn
+  , Δci
+  , Δcis
+  , Δcp
+  , Δcps
+  , Diff(..)
   , patch
   , δconstructorRawType
   ) where
@@ -13,28 +18,28 @@ import           Control.Monad.Freer.Trace
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
+import qualified Diff.Binder as DB
 import qualified Diff.List as DL
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
--- import           PrettyPrinting.PrettyPrintableUnannotated
--- import           PrettyPrinting.Term
--- import           StandardLibrary
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import           Text.Printf
 
-type Term α = TypeX α Variable
-type BoundTerm α = (Binder Variable, Term α)
+type Δcn = DA.Diff Variable
+
+type Δcp α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+type Δcps α = DL.Diff (Φcp α Variable) (Δcp α)
+
+type Δci α = DT.Diff α
+type Δcis α = DL.Diff (Φci α Variable) (Δci α)
 
 data Diff α
   = Same
-  | Modify
-    (DA.Diff Variable)
-    (DL.Diff (BoundTerm α) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
-    (DL.Diff (Term α)      (DT.Diff α))
+  | Modify Δcn (Δcps α) (Δcis α)
   deriving (Show)
 
 instance PrettyPrintable (Diff α) where
@@ -72,9 +77,9 @@ patch c@(Constructor ind n ps is) d = case d of
 δconstructorRawType ::
   DT.Diff Raw.Raw ->
   Int ->
-  (DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw))) ->
+  Δcps Raw.Raw ->
   Int ->
-  (DL.Diff (Raw.Term Variable) (DT.Diff Raw.Raw)) ->
+  Δcis Raw.Raw ->
   DT.Diff Raw.Raw
 δconstructorRawType prefix nPs δps nIs δis =
   processPs nPs (processIs nIs prefix δis) δps
@@ -94,12 +99,17 @@ patch c@(Constructor ind n ps is) d = case d of
     processPs ::
       Int ->
       DT.Diff Raw.Raw ->
-      DL.Diff (BoundTerm Raw.Raw) (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff Raw.Raw)) ->
+      Δcps Raw.Raw ->
       DT.Diff Raw.Raw
     processPs n base = \case
-      DL.Insert (b, t) δ -> DT.InsPi () (DT.Replace t) b (processPs n base δ)
-      DL.Keep δ -> DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
-      DL.Modify DP.Same δ -> DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
-      DL.Modify (DP.Modify δl δr) δ -> DT.CpyPi δr δl (processPs (n-1) base δ)
-      DL.Same -> DT.nCpyPis n base
+      DL.Insert (b, t) δ ->
+        DT.InsPi () (DT.Replace t) (Binder (Just b)) (processPs n base δ)
+      DL.Keep δ ->
+        DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
+      DL.Modify DP.Same δ ->
+        DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
+      DL.Modify (DP.Modify δl δr) δ ->
+        DT.CpyPi δr (DB.fromΔVariable δl) (processPs (n-1) base δ)
+      DL.Same ->
+        DT.nCpyPis n base
       δ -> error $ printf "TODO: processPs %s" (show δ)

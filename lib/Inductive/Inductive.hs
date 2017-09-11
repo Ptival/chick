@@ -70,7 +70,8 @@ instance Eq (Inductive α Variable) where
   indA == indB =
     inductiveRawType (rawInductive indA) == inductiveRawType (rawInductive indB)
 
-type Φcp  α ν = (Binder ν, TypeX α ν)
+--type Φcp  α ν = (Binder ν, TypeX α ν)
+type Φcp  α ν = (ν, TypeX α ν)
 type Φcps α ν = [Φcp α ν]
 
 type Φci  α ν = TypeX α ν
@@ -118,7 +119,7 @@ constructorType' α indName indParams consParams consIndices =
     onIndex :: Φci α Variable -> TermX α Variable -> TermX α Variable
     onIndex i t = App α t i --(Raw.raw t) (Raw.raw i)
     onParam :: Φcp α Variable -> TermX α Variable -> TermX α Variable
-    onParam (b, p) t = Pi α p (abstractBinder b t)
+    onParam (v, p) t = Pi α p (abstractVariable v t)
     onIndParam :: Φip α Variable -> TermX α Variable -> TermX α Variable
     onIndParam (v, _) t = App α t (Var Nothing v)
 

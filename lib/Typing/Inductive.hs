@@ -51,7 +51,7 @@ checkConstructor
   forM_ ps' addVariable
 
   -- check the arguments
-  args' <- forM args $ \ (b, τ) -> do
+  args' <- forM args $ \ (v, τ) -> do
     ctxt <- get
     case tc (checkF ctxt τ Type id) of
       Left  l ->
@@ -59,8 +59,9 @@ checkConstructor
         printf "In constructor %s: could not typecheck argument %s\nFail: %s\nContext: %s"
         (prettyStr n) (prettyStrU τ) (show l) (show ctxt)
       Right r -> do
-        addBinder (b, r)
-        return (b, r)
+        --addBinder (b, r)
+        addVariable (v, r)
+        return (v, r)
 
   -- check the indices
   ctxt <- get

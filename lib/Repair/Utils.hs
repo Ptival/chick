@@ -16,6 +16,7 @@ import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Diff.Atom as DA
+import qualified Diff.Binder as DB
 import qualified Diff.GlobalDeclaration as DGD
 import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.LocalContext as DLC
@@ -73,12 +74,7 @@ unpackDeclarationDiff = \case
     case dld of
       DLD.Same -> (DA.Same, DT.Same)
       DLD.ModifyLocalAssum δb δτv ->
-        let δv =
-              case δb of
-                DA.Same -> DA.Same
-                DA.Replace (Binder Nothing)   -> error "TODO"
-                DA.Replace (Binder (Just v')) -> DA.Replace v'
-        in
+        let δv = toΔVariable δb in
         (δv, δτv)
       DLD.ModifyLocalDef δv δτv -> (δv, δτv)
   Right dgd ->case dgd of
