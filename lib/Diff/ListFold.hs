@@ -13,6 +13,7 @@ module Diff.ListFold
 
 import qualified Diff.Atom as DA
 import qualified Diff.Binder as DB
+import qualified Diff.List as DL
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
 import           Term.Term
@@ -26,6 +27,18 @@ data ΔListFold τ δτ a = ΔListFold
   , onReplace ::   [τ] ->      [τ] -> a -> a
   , onSame    ::               [τ] -> a -> a
   }
+
+δListFoldConcatMap :: (a -> [b]) -> ΔListFold a δa (DL.Diff b δb)
+δListFoldConcatMap f = ΔListFold
+  { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
+  where
+    onInsert      a   _  acc = foldr (\ b acc -> DL.Insert b acc) acc bs where bs = f a
+    onKeep          a _  acc = foldr (\ _ acc -> DL.Keep     acc) acc bs where bs = f a
+    onModify     δt _ _  acc = DL.Same
+    onPermute     _   _  acc = DL.Same
+    onRemove        _ _  acc = DL.Same
+    onReplace     _   _  acc = DL.Same
+    onSame            l  acc = DL.Keep acc
 
 δListFoldMkAppTerms :: α -> ΔListFold (TermX α Variable) (DT.Diff α) (DT.Diff α)
 δListFoldMkAppTerms α = ΔListFold
