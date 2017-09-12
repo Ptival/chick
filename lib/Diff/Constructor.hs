@@ -44,7 +44,8 @@ data Diff α
 
 instance PrettyPrintable (Diff α) where
   prettyDoc Same              = text "Same"
-  prettyDoc (Modify δ1 δ2 δ3) = fillSep [ text "Modify", prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
+  prettyDoc (Modify δ1 δ2 δ3) =
+    fillSep [ text "Modify", prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
 
 -- | Note: `patch` does not replace the reference to `Inductive` in the constructor. The caller must
 -- | finish tying the knot!

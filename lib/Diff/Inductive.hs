@@ -71,9 +71,8 @@ instantiateΔis = bimap f g
       Just v  -> v
 -}
 
-type Φc  α = Constructor α Variable
 type Δc  α = DC.Diff α
-type Δcs α = DL.Diff (Φc α) (Δc α)
+type Δcs α = DL.Diff (Constructor α Variable) (Δc α)
 
 data Diff α
   = Same
@@ -104,7 +103,7 @@ patch ind@(Inductive n ps is cs) = \case
     n'  <- DA.patch n δn
     ps' <- DL.patch (DP.patch DA.patch DT.patch) ps δps
     is' <- DL.patch (DP.patch DA.patch DT.patch) is δis
-    cs' <- DL.patch DC.patch cs δcs -- note: the constructors still refer to the old inductive!
+    cs' <- DL.patch DC.patch cs δcs -- δcs -- note: the constructors still refer to the old inductive!
     return $ fix $ \ind' -> Inductive n' ps' is' $ map (updateConstructorInd ind') cs'
       where
         updateConstructorInd ind' (Constructor _ cn cps cis) = Constructor ind' cn cps cis

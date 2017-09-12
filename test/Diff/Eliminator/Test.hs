@@ -34,8 +34,9 @@ testListToVec =
     putStrLn $ "Eliminator obtained:"
 
     (runSkipTrace . runError $ DT.patch listEliminator δlistEliminator) >>= \case
-      Left (_s :: String) -> do
-        -- putStrLn s
+      Left (s :: String) -> do
+        putStrLn "An error occurred:"
+        putStrLn s
         return False
       Right vecEliminator' -> do
         putStrLn $ prettyStr vecEliminator'

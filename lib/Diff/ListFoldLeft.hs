@@ -23,12 +23,12 @@ import Diff.Utils
   where
     go :: [τ] -> DL.Diff τ δτ -> a -> a
     go l δl = case (δl, l) of
-      (DL.Insert  t δt, l'    ) -> go l'  δt . onInsert  t l
-      (DL.Keep      δt, _ : l') -> go l'  δt . onKeep      l
-      (DL.Modify  δ δt, _ : l') -> go l'  δt . onModify  δ l
-      (DL.Permute p δt, _     ) -> go l' δt  . onPermute p l
+      (DL.Insert  t δt,     l') -> go l'  δt . onInsert  t   l'
+      (DL.Keep      δt, e : l') -> go l'  δt . onKeep      e l'
+      (DL.Modify  δ δt, e : l') -> go l'  δt . onModify  δ e l'
+      (DL.Permute p δt,   _   ) -> go l' δt  . onPermute p   l'
         where l' = permute p l
-      (DL.Remove    δt, _ : l') -> go l'  δt . onRemove    l
-      (DL.Replace r   , _)      ->             onReplace r l
-      (DL.Same        , _)      ->             onSame      l
+      (DL.Remove    δt, e : l') -> go l'  δt . onRemove    e l'
+      (DL.Replace r,        l') ->             onReplace r   l'
+      (DL.Same,             l') ->             onSame        l'
       _ -> error "δListFoldLeft"

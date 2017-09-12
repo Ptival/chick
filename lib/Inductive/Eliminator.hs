@@ -7,7 +7,8 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Inductive.Eliminator
-  ( eliminatorName
+  ( applyVariables
+  , eliminatorName
   , mkCase
   , mkEliminatorRawType
   , mkEliminatorType
@@ -27,8 +28,8 @@ import qualified Term.Raw as Raw
 applyTerms :: α -> [TermX α Variable] -> TermX α Variable -> TermX α Variable
 applyTerms α = foldlWith (mkApp α)
 
-applyVars :: α -> [(Variable, b)] -> TermX α Variable -> TermX α Variable
-applyVars α l = applyTerms α (map (Var Nothing . fst) l)
+applyVariables :: α -> [(Variable, b)] -> TermX α Variable -> TermX α Variable
+applyVariables α l = applyTerms α (map (Var Nothing . fst) l)
 
 mkApp :: α -> TermX α ν -> TermX α ν -> TermX α ν
 mkApp α a t = App α a t
@@ -49,13 +50,13 @@ mkPi α (b, τ1) τ2 = Pi α τ1 (abstractBinder b τ2)
 
 -- `acc` will contain the concrete indices, and will be well-sorted since
 -- we peel from the outermost application
-unpackFullyAppliedInductive' ::
+unpackIfFullyAppliedInductive' ::
   Variable ->
   Φips α Variable ->
   Φiis α Variable ->
   TermX α Variable ->
   [TermX α Variable] -> Maybe [TermX α Variable]
-unpackFullyAppliedInductive' n ips iis term acc = go term ips iis acc
+unpackIfFullyAppliedInductive' n ips iis term acc = go term ips iis acc
   where
     go (Var _ v)   []        []        acc | v == n    = Just acc
                                            | otherwise = Nothing
@@ -65,11 +66,11 @@ unpackFullyAppliedInductive' n ips iis term acc = go term ips iis acc
     go (App _ l r) _         (_ : iis) acc             = go l ips iis (r : acc)
     go _           _         _         _               = Nothing
 
-unpackFullyAppliedInductive ::
+unpackIfFullyAppliedInductive ::
   Variable -> Φips α Variable -> Φiis α Variable -> TermX α Variable ->
   Maybe [TermX α Variable]
-unpackFullyAppliedInductive n ips iis t =
-  unpackFullyAppliedInductive' n ips iis t []
+unpackIfFullyAppliedInductive n ips iis t =
+  unpackIfFullyAppliedInductive' n ips iis t []
 
 -- if the term is `inductiveName` fully-applied, replace it with
 -- an instantiation of the motive
@@ -82,7 +83,7 @@ addRecursiveMotive ::
   (Variable, TypeX α Variable) ->
   [(Binder Variable, TypeX α Variable)]
 addRecursiveMotive α n ips iis motive (v, τ) =
-  case unpackFullyAppliedInductive n ips iis τ of
+  case unpackIfFullyAppliedInductive n ips iis τ of
     Just indices ->
       [ (Binder (Just v), τ)
       , (Binder Nothing, App α (applyTerms α indices motive) (Var Nothing v))
@@ -94,11 +95,10 @@ mkCase ::
   Variable -> Φips α Variable -> Φiis α Variable ->
   Variable -> Φcps α Variable -> Φcis α Variable ->
   TermX α Variable -> TermX α Variable
-mkCase α n ips iis cn cps cis motive =
+mkCase α n ips iis cn cps cis =
   quantifyBinders α (concatMap (addRecursiveMotive α n ips iis motive) cps)
-  $ applyTerms α [applyVars α cps (Var Nothing cn)]
-  $ applyTerms α cis
-  $ motive
+  . applyTerms α [applyVariables α cps (Var Nothing cn)]
+  . applyTerms α cis
 
 motive :: IsString a => a
 motive = "Motive"
@@ -141,14 +141,14 @@ mkEliminatorType'
     discriminee = "instance"
 
     discrimineeType =
-        applyVars α inductiveIndices
-      $ applyVars α inductiveParameters
+        applyVariables α inductiveIndices
+      $ applyVariables α inductiveParameters
       $ Var Nothing inductiveName
 
     motiveType =
       mkMotiveType' α inductiveName inductiveParameters inductiveIndices Type
 
-    outputType = App α (applyVars α inductiveIndices motive) discriminee
+    outputType = App α (applyVariables α inductiveIndices motive) discriminee
 
     quantifyCases = foldrWith quantifyCase constructors
 

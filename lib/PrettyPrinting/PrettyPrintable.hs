@@ -19,4 +19,12 @@ class PrettyPrintable t where
       else (++ "...") . take 20 $ s
 
 instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (l, r) where
-  prettyDoc (l, r) = fillSep [lparen, prettyDoc l, comma, prettyDoc r, rparen]
+  prettyDoc (l, r) = encloseSep lparen rparen comma [prettyDoc l, prettyDoc r]
+
+instance (PrettyPrintable a, PrettyPrintable b, PrettyPrintable c) =>
+         PrettyPrintable (a, b, c) where
+  prettyDoc (a, b, c) = encloseSep lparen rparen comma
+    [prettyDoc a, prettyDoc b, prettyDoc c]
+
+instance (PrettyPrintable a) => PrettyPrintable [a] where
+  prettyDoc l = encloseSep lbracket rbracket comma (map prettyDoc l)

@@ -19,15 +19,15 @@ import           Term.Term
 
 δonInductiveParameter ::
   α -> Φips α Variable -> DI.Δips α -> DT.Diff α -> DT.Diff α
-δonInductiveParameter α = δListFoldLeft (δListFoldMkApp α)
+δonInductiveParameter α = δListFoldLeft (δListFoldMkAppVariables α)
 
 δonInductiveIndexInside ::
   α -> Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
-δonInductiveIndexInside α = δListFoldLeft (δListFoldMkApp α)
+δonInductiveIndexInside α = δListFoldLeft (δListFoldMkAppVariables α)
 
 δonInductiveIndexOutside ::
   α -> Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
-δonInductiveIndexOutside α = δListFoldRight (δListFoldMkPi α)
+δonInductiveIndexOutside α = δListFoldRight (δListFoldMkPiVariables α)
 
 δmkMotiveType'
   :: α -> DA.Diff Variable ->
