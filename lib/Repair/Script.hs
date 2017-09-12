@@ -123,7 +123,7 @@ withStateFromVernacular v δv e =
       $ withState
       (over environment
        (GE.addGlobalAssum (Binder (Just (eliminatorName indName)),
-                           eliminatorRawType ind
+                           mkEliminatorRawType ind
                            )) >>>
        over δenvironment DL.Keep
       ) $ do

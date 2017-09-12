@@ -74,7 +74,7 @@ unpackDeclarationDiff = \case
     case dld of
       DLD.Same -> (DA.Same, DT.Same)
       DLD.ModifyLocalAssum δb δτv ->
-        let δv = toΔVariable δb in
+        let δv = DB.toΔVariable δb in
         (δv, δτv)
       DLD.ModifyLocalDef δv δτv -> (δv, δτv)
   Right dgd ->case dgd of
