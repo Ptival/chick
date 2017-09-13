@@ -28,3 +28,6 @@ instance (PrettyPrintable a, PrettyPrintable b, PrettyPrintable c) =>
 
 instance (PrettyPrintable a) => PrettyPrintable [a] where
   prettyDoc l = encloseSep lbracket rbracket comma (map prettyDoc l)
+
+instance PrettyPrintable Int where
+  prettyDoc i = text (show i)

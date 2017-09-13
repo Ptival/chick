@@ -4,19 +4,22 @@
 
 module Diff.ListFold
   ( ΔListFold(..)
+  , δListFoldConcatMap
   , δListFoldMkAppTerms
   , δListFoldMkAppVariables
   , δListFoldMkPiBinders
   , δListFoldMkPiGeneric
   , δListFoldMkPiVariables
-  )where
+  ) where
 
 import qualified Diff.Atom as DA
 import qualified Diff.Binder as DB
 import qualified Diff.List as DL
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
+import           Diff.Utils
 import           Term.Term
+import           Utils
 
 data ΔListFold τ δτ a = ΔListFold
   { onInsert  ::     τ ->      [τ] -> a -> a
@@ -28,17 +31,63 @@ data ΔListFold τ δτ a = ΔListFold
   , onSame    ::               [τ] -> a -> a
   }
 
-δListFoldConcatMap :: (a -> [b]) -> ΔListFold a δa (DL.Diff b δb)
-δListFoldConcatMap f = ΔListFold
+-- Input:  [a, b, c]
+-- Output: [0, 1, 2]
+indices :: [a] -> [Int]
+indices = mapWithIndex (\ _ i -> i)
+
+-- Input:  [   [a, b],    [c],    [d, e, f],   [g]]
+-- Output: [0,         2,      3,            6    ]
+countElementsBeforeGroup :: [[a]] -> [Int]
+countElementsBeforeGroup = fst . foldl count ([], 0)
+  where count (cs, c) l = (cs ++ [c], c + length l)
+
+-- Input:  [[a, b], [c], [d, e, f]]
+-- Output: [[0, 1], [2], [3, 4, 5]]
+indicesListList :: [[a]] -> [[Int]]
+indicesListList l =
+  zipWith offsetBy (countElementsBeforeGroup l) (map indices l)
+  where
+    offsetBy offset = map ((+) offset)
+
+-- say:
+-- [        a,            b,    c ] = l
+-- [ [a0, a1], [b0, b1, b2], [c0] ] = map f l
+--     0   1     2   3   4     5   is their index
+-- and p is the permutation [2, 1, 0]:
+-- [    a,            b,        c ] = l
+-- [    c,            b,        a ] = permute p l
+-- [ [c0], [b0, b1, b2], [a0, a1] ] = map f $ permute p l
+--     5     2   3   4     0   1   is their index in (map f l), our result
+-- now:
+-- [ [a0, a1], [b0, b1, b2], [c0] ] = map f l
+-- [ [ 0,  1], [ 2,  3,  4], [ 5] ] = indicesListList $ map f l
+-- [ [5], [2, 3, 4], [0, 1] ] = permute p . indicesListList $ map f l
+
+-- How neat is that!? That's pretty neat.
+
+δpermute :: [a] -> (a -> [b]) -> [Int] -> [Int]
+δpermute l f p = concat . permute p . indicesListList $ map f l
+
+δListFoldConcatMap ::
+  (a -> [b]) ->
+  (δa -> a -> Maybe a) ->
+  ΔListFold a δa (Maybe (DL.Diff b δb))
+δListFoldConcatMap f patchA = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert      a   _  acc = foldr (\ b acc -> DL.Insert b acc) acc bs where bs = f a
-    onKeep          a _  acc = foldr (\ _ acc -> DL.Keep     acc) acc bs where bs = f a
-    onModify     δt _ _  acc = DL.Same
-    onPermute     _   _  acc = DL.Same
-    onRemove        _ _  acc = DL.Same
-    onReplace     _   _  acc = DL.Same
-    onSame            l  acc = DL.Keep acc
+    onInsert  a   _ acc = foldr (\ b acc -> DL.Insert b <$> acc) acc (f a)
+    onKeep    a   _ acc = foldr (\ _ acc -> DL.Keep     <$> acc) acc (f a)
+    onModify δa a _ acc =
+      case patchA δa a of
+      Nothing -> Nothing
+      Just a' -> foldrWith   (\ _ acc -> DL.Remove   <$> acc) (f a)
+                 $ foldrWith (\ b acc -> DL.Insert b <$> acc) (f a')
+                 $ acc
+    onPermute p l acc = DL.Permute (δpermute (take (length p) l) f p) <$> acc
+    onRemove  _ _ _acc = error "TODO"
+    onReplace _ _ _acc = error "TODO"
+    onSame      l acc = DL.nKeeps (length l) <$> acc
 
 δListFoldMkAppTerms :: α -> ΔListFold (TermX α Variable) (DT.Diff α) (DT.Diff α)
 δListFoldMkAppTerms α = ΔListFold

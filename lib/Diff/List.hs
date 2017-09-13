@@ -4,6 +4,7 @@
 
 module Diff.List
   ( Diff(..)
+  , nKeeps
   , patch
   ) where
 
@@ -66,10 +67,10 @@ patch ::
   ) =>
   (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
 patch patchElem la δa =
---   trace (printf "Diff.List/patch(l: %s, δ: %s)"
---           (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
---           (prettyStr δa)
---         ) >>
+  trace (printf "Diff.List/patch(l: %s, δ: %s)"
+        (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
+        (prettyStr δa)
+        ) >>
   go la δa
   where
     failWith = throwExc . printf "[Diff.List.patch] %s"
@@ -99,3 +100,7 @@ patch patchElem la δa =
       Remove δ -> go (tail l) δ
 
       Replace r -> return r
+
+nKeeps :: Int -> Diff τ δτ -> Diff τ δτ
+nKeeps 0 = id
+nKeeps n = Keep . nKeeps (n-1)

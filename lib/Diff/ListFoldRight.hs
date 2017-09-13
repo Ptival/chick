@@ -23,7 +23,7 @@ import Diff.Utils
       (DL.Insert  t δt,     l') -> onInsert  t   l' . go l' δt
       (DL.Keep      δt, e : l') -> onKeep      e l' . go l' δt
       (DL.Modify  δ δt, e : l') -> onModify  δ e l' . go l' δt
-      (DL.Permute p δt,   _   ) -> onPermute p   l' . go l' δt
+      (DL.Permute p δt,   _   ) -> onPermute p   l  . go l' δt -- here I want the original
         where l' = permute p l
       (DL.Remove    δt, e : l') -> onRemove    e l' . go l' δt
       (DL.Replace r,        l') -> onReplace r   l'

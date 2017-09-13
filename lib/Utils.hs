@@ -3,7 +3,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Utils
-  ( isPi
+  ( foldlWith
+  , foldrWith
+  , isPi
+  , mapWithIndex
   , orElse
   , orElse'
   , runSkipTrace
@@ -20,9 +23,18 @@ import Control.Monad.Error.Class
 
 import Term.Term
 
+foldlWith :: Foldable t => (b -> a -> b) -> t a -> b -> b
+foldlWith f l a = foldl f a l
+
+foldrWith :: Foldable t => (a -> b -> b) -> t a -> b -> b
+foldrWith f l a = foldr f a l
+
 isPi :: TermX ξ ν -> Maybe (TermX ξ ν)
 isPi t@(Pi _ _ _) = Just t
 isPi _            = Nothing
+
+mapWithIndex :: (a -> Int -> b) -> [a] -> [b]
+mapWithIndex f l = map (\(e, i) -> f e i) (zip l [0..])
 
 orElse :: MonadError e m => Maybe a -> e -> m a
 orElse Nothing  e = throwError e
