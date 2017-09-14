@@ -81,7 +81,7 @@ patch t d =
 
   let exc (s :: String) = throwExc $ printf "Diff.Term/patch: %s" s in
 
-  -- trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
+  trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
 
   case (t, d) of
 

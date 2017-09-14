@@ -15,6 +15,8 @@ module Diff.Inductive
   , δinductiveRawConstructorPrefix
   -- , instantiateΔis
   , patch
+  , patchIndex
+  , patchParameter
   ) where
 
 import           Control.Monad.Fix
@@ -91,6 +93,20 @@ instance PrettyPrintable (Diff α) where
       go :: PrettyPrintable a => a -> Doc ()
       go = parens . prettyDoc
 
+patchParameter ::
+  ( Member (Exc String) r
+  , Member Trace r
+  ) =>
+  Φip α Variable -> Δip α -> Eff r (Φip α Variable)
+patchParameter = DP.patch DA.patch DT.patch
+
+patchIndex ::
+  ( Member (Exc String) r
+  , Member Trace r
+  ) =>
+  Φip α Variable -> Δip α -> Eff r (Φip α Variable)
+patchIndex = DP.patch DA.patch DT.patch
+
 patch ::
   ( Member (Exc String) r
   , Member Trace r
@@ -101,8 +117,8 @@ patch ind@(Inductive n ps is cs) = \case
   Same                  -> return ind
   Modify δn δps δis δcs -> do
     n'  <- DA.patch n δn
-    ps' <- DL.patch (DP.patch DA.patch DT.patch) ps δps
-    is' <- DL.patch (DP.patch DA.patch DT.patch) is δis
+    ps' <- DL.patch patchParameter ps δps
+    is' <- DL.patch patchIndex is δis
     cs' <- DL.patch DC.patch cs δcs -- δcs -- note: the constructors still refer to the old inductive!
     return $ fix $ \ind' -> Inductive n' ps' is' $ map (updateConstructorInd ind') cs'
       where

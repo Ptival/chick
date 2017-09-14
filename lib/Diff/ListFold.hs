@@ -1,10 +1,12 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Diff.ListFold
   ( ΔListFold(..)
   , δListFoldConcatMap
+  , δListFoldConcatMap'
   , δListFoldMkAppTerms
   , δListFoldMkAppVariables
   , δListFoldMkPiBinders
@@ -19,6 +21,7 @@ import qualified Diff.List as DL
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
 import           Diff.Utils
+import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import           Utils
 
@@ -90,6 +93,24 @@ indicesListList l =
     onReplace _ _ _acc = error "TODO: δListFoldConcatMap onReplace"
     onSame      l acc = DL.nKeeps (length l) <$> acc
 
+δListFoldConcatMap' ::
+  (a -> [b]) ->
+  (δa -> a -> Maybe (DL.Diff b δb -> DL.Diff b δb)) ->
+  ΔListFold a δa (Maybe (DL.Diff b δb))
+δListFoldConcatMap' f patchBs = ΔListFold
+  { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
+  where
+    onInsert  a   _ acc = foldr (\ b acc -> DL.Insert b <$> acc) acc (f a)
+    onKeep    a   _ acc = foldr (\ _ acc -> DL.Keep     <$> acc) acc (f a)
+    onModify δa a _ acc =
+      case patchBs δa a of
+      Nothing -> Nothing
+      Just δb -> δb <$> acc
+    onPermute p l acc = DL.Permute (δpermute (take (length p) l) f p) <$> acc
+    onRemove  _ _ _acc = error "TODO: δListFoldConcatMap' onRemove"
+    onReplace _ _ _acc = error "TODO: δListFoldConcatMap' onReplace"
+    onSame      l acc = DL.nKeeps (length l) <$> acc
+
 δListFoldMkAppTerms :: α -> ΔListFold (TermX α Variable) (DT.Diff α) (DT.Diff α)
 δListFoldMkAppTerms α = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
@@ -125,6 +146,7 @@ indicesListList l =
     onSame      l b = DT.nCpyApps (length l) b
 
 δListFoldMkPiGeneric ::
+  PrettyPrintable τ =>
   α ->
   (τ -> (DT.Diff α, Binder Variable)) ->
   (τ -> δτ -> (DT.Diff α, DA.Diff (Binder Variable))) ->
@@ -132,12 +154,16 @@ indicesListList l =
 δListFoldMkPiGeneric α pi δpi = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert e _    δ = DT.InsPi α δτ b δ            where (δτ,  b) =  pi  e
+    insert e δ = DT.InsPi α δτ b δ where (δτ, b) = pi e
+    onInsert e _    δ = insert e δ
     onKeep _ _      δ = DT.CpyPi   DT.Same DA.Same δ
     onModify δe e _ δ = DT.CpyPi   δτ      δb      δ where (δτ, δb) = δpi e δe
     onPermute _p   _δ = error "TODO: δListFoldMkPiGeneric onPermute"
     onRemove _ _    δ = DT.RemovePi δ
-    onReplace _l   _δ = error "TODO: δListFoldMkPiGeneric onReplace"
+    onReplace l l'  δ =
+      foldrWith   insert                   l'
+      $ foldrWith (\ _ δ -> DT.RemovePi δ) l
+      $ δ
     onSame l        δ = DT.nCpyPis (length l) δ
 
 δListFoldMkPiGenericMaybe ::

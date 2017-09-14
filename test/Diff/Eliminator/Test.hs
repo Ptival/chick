@@ -4,6 +4,7 @@
 module Diff.Eliminator.Test where
 
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 
 import           Diff.Eliminator
 import           Diff.Motive
@@ -28,19 +29,19 @@ testListToVec =
     putStrLn $ "Eliminator before:"
     putStrLn $ prettyStr listEliminator
     putStrLn $ replicate 80 '-'
-    putStrLn $ "δ:"
+    putStrLn $ "δ computed to patch eliminator:"
     putStrLn $ prettyStr δlistEliminator
     putStrLn $ replicate 80 '-'
     putStrLn $ "Eliminator expected:"
     putStrLn $ prettyStr vecEliminator
     putStrLn $ replicate 80 '-'
-    putStrLn $ "Eliminator obtained:"
-
     (runSkipTrace . runError $ DT.patch listEliminator δlistEliminator) >>= \case
       Left (s :: String) -> do
         putStrLn "An error occurred:"
         putStrLn s
         return False
       Right vecEliminator' -> do
+        putStrLn $ "Eliminator obtained:"
         putStrLn $ prettyStr vecEliminator'
+        putStrLn $ "Eliminator expected and obtained are α-equivalent?"
         return (vecEliminator' == vecEliminator)

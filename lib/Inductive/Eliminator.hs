@@ -97,6 +97,7 @@ mkCase ::
   Variable -> Φcps α Variable -> Φcis α Variable ->
   TermX α Variable -> TermX α Variable
 mkCase α n ips iis cn cps cis =
+  -- quantify over constructor parameters, adding recursive hypotheses
   quantifyBinders α (concatMap (addRecursiveMotive α n ips iis motive) cps)
   . applyTerms α [applyVariables α cps (Var Nothing cn)]
   . applyTerms α cis
