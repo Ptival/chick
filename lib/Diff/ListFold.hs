@@ -9,6 +9,7 @@ module Diff.ListFold
   , δListFoldMkAppVariables
   , δListFoldMkPiBinders
   , δListFoldMkPiGeneric
+  , δListFoldMkPiGenericMaybe
   , δListFoldMkPiVariables
   ) where
 
@@ -85,8 +86,8 @@ indicesListList l =
                  $ foldrWith (\ b acc -> DL.Insert b <$> acc) (f a')
                  $ acc
     onPermute p l acc = DL.Permute (δpermute (take (length p) l) f p) <$> acc
-    onRemove  _ _ _acc = error "TODO"
-    onReplace _ _ _acc = error "TODO"
+    onRemove  _ _ _acc = error "TODO: δListFoldConcatMap onRemove"
+    onReplace _ _ _acc = error "TODO: δListFoldConcatMap onReplace"
     onSame      l acc = DL.nKeeps (length l) <$> acc
 
 δListFoldMkAppTerms :: α -> ΔListFold (TermX α Variable) (DT.Diff α) (DT.Diff α)
@@ -96,9 +97,9 @@ indicesListList l =
     onInsert      t   _  b = DT.InsApp α b (DT.Replace t)
     onKeep          _ _  b = DT.CpyApp b DT.Same
     onModify     δt _ _  b = DT.CpyApp b δt
-    onPermute     _   _  _ = error "TODO: δonInductiveIndexInside"
-    onRemove        _ _  _ = error "TODO: δonInductiveIndexInside"
-    onReplace     _   _  _ = error "TODO: δonInductiveIndexInside"
+    onPermute     _   _  _ = error "TODO: δListFoldMkAppTerms onPermute"
+    onRemove        _ _  _ = error "TODO: δListFoldMkAppTerms onRemove"
+    onReplace     _   _  _ = error "TODO: δListFoldMkAppTerms onReplace"
     onSame            l  b = DT.nCpyApps (length l) b
 
 δListFoldMkAppVariables ::
@@ -118,9 +119,9 @@ indicesListList l =
         case δl of
         DA.Same -> DT.CpyApp b DT.Same
         DA.Replace r -> DT.CpyApp b (DT.Replace (Var Nothing r))
-    onPermute _ _ _ = error "TODO: δonInductiveIndexInside"
-    onRemove  _ _ _ = error "TODO: δonInductiveIndexInside"
-    onReplace _ _ _ = error "TODO: δonInductiveIndexInside"
+    onPermute _ _ _ = error "TODO: δListFoldMkAppVariables onPermute"
+    onRemove  _ _ _ = error "TODO: δListFoldMkAppVariables onRemove"
+    onReplace _ _ _ = error "TODO: δListFoldMkAppVariables onReplace"
     onSame      l b = DT.nCpyApps (length l) b
 
 δListFoldMkPiGeneric ::
@@ -131,13 +132,30 @@ indicesListList l =
 δListFoldMkPiGeneric α pi δpi = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert   e _   δ = DT.InsPi α δτ b δ            where (δτ,  b) =  pi  e
-    onKeep       _ _ δ = DT.CpyPi   DT.Same DA.Same δ
-    onModify  δe e _ δ = DT.CpyPi   δτ      δb      δ where (δτ, δb) = δpi e δe
-    onPermute _p _δ = error "TODO: δonInductiveIndexInside"
-    onRemove  _b    = error "TODO: δonInductiveIndexInside"
-    onReplace _l _δ = error "TODO: δonInductiveIndexInside"
-    onSame     l  δ = DT.nCpyPis (length l) δ
+    onInsert e _    δ = DT.InsPi α δτ b δ            where (δτ,  b) =  pi  e
+    onKeep _ _      δ = DT.CpyPi   DT.Same DA.Same δ
+    onModify δe e _ δ = DT.CpyPi   δτ      δb      δ where (δτ, δb) = δpi e δe
+    onPermute _p   _δ = error "TODO: δListFoldMkPiGeneric onPermute"
+    onRemove _ _    δ = DT.RemovePi δ
+    onReplace _l   _δ = error "TODO: δListFoldMkPiGeneric onReplace"
+    onSame l        δ = DT.nCpyPis (length l) δ
+
+δListFoldMkPiGenericMaybe ::
+  α ->
+  (τ -> (DT.Diff α, Binder Variable)) ->
+  (τ -> δτ -> Maybe (DT.Diff α, DA.Diff (Binder Variable))) ->
+  ΔListFold τ δτ (Maybe (DT.Diff α))
+δListFoldMkPiGenericMaybe α pi δpi = ΔListFold
+  { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
+  where
+    onInsert   e _   δ = DT.InsPi α   δτ          b       <$> δ where (δτ,  b) =  pi  e
+    onKeep       _ _ δ = DT.CpyPi     DT.Same     DA.Same <$> δ
+    onModify  δe e _ δ = DT.CpyPi <$> δτ      <*> δb      <*> δ
+      where (δτ, δb) = unzipMaybe (δpi e δe)
+    onPermute _p _δ = error "TODO: δListFoldMkPiGenericMaybe onPermute"
+    onRemove  _b    = error "TODO: δListFoldMkPiGenericMaybe onRemove"
+    onReplace _l _δ = error "TODO: δListFoldMkPiGenericMaybe onReplace"
+    onSame     l  δ = DT.nCpyPis (length l) <$> δ
 
 δListFoldMkPiBinders ::
   α ->

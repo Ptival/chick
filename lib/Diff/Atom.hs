@@ -1,6 +1,9 @@
+{-# LANGUAGE DataKinds #-}
+
 module Diff.Atom
   ( Diff(..)
   , patch
+  , patchMaybe
   ) where
 
 import Control.Monad.Freer
@@ -21,3 +24,6 @@ patch :: a -> Diff a -> Eff r a
 patch a d = case d of
   Same       -> return a
   Replace a' -> return a'
+
+patchMaybe :: a -> Diff a -> Maybe a
+patchMaybe a d = Just . run $ patch a d

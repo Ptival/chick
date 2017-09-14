@@ -7,7 +7,8 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Inductive.Eliminator
-  ( applyVariables
+  ( addRecursiveMotive
+  , applyVariables
   , eliminatorName
   , mkCase
   , mkEliminatorRawType
@@ -20,10 +21,10 @@ import           Data.String
 
 import           Inductive.Inductive
 import           Inductive.Motive
-import           Inductive.Utils
 import           Term.Binder
 import           Term.Term
 import qualified Term.Raw as Raw
+import           Utils
 
 applyTerms :: α -> [TermX α Variable] -> TermX α Variable -> TermX α Variable
 applyTerms α = foldlWith (mkApp α)

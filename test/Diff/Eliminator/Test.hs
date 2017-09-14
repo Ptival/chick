@@ -20,8 +20,11 @@ testListToVec :: IO Bool
 testListToVec =
   let listEliminator = mkEliminatorType () indList in
   let  vecEliminator = mkEliminatorType () indVec  in
-  let δlistEliminator = δmkEliminatorType () indList δListToVec in
-  do
+  case δmkEliminatorType () indList δListToVec of
+  Nothing -> do
+    putStrLn "δmkEliminatorType failed"
+    return False
+  Just δlistEliminator -> do
     putStrLn $ "Eliminator before:"
     putStrLn $ prettyStr listEliminator
     putStrLn $ replicate 80 '-'

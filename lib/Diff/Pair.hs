@@ -5,10 +5,11 @@
 module Diff.Pair
   ( Diff(..)
   , patch
+  , patchMaybe
   ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
+-- import Control.Monad.Freer
+-- import Control.Monad.Freer.Exception
 import Text.PrettyPrint.Annotated.WL
 
 import PrettyPrinting.PrettyPrintable
@@ -23,12 +24,20 @@ instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (Diff l r) wh
   prettyDoc (Modify l r) = fillSep [ lparen, prettyDoc l, comma, prettyDoc r, rparen ]
 
 patch ::
-  Member (Exc String) row =>
-  (l -> δl -> Eff row l) ->
-  (r -> δr -> Eff row r) ->
+  Monad m =>
+  (l -> δl -> m l) ->
+  (r -> δr -> m r) ->
   (l, r) ->
   Diff δl δr ->
-  Eff row (l, r)
+  m (l, r)
 patch patchL patchR (l, r) = \case
   Same         -> return (l, r)
   Modify δl δr -> (,) <$> patchL l δl <*> patchR r δr
+
+patchMaybe ::
+  (l -> δl -> Maybe l) ->
+  (r -> δr -> Maybe r) ->
+  (l, r) ->
+  Diff δl δr ->
+  Maybe (l, r)
+patchMaybe = patch

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Diff.Term
   ( Diff(..)
@@ -15,12 +16,14 @@ module Diff.Term
   , nCpyApps
   , nCpyPis
   , patch
+  , patchMaybe
   ) where
 
 import           Control.Lens (_2, over)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Data.Either.Combinators
 import           Text.Printf
 import           Text.PrettyPrint.Annotated.WL
 
@@ -31,6 +34,7 @@ import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Binder
 import           Term.Term
+import           Utils
 
 data Diff α
   = Same
@@ -45,6 +49,7 @@ data Diff α
   | PermutApps [Int] (Diff α)
   | PermutLams [Int] (Diff α)
   | PermutPis  [Int] (Diff α)
+  | RemovePi   (Diff α)
   deriving (Show)
 
 instance PrettyPrintable (Diff α) where
@@ -61,6 +66,7 @@ instance PrettyPrintable (Diff α) where
     PermutApps p δ1   -> fillSep [ text "PermutApp",  (text $ show p), go δ1 ]
     PermutLams p δ1   -> fillSep [ text "PermutLam",  (text $ show p), go δ1 ]
     PermutPis  p δ1   -> fillSep [ text "PermutPi",   (text $ show p), go δ1 ]
+    RemovePi δ1       -> fillSep [ text "RemovePi",   go δ1 ]
 
     where
       go :: PrettyPrintable a => a -> Doc ()
@@ -116,6 +122,11 @@ patch t d =
   (_, PermutPis p d') -> do
     (pis, rest) <- extractSomePis (length p) t
     patch (mkPis (permute p pis) rest) d'
+
+  (Pi _ _ bτ2, RemovePi δ) ->
+    let (_, τ2) = unscopeTerm bτ2 in
+    patch τ2 δ
+  (_, RemovePi _) -> exc "RemovePi: not a Pi"
 
 -- | `f a b c` becomes `(f, [a, b, c])`
 extractApps ::
@@ -201,3 +212,6 @@ nCpyPis :: Int -> Diff α -> Diff α
 nCpyPis 0 base         = base
 nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
 nCpyPis n base         = CpyPi Same DA.Same $ nCpyPis (n - 1) base
+
+patchMaybe :: TermX α Variable -> Diff α -> Maybe (TermX α Variable)
+patchMaybe t d = rightToMaybe @String . skipTrace . runError $ patch t d

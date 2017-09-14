@@ -12,6 +12,7 @@ module Utils
   , runSkipTrace
   , skipTrace
   , splitList
+  , unzipMaybe
   , withState
   ) where
 
@@ -64,6 +65,10 @@ splitList n xs =
     go _ []    = Nothing
     prependL h (revl, x, r) = (h:revl, x, r)
     revL (l, x, r) = (reverse l, x, r)
+
+unzipMaybe :: Maybe (a, b) -> (Maybe a, Maybe b)
+unzipMaybe Nothing       = (Nothing, Nothing)
+unzipMaybe (Just (a, b)) = (Just a,  Just b)
 
 -- | `withState` localizes a modification of the state to a given effectful computation
 withState ::

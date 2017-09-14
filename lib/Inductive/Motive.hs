@@ -2,14 +2,13 @@
 
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
--- {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Inductive.Motive where
 
 import Inductive.Inductive
-import Inductive.Utils
 import Term.Term
+import Utils
 
 -- TODO:
 -- it's going to be a pervasive issue that things like unnamed indices will need to get

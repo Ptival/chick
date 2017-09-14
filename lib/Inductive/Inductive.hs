@@ -34,7 +34,6 @@ import           Control.Lens (_2, over)
 import           Control.Monad.Reader
 import           Data.Default
 
-import           Inductive.Utils
 import           Precedence
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
@@ -45,6 +44,7 @@ import           Term.Term
 import qualified Term.TypeChecked as C
 import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
+import           Utils
 
 type Φip  α ν = (ν, TypeX α ν)
 type Φips α ν = [Φip α ν]

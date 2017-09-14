@@ -8,18 +8,18 @@
 
 module Diff.ConcatMap
   ( module Diff.ListFold
-  , δListConcatMap
+  , δconcatMap
   )where
 
 import qualified Diff.List as DL
 import           Diff.ListFold
 import           Diff.ListFoldRight
 
-δListConcatMap ::
+δconcatMap ::
   (τ -> [b]) ->
   (δτ -> τ -> Maybe τ) ->
   [τ] ->
   DL.Diff τ δτ ->
   Maybe (DL.Diff b δb)
-δListConcatMap f patchA l δl =
+δconcatMap f patchA l δl =
   δListFoldRight (δListFoldConcatMap f patchA) l δl (Just DL.Same)
