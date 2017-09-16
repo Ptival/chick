@@ -124,12 +124,19 @@ import           Utils
   Φcps α Variable -> DC.Δcps α ->
   Φcis α Variable -> DC.Δcis α ->
   TermX α Variable -> DT.Diff α ->
-  _
+  DL.Diff
+  (Binder Variable, TypeX α Variable)
+  (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)) ->
+  Maybe
+  (DL.Diff
+   (Binder Variable, TypeX α Variable)
+   (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
 δconcatMapAddRecursiveMotive
-  α n δn ips δips iis δiis cn δcn cps δcps cis δcis motive δmotive δ = do
-  let eff = δListFoldConcatMapAddRecursiveMotive α n δn ips δips iis δiis motive δmotive
+  α n δn ips δips iis δiis _cn _δcn cps δcps _cis _δcis motive δmotive δ = do
+  let eff = δListFoldConcatMapAddRecursiveMotive
+            α n δn ips δips iis δiis motive δmotive
   case skipTrace $ runError eff of
-    Left (error :: String) -> Nothing
+    Left (_ :: String) -> Nothing
     Right δListFold -> δListFoldRight δListFold cps δcps (Just δ)
 
 δmkCase ::
