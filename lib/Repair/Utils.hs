@@ -26,7 +26,6 @@ import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           Repair.State
-import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Variable
 import qualified Typing.GlobalEnvironment as GE
