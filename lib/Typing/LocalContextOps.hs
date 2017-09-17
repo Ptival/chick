@@ -28,9 +28,7 @@ import           Data.Maybe (maybeToList)
 
 import           Term.Binder
 import           Term.Term
-import qualified Term.TypeChecked as C
 import qualified Term.TypeErrored as E
-import           Term.Variable
 import qualified Typing.LocalContext as LC
 
 type Term α  = TermX α Variable

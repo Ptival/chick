@@ -16,7 +16,6 @@ import           Data.Bifunctor
 import           Term.Term
 import qualified Term.TypeChecked as C
 import qualified Term.TypeErrored as E
-import           Term.Variable
 import           TypeCheckingFailure
 
 type Error   = E.Term Variable

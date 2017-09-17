@@ -21,7 +21,6 @@ import           Control.Monad.Freer.Trace
 import           Term.Term
 import qualified Term.TypeChecked as C
 import qualified Term.TypeErrored as E
-import           Term.Variable
 import qualified Typing.LocalContext as LC
 import           Typing.LocalContextOps
 import           Typing.TypeCheckOps

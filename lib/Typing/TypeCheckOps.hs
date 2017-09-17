@@ -29,7 +29,6 @@ import           Term.Binder
 import           Term.Term
 import qualified Term.TypeChecked as C
 import qualified Term.TypeErrored as E
-import           Term.Variable
 import           TypeCheckingFailure
 import           Typing.LocalContextOps
 import           Typing.Utils

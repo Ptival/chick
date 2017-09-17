@@ -198,9 +198,9 @@ repair t τ δτ =
 
   DT.CpyApp _δ1 _δ2 -> error "TODO: CpyApp"
 
-  DT.CpyLam _ _     -> exc "repair: CpyLam"
+  DT.CpyLam _ _     -> exc "CpyLam"
 
-  DT.CpyVar DA.Same -> exc "repair: CpyVar Same"
+  DT.CpyVar DA.Same -> exc "CpyVar Same"
 
   DT.CpyVar (DA.Replace δv) -> do
     trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
@@ -208,9 +208,9 @@ repair t τ δτ =
 
   DT.InsApp _ _ _ -> genericRepair t τ -- not sure what to do here
 
-  DT.InsLam _ _ _   -> exc "repair: InsLam"
-  DT.PermutLams _ _ -> exc "repair: PermutLams"
-  DT.PermutApps _ _ -> exc "repair: PermutApps"
+  DT.InsLam _ _ _   -> exc "InsLam"
+  DT.PermutLams _ _ -> exc "PermutLams"
+  DT.PermutApps _ _ -> exc "PermutApps"
 
   DT.CpyPi d1 DA.Same d2 ->
     case (t, τ) of
@@ -223,7 +223,7 @@ repair t τ δτ =
           DT.CpyLam DA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
       _ -> exc "repair: CpyPi Same"
 
-  DT.CpyPi _ _ _         -> exc "repair: CpyPi"
+  DT.CpyPi _ _ _         -> exc "CpyPi"
 
   DT.InsPi _ d1 _b d2      -> do
     -- I think what we want here is:
@@ -249,3 +249,5 @@ repair t τ δτ =
     (lams, trest) <- DT.extractSomeLams (length p) t -- TODO: catchError and try something else?
     let lams' = permute p lams
     DT.PermutLams p <$> repair (DT.mkLams lams' trest) (DT.mkPis pis' τrest) d1
+
+  DT.RemovePi _ -> exc "RemovePi"

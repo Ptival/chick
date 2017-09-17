@@ -2,10 +2,8 @@ module Term.Fresh where
 
 import Data.List
 
---import Term.Binder
 import Term.Free
 import Term.Term
-import Term.Variable
 
 freshNames :: [String]
 freshNames = [ (c:s) | s <- ("":freshNames), c <- ['a'..'z'] ]

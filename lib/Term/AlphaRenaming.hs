@@ -6,7 +6,6 @@ module Term.AlphaRenaming where
 import Bound.Term
 
 import Term.Term
-import Term.Variable
 
 αrename :: Variable -> Variable -> TermX ξ Variable -> TermX ξ Variable
 αrename = substituteVar
