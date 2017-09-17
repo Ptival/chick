@@ -1,51 +1,64 @@
 {-# language OverloadedStrings #-}
 {-# language PartialTypeSignatures #-}
 
-module StandardLibrary where
+module StandardLibrary
+  ( τId
+  , τFlip
+  , inductives
+  , indBool
+  , indEmpty
+  , indFin
+  , indList
+  , indNat
+  , indUnit
+  , indVec
+  , tId
+  , tFlip
+  ) where
 
-import Control.Monad
-import Control.Monad.Reader
-import Data.Default
+-- import Control.Monad
+-- import Control.Monad.Reader
+-- import Data.Default
 
 import Inductive.Inductive
 import Parsing
-import PrettyPrinting.PrettyPrintable
-import PrettyPrinting.PrettyPrintableUnannotated
-import PrettyPrinting.Utils
-import Term.Binder
+-- import PrettyPrinting.PrettyPrintable
+-- import PrettyPrinting.PrettyPrintableUnannotated
+-- import PrettyPrinting.Utils
+-- import Term.Binder
 import Term.Raw                                  as Raw
 import Term.Term
-import Term.TypeChecked                          as Checked
+-- import Term.TypeChecked                          as Checked
 import Text.Printf
-import Typing.GlobalEnvironment
-import Work
+-- import Typing.GlobalEnvironment
+-- import Work
 
 -- main :: IO ()
 -- main = forM_ (unGlobalEnvironment stdlib) $ \ d ->
 --   putStrLn $ prettyStrU d
 
-addTerm ::
-  Variable -> (Raw.Term Variable, Raw.Type Variable) ->
-  GlobalEnvironment (Checked Variable) Variable ->
-  Either String (GlobalEnvironment (Checked Variable) Variable)
-addTerm v (t, τ) ge =
-  case tc (checkF (toLocalContext ge) t τ id) of
-  Left  e ->
-    Left $
-    printf "Could not typecheck %s : %s at type %s\n%s"
-    (prettyStr v) (prettyStrU t) (prettyStrU τ) (prettyStrU e)
-  Right r -> Right $ addGlobalAssum (Binder (Just v), r) ge
-
-traceTypeChecking ::
-  GlobalEnvironment (Checked Variable) Variable ->
-  TermX α Variable -> TermX ψ Variable -> IO ()
-traceTypeChecking ge t τ = do
-  let trace = tcTrace stepTypeCheckerF (checkF (toLocalContext ge) t τ id)
-  forM_ trace $ \ item -> do
-    putStrLn $ doc2String $ runReader (prettyTypeCheckerF item) def
-
-debug :: IO ()
-debug = traceTypeChecking (GlobalEnvironment []) tId τId
+-- addTerm ::
+--   Variable -> (Raw.Term Variable, Raw.Type Variable) ->
+--   GlobalEnvironment (Checked Variable) Variable ->
+--   Either String (GlobalEnvironment (Checked Variable) Variable)
+-- addTerm v (t, τ) ge =
+--   case tc (checkF (toLocalContext ge) t τ id) of
+--   Left  e ->
+--     Left $
+--     printf "Could not typecheck %s : %s at type %s\n%s"
+--     (prettyStr v) (prettyStrU t) (prettyStrU τ) (prettyStrU e)
+--   Right r -> Right $ addGlobalAssum (Binder (Just v), r) ge
+--
+-- traceTypeChecking ::
+--   GlobalEnvironment (Checked Variable) Variable ->
+--   TermX α Variable -> TermX ψ Variable -> IO ()
+-- traceTypeChecking ge t τ = do
+--   let trace = tcTrace stepTypeCheckerF (checkF (toLocalContext ge) t τ id)
+--   forM_ trace $ \ item -> do
+--     putStrLn $ doc2String $ runReader (prettyTypeCheckerF item) def
+--
+-- debug :: IO ()
+-- debug = traceTypeChecking (GlobalEnvironment []) tId τId
 
 -- stdlib :: GlobalEnvironment (Checked Variable) Variable
 -- stdlib =
@@ -183,8 +196,8 @@ consVec =
 {-
 inductive ⊥ : Set where
 -}
-inductiveEmpty :: Inductive Raw.Raw Variable
-inductiveEmpty =
+indEmpty :: Inductive Raw.Raw Variable
+indEmpty =
   Inductive "⊥" [] [] []
 
 {-
@@ -197,3 +210,14 @@ indUnit =
 
 ttUnit :: Constructor Raw.Raw Variable
 ttUnit = Constructor indUnit "tt" [] []
+
+inductives :: [Inductive Raw.Raw Variable]
+inductives =
+  [ indBool
+  , indNat
+  , indList
+  , indFin
+  , indVec
+  , indEmpty
+  , indUnit
+  ]

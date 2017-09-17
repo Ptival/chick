@@ -8,7 +8,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Diff.Eliminator
-  ( δmkEliminatorType
+  ( δeliminatorName
+  , δmkEliminatorType
   , δmkEliminatorType'
   ) where
 
@@ -240,3 +241,10 @@ import           Utils
   DI.Same -> Just DT.Same
   DI.Modify δn δips δiis δcs ->
     δmkEliminatorType' α n δn ips δips iis δiis cs δcs
+
+δeliminatorName :: DI.Diff α -> DA.Diff Variable
+δeliminatorName = \case
+  DI.Same -> DA.Same
+  DI.Modify δn _ _ _ -> case δn of
+    DA.Same -> DA.Same
+    DA.Replace r -> DA.Replace $ mkEliminatorName r

@@ -7,7 +7,6 @@ import Bound.Name
 import Data.Default
 
 import Term.Term
-import Term.Variable
 
 -- Annot
 infix 0 ^::

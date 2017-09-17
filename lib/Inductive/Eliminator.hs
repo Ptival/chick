@@ -9,7 +9,7 @@
 module Inductive.Eliminator
   ( addRecursiveMotive
   , applyVariables
-  , eliminatorName
+  , mkEliminatorName
   , mkCase
   , mkEliminatorRawType
   , mkEliminatorType
@@ -181,5 +181,5 @@ mkEliminatorType α (Inductive n ps is cs) =
 mkEliminatorRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
 mkEliminatorRawType = mkEliminatorType ()
 
-eliminatorName :: Variable -> Variable
-eliminatorName (Variable v) = Variable (v ++ "_rect")
+mkEliminatorName :: Variable -> Variable
+mkEliminatorName (Variable v) = Variable (v ++ "_rec")

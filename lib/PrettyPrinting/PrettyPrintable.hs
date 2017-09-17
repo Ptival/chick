@@ -9,7 +9,7 @@ import Text.PrettyPrint.Annotated.WL
 class PrettyPrintable t where
   prettyDoc :: t -> Doc ()
   prettyStr :: t -> String
-  prettyStr = display . renderPretty 1.0 80 . prettyDoc
+  prettyStr = display . renderPretty 1.0 72 . prettyDoc
   preview :: t -> String
   preview t =
     let s = prettyStr t in

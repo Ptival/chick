@@ -18,6 +18,7 @@ import           Text.Printf
 
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
+import           Diff.Eliminator
 import qualified Diff.GlobalDeclaration as DGD
 import qualified Diff.GlobalEnvironment as DGE
 import qualified Diff.Inductive as DI
@@ -111,10 +112,13 @@ withStateFromVernacular v δv e =
     sanityCheck
     e
 
-  (Inductive ind@(I.Inductive indName ps is cs), DV.ModifyInductive (DI.Modify δindName δps δis δcs)) -> do
+  (Inductive ind@(I.Inductive indName ps is cs), DV.ModifyInductive δind@(DI.Modify δindName δps δis δcs)) -> do
     let τind = I.inductiveRawType ind
     let δτind = DI.δinductiveRawType (length ps) δps (length is) δis
     let prefix = DI.δinductiveRawConstructorPrefix δindName (length ps) δps
+    δeliminatorType <- case δmkEliminatorType () ind δind of
+      Nothing -> throwError "δmkEliminatorType failed"
+      Just e -> return e
     trace (printf "PREFIX: %s" (show prefix))
     withState
       (over environment  (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
@@ -122,10 +126,11 @@ withStateFromVernacular v δv e =
       )
       $ withState
       (over environment
-       (GE.addGlobalAssum (Binder (Just (eliminatorName indName)),
+       (GE.addGlobalAssum (Binder (Just (mkEliminatorName indName)),
                            mkEliminatorRawType ind
                            )) >>>
-       over δenvironment DL.Keep
+       over δenvironment
+       (DL.Modify (DGD.ModifyGlobalAssum (δeliminatorName δind) δeliminatorType))
       ) $ do
       sanityCheck
       withStateFromConstructors prefix cs δcs e
@@ -143,7 +148,7 @@ repair ::
 repair script@(Script s) δs =
 
   trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU script) (prettyStr δs)) >>
-  sanityCheck >>
+  --sanityCheck >>
   traceState >>
 
   let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
@@ -171,11 +176,11 @@ repair script@(Script s) δs =
           δτ <- RT.repair τ Type DT.Same
           trace $ printf "*** Repaired type, δτ: %s" (prettyStr δτ)
           τ' <- DT.patch τ δτ
-          trace $ printf "*** Repaired type, τ': %s" (preview τ')
+          trace $ printf "*** Repaired type, τ': %s" (prettyStr τ')
           δt <- RT.repair t τ    δτ
           trace $ printf "*** Repaired term, δt: %s" (prettyStr δt)
           t' <- DT.patch t δt
-          trace $ printf "*** Repaired term, t': %s" (preview t')
+          trace $ printf "*** Repaired term, t': %s" (prettyStr t')
           withState
             (over environment  (GE.addGlobalDef (Binder (Just n), τ, t)) >>>
              over δenvironment (DL.Modify (DGD.ModifyGlobalDef DA.Same δτ δt))

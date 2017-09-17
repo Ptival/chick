@@ -22,6 +22,7 @@ import qualified Diff.Script as DS
 import qualified Diff.Term as DT
 import qualified Diff.Vernacular as DV
 -- import qualified Inductive.Inductive as I
+import           Parsing
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.Script as RS
@@ -37,6 +38,13 @@ import qualified Typing.GlobalEnvironment as GE
 import qualified Typing.LocalContext as LC
 import           Utils
 import           Vernacular
+
+-- do not use `unsafeParseRaw` anywhere else!
+unsafeParseRaw :: String -> Raw.Term Variable
+unsafeParseRaw s =
+  case parseMaybeTerm s of
+    Nothing -> error $ printf "unsafeParseRaw: could not parse %s" s
+    Just t  -> t
 
 patchProof ::
   Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw ->
@@ -245,6 +253,10 @@ repairListToVec = RepairScriptBenchmark
     , Definition "list1"
       (unsafeParseRaw "List ℕ")
       (unsafeParseRaw "cons zero nil")
+    , Definition "length"
+      (unsafeParseRaw "(T : Type) → List T → ℕ")
+      (unsafeParseRaw
+       "λ T l . List_rec T (λ _ . ℕ) O (λ _ _ lt . S lt) l")
     ]
 
   , repairScriptDiff =
@@ -263,7 +275,7 @@ repairListToVec = RepairScriptBenchmark
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
   []
-  ++ [repairFlippedArguments]
+  -- ++ [repairFlippedArguments]
   ++ [repairListToVec]
 
 repairScriptBenchmark :: IO ()

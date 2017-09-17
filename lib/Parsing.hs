@@ -200,7 +200,7 @@ reservedWords =
 identifier :: Parser String
 identifier = (lexeme . try) (p >>= check)
   where
-    p       = (:) <$> letterChar <*> many alphaNumChar
+    p       = (:) <$> letterChar <*> many (alphaNumChar <|> char '_')
     check x =
       if x `elem` reservedWords
       then fail $ printf "keyword %s cannot be an identifier" (show x)
