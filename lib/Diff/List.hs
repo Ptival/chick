@@ -67,10 +67,10 @@ patch ::
   ) =>
   (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
 patch patchElem la δa =
-  trace (printf "Diff.List/patch(l: %s, δ: %s)"
-        (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
-        (prettyStr δa)
-        ) >>
+  -- trace (printf "Diff.List/patch(l: %s, δ: %s)"
+  --       (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
+  --       (prettyStr δa)
+  --       ) >>
   go la δa
   where
     failWith = throwExc . printf "[Diff.List.patch] %s"

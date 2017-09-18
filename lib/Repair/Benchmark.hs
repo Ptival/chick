@@ -254,9 +254,9 @@ repairListToVec = RepairScriptBenchmark
       (unsafeParseRaw "List ℕ")
       (unsafeParseRaw "cons zero nil")
     , Definition "length"
-      (unsafeParseRaw "(T : Type) → List T → ℕ")
+      (unsafeParseRaw "(S : ℕ → ℕ) → (T : Type) → List T → ℕ")
       (unsafeParseRaw
-       "λ T l . List_rec T (λ _ . ℕ) O (λ _ _ lt . S lt) l")
+       "λ S T l . List_rec T (λ _ . ℕ) O (λ _ _ lt . S lt) l")
     ]
 
   , repairScriptDiff =
@@ -268,6 +268,10 @@ repairListToVec = RepairScriptBenchmark
     , Definition "list1"
       (unsafeParseRaw "Vec ℕ (? @ ℕ)")
       (unsafeParseRaw "vcons zero (? @ ℕ) nil")
+    , Definition "length"
+      (unsafeParseRaw "(S : ℕ → ℕ) → (T : Type) → Vec T (? @ ℕ) → ℕ")
+      (unsafeParseRaw
+       "λ S T l . Vec_rec T (λ _ _ . ℕ) O (λ _ _ _ lt . S lt) (? @ ℕ) l")
     ]
 
   }
@@ -292,8 +296,8 @@ repairScriptBenchmark = do
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
-    -- runSkipTrace (repairScript s δs) >>= \case
-    runTrace (repairScript s δs) >>= \case
+    runSkipTrace (repairScript s δs) >>= \case
+    -- runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' -> case me of
         Nothing -> do

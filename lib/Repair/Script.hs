@@ -182,7 +182,7 @@ repair script@(Script s) δs =
           t' <- DT.patch t δt
           trace $ printf "*** Repaired term, t': %s" (prettyStr t')
           withState
-            (over environment  (GE.addGlobalDef (Binder (Just n), τ, t)) >>>
+            (over  environment (GE.addGlobalDef (Binder (Just n), τ, t)) >>>
              over δenvironment (DL.Modify (DGD.ModifyGlobalDef DA.Same δτ δt))
             ) $ do
             trace "Repair.Script:180"

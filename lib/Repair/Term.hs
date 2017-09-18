@@ -1,8 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Repair.Term where
 
@@ -14,12 +16,12 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
-import qualified Diff.Atom as DA
--- import qualified Diff.GlobalDeclaration as DGD
--- import qualified Diff.LocalContext as DLC
-import qualified Diff.LocalDeclaration as DLD
-import qualified Diff.List as DL
-import qualified Diff.Term as DT
+import qualified Diff.Atom as ΔA
+-- import qualified Diff.GlobalDeclaration as ΔGD
+-- import qualified Diff.LocalContext as ΔLC
+import qualified Diff.LocalDeclaration as ΔLD
+import qualified Diff.List as ΔL
+import qualified Diff.Term as ΔT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
@@ -41,83 +43,95 @@ import           Utils
 -- |                 ^^^^                                  ^^^^
 -- |                         ^^^^                    ^^^^
 
--- | `repairArgs τ δτ δfun`
--- | `τ`  is the type of the remaining Pi-telescope
--- | `δτ` is the diff for `τ` to become the new telescope
+-- | `repairArgs args τ δτ δfun`
+-- | `args` is the list of arguments prior to changes
+-- | `τ`    is the type of the remaining Pi-telescope
+-- | `δτ`   is the diff for `τ` to become the new telescope
 -- | `δfun` is the diff to apply to the actual function, which is the base of this "fold"
 repairArgs ::
   ( Member (Exc String) r
   , Member Trace r
+  , Member (State RS.RepairState) r
   ) =>
-  Raw.Type Variable -> DT.Diff Raw.Raw -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
-repairArgs τ0 δτ0 δfun =
+  [Raw.Term Variable] ->
+  Raw.Type Variable ->
+  ΔT.Diff Raw.Raw ->
+  ΔT.Diff Raw.Raw ->
+  Eff r (ΔT.Diff Raw.Raw)
+repairArgs args τ0 δτ0 δfun =
   trace "Repair.Term/repairArgs with:" >>
   trace (prettyStr δτ0) >>
-  go δfun τ0 δτ0
+  (trace $ printf "δfun: %s" (prettyStr δfun)) >>
+  go δfun args τ0 δτ0
   where
 
     exc (reason :: String) = throwExc $ printf "Repair.Term/repairArgs: %s" reason
 
     -- go accumulates the resulting diff in an unintuitive way
-    go acc τ δτ =
+    go acc args τ δτ =
 
       -- (do
       --   trace $ printf "go: %s" (prettyStrU τ)
-      --   τ' <- DT.patch τ δτ
+      --   τ' <- ΔT.patch τ δτ
       --   trace $ printf "δτ: %s" (prettyStrU τ')
       -- )
       -- >>
 
-      case δτ of
+      case (args, δτ) of
 
-        DT.CpyApp δ1 _ -> go acc τ δ1
+        ([], ΔT.CpyApp _ _) -> return acc
 
         --        | TYPE             | TERM
         -- BEFORE | (x : X) → Ys → R | acc x ys
         -- AFTER  | (x : X) → Zs → R | acc x zs
-        DT.CpyPi _ _ d2 -> do
-          (_, _, _, τ2) <- DT.extractPi τ
-          go (DT.CpyApp acc DT.Same) τ2 d2
+        (arg : args, ΔT.CpyPi δ1 _ δ2) -> do
+          (_, τ1, _, τ2) <- ΔT.extractPi τ
+          δarg <- repair arg τ1 δ1
+          go (ΔT.CpyApp acc δarg) args τ2 δ2
 
-        DT.CpyVar _ -> return acc
+        ([], ΔT.CpyVar _) -> return acc
 
-        DT.InsApp _ δ1 _ -> go acc τ δ1 -- to be confirmed
+        ([], ΔT.InsApp _ _ _) -> return acc -- TODO: can we do better here?
 
-        DT.InsPi _ d1 _ d2 -> do
-          τ2 <- DT.patch τ d2
-          go (DT.InsApp () acc (hole d1)) τ2 d2
+        --        | TYPE                  | TERM
+        -- BEFORE | Xs →         → Zs → R | f xs zs
+        -- AFTER  | Xs → (y : Y) → Zs → R | f xs y zs
+        (_, ΔT.InsPi _ δ1 _ δ2) ->
+          go (ΔT.InsApp () acc (hole δ1)) args τ δ2
 
         --        | TYPE             | TERM
         -- BEFORE | A1 → A2 → Bs → R | acc a1 a2 bs
         -- AFTER  | A2 → A1 → Bs → R | acc a2 a1 bs
-        DT.PermutPis p δτ' -> do
-          DT.PermutApps p <$> go acc τ δτ'
+        (_, ΔT.PermutPis p δτ') -> do
+          let args' = permute p args
+          ΔT.PermutApps p <$> go acc args' τ δτ'
         -- TODO: this is wrong because we need the permutations to happen from within the
         -- innermost App rather than the outermost ones
 
-        DT.Same -> do
+        (_, ΔT.Same) -> do
           -- even though it's Same, we still need to peel off ∀s from τ
           -- before returning acc
           trace $ printf "τ: %s" (prettyStr τ)
-          case τ of
-            Pi _ _ bτ' ->
+          case (args, τ) of
+            (_ : args, Pi _ _ bτ') ->
               let (_, τ') = unscopeTerm bτ' in
-              go (DT.CpyApp acc DT.Same) τ' DT.Same
+              go (ΔT.CpyApp acc ΔT.Same) args τ' ΔT.Same
             _         -> return acc
 
         _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)
 
     hole = \case
-      DT.Replace τ' -> DT.Replace (Annot () (Hole ()) τ')
-      _             -> DT.Replace (Hole ())
+      ΔT.Replace τ' -> ΔT.Replace (Annot () (Hole ()) τ')
+      _             -> ΔT.Replace (Hole ())
 
--- | `genericRepair t τ` attempts to repair `t` without more information about how its type changed
+-- | `genericRepair t τ` attempts to repair `t` without more information about
+-- | how its type `τ` changed
 genericRepair ::
   ( Member (Exc String) r
   , Member Trace r
   , Member (State RS.RepairState) r
   ) =>
-  Raw.Term Variable -> Raw.Type Variable -> Eff r (DT.Diff Raw.Raw)
+  Raw.Term Variable -> Raw.Type Variable -> Eff r (ΔT.Diff Raw.Raw)
 genericRepair t τ = do
 
   let exc (reason :: String) =
@@ -131,40 +145,53 @@ genericRepair t τ = do
     -- f x y z   is   (((f x) y) z)
     App _ _ _ -> do
       -- (f, [x, y, z])
-      (fun, _args)   <- DT.extractApps t
+      (fun, args)   <- ΔT.extractApps t
       case fun of
 
         Var _ v -> do
           -- s <- get
           -- let γ  = view RS.context s
           -- let δγ = view RS.δcontext s
-          -- γ' <- DLC.patch γ δγ
+          -- γ' <- ΔLC.patch γ δγ
           τv <- lookupType v
+          trace $ printf "Trying to repair an application of %s" (prettyStr v)
+          trace $ printf "Looked up type: %s" (prettyStr τv)
           (δv, δτv) <- unpackDeclarationDiff <$> findDeclarationDiff v
-          -- trace $ printf "τv: %s" (prettyStr τv)
-          -- trace $ printf "δτv: %s" (prettyStr δτv)
-          repairArgs τv δτv (DT.CpyVar δv)
+          trace $ printf "τv: %s" (prettyStr τv)
+          trace $ printf "δτv: %s" (prettyStr δτv)
+          repairArgs (map snd args) τv δτv (ΔT.CpyVar δv)
 
         _ -> exc "repair, Same, App, Not Var"
 
     -- even though the diff is same, something inside might need updating
     Lam _ bt -> do
       let (b, tlam) = unscopeTerm bt
-      (_, τ1, _, τ2) <- DT.extractPi τ
+      (_, τ1, _, τ2) <- ΔT.extractPi τ
       withState
         (   over RS.context  (LC.addLocalAssum (b, τ1))
-        >>> over RS.δcontext (DL.Keep)
+        >>> over RS.δcontext (ΔL.Keep)
         ) $ do
-        DT.CpyLam DA.Same <$> repair tlam τ2 DT.Same
+        ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
+
+    Pi _ τ1 bτ2 -> do
+      let (b, τ2) = unscopeTerm bτ2
+      withState
+        (   over RS.context  (LC.addLocalAssum (b, τ1))
+        >>> over RS.δcontext (ΔL.Keep)
+        ) $ do
+        ΔT.CpyPi
+          <$> repair τ1 Type ΔT.Same
+          <*> pure ΔA.Same
+          <*> repair τ2 Type ΔT.Same
 
     _ -> do
       -- s :: RS.State <- get
       -- trace $ printf "SAME:        %s" (prettyStrU t)
       -- let γ = view RS.context s
       -- trace $ printf "CONTEXT BEF:\n%s" (prettyStrU γ)
-      -- γ' <- DLC.patch γ (view RS.contextDiff s)
+      -- γ' <- ΔLC.patch γ (view RS.contextDiff s)
       -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
-      return DT.Same
+      return ΔT.Same
 
 
 -- | `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff describing
@@ -174,7 +201,7 @@ repair ::
   , Member Trace r
   , Member (State RS.RepairState) r
   ) =>
-  Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw -> Eff r (DT.Diff Raw.Raw)
+  Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw -> Eff r (ΔT.Diff Raw.Raw)
 repair t τ δτ =
   trace (printf "Repair.Term/repair(t: %s, τ: %s, δτ: %s)" (prettyStrU t) (prettyStrU τ) (show δτ)) >>
   RS.traceState >>
@@ -184,7 +211,7 @@ repair t τ δτ =
   --     s <- get
   --     let γ = view RS.context s
   --     trace $ printf "CONTEXT BEF:\n%s" (prettyStrU γ)
-  --     γ' <- DLC.patch γ (view RS.contextDiff s)
+  --     γ' <- ΔLC.patch γ (view RS.contextDiff s)
   --     trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
   -- ) >>
 
@@ -192,40 +219,40 @@ repair t τ δτ =
 
   -- even though the type has not changed, the term might still need updating to deal with the
   -- changes in the context
-  DT.Same -> genericRepair t τ
+  ΔT.Same -> genericRepair t τ
 
-  DT.Replace τ' -> return $ DT.Replace $ Annot () (Hole ()) τ'
+  ΔT.Replace τ' -> return $ ΔT.Replace $ Annot () (Hole ()) τ'
 
-  DT.CpyApp _δ1 _δ2 -> error "TODO: CpyApp"
+  ΔT.CpyApp _ _ -> do
+    -- FIXME: I think this should need `repairArgs`
+    genericRepair t τ
 
-  DT.CpyLam _ _     -> exc "CpyLam"
+  ΔT.CpyLam _ _     -> exc "CpyLam"
 
-  DT.CpyVar DA.Same -> exc "CpyVar Same"
+  ΔT.CpyVar ΔA.Same -> exc "CpyVar Same"
 
-  DT.CpyVar (DA.Replace δv) -> do
+  ΔT.CpyVar (ΔA.Replace δv) -> do
     trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
-    return $ DT.Replace "TODO" -- TODO: confirm this is always good
+    return $ ΔT.Replace "TODO" -- TODO: confirm this is always good
 
-  DT.InsApp _ _ _ -> genericRepair t τ -- not sure what to do here
+  ΔT.InsApp _ _ _ -> genericRepair t τ -- not sure what to do here
 
-  DT.InsLam _ _ _   -> exc "InsLam"
-  DT.PermutLams _ _ -> exc "PermutLams"
-  DT.PermutApps _ _ -> exc "PermutApps"
+  ΔT.InsLam _ _ _   -> exc "InsLam"
+  ΔT.PermutLams _ _ -> exc "PermutLams"
+  ΔT.PermutApps _ _ -> exc "PermutApps"
 
-  DT.CpyPi d1 DA.Same d2 ->
+  ΔT.CpyPi d1 δb d2 ->
     case (t, τ) of
       (Lam _ bt, Pi _ τ1 bτ2) -> do
         let (b, _) = unscopeTerm bt
         withState
           (   over RS.context  (LC.addLocalAssum (b, τ1))
-          >>> over RS.δcontext (DL.Modify (DLD.ModifyLocalAssum DA.Same d1))
+          >>> over RS.δcontext (ΔL.Modify (ΔLD.ModifyLocalAssum δb d1))
           ) $ do
-          DT.CpyLam DA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
+          ΔT.CpyLam ΔA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
       _ -> exc "repair: CpyPi Same"
 
-  DT.CpyPi _ _ _         -> exc "CpyPi"
-
-  DT.InsPi _ d1 _b d2      -> do
+  ΔT.InsPi _ d1 _b d2      -> do
     -- I think what we want here is:
     -- - find a b' binder like b that is free in t
     -- - InsLam b'
@@ -237,17 +264,17 @@ repair t τ δτ =
     trace $ printf "Variables bound in the context: %s" (show . map prettyStr $ varsBoundInContext)
     let v :: Variable = "todo"
     let b = Binder (Just v)
-    τ1' <- DT.patch τ d1
+    τ1' <- ΔT.patch τ d1
     withState
       (   over RS.context  id
-      >>> over RS.δcontext (DL.Insert (LocalAssum (Binder (Just v)) τ1'))
-      ) $ DT.InsLam () b <$> repair t τ d2
+      >>> over RS.δcontext (ΔL.Insert (LocalAssum (Binder (Just v)) τ1'))
+      ) $ ΔT.InsLam () b <$> repair t τ d2
 
-  DT.PermutPis p d1      -> do
-    (pis, τrest) <- DT.extractSomePis (length p) τ
+  ΔT.PermutPis p d1      -> do
+    (pis, τrest) <- ΔT.extractSomePis (length p) τ
     let pis' = permute p pis
-    (lams, trest) <- DT.extractSomeLams (length p) t -- TODO: catchError and try something else?
+    (lams, trest) <- ΔT.extractSomeLams (length p) t -- TODO: catchError and try something else?
     let lams' = permute p lams
-    DT.PermutLams p <$> repair (DT.mkLams lams' trest) (DT.mkPis pis' τrest) d1
+    ΔT.PermutLams p <$> repair (ΔT.mkLams lams' trest) (ΔT.mkPis pis' τrest) d1
 
-  DT.RemovePi _ -> exc "RemovePi"
+  ΔT.RemovePi _ -> exc "RemovePi"
