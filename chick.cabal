@@ -54,7 +54,9 @@ Library
                   DictMetaOut
                   Diff.Atom
                   Diff.Binder
+                  Diff.ConcatMap
                   Diff.Constructor
+                  Diff.Eliminator
                   Diff.GlobalDeclaration
                   Diff.GlobalEnvironment
                   Diff.Inductive
