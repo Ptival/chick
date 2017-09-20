@@ -223,7 +223,7 @@ repair t τ δτ =
 
   ΔT.Replace τ' -> return $ ΔT.Replace $ Annot () (Hole ()) τ'
 
-  ΔT.CpyApp _ _ -> do
+  ΔT.CpyApp _ _ ->
     -- FIXME: I think this should need `repairArgs`
     genericRepair t τ
 
