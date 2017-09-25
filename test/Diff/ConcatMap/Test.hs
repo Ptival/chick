@@ -48,7 +48,7 @@ test = do
     Right input' -> do
       putStrLn $ show input'
       let output' = concatMap f input'
-      case δListConcatMap f patchElem input δinput of
+      case δconcatMap f patchElem input δinput of
         Nothing -> do
           putStrLn "Nothing"
           return False

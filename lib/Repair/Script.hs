@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -75,8 +77,9 @@ withStateFromConstructors prefix l δl e =
     (_c : _cs, DL.Insert  _  _)   -> todo "Insert"
     (_c : _cs, DL.Keep    _)      -> todo "Keep"
 
-    (c@(I.Constructor _ _consName cps cis) : cs, DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
-      let δτc = DC.δconstructorRawType prefix (length cps) δcps (length cis) δcis in
+    ( c@(I.Constructor _ _consName cps cis) : cs,
+      DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
+      let δτc = DC.δconstructorRawType prefix cps δcps cis δcis in
       go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs
 
     (_c : _cs, DL.Modify _ _)     -> todo "Modify"

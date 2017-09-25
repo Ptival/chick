@@ -85,11 +85,11 @@ One could either:
 -}
 
 annotSymbol, arrowSymbol, holeSymbol, lamSymbol, postLamSymbol, wildcardSymbol :: String
-annotSymbol = "@"
+annotSymbol = ":"
 arrowSymbol = "→"
-holeSymbol  = "?"
+holeSymbol  = "_"
 lamSymbol = "λ"
-postLamSymbol = "."
+postLamSymbol = ","
 wildcardSymbol = "_"
 
 type NameScope = Scope (Name Variable ())

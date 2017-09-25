@@ -39,6 +39,12 @@ import qualified Typing.LocalContext as LC
 import           Utils
 import           Vernacular
 
+repairScriptBenchmarks :: [RepairScriptBenchmark]
+repairScriptBenchmarks =
+  []
+  -- ++ [repairFlippedArguments]
+  ++ [repairListToVec]
+
 -- do not use `unsafeParseRaw` anywhere else!
 unsafeParseRaw :: String -> Raw.Term Variable
 unsafeParseRaw s =
@@ -226,10 +232,10 @@ repairFlippedArguments = RepairScriptBenchmark
   { repairScriptFromScript = Script
     [ Definition "foo"
       (unsafeParseRaw "A → B → C → D → A")
-      (unsafeParseRaw "λ a b c d . a")
+      (unsafeParseRaw "λ a b c d , a")
     , Definition "bar"
       (unsafeParseRaw "A → B → C → D → A")
-      (unsafeParseRaw "λ a b c d . foo a b c d")
+      (unsafeParseRaw "λ a b c d , foo a b c d")
     ]
 
   , repairScriptDiff =
@@ -251,12 +257,12 @@ repairListToVec = RepairScriptBenchmark
   { repairScriptFromScript = Script
     [ Inductive indList
     , Definition "list1"
-      (unsafeParseRaw "List ℕ")
-      (unsafeParseRaw "cons zero nil")
+      (unsafeParseRaw "List nat")
+      (unsafeParseRaw "cons O nil")
     , Definition "length"
-      (unsafeParseRaw "(S : ℕ → ℕ) → (T : Type) → List T → ℕ")
+      (unsafeParseRaw "(S : nat → nat) → (T : Type) → List T → nat")
       (unsafeParseRaw
-       "λ S T l . List_rec T (λ _ . ℕ) O (λ _ _ lt . S lt) l")
+       "λ S T l , List_rec T (λ _ , nat) O (λ _ _ lt , S lt) l")
     ]
 
   , repairScriptDiff =
@@ -266,21 +272,15 @@ repairListToVec = RepairScriptBenchmark
   , repairScriptExpected = Just $ Script
     [ Inductive indVec
     , Definition "list1"
-      (unsafeParseRaw "Vec ℕ (? @ ℕ)")
-      (unsafeParseRaw "vcons zero (? @ ℕ) nil")
+      (unsafeParseRaw "Vec nat (_ : nat)")
+      (unsafeParseRaw "vcons O (_ : nat) nil")
     , Definition "length"
-      (unsafeParseRaw "(S : ℕ → ℕ) → (T : Type) → Vec T (? @ ℕ) → ℕ")
+      (unsafeParseRaw "(S : nat → nat) → (T : Type) → Vec T (_ : nat) → nat")
       (unsafeParseRaw
-       "λ S T l . Vec_rec T (λ _ _ . ℕ) O (λ _ _ _ lt . S lt) (? @ ℕ) l")
+       "λ S T l , Vec_rec T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
     ]
 
   }
-
-repairScriptBenchmarks :: [RepairScriptBenchmark]
-repairScriptBenchmarks =
-  []
-  -- ++ [repairFlippedArguments]
-  ++ [repairListToVec]
 
 repairScriptBenchmark :: IO ()
 repairScriptBenchmark = do

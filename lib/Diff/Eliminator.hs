@@ -13,17 +13,17 @@ module Diff.Eliminator
   , δmkEliminatorType'
   ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
-import Control.Monad.Freer.Trace
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 
 import qualified Diff.Atom as DA
 import           Diff.ConcatMap
 import qualified Diff.Constructor as DC
 import qualified Diff.Inductive as DI
 import qualified Diff.List as DL
-import           Diff.ListFoldLeft
 import           Diff.ListFoldRight
+import           Diff.ListFoldUtils
 import           Diff.Motive
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
@@ -32,35 +32,6 @@ import           Inductive.Inductive
 -- import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import           Utils
-
-δquantifyVariables ::
-  α ->
-  [(Variable, TermX α Variable)] ->
-  DL.Diff (Variable, TermX α Variable) (DP.Diff (DA.Diff Variable) (DT.Diff α)) ->
-  DT.Diff α -> DT.Diff α
-δquantifyVariables α = δListFoldRight (δListFoldMkPiVariables α)
-
-δquantifyBinders ::
-  α ->
-  [(Binder Variable, TermX α Variable)] ->
-  DL.Diff (Binder Variable, TermX α Variable)
-  (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)) ->
-  DT.Diff α -> DT.Diff α
-δquantifyBinders α = δListFoldRight (δListFoldMkPiBinders α)
-
-δapplyTerms ::
-  α ->
-  [TermX α Variable] ->
-  DL.Diff (TermX α Variable) (DT.Diff α) ->
-  DT.Diff α -> DT.Diff α
-δapplyTerms α = δListFoldLeft (δListFoldMkAppTerms α)
-
-δapplyVariables ::
-  α ->
-  [(Variable, TermX α Variable)] ->
-  DL.Diff (Variable, TermX α Variable) (DP.Diff (DA.Diff Variable) (DT.Diff α)) ->
-  DT.Diff α -> DT.Diff α
-δapplyVariables α = δListFoldLeft (δListFoldMkAppVariables α)
 
 -- This one is different from the regular `δconcatMap`, because the function
 -- being `concatMap`-ped also changes.

@@ -64,6 +64,7 @@ Library
                   Diff.ListFold
                   Diff.ListFoldLeft
                   Diff.ListFoldRight
+                  Diff.ListFoldUtils
                   Diff.LocalContext
                   Diff.LocalDeclaration
                   Diff.Motive

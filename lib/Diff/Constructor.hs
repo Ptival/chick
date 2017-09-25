@@ -20,6 +20,7 @@ import           Text.PrettyPrint.Annotated.WL
 import qualified Diff.Atom as DA
 import qualified Diff.Binder as DB
 import qualified Diff.List as DL
+import           Diff.ListFoldUtils
 import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
 import           Inductive.Inductive
@@ -77,40 +78,45 @@ patch c@(Constructor ind n ps is) d = case d of
 
 δconstructorRawType ::
   DT.Diff Raw.Raw ->
-  Int ->
-  Δcps Raw.Raw ->
-  Int ->
-  Δcis Raw.Raw ->
+  Φcps Raw.Raw Variable -> Δcps Raw.Raw ->
+  Φcis Raw.Raw Variable -> Δcis Raw.Raw ->
   DT.Diff Raw.Raw
-δconstructorRawType prefix nPs δps nIs δis =
-  processPs nPs (processIs nIs prefix δis) δps
+δconstructorRawType prefix cps δcps cis δcis =
+  -- foldrWith mkPi $ foldrWith mkApp $ foldrWith (mkApp . fst)
 
-  where
+  δquantifyVariables () cps δcps
+  $ δapplyTerms () cis δcis
+  $ prefix
 
-    processIs ::
-      Int ->
-      DT.Diff Raw.Raw ->
-      DL.Diff (Raw.Term Variable) (DT.Diff Raw.Raw) ->
-      DT.Diff Raw.Raw
-    processIs n base = \case
-      DL.Insert t δ -> DT.InsApp () (processIs n base δ) (DT.Replace t)
-      DL.Same -> DT.nCpyApps n base
-      δ -> error $ printf "TODO: processIs %s" (show δ)
+  -- WAS:
+  -- processPs nPs (processIs nIs prefix δis) δps
 
-    processPs ::
-      Int ->
-      DT.Diff Raw.Raw ->
-      Δcps Raw.Raw ->
-      DT.Diff Raw.Raw
-    processPs n base = \case
-      DL.Insert (b, t) δ ->
-        DT.InsPi () (DT.Replace t) (Binder (Just b)) (processPs n base δ)
-      DL.Keep δ ->
-        DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
-      DL.Modify DP.Same δ ->
-        DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
-      DL.Modify (DP.Modify δl δr) δ ->
-        DT.CpyPi δr (DB.fromΔVariable δl) (processPs (n-1) base δ)
-      DL.Same ->
-        DT.nCpyPis n base
-      δ -> error $ printf "TODO: processPs %s" (show δ)
+  -- where
+
+  --   processIs ::
+  --     Int ->
+  --     DT.Diff Raw.Raw ->
+  --     DL.Diff (Raw.Term Variable) (DT.Diff Raw.Raw) ->
+  --     DT.Diff Raw.Raw
+  --   processIs n base = \case
+  --     DL.Insert t δ -> DT.InsApp () (processIs n base δ) (DT.Replace t)
+  --     DL.Same -> DT.nCpyApps n base
+  --     δ -> error $ printf "TODO: processIs %s" (show δ)
+
+  --   processPs ::
+  --     Int ->
+  --     DT.Diff Raw.Raw ->
+  --     Δcps Raw.Raw ->
+  --     DT.Diff Raw.Raw
+  --   processPs n base = \case
+  --     DL.Insert (b, t) δ ->
+  --       DT.InsPi () (DT.Replace t) (Binder (Just b)) (processPs n base δ)
+  --     DL.Keep δ ->
+  --       DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
+  --     DL.Modify DP.Same δ ->
+  --       DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
+  --     DL.Modify (DP.Modify δl δr) δ ->
+  --       DT.CpyPi δr (DB.fromΔVariable δl) (processPs (n-1) base δ)
+  --     DL.Same ->
+  --       DT.nCpyPis n base
+  --     δ -> error $ printf "TODO: processPs %s" (show δ)

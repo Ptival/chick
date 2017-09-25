@@ -53,7 +53,7 @@ prettyTermDocPrec precs = goTerm
         (fillSep
          [ text "let"
          , prettyDoc n
-         , char '='
+         , text ":="
          , go (PrecMin, TolerateEqual) t1
          , text "in"
          , go (PrecLet, TolerateEqual) (instantiate1Name (Var Nothing n) bt2)
@@ -72,12 +72,13 @@ prettyTermDocPrec precs = goTerm
             , PrecArrow)
           Just _ ->
             (fillSep
-              [ parens $ fillSep
+              [ text "∀"
+              , parens $ fillSep
                 [ prettyDoc b
                 , char ':'
                 , go (PrecMin, TolerateEqual) τ1
                 ]
-              , text arrowSymbol
+              , comma
               , go (PrecArrow, TolerateEqual) τ2
               ]
             , PrecArrow)
@@ -94,6 +95,6 @@ prettyTermDocPrec precs = goTerm
       t -> fillSep
           [ text lamSymbol
           , fillSep . reverse $ l
-          , char '.'
+          , text postLamSymbol
           , go (PrecMin, TolerateEqual) t
           ]

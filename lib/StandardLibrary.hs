@@ -102,7 +102,7 @@ inductive Bool : Type where
 -}
 indBool :: Inductive Raw.Raw Variable
 indBool =
-  Inductive "𝔹" [] []
+  Inductive "bool" [] []
   [ trueBool
   , falseBool
   ]
@@ -112,20 +112,20 @@ trueBool  = Constructor indBool "true"  [] []
 falseBool = Constructor indBool "false" [] []
 
 {-
-inductive ℕ : Type where
-  zero : ℕ
-  succ : (n : ℕ) → ℕ
+inductive nat : Type where
+  zero : nat
+  succ : (n : nat) → ℕ
 -}
 indNat :: Inductive Raw.Raw Variable
 indNat =
-  Inductive "ℕ" [] []
+  Inductive "nat" [] []
   [ zeroNat
   , succNat
   ]
 
 zeroNat, succNat :: Constructor Raw.Raw Variable
 zeroNat = Constructor indNat "zero" [] []
-succNat = Constructor indNat "succ" [("n", "ℕ")] []
+succNat = Constructor indNat "succ" [("n", "nat")] []
 
 {-
 inductive List (A : Type) : Type where
@@ -148,13 +148,13 @@ consList = Constructor indList "cons"
     []
 
 {-
-inductive Fin : ℕ → Type where
-  zero : {n : ℕ} → Fin (suc n)
-  suc  : {n : ℕ} (i : Fin n) → Fin (suc n)
+inductive Fin : nat → Type where
+  zero : {n : nat} → Fin (suc n)
+  suc  : {n : nat} (i : Fin n) → Fin (suc n)
 -}
 indFin :: Inductive Raw.Raw Variable
 indFin =
-  Inductive "Fin" [] [("bound", "ℕ")]
+  Inductive "Fin" [] [("bound", "nat")]
   [ zeroFin
   , succFin
   ]
@@ -162,23 +162,23 @@ indFin =
 zeroFin, succFin :: Constructor Raw.Raw Variable
 zeroFin =
   Constructor indFin "zero"
-  [ ("n", "ℕ") ]
+  [ ("n", "nat") ]
   [ unsafeParseRaw "succ n" ]
 succFin =
   Constructor indFin "succ"
-  [ ("n", "ℕ")
+  [ ("n", "nat")
   , ("i", unsafeParseRaw "Fin n")
   ]
   [ unsafeParseRaw "succ n" ]
 
 {-
-inductive Vec (A : Type) : ℕ → Type where
+inductive Vec (A : Type) : nat → Type where
   nil  : Vec A zero
-  cons : {n : ℕ} → (x : A) (xs : Vec A n) → Vec A (suc n)
+  cons : {n : nat} → (x : A) (xs : Vec A n) → Vec A (suc n)
 -}
 indVec :: Inductive Raw.Raw Variable
 indVec =
-  Inductive "Vec" [("A", Type)] [("size", "ℕ")]
+  Inductive "Vec" [("A", Type)] [("size", "nat")]
   [ nilVec
   , consVec
   ]
@@ -188,7 +188,7 @@ nilVec = Constructor indVec "vnil"  [] [Var Nothing "zero"]
 consVec =
   Constructor indVec "vcons"
   [ ("h", "A")
-  , ("n", "ℕ")
+  , ("n", "nat")
   , ("t", unsafeParseRaw "Vec A n")
   ]
   [ unsafeParseRaw "succ n" ]

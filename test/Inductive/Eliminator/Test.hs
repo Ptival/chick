@@ -11,7 +11,7 @@ import Term.Term
 
 displayEliminator :: Inductive () Variable -> IO ()
 displayEliminator ind@(Inductive n _ _ _) =
-  let elimName = eliminatorName n in
+  let elimName = mkEliminatorName n in
   let elimType = mkEliminatorType () ind in
   putStrLn $ printf "\n%s : %s" (prettyStr elimName) (prettyStr elimType)
 

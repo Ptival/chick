@@ -35,7 +35,7 @@ unsafeParseRaw s =
 
   where
 
-    δn = DA.Replace "ℕ"
+    δn = DA.Replace "nat"
     δps = DL.Same
     δis = DL.Same
     -- for sake of testing, let's permute
@@ -44,7 +44,7 @@ unsafeParseRaw s =
     δfalse = DC.Modify (DA.Replace "zero") DL.Same DL.Same
     δtrue = DC.Modify (DA.Replace "succ") δsuccPs DL.Same
 
-    δsuccPs = DL.Insert ("n", "ℕ") DL.Same
+    δsuccPs = DL.Insert ("n", "nat") DL.Same
 
 δNatToList :: DI.Diff Raw.Raw
 δNatToList = DI.Modify δn δps δis δcs
@@ -71,7 +71,7 @@ unsafeParseRaw s =
 
     δn = DA.Replace "Vec"
     δps = DL.Same
-    δis = DL.Insert ("size", "ℕ") DL.Same
+    δis = DL.Insert ("size", "nat") DL.Same
     δcs = DL.Modify δnil $ DL.Modify δcons $ DL.Same
 
     δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert "zero" DL.Same)
@@ -79,7 +79,7 @@ unsafeParseRaw s =
 
     δconsPs =
       DL.Keep
-      $ DL.Insert ("n", "ℕ")
+      $ DL.Insert ("n", "nat")
       $ DL.Modify
       (DP.Modify DA.Same
         (DT.InsApp ()

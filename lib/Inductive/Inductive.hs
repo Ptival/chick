@@ -111,17 +111,25 @@ constructorType' :: ∀ α.
   α -> Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   TypeX α Variable
 constructorType' α indName indParams consParams consIndices =
-    foldrWith onParam consParams
+  -- foldrWith onIndParamOutside indParams $
+  foldrWith onParam consParams
   $ foldrWith onIndex consIndices
-  $ foldrWith onIndParam indParams
+  $ foldrWith onIndParamInside indParams
   $ Var Nothing indName
+
   where
+
     onIndex :: Φci α Variable -> TermX α Variable -> TermX α Variable
     onIndex i t = App α t i --(Raw.raw t) (Raw.raw i)
+
     onParam :: Φcp α Variable -> TermX α Variable -> TermX α Variable
     onParam (v, p) t = Pi α p (abstractVariable v t)
-    onIndParam :: Φip α Variable -> TermX α Variable -> TermX α Variable
-    onIndParam (v, _) t = App α t (Var Nothing v)
+
+    onIndParamInside :: Φip α Variable -> TermX α Variable -> TermX α Variable
+    onIndParamInside (v, _) t = App α t (Var Nothing v)
+
+    onIndParamOutside :: Φip α Variable -> TermX α Variable -> TermX α Variable
+    onIndParamOutside (v, p) t = Pi α p (abstractVariable v t)
 
 constructorRawType' ::
   Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
