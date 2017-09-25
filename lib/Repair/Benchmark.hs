@@ -98,41 +98,41 @@ termBench1, termBench2, termBench3, termBench4, termBench5 :: RepairTermBenchmar
 
 termBench1 =
   RepairTermBenchmark
-  { repairTermFromTerm = unsafeParseRaw "λ b . b"
+  { repairTermFromTerm = unsafeParseRaw "λ b , b"
   , repairTermFromType = unsafeParseRaw "B → B"
   , repairTermToType   = unsafeParseRaw "A → B → B"
   , repairTermDiff     =
     DT.InsPi () (DT.Replace "A") (Binder Nothing)
     $ DT.Same
-  , repairTermExpected = unsafeParseRaw "λ _ b . b"
+  , repairTermExpected = unsafeParseRaw "λ _ b , b"
   }
 
 termBench2 =
   RepairTermBenchmark
-  { repairTermFromTerm = unsafeParseRaw "λ b . b"
+  { repairTermFromTerm = unsafeParseRaw "λ b , b"
   , repairTermFromType = unsafeParseRaw "B → B"
   , repairTermToType   = unsafeParseRaw "B → A → B"
   , repairTermDiff     =
     DT.CpyPi DT.Same DA.Same
     $ DT.InsPi () (DT.Replace "A") (Binder Nothing)
     $ DT.Same
-  , repairTermExpected = unsafeParseRaw "λ b _ . b"
+  , repairTermExpected = unsafeParseRaw "λ b _ , b"
   }
 
 termBench3 =
   RepairTermBenchmark
-  { repairTermFromTerm = unsafeParseRaw "λ f a . f a"
+  { repairTermFromTerm = unsafeParseRaw "λ f a , f a"
   , repairTermFromType = unsafeParseRaw "(A → B) → A → B"
   , repairTermToType   = unsafeParseRaw "A → (A → B) → B"
   , repairTermDiff     =
     DT.PermutPis [1, 0]
     $ DT.Same
-  , repairTermExpected = unsafeParseRaw "λ a f . f a"
+  , repairTermExpected = unsafeParseRaw "λ a f , f a"
   }
 
 termBench4 =
   RepairTermBenchmark
-  { repairTermFromTerm = unsafeParseRaw "λ f a . f a"
+  { repairTermFromTerm = unsafeParseRaw "λ f a , f a"
   , repairTermFromType = unsafeParseRaw "(A → C) → A → C"
   , repairTermToType   = unsafeParseRaw "(A → B → C) → A → B → C"
   , repairTermDiff     =
@@ -144,12 +144,12 @@ termBench4 =
       (DT.CpyPi DT.Same DA.Same
        (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same)
       )
-  , repairTermExpected = unsafeParseRaw "λ f a _ . f a (? @ B)"
+  , repairTermExpected = unsafeParseRaw "λ f a _ , f a (_ : B)"
   }
 
 termBench5 =
   RepairTermBenchmark
-  { repairTermFromTerm = unsafeParseRaw "λ f a c . f a c"
+  { repairTermFromTerm = unsafeParseRaw "λ f a c , f a c"
   , repairTermFromType = unsafeParseRaw "(A → C → D) → A → C → D"
   , repairTermToType   = unsafeParseRaw "(A → B → C → D) → A → B → C → D"
   , repairTermDiff     =
@@ -163,7 +163,7 @@ termBench5 =
       $ DT.InsPi () (DT.Replace "B") (Binder Nothing)
       $ DT.Same
       )
-  , repairTermExpected = unsafeParseRaw "λ f a _ c . f a (? @ B) c"
+  , repairTermExpected = unsafeParseRaw "λ f a _ c , f a (_ : B) c"
   }
 
 repairTermBenchmarks :: [RepairTermBenchmark]
@@ -255,29 +255,32 @@ repairListToVec :: RepairScriptBenchmark
 repairListToVec = RepairScriptBenchmark
 
   { repairScriptFromScript = Script
-    [ Inductive indList
+    [ Inductive indNat
+    , Inductive indList
     , Definition "list1"
       (unsafeParseRaw "List nat")
       (unsafeParseRaw "cons O nil")
     , Definition "length"
-      (unsafeParseRaw "(S : nat → nat) → (T : Type) → List T → nat")
+      (unsafeParseRaw "(T : Type) → List T → nat")
       (unsafeParseRaw
-       "λ S T l , List_rec T (λ _ , nat) O (λ _ _ lt , S lt) l")
+       "λ T l , List_rec T (λ _ , nat) O (λ _ _ lt , S lt) l")
     ]
 
   , repairScriptDiff =
-    DL.Modify (DV.ModifyInductive δListToVec)
+    DL.Keep
+    $ DL.Modify (DV.ModifyInductive δListToVec)
     $ DL.Same
 
   , repairScriptExpected = Just $ Script
-    [ Inductive indVec
+    [ Inductive indNat
+    , Inductive indVec
     , Definition "list1"
       (unsafeParseRaw "Vec nat (_ : nat)")
       (unsafeParseRaw "vcons O (_ : nat) nil")
     , Definition "length"
-      (unsafeParseRaw "(S : nat → nat) → (T : Type) → Vec T (_ : nat) → nat")
+      (unsafeParseRaw "(T : Type) → Vec T (_ : nat) → nat")
       (unsafeParseRaw
-       "λ S T l , Vec_rec T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
+       "λ T l , Vec_rec T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
     ]
 
   }
