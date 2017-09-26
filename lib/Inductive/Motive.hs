@@ -16,17 +16,14 @@ import Utils
 -- the functions should assume that names get picked and are unique
 -- then callers should have a way to fully instantiate names in a given env/context
 
-onInductiveIndexInside ::
-  α -> TypeX α Variable -> Φii α Variable -> TermX α Variable
-onInductiveIndexInside α t (v, _) = App α t (Var Nothing v)
+onInductiveIndexInside :: TypeX α Variable -> Φii α Variable -> TermX α Variable
+onInductiveIndexInside t (α, v, _) = App α t (Var Nothing v)
 
-onInductiveIndexOutside ::
-  α -> Φii α Variable -> TypeX α Variable -> TermX α Variable
-onInductiveIndexOutside α (v, i) t = Pi α i (abstractVariable v t)
+onInductiveIndexOutside :: Φii α Variable -> TypeX α Variable -> TermX α Variable
+onInductiveIndexOutside (α, v, i) t = Pi α i (abstractVariable v t)
 
-onInductiveParameter ::
-  α -> TypeX α Variable -> Φip α Variable -> TermX α Variable
-onInductiveParameter α t (b, _) = App α t (Var Nothing b)
+onInductiveParameter :: TypeX α Variable -> Φip α Variable -> TermX α Variable
+onInductiveParameter t (α, b, _) = App α t (Var Nothing b)
 
 -- for instance, for Vec:
 -- (n : nat) → Vec T n -> Type
@@ -39,15 +36,15 @@ mkMotiveType' :: ∀ α.
   TypeX α Variable
 mkMotiveType' α inductiveName inductiveParameters inductiveIndices universe =
 
-  foldrWith (onInductiveIndexOutside α) inductiveIndices
+  foldrWith onInductiveIndexOutside inductiveIndices
   $ Pi α inductive (abstractAnonymous universe)
 
   where
 
     inductive :: TypeX α Variable
     inductive =
-      foldlWith   (onInductiveIndexInside α) inductiveIndices
-      $ foldlWith (onInductiveParameter   α) inductiveParameters
+        foldlWith onInductiveIndexInside inductiveIndices
+      $ foldlWith onInductiveParameter   inductiveParameters
       $ Var Nothing inductiveName
 
 mkMotiveType :: ∀ α.

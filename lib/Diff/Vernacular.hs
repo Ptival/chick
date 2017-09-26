@@ -27,7 +27,7 @@ data Diff α
   | ModifyInductive (DI.Diff α)
   deriving (Show)
 
-instance PrettyPrintable (Diff α) where
+instance PrettyPrintable α => PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same                      -> text "Same"
     ModifyDefinition δ1 δ2 δ3 -> fillSep [ text "ModifyDefinition", go δ1, go δ2, go δ3 ]

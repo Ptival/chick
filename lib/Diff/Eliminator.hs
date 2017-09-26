@@ -25,11 +25,12 @@ import qualified Diff.List as DL
 import           Diff.ListFoldRight
 import           Diff.ListFoldUtils
 import           Diff.Motive
-import qualified Diff.Pair as DP
+import qualified Diff.Pair as D2
 import qualified Diff.Term as DT
+import qualified Diff.Triple as D3
 import           Inductive.Eliminator
 import           Inductive.Inductive
--- import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import           Utils
 
@@ -37,26 +38,28 @@ import           Utils
 -- being `concatMap`-ped also changes.
 
 δListFoldConcatMapAddRecursiveMotive ::
-  ( Member (Exc String) r
+  ( Eq α
+  , Member (Exc String) r
   , Member Trace r
+  , PrettyPrintable α
   ) =>
-  α -> Variable -> DA.Diff Variable ->
+  Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δips α ->
   TermX α Variable -> DT.Diff α ->
-  Eff r (ΔListFold (Variable, TypeX α Variable)
-         (DP.Diff (DA.Diff Variable) (DT.Diff α))
-         (Maybe (DL.Diff (Binder Variable, TypeX α Variable)
-                 (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α))
+  Eff r (ΔListFold (α, Variable, TypeX α Variable)
+         (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α))
+         (Maybe (DL.Diff (α, Binder Variable, TypeX α Variable)
+                 (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α))
                 )))
-δListFoldConcatMapAddRecursiveMotive α n δn ips δips iis δiis motive δmotive = do
+δListFoldConcatMapAddRecursiveMotive n δn ips δips iis δiis motive δmotive = do
   n'      <- DA.patch                   n      δn
   ips'    <- DL.patch DI.patchParameter ips    δips
   iis'    <- DL.patch DI.patchIndex     iis    δiis
   motive' <- DT.patch                   motive δmotive
 
-  let addRec  = addRecursiveMotive α n  ips  iis  motive
-  let addRec' = addRecursiveMotive α n' ips' iis' motive'
+  let addRec  = addRecursiveMotive n  ips  iis  motive
+  let addRec' = addRecursiveMotive n' ips' iis' motive'
 
   let onChanged a a' acc =
         case (addRec a, addRec' a') of
@@ -64,19 +67,20 @@ import           Utils
           where
             δFirst e e' | e == e'   = DL.Keep
                         | otherwise =
-                          let (b, τ) = e' in
-                          DL.Modify (DP.Modify (DA.Replace b) (DT.Replace τ))
+                          let (α, b, τ) = e' in
+                          DL.Modify (D3.Modify (DA.Replace α) (DA.Replace b) (DT.Replace τ))
             δSecond []  []   = id
             δSecond []  [m'] = DL.Insert m'
             δSecond [_] []   = DL.Remove
-            δSecond [_] [(b, τ)] = DL.Modify (DP.Modify (DA.Replace b) (DT.Replace τ))
+            δSecond [_] [(α, b, τ)] =
+              DL.Modify (D3.Modify (DA.Replace α) (DA.Replace b) (DT.Replace τ))
             δSecond _   _    = error "THIS SHOULD NOT HAPPEN"
         _ -> error "THIS SHOULD NOT HAPPEN"
 
   let onInsert a _ acc = foldrWith (\ b acc -> DL.Insert b acc) (addRec' a) <$> acc
   let onKeep   a _ acc = onChanged a a acc
   let onModify δa a _ acc =
-        case DP.patchMaybe DA.patchMaybe DT.patchMaybe a δa of
+        case D3.patchMaybe DA.patchMaybe DA.patchMaybe DT.patchMaybe a δa of
         Nothing -> Nothing
         Just a' -> onChanged a a' acc
   let onPermute _ _ _    = error "TODO: δconcatMapAddRecursiveMotive onPermute"
@@ -88,7 +92,9 @@ import           Utils
     { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
 
 δconcatMapAddRecursiveMotive ::
-  α ->
+  ( Eq α
+  , PrettyPrintable α
+  ) =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
@@ -97,22 +103,22 @@ import           Utils
   Φcis α Variable -> DC.Δcis α ->
   TermX α Variable -> DT.Diff α ->
   DL.Diff
-  (Binder Variable, TypeX α Variable)
-  (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)) ->
+  (α, Binder Variable, TypeX α Variable)
+  (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)) ->
   Maybe
   (DL.Diff
-   (Binder Variable, TypeX α Variable)
-   (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)))
+   (α, Binder Variable, TypeX α Variable)
+   (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)))
 δconcatMapAddRecursiveMotive
-  α n δn ips δips iis δiis _cn _δcn cps δcps _cis _δcis motive δmotive δ = do
+  n δn ips δips iis δiis _cn _δcn cps δcps _cis _δcis motive δmotive δ = do
   let eff = δListFoldConcatMapAddRecursiveMotive
-            α n δn ips δips iis δiis motive δmotive
+            n δn ips δips iis δiis motive δmotive
   case skipTrace $ runError eff of
     Left (_ :: String) -> Nothing
     Right δListFold -> δListFoldRight δListFold cps δcps (Just δ)
 
 δmkCase ::
-  α ->
+  (Eq α, PrettyPrintable α) =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
@@ -121,39 +127,42 @@ import           Utils
   Φcis α Variable -> DC.Δcis α ->
   DT.Diff α ->
   DT.Diff α -> Maybe (DT.Diff α)
-δmkCase α n δn ips δips iis δiis cn δcn cps δcps cis δcis δmotive =
-  let addRec = addRecursiveMotive α n ips iis motive in
+δmkCase n δn ips δips iis δiis cn δcn cps δcps cis δcis δmotive =
+  let addRec = addRecursiveMotive n ips iis motive in
   let  hyps =  concatMap addRec cps in
   case δconcatMapAddRecursiveMotive
-       α n δn ips δips iis δiis cn δcn cps δcps cis δcis motive δmotive
+       n δn ips δips iis δiis cn δcn cps δcps cis δcis motive δmotive
        DL.Same
   of
   Nothing -> const Nothing
   Just δhyps ->
     Just <$>
-    δquantifyBinders α hyps δhyps
-    . δapplyTerms α
-    [applyVariables α cps (Var Nothing cn)]
-    (DL.Modify (δapplyVariables α cps δcps (DT.CpyVar δcn)) DL.Same)
-    . δapplyTerms α cis δcis
+    δquantifyBinders hyps δhyps
+    . δapplyTerms
+    [(error "TODO", applyVariables cps (Var Nothing cn))]
+    (DL.Modify (D2.Modify DA.Same (δapplyVariables cps δcps (DT.CpyVar δcn))) DL.Same)
+    . δapplyTerms cis δcis
 
 -- δListFoldMkPiConstructor ::
   -- α -> Variable ->
   -- Φips α Variable -> Φiis α Variable -> TermX α Variable ->
   -- ΔListFold
   -- (Variable, [(Variable, TypeX α Variable)], [TypeX α Variable])
-  -- (DP.Diff (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
+  -- (D2.Diff (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
 δListFoldMkPiConstructor ::
-  α -> Variable -> DA.Diff Variable ->
+  (Eq α, PrettyPrintable α) =>
+  α ->
+  Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
   TermX α Variable ->
   ΔListFold (Constructor α Variable) (DC.Diff α) (Maybe (DT.Diff α))
 δListFoldMkPiConstructor α n δn ips δips iis δiis motive =
-  δListFoldMkPiGenericMaybe α pi δpi
+  δListFoldMkPiGenericMaybe pi δpi
   where
     pi (Constructor _ consName consParameters consIndices) =
-      ( DT.Replace
+      ( α
+      , DT.Replace
         (mkCase α n ips iis
          consName consParameters consIndices motive)
       , Binder Nothing
@@ -161,10 +170,11 @@ import           Utils
     δpi (Constructor _ cn cps cis) = \case
       DC.Same                 -> Just (DT.Same, DA.Same)
       DC.Modify δcn δcps δcis -> do
-        δcase <- δmkCase α n δn ips δips iis δiis cn δcn cps δcps cis δcis DT.Same DT.Same
+        δcase <- δmkCase n δn ips δips iis δiis cn δcn cps δcps cis δcis DT.Same DT.Same
         return $ (δcase, DA.Same)
 
 δquantifyCases ::
+  (Eq α, PrettyPrintable α) =>
   α -> Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
@@ -176,17 +186,18 @@ import           Utils
   δListFoldRight (δListFoldMkPiConstructor α n δn ips δips iis δiis motive) cs δcs (Just δ)
 
 δmkDiscrimineeType ::
-  α ->
+  (Eq α, PrettyPrintable α) =>
   DA.Diff Variable ->
   Φiis α Variable -> DI.Δiis α->
   Φips α Variable -> DI.Δips α ->
   DT.Diff α
-δmkDiscrimineeType α δn ips δips iis δiis =
-  δapplyVariables   α iis δiis
-  $ δapplyVariables α ips δips
+δmkDiscrimineeType δn ips δips iis δiis =
+  δapplyVariables   iis δiis
+  $ δapplyVariables ips δips
   $ DT.CpyVar δn
 
 δmkEliminatorType' ::
+  (Eq α, PrettyPrintable α) =>
   α ->
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
@@ -194,20 +205,22 @@ import           Utils
   [Constructor α Variable] -> DI.Δcs α ->
   Maybe (DT.Diff α)
 δmkEliminatorType' α n δn ips δips iis δiis cs δcs =
-  let δdiscrimineeType = δmkDiscrimineeType α δn ips δips iis δiis in
-  let δmotiveType =  δmkMotiveType' α δn ips δips iis δiis in
-  δquantifyVariables α ips δips
+  let δdiscrimineeType = δmkDiscrimineeType δn ips δips iis δiis in
+  let δmotiveType =  δmkMotiveType' δn ips δips iis δiis in
+  δquantifyVariables ips δips
   <$> DT.CpyPi δmotiveType DA.Same
   <$> ( -- quantifyCases may fail
     δquantifyCases α n δn ips δips iis δiis motive cs δcs
     --(unpackConstructors cs) (unpackΔConstructors δcs)
-    $ δquantifyVariables α iis δiis
+    $ δquantifyVariables iis δiis
     $ DT.CpyPi δdiscrimineeType DA.Same
-    $ DT.CpyApp (δapplyVariables α iis δiis DT.Same)
+    $ DT.CpyApp (δapplyVariables iis δiis DT.Same)
     $ DT.Same
   )
 
-δmkEliminatorType :: α -> Inductive α Variable -> DI.Diff α -> Maybe (DT.Diff α)
+δmkEliminatorType ::
+  (Eq α, PrettyPrintable α) =>
+  α -> Inductive α Variable -> DI.Diff α -> Maybe (DT.Diff α)
 δmkEliminatorType α (Inductive n ips iis cs) δi = case δi of
   DI.Same -> Just DT.Same
   DI.Modify δn δips δiis δcs ->

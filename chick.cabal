@@ -42,10 +42,10 @@ Library
                  QuickCheck                >= 2.8   && < 2.10,
                  smallcheck                >= 1.1   && < 1.2,
                  -- syntax                    >= 1.0   && < 1.1,
-                 -- tasty                     >= 0.11  && < 0.12,
-                 -- tasty-hunit               >= 0.9   && < 0.10,
-                 -- tasty-quickcheck          >= 0.8   && < 0.9,
-                 -- tasty-smallcheck          >= 0.8   && < 0.9,
+                 tasty                     >= 0.11  && < 0.12,
+                 tasty-hunit               >= 0.9   && < 0.10,
+                 tasty-quickcheck          >= 0.8   && < 0.9,
+                 tasty-smallcheck          >= 0.8   && < 0.9,
                  -- transformers              >= 0.5.2 && < 0.6,
                  -- unbound-generics          >= 0.3   && < 0.4,
                  wl-pprint-annotated       >= 0.0   && < 0.1
@@ -71,6 +71,7 @@ Library
                   Diff.Pair
                   Diff.Script
                   Diff.Term
+                  Diff.Triple
                   Diff.Utils
                   Diff.Variable
                   Diff.Vernacular
@@ -94,6 +95,7 @@ Library
                     -- PrettyPrinting.Tactic
                   PrettyPrinting.Utils
                   Repair.Benchmark
+                  Repair.Inductive
                   Repair.Script
                   Repair.State
                   Repair.Term
@@ -130,21 +132,21 @@ Library
                   WellFormed
                   Work
 
--- Test-suite Test
---   default-language: Haskell2010
---   type:             exitcode-stdio-1.0
---   hs-source-dirs:   test
---   main-is:          Main.hs
---   build-depends: chick,
---                  base                      >= 4.9   && < 4.10,
---                  data-default              >= 0.7   && < 0.8,
---                  megaparsec                >= 5.0   && < 5.3,
---                  QuickCheck                >= 2.8   && < 2.10,
---                  smallcheck                >= 1.1   && < 1.2,
---                  tasty                     >= 0.11  && < 0.12,
---                  tasty-hunit               >= 0.9   && < 0.10,
---                  tasty-quickcheck          >= 0.8   && < 0.9,
---                  tasty-smallcheck          >= 0.8   && < 0.9
+Test-suite Test
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Main.hs
+  build-depends: chick,
+                 base                      >= 4.9   && < 4.10,
+                 data-default              >= 0.7   && < 0.8,
+                 megaparsec                >= 5.0   && < 5.3,
+                 QuickCheck                >= 2.8   && < 2.10,
+                 smallcheck                >= 1.1   && < 1.2,
+                 tasty                     >= 0.11  && < 0.12,
+                 tasty-hunit               >= 0.9   && < 0.10,
+                 tasty-quickcheck          >= 0.8   && < 0.9,
+                 tasty-smallcheck          >= 0.8   && < 0.9
 
 Executable chick
   default-language: Haskell2010

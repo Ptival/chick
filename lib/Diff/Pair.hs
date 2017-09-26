@@ -4,6 +4,8 @@
 
 module Diff.Pair
   ( Diff(..)
+  , δfst
+  , δsnd
   , patch
   , patchMaybe
   ) where
@@ -41,3 +43,11 @@ patchMaybe ::
   Diff δl δr ->
   Maybe (l, r)
 patchMaybe = patch
+
+δfst :: δl -> Diff δl δr -> δl
+δfst same Same           = same
+δfst _    (Modify δl _)  = δl
+
+δsnd :: δr -> Diff δl δr -> δr
+δsnd same Same          = same
+δsnd _    (Modify _ δr) = δr

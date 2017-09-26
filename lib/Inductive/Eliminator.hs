@@ -26,24 +26,23 @@ import           Term.Term
 import qualified Term.Raw as Raw
 import           Utils
 
-applyTerms :: α -> [TermX α Variable] -> TermX α Variable -> TermX α Variable
-applyTerms α = foldlWith (mkApp α)
+applyTerms :: [(α, TermX α Variable)] -> TermX α Variable -> TermX α Variable
+applyTerms = foldlWith (\ a (α, t) -> mkApp α a t)
 
-applyVariables :: α -> [(Variable, b)] -> TermX α Variable -> TermX α Variable
-applyVariables α l = applyTerms α (map (Var Nothing . fst) l)
+applyVariables :: [(α, Variable, b)] -> TermX α Variable -> TermX α Variable
+applyVariables l = applyTerms (map (\ (α, ν, _) -> (α, Var Nothing ν)) l)
 
 mkApp :: α -> TermX α ν -> TermX α ν -> TermX α ν
 mkApp α a t = App α a t
 
 quantifyVariables ::
-  α -> [(Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
-quantifyVariables α l =
-  quantifyBinders α (map (\ (v, τ) -> (Binder (Just v), τ)) l)
+  [(α, Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
+quantifyVariables =
+  quantifyBinders . map (\ (α, v, τ) -> (α, Binder (Just v), τ))
 
 quantifyBinders ::
-  α -> [(Binder Variable, TermX α Variable)] -> TermX α Variable ->
-  TermX α Variable
-quantifyBinders α = foldrWith (mkPi α)
+  [(α, Binder Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
+quantifyBinders = foldrWith (\ (α, b, τ) a -> mkPi α (b, τ) a)
 
 mkPi ::
   α -> (Binder Variable, TypeX α Variable) -> TypeX α Variable -> TermX α Variable
@@ -56,40 +55,39 @@ unpackIfFullyAppliedInductive' ::
   Φips α Variable ->
   Φiis α Variable ->
   TermX α Variable ->
-  [TermX α Variable] -> Maybe [TermX α Variable]
+  [(α, TermX α Variable)] -> Maybe [(α, TermX α Variable)]
 unpackIfFullyAppliedInductive' n ips iis term acc = go term ips iis acc
   where
     go (Var _ v)   []        []        acc | v == n    = Just acc
                                            | otherwise = Nothing
     go _           []        []        _               = Nothing
     -- when ran out of indices, peel parameters
-    go (App _ l _) (_ : ips) []        acc             = go l ips [] acc
-    go (App _ l r) _         (_ : iis) acc             = go l ips iis (r : acc)
-    go _           _         _         _               = Nothing
+    go (App _ l _) (_ : ips) []        acc = go l ips [] acc
+    go (App α l r) _         (_ : iis) acc = go l ips iis ((α, r) : acc)
+    go _           _         _         _   = Nothing
 
 unpackIfFullyAppliedInductive ::
   Variable -> Φips α Variable -> Φiis α Variable -> TermX α Variable ->
-  Maybe [TermX α Variable]
+  Maybe [(α, TermX α Variable)]
 unpackIfFullyAppliedInductive n ips iis t =
   unpackIfFullyAppliedInductive' n ips iis t []
 
 -- if the term is `inductiveName` fully-applied, replace it with
 -- an instantiation of the motive
 addRecursiveMotive ::
-  α ->
   Variable ->
   Φips α Variable ->
   Φiis α Variable ->
   TermX α Variable ->
-  (Variable, TypeX α Variable) ->
-  [(Binder Variable, TypeX α Variable)]
-addRecursiveMotive α n ips iis motive (v, τ) =
+  Φcp α Variable ->
+  [(α, Binder Variable, TypeX α Variable)]
+addRecursiveMotive n ips iis motive (α, v, τ) =
   case unpackIfFullyAppliedInductive n ips iis τ of
     Just indices ->
-      [ (Binder (Just v), τ)
-      , (Binder Nothing, App α (applyTerms α indices motive) (Var Nothing v))
+      [ (α, Binder (Just v), τ)
+      , (α, Binder Nothing, App α (applyTerms indices motive) (Var Nothing v))
       ]
-    Nothing -> [(Binder (Just v), τ)]
+    Nothing -> [(α, Binder (Just v), τ)]
 
 mkCase ::
   α ->
@@ -98,9 +96,9 @@ mkCase ::
   TermX α Variable -> TermX α Variable
 mkCase α n ips iis cn cps cis =
   -- quantify over constructor parameters, adding recursive hypotheses
-  quantifyBinders α (concatMap (addRecursiveMotive α n ips iis motive) cps)
-  . applyTerms α [applyVariables α cps (Var Nothing cn)]
-  . applyTerms α cis
+  quantifyBinders (concatMap (addRecursiveMotive n ips iis motive) cps)
+  . applyTerms [(α, applyVariables cps (Var Nothing cn))]
+  . applyTerms cis
 
 motive :: IsString a => a
 motive = "Motive"
@@ -123,18 +121,18 @@ motive = "Motive"
 mkEliminatorType' :: ∀ α.
   α ->
   Variable ->
-  [(Variable, TermX α Variable)] ->
-  [(Variable, TermX α Variable)] ->
-  [(Variable, [(Variable, TermX α Variable)], [TermX α Variable])] ->
+  Φips α Variable ->
+  Φiis α Variable ->
+  [(Variable, Φcps α Variable, Φcis α Variable)] ->
   TypeX α Variable
 mkEliminatorType'
   α inductiveName inductiveParameters inductiveIndices constructors =
 
-  quantifyVariables   α inductiveParameters
-  $ quantifyVariables α [(motive, motiveType)]
+  quantifyVariables   inductiveParameters
+  $ quantifyVariables [(α, motive, motiveType)]
   $ quantifyCases
-  $ quantifyVariables α inductiveIndices
-  $ quantifyVariables α [(discriminee, discrimineeType)]
+  $ quantifyVariables inductiveIndices
+  $ quantifyVariables [(α, discriminee, discrimineeType)]
   $ outputType
 
   where
@@ -143,14 +141,14 @@ mkEliminatorType'
     discriminee = "instance"
 
     discrimineeType =
-        applyVariables α inductiveIndices
-      $ applyVariables α inductiveParameters
+        applyVariables inductiveIndices
+      $ applyVariables inductiveParameters
       $ Var Nothing inductiveName
 
     motiveType =
       mkMotiveType' α inductiveName inductiveParameters inductiveIndices Type
 
-    outputType = App α (applyVariables α inductiveIndices motive) discriminee
+    outputType = App α (applyVariables inductiveIndices motive) discriminee
 
     quantifyCases = foldrWith quantifyCase constructors
 

@@ -23,14 +23,13 @@ import           Control.Monad.Fix
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
--- import           Data.Bifunctor
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
 import qualified Diff.List as DL
-import qualified Diff.Pair as DP
 import qualified Diff.Term as DT
+import qualified Diff.Triple as D3
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
 import           Term.Binder
@@ -43,10 +42,10 @@ import           Text.Printf
 
 type Δn = DA.Diff Variable
 
-type Δip  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+type Δip  α = D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)
 type Δips α = DL.Diff (Φip α Variable) (Δip α)
 
-type Δii  α = DP.Diff (DA.Diff Variable) (DT.Diff α)
+type Δii  α = D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)
 type Δiis α = DL.Diff (Φii α Variable) (Δii α)
 
 -- type Φi  α = BoundTerm α
@@ -84,7 +83,7 @@ instance Show α => Show (Diff α) where
   show Same             = "Same"
   show (Modify _ _ _ _) = "Modify _ _ _ _"
 
-instance PrettyPrintable (Diff α) where
+instance PrettyPrintable α => PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same               -> text "Same"
     Modify δ1 δ2 δ3 δ4 -> fillSep [ text "Modify", go δ1 , go δ2, go δ3, go δ4 ]
@@ -98,18 +97,19 @@ patchParameter ::
   , Member Trace r
   ) =>
   Φip α Variable -> Δip α -> Eff r (Φip α Variable)
-patchParameter = DP.patch DA.patch DT.patch
+patchParameter = D3.patch DA.patch DA.patch DT.patch
 
 patchIndex ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
   Φip α Variable -> Δip α -> Eff r (Φip α Variable)
-patchIndex = DP.patch DA.patch DT.patch
+patchIndex = D3.patch DA.patch DA.patch DT.patch
 
 patch ::
   ( Member (Exc String) r
   , Member Trace r
+  , PrettyPrintable α
   , Show α
   ) =>
   Inductive α Variable -> Diff α -> Eff r (Inductive α Variable)
@@ -146,7 +146,7 @@ patch ind@(Inductive n ps is cs) = \case
     processIs :: Int -> Δiis Raw.Raw -> DT.Diff Raw.Raw
     processIs n = \case
       DL.Same -> DT.nCpyPis n DT.Same
-      DL.Insert (b, τ) δ ->
+      DL.Insert ((), b, τ) δ ->
         DT.InsPi () (DT.Replace τ) (Binder (Just b)) $ processIs n δ
       DL.Modify _δt     _δ -> error "TODO"
       _ -> error "TODO"

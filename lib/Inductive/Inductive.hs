@@ -30,7 +30,6 @@ module Inductive.Inductive
   , inductiveType'
   ) where
 
-import           Control.Lens (_2, over)
 import           Control.Monad.Reader
 import           Data.Default
 
@@ -46,11 +45,11 @@ import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 import           Utils
 
-type Φip  α ν = (ν, TypeX α ν)
+type Φip  α ν = (α, ν, TypeX α ν)
 type Φips α ν = [Φip α ν]
 
 -- type Φii  α ν = (Binder ν, TypeX α ν)
-type Φii  α ν = (ν, TypeX α ν)
+type Φii  α ν = (α, ν, TypeX α ν)
 type Φiis α ν = [Φii α ν]
 
 data Inductive α ν =
@@ -71,10 +70,10 @@ instance Eq (Inductive α Variable) where
     inductiveRawType (rawInductive indA) == inductiveRawType (rawInductive indB)
 
 --type Φcp  α ν = (Binder ν, TypeX α ν)
-type Φcp  α ν = (ν, TypeX α ν)
+type Φcp  α ν = (α, ν, TypeX α ν)
 type Φcps α ν = [Φcp α ν]
 
-type Φci  α ν = TypeX α ν
+type Φci  α ν = (α, TypeX α ν)
 type Φcis α ν = [Φci α ν]
 
 data Constructor α ν =
@@ -89,29 +88,38 @@ data Constructor α ν =
 
 instance Eq (Constructor α Variable) where
   (Constructor _ n ps is) == (Constructor _ n' ps' is') =
-    (n, ps, is) == (n', ps', is')
+    (n, map cpRaw ps, map ciRaw is) == (n', map cpRaw ps', map ciRaw is')
 
 instance (Show α, Show ν) => Show (Constructor α ν) where
   show (Constructor _ n ps is) =
     printf "Constructor _ %s %s %s" (show n) (show ps) (show is)
 
-mapRawSnd :: [(a, TermX α ν)] -> [(a, Raw.Term ν)]
-mapRawSnd = map (over _2 Raw.raw)
+ipRaw :: Φip α ν -> Φip Raw.Raw ν
+ipRaw (_, ν, τ) = ((), ν, Raw.raw τ)
+
+iiRaw :: Φii α ν -> Φii Raw.Raw ν
+iiRaw (_, ν, τ) = ((), ν, Raw.raw τ)
+
+cpRaw :: Φcp α ν -> Φcp Raw.Raw ν
+cpRaw (_, ν, τ) = ((), ν, Raw.raw τ)
+
+ciRaw :: Φci α ν -> Φci Raw.Raw ν
+ciRaw (_, τ) = ((), Raw.raw τ)
 
 rawInductive :: Inductive α ν -> Inductive Raw.Raw ν
-rawInductive (Inductive n ps is cs) =
+rawInductive (Inductive n ips iis ics) =
   fix $ \ ind' ->
-  Inductive n (mapRawSnd ps) (mapRawSnd is) (map (rawConstructor ind') cs)
+  Inductive n (map ipRaw ips) (map iiRaw iis) (map (rawConstructor ind') ics)
 
 rawConstructor :: Inductive Raw.Raw ν -> Constructor α ν -> Constructor Raw.Raw ν
-rawConstructor rawInd (Constructor _ n ps is) =
-  Constructor rawInd n (mapRawSnd ps) (map Raw.raw is)
+rawConstructor rawInd (Constructor _ cn cps cis) =
+  Constructor rawInd cn (map cpRaw cps) (map ciRaw cis)
 
 constructorType' :: ∀ α.
-  α -> Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
+  Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   TypeX α Variable
-constructorType' α indName indParams consParams consIndices =
-  -- foldrWith onIndParamOutside indParams $
+constructorType' indName indParams consParams consIndices =
+  --foldrWith onIndParamOutside indParams
   foldrWith onParam consParams
   $ foldrWith onIndex consIndices
   $ foldrWith onIndParamInside indParams
@@ -120,26 +128,26 @@ constructorType' α indName indParams consParams consIndices =
   where
 
     onIndex :: Φci α Variable -> TermX α Variable -> TermX α Variable
-    onIndex i t = App α t i --(Raw.raw t) (Raw.raw i)
+    onIndex (α, i) t = App α t i --(Raw.raw t) (Raw.raw i)
 
     onParam :: Φcp α Variable -> TermX α Variable -> TermX α Variable
-    onParam (v, p) t = Pi α p (abstractVariable v t)
+    onParam (α, v, p) t = Pi α p (abstractVariable v t)
 
     onIndParamInside :: Φip α Variable -> TermX α Variable -> TermX α Variable
-    onIndParamInside (v, _) t = App α t (Var Nothing v)
+    onIndParamInside (α, v, _) t = App α t (Var Nothing v)
 
-    onIndParamOutside :: Φip α Variable -> TermX α Variable -> TermX α Variable
-    onIndParamOutside (v, p) t = Pi α p (abstractVariable v t)
+    -- onIndParamOutside :: Φip α Variable -> TermX α Variable -> TermX α Variable
+    -- onIndParamOutside (v, p) t = Pi α p (abstractVariable v t)
 
 constructorRawType' ::
   Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   Raw.Type Variable
 constructorRawType' indName indParams consParams consIndices =
-  constructorType' () indName indParams' consParams' consIndices'
+  constructorType' indName indParams' consParams' consIndices'
   where
-    indParams'   = map (over _2 Raw.raw) indParams
-    consParams'  = map (over _2 Raw.raw) consParams
-    consIndices' = map Raw.raw consIndices
+    indParams'   = map ipRaw indParams
+    consParams'  = map cpRaw consParams
+    consIndices' = map ciRaw consIndices
 
 constructorRawType :: Constructor Raw.Raw Variable -> Raw.Type Variable
 constructorRawType (Constructor (Inductive indName indParams _ _) _ consParams consIndices) =
@@ -156,8 +164,8 @@ inductiveRawType' indParams indIndices =
   $ Type
   where
     -- onIndexOrParam :: (Binder Variable, Raw.Type Variable) -> Raw.Type Variable -> Raw.Type Variable
-    onParam (v, p) t = Pi () p (abstractVariable v t)
-    onIndex (v, i) t = Pi () i (abstractVariable v t)
+    onParam (α, v, p) t = Pi α p (abstractVariable v t)
+    onIndex (α, v, i) t = Pi α i (abstractVariable v t)
     -- onIndex (b, i) t = Pi () i (abstractBinder   b t)
 
 -- | Constructs the type of the inductive type
@@ -170,47 +178,41 @@ constructorCheckedType' ::
   Φcps (C.Checked Variable) Variable ->
   Φcis (C.Checked Variable) Variable ->
   C.Type Variable
-constructorCheckedType' = constructorType' (C.Checked Type)
+constructorCheckedType' = constructorType'
 
 constructorCheckedType ::
   Constructor (C.Checked Variable) Variable -> C.Type Variable
 constructorCheckedType (Constructor (Inductive indName indParams _ _) _ consParams consIndices) =
   constructorCheckedType' indName indParams consParams consIndices
 
+inductiveFamilyType' :: Φiis α Variable -> TypeX α Variable
+inductiveFamilyType' is = foldrWith onIndex is Type
+  where onIndex (α, v, i) t = Pi α i (abstractVariable v t)
+
 -- | Sometimes, we can't call `inductiveType` because the constructors are not checked yet.
 -- | `inductiveType'` lets us call with just the minimal information.
-inductiveType' ::
-  Φips (C.Checked Variable) Variable ->
-  Φiis (C.Checked Variable) Variable ->
-  C.Type Variable
-inductiveType' ps is =
-    foldrWith onParam ps
-  $ foldrWith onIndex is
-  $ Type
-  where
-    -- onIndexOrParam :: C.Type Variable -> C.Type Variable -> C.Type Variable
-    onParam (v, p) t = Pi (C.Checked Type) p (abstractVariable v t)
-    onIndex (v, i) t = Pi (C.Checked Type) i (abstractVariable v t)
-    --onIndex (b, i) t = Pi (C.Checked Type) i (abstractBinder   b t)
+inductiveType' :: Φips α Variable -> Φiis α Variable -> TypeX α Variable
+inductiveType' ps is = foldrWith onParam ps $ inductiveFamilyType' is
+  where onParam (α, v, p) t = Pi α p (abstractVariable v t)
 
 inductiveType :: Inductive (C.Checked Variable) Variable -> C.Type Variable
 inductiveType (Inductive _ ps is _) = inductiveType' ps is
 
-arrows :: [Doc a] -> Doc a
-arrows = encloseSep mempty mempty (text " →")
+-- arrows :: [Doc a] -> Doc a
+-- arrows = encloseSep mempty mempty (text " →")
 
 _boundTermDocBinder ::
   MonadReader PrecedenceTable m =>
-  (Binder Variable, TermX α Variable) -> m (Doc ())
-_boundTermDocBinder (Binder b, t) =
+  (α, Binder Variable, TermX α Variable) -> m (Doc ())
+_boundTermDocBinder (α, Binder b, t) =
   case b of
     Nothing -> prettyDocU t
-    Just v -> boundTermDocVariable (v, t)
+    Just v -> boundTermDocVariable (α, v, t)
 
 boundTermDocVariable ::
   MonadReader PrecedenceTable m =>
-  (Variable, TermX α Variable) -> m (Doc ())
-boundTermDocVariable (v, t) = do
+  (α, Variable, TermX α Variable) -> m (Doc ())
+boundTermDocVariable (_, v, t) = do
   tDoc <- prettyDocU t
   return $ parens . fillSep $ [ prettyDoc v, text ":", tDoc ]
 
@@ -218,8 +220,9 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
   prettyDocU (Inductive n ps is cs) = do
     psDoc <- mapM boundTermDocVariable ps
     csDoc <- mapM prettyDocU cs
+    isDoc <- prettyDocU (inductiveFamilyType' is)
     -- isDoc <- mapM boundTermDocBinder is
-    isDoc <- mapM boundTermDocVariable is
+    -- isDoc <- mapM boundTermDocVariable is
     return $ vsep $
       [ fillSep $
         [ text "Inductive"
@@ -234,7 +237,8 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
         )
         ++
         [ text ":"
-        , arrows (isDoc ++ [text "Type"])
+        -- , arrows (isDoc ++ [text "Type"])
+        , isDoc
         , text ":="
         ]
       ]

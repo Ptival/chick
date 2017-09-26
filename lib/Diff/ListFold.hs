@@ -18,8 +18,9 @@ module Diff.ListFold
 import qualified Diff.Atom as DA
 import qualified Diff.Binder as DB
 import qualified Diff.List as DL
-import qualified Diff.Pair as DP
+import qualified Diff.Pair as D2
 import qualified Diff.Term as DT
+import qualified Diff.Triple as D3
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
@@ -111,33 +112,33 @@ indicesListList l =
     onReplace _ _ _acc = error "TODO: δListFoldConcatMap' onReplace"
     onSame      l acc = DL.nKeeps (length l) <$> acc
 
-δListFoldMkAppTerms :: α -> ΔListFold (TermX α Variable) (DT.Diff α) (DT.Diff α)
-δListFoldMkAppTerms α = ΔListFold
+δListFoldMkAppTerms ::
+  ΔListFold (α, TermX α Variable) (D2.Diff (DA.Diff α) (DT.Diff α)) (DT.Diff α)
+δListFoldMkAppTerms = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert      t   _  b = DT.InsApp α b (DT.Replace t)
+    onInsert (α, t)   _  b = DT.InsApp α b (DT.Replace t)
     onKeep          _ _  b = DT.CpyApp b DT.Same
-    onModify     δt _ _  b = DT.CpyApp b δt
+    onModify     δt _ _  b = DT.CpyApp b (D2.δsnd DT.Same δt)
     onPermute     _   _  _ = error "TODO: δListFoldMkAppTerms onPermute"
     onRemove        _ _  _ = error "TODO: δListFoldMkAppTerms onRemove"
     onReplace     _   _  _ = error "TODO: δListFoldMkAppTerms onReplace"
     onSame            l  b = DT.nCpyApps (length l) b
 
 δListFoldMkAppVariables ::
-  α ->
   ΔListFold
-  (Variable, TermX α Variable)
-  (DP.Diff (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
-δListFoldMkAppVariables α = ΔListFold
+  (α, Variable, TermX α Variable)
+  (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
+δListFoldMkAppVariables = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert (v, _)   _ b = DT.InsApp α b (DT.Replace (Var Nothing v))
+    onInsert (α, v, _)   _ b = DT.InsApp α b (DT.Replace (Var Nothing v))
     onKeep          _ _ b = DT.CpyApp b DT.Same
     onModify      δ _ _ b =
       case δ of
-      DP.Same -> DT.CpyApp b DT.Same
-      DP.Modify δl _ ->
-        case δl of
+      D3.Same -> DT.CpyApp b DT.Same
+      D3.Modify _ δv _ ->
+        case δv of
         DA.Same -> DT.CpyApp b DT.Same
         DA.Replace r -> DT.CpyApp b (DT.Replace (Var Nothing r))
     onPermute _ _ _ = error "TODO: δListFoldMkAppVariables onPermute"
@@ -147,14 +148,13 @@ indicesListList l =
 
 δListFoldMkPiGeneric ::
   PrettyPrintable τ =>
-  α ->
-  (τ -> (DT.Diff α, Binder Variable)) ->
+  (τ -> (α, DT.Diff α, Binder Variable)) ->
   (τ -> δτ -> (DT.Diff α, DA.Diff (Binder Variable))) ->
   ΔListFold τ δτ (DT.Diff α)
-δListFoldMkPiGeneric α pi δpi = ΔListFold
+δListFoldMkPiGeneric pi δpi = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    insert e δ = DT.InsPi α δτ b δ where (δτ, b) = pi e
+    insert e δ = DT.InsPi α δτ b δ where (α, δτ, b) = pi e
     onInsert e _    δ = insert e δ
     onKeep _ _      δ = DT.CpyPi   DT.Same DA.Same δ
     onModify δe e _ δ = DT.CpyPi   δτ      δb      δ where (δτ, δb) = δpi e δe
@@ -167,14 +167,14 @@ indicesListList l =
     onSame l        δ = DT.nCpyPis (length l) δ
 
 δListFoldMkPiGenericMaybe ::
-  α ->
-  (τ -> (DT.Diff α, Binder Variable)) ->
+  (τ -> (α, DT.Diff α, Binder Variable)) ->
   (τ -> δτ -> Maybe (DT.Diff α, DA.Diff (Binder Variable))) ->
   ΔListFold τ δτ (Maybe (DT.Diff α))
-δListFoldMkPiGenericMaybe α pi δpi = ΔListFold
+δListFoldMkPiGenericMaybe pi δpi = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert   e _   δ = DT.InsPi α   δτ          b       <$> δ where (δτ,  b) =  pi  e
+    onInsert   e _   δ = DT.InsPi α   δτ          b       <$> δ
+      where (α, δτ, b) =  pi  e
     onKeep       _ _ δ = DT.CpyPi     DT.Same     DA.Same <$> δ
     onModify  δe e _ δ = DT.CpyPi <$> δτ      <*> δb      <*> δ
       where (δτ, δb) = unzipMaybe (δpi e δe)
@@ -184,25 +184,25 @@ indicesListList l =
     onSame     l  δ = DT.nCpyPis (length l) <$> δ
 
 δListFoldMkPiBinders ::
-  α ->
+  PrettyPrintable α =>
   ΔListFold
-  (Binder Variable, TermX α Variable)
-  (DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)) (DT.Diff α)
-δListFoldMkPiBinders α = δListFoldMkPiGeneric α pi δpi
+  (α, Binder Variable, TermX α Variable)
+  (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)) (DT.Diff α)
+δListFoldMkPiBinders = δListFoldMkPiGeneric pi δpi
   where
-    pi  (b, i) = (DT.Replace i, b)
+    pi  (α, b, i) = (α, DT.Replace i, b)
     δpi _ δe = case δe of
-      DP.Same         -> (DT.Same, DA.Same)
-      DP.Modify δb δi -> (δi, δb)
+      D3.Same         -> (DT.Same, DA.Same)
+      D3.Modify _ δb δi -> (δi, δb)
 
 δListFoldMkPiVariables ::
-  α ->
+  PrettyPrintable α =>
   ΔListFold
-  (Variable, TermX α Variable)
-  (DP.Diff (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
-δListFoldMkPiVariables α = δListFoldMkPiGeneric α pi δpi
+  (α, Variable, TermX α Variable)
+  (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
+δListFoldMkPiVariables = δListFoldMkPiGeneric pi δpi
   where
-    pi  (v, i) = (DT.Replace i, Binder (Just v))
+    pi  (α, v, i) = (α, DT.Replace i, Binder (Just v))
     δpi _ δe = case δe of
-      DP.Same         -> (DT.Same, DA.Same)
-      DP.Modify δv δi -> (δi, DB.fromΔVariable δv)
+      D3.Same         -> (DT.Same, DA.Same)
+      D3.Modify _ δv δi -> (δi, DB.fromΔVariable δv)

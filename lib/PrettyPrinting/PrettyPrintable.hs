@@ -18,6 +18,9 @@ class PrettyPrintable t where
       then s
       else (++ "...") . take 20 $ s
 
+instance PrettyPrintable () where
+  prettyDoc () = text "()"
+
 instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (l, r) where
   prettyDoc (l, r) = encloseSep lparen rparen comma [prettyDoc l, prettyDoc r]
 

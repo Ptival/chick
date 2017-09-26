@@ -86,7 +86,7 @@ withStateFromConstructors prefix l δl e =
     (_c : _cs, DL.Permute _  _)   -> todo "Permute"
     (_c : _cs, DL.Remove  _)      -> todo "Remove"
     (_c : _cs, DL.Replace _)      -> todo "Replace"
-    (_c : _cs, DL.Same)           -> todo "Same"
+    (c : cs, DL.Same) -> go c DL.Keep cs DL.Same
 
     where
     go c δge cs δcs =
@@ -104,7 +104,11 @@ withStateFromVernacular ::
   , Member Trace r
   ) => Vernacular Raw.Raw Variable -> DV.Diff Raw.Raw -> Eff r a -> Eff r a
 withStateFromVernacular v δv e =
-  -- let exc (reason :: String) = throwExc $ printf "Repair.Script/withStateFromVernacular: %s" reason in
+
+  let exc (reason :: String) =
+        throwExc $ printf "Repair.Script/withStateFromVernacular: %s" reason
+  in
+
   case (v, δv) of
 
   (Definition n τ t, _) ->
@@ -124,11 +128,11 @@ withStateFromVernacular v δv e =
       Just e -> return e
     trace (printf "PREFIX: %s" (show prefix))
     withState
-      (over environment  (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
+      (over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
        over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
       )
       $ withState
-      (over environment
+      (over  environment
        (GE.addGlobalAssum (Binder (Just (mkEliminatorName indName)),
                            mkEliminatorRawType ind
                            )) >>>
@@ -138,7 +142,27 @@ withStateFromVernacular v δv e =
       sanityCheck
       withStateFromConstructors prefix cs δcs e
 
-  (Inductive _, _) -> error "TODO: Repair.Script/withStateFromVernacular"
+  (Inductive ind, DV.ModifyInductive DI.Same) -> unchangedInductive ind
+  (Inductive ind, DV.Same)                    -> unchangedInductive ind
+
+  _ -> exc $ printf "TODO: %s" (show (v, δv))
+
+  where
+    unchangedInductive ind@(I.Inductive indName _ _ cs) = do
+      let τind = I.inductiveRawType ind
+      withState
+        (over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
+         over δenvironment DL.Keep
+        )
+        $ withState
+        (over  environment
+         (GE.addGlobalAssum (Binder (Just (mkEliminatorName indName)),
+                            mkEliminatorRawType ind
+                            )) >>>
+         over δenvironment DL.Keep
+        ) $ do
+        sanityCheck
+        withStateFromConstructors DT.Same cs DL.Same e
 
 -- | `repair s δs` takes a script `s` and a script diff `δs`, and it computes a repaired script diff
 -- | `δs'`, that propagates changes down the line
@@ -156,6 +180,16 @@ repair script@(Script s) δs =
 
   let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
   case (s, δs) of
+
+    -- keeping, but still repairing
+    (v : s', DL.Keep δs') -> do
+      δv' <- RV.repair v DV.Same
+      -- trace $ printf "Repair.Script/repair > δv' %s" (prettyStr δv')
+      v' <- DV.patch v δv'
+      trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
+      trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
+      withStateFromVernacular v δv' $
+        DL.Modify δv' <$> repair (Script s') δs'
 
     (v : s', DL.Modify δv δs') -> do
       δv' <- RV.repair v δv

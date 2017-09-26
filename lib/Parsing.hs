@@ -139,6 +139,7 @@ letP topP selfP _nextP = do
 namedPiP :: Parser3 (Raw.Term Variable)
 namedPiP topP selfP _nextP = do
   (bs, τ1) <- try $ do
+    symbol forallSymbol
     symbol "("
     bs <- some binderP
     symbol ":"

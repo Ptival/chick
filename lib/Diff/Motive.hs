@@ -15,33 +15,34 @@ import           Diff.ListFoldLeft
 import           Diff.ListFoldRight
 import qualified Diff.Term as DT
 import           Inductive.Inductive
+import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 
-δonInductiveParameter ::
-  α -> Φips α Variable -> DI.Δips α -> DT.Diff α -> DT.Diff α
-δonInductiveParameter α = δListFoldLeft (δListFoldMkAppVariables α)
+δonInductiveParameter :: Φips α Variable -> DI.Δips α -> DT.Diff α -> DT.Diff α
+δonInductiveParameter = δListFoldLeft δListFoldMkAppVariables
 
-δonInductiveIndexInside ::
-  α -> Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
-δonInductiveIndexInside α = δListFoldLeft (δListFoldMkAppVariables α)
+δonInductiveIndexInside :: Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
+δonInductiveIndexInside = δListFoldLeft δListFoldMkAppVariables
 
 δonInductiveIndexOutside ::
-  α -> Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
-δonInductiveIndexOutside α = δListFoldRight (δListFoldMkPiVariables α)
+  PrettyPrintable α =>
+  Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
+δonInductiveIndexOutside = δListFoldRight δListFoldMkPiVariables
 
-δmkMotiveType'
-  :: α -> DA.Diff Variable ->
+δmkMotiveType' ::
+  PrettyPrintable α =>
+  DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
   DT.Diff α
-δmkMotiveType' α δn ips δips iis δiis =
-  δonInductiveIndexOutside  α iis δiis
+δmkMotiveType' δn ips δips iis δiis =
+  δonInductiveIndexOutside  iis δiis
   $ (\ b -> DT.CpyPi b DA.Same DT.Same)
-  $ δonInductiveIndexInside α iis δiis
-  $ δonInductiveParameter   α ips δips
+  $ δonInductiveIndexInside iis δiis
+  $ δonInductiveParameter   ips δips
   $ DT.CpyVar δn
 
-δmkMotiveType :: α -> Inductive α Variable -> DI.Diff α -> DT.Diff α
-δmkMotiveType α (Inductive _ ips iis _) δi = case δi of
+δmkMotiveType :: PrettyPrintable α => Inductive α Variable -> DI.Diff α -> DT.Diff α
+δmkMotiveType (Inductive _ ips iis _) δi = case δi of
   DI.Same -> DT.Same
-  DI.Modify δn δips δiis _ -> δmkMotiveType' α δn ips δips iis δiis
+  DI.Modify δn δips δiis _ -> δmkMotiveType' δn ips δips iis δiis

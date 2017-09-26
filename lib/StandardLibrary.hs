@@ -124,8 +124,8 @@ indNat =
   ]
 
 zeroNat, succNat :: Constructor Raw.Raw Variable
-zeroNat = Constructor indNat "zero" [] []
-succNat = Constructor indNat "succ" [("n", "nat")] []
+zeroNat = Constructor indNat "O" [] []
+succNat = Constructor indNat "S" [((), "n", "nat")] []
 
 {-
 inductive List (A : Type) : Type where
@@ -134,7 +134,7 @@ inductive List (A : Type) : Type where
 -}
 indList :: Inductive Raw.Raw Variable
 indList =
-  Inductive "List" [("A", Type)] []
+  Inductive "List" [((), "A", Type)] []
   [ nilList
   , consList
   ]
@@ -142,8 +142,8 @@ indList =
 nilList, consList :: Constructor Raw.Raw Variable
 nilList  = Constructor indList "nil"  [] []
 consList = Constructor indList "cons"
-    [ ("x", "A")
-    , ("xs", unsafeParseRaw "List A")
+    [ ((), "x", "A")
+    , ((), "xs", unsafeParseRaw "List A")
     ]
     []
 
@@ -154,22 +154,22 @@ inductive Fin : nat → Type where
 -}
 indFin :: Inductive Raw.Raw Variable
 indFin =
-  Inductive "Fin" [] [("bound", "nat")]
+  Inductive "Fin" [] [((), "bound", "nat")]
   [ zeroFin
   , succFin
   ]
 
 zeroFin, succFin :: Constructor Raw.Raw Variable
 zeroFin =
-  Constructor indFin "zero"
-  [ ("n", "nat") ]
-  [ unsafeParseRaw "succ n" ]
+  Constructor indFin "O"
+  [ ((), "n", "nat") ]
+  [ ((), unsafeParseRaw "S n") ]
 succFin =
   Constructor indFin "succ"
-  [ ("n", "nat")
-  , ("i", unsafeParseRaw "Fin n")
+  [ ((), "n", "nat")
+  , ((), "i", unsafeParseRaw "Fin n")
   ]
-  [ unsafeParseRaw "succ n" ]
+  [ ((), unsafeParseRaw "S n") ]
 
 {-
 inductive Vec (A : Type) : nat → Type where
@@ -178,20 +178,20 @@ inductive Vec (A : Type) : nat → Type where
 -}
 indVec :: Inductive Raw.Raw Variable
 indVec =
-  Inductive "Vec" [("A", Type)] [("size", "nat")]
+  Inductive "Vec" [((), "A", Type)] [((), "size", "nat")]
   [ nilVec
   , consVec
   ]
 
 nilVec, consVec :: Constructor Raw.Raw Variable
-nilVec = Constructor indVec "vnil"  [] [Var Nothing "zero"]
+nilVec = Constructor indVec "vnil"  [] [((), Var Nothing "O")]
 consVec =
   Constructor indVec "vcons"
-  [ ("h", "A")
-  , ("n", "nat")
-  , ("t", unsafeParseRaw "Vec A n")
+  [ ((), "h", "A")
+  , ((), "n", "nat")
+  , ((), "t", unsafeParseRaw "Vec A n")
   ]
-  [ unsafeParseRaw "succ n" ]
+  [ ((), unsafeParseRaw "S n") ]
 
 {-
 inductive ⊥ : Set where

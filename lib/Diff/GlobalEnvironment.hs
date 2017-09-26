@@ -31,6 +31,7 @@ type Diff α = DL.Diff (GlobalDeclaration α Variable) (DGD.Diff α)
 patch ::
   ( Member (Exc String) r
   , Member Trace r
+  , PrettyPrintable α
   , Show α
   ) =>
   GlobalEnvironment α Variable -> Diff α -> Eff r (GlobalEnvironment α Variable)

@@ -32,7 +32,7 @@ instance Show α => Show (Diff α) where
   show (ModifyGlobalDef   δn δτ δt) = printf "ModifyGlobalDef %s %s %s" (show δn) (show δτ) (show δt)
   show (ModifyGlobalInd   δind)     = printf "ModifyGlobalInd %s"       (show δind)
 
-instance PrettyPrintable (Diff α) where
+instance PrettyPrintable α => PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same -> text "Same"
     ModifyGlobalAssum δ1 δ2    -> fillSep [ text "ModifyGlobalAssum", go δ1, go δ2 ]
@@ -45,6 +45,7 @@ instance PrettyPrintable (Diff α) where
 patch ::
   ( Member (Exc String) r
   , Member Trace r
+  , PrettyPrintable α
   , Show α
   ) => GlobalDeclaration α Variable -> Diff α -> Eff r (GlobalDeclaration α Variable)
 patch gd δgd =

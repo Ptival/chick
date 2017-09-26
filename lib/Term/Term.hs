@@ -31,6 +31,7 @@ module Term.Term
   , annotationOf
   , annotSymbol
   , arrowSymbol
+  , forallSymbol
   , getName
   , holeSymbol
   , lamSymbol
@@ -84,10 +85,12 @@ One could either:
 
 -}
 
-annotSymbol, arrowSymbol, holeSymbol, lamSymbol, postLamSymbol, wildcardSymbol :: String
+annotSymbol, arrowSymbol, forallSymbol, holeSymbol :: String
+lamSymbol, postLamSymbol, wildcardSymbol :: String
 annotSymbol = ":"
 arrowSymbol = "→"
-holeSymbol  = "_"
+forallSymbol = "∀"
+holeSymbol  = "?"
 lamSymbol = "λ"
 postLamSymbol = ","
 wildcardSymbol = "_"

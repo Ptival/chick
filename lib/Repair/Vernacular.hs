@@ -14,28 +14,18 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
--- import qualified Diff.Atom as DA
--- import qualified Diff.GlobalDeclaration as DGD
--- import qualified Diff.GlobalEnvironment as DGE
+import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
--- import qualified Diff.List as DL
--- import qualified Diff.Script as DS
 import qualified Diff.Term as DT
 import           Diff.Utils
 import qualified Diff.Vernacular as DV
-import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
+import qualified Repair.Inductive as RI
 import           Repair.State
 import qualified Repair.Term as RT
--- import           Script
--- import           Term.Binder
 import qualified Term.Raw as Raw
--- import           Term.Term
-import           Term.Variable
--- import qualified Typing.GlobalEnvironment as GE
--- import qualified Typing.LocalContext as LC
--- import           Utils
+import           Term.Term
 import           Vernacular
 
 -- | `repair v δv` takes a vernacular command `v` and a command diff `δv`, and it computes a repaired
@@ -61,9 +51,16 @@ repair v δv =
 
     (_, DV.ModifyDefinition _ _ _) -> exc "ModifyDefinition, but not a Definition"
 
-    (Inductive (I.Inductive _ _ps _is _), DV.ModifyInductive (DI.Modify δn δps δis δcs)) -> do
-      -- TODO: actually propagate repairs into params and constructors
-      trace "NOT DOING ANYTHING..."
-      return $ DV.ModifyInductive (DI.Modify δn δps δis δcs)
+    (Inductive ind, DV.ModifyInductive δind) -> do
+      DV.ModifyInductive <$> RI.repair ind δind
+
+    (Definition _ τ t, DV.Same) -> do
+      δτ <- RT.repair τ Type DT.Same
+      δt <- RT.repair t τ δτ
+      return $ DV.ModifyDefinition DA.Same δτ δt
+
+    (Inductive ind, DV.Same) -> do
+      δind <- RI.repair ind DI.Same
+      return $ DV.ModifyInductive δind
 
     _ -> exc $ printf "TODO: %s" (show δv)
