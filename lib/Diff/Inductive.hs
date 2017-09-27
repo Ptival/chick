@@ -11,6 +11,7 @@ module Diff.Inductive
   , Δip
   , Δips
   , Diff(..)
+  , δconstructorRawType
   , δinductiveRawType
   , δinductiveRawConstructorPrefix
   -- , instantiateΔis
@@ -28,6 +29,7 @@ import           Text.PrettyPrint.Annotated.WL
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
 import qualified Diff.List as DL
+import           Diff.ListFoldUtils
 import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
 import           Inductive.Inductive
@@ -169,3 +171,50 @@ patch ind@(Inductive n ps is cs) = \case
     processPs n base = \case
       DL.Same -> DT.nCpyApps n base
       δ -> error $ printf "TODO: %s" (show δ)
+
+δconstructorRawType ::
+  DT.Diff Raw.Raw ->
+  Φips Raw.Raw Variable -> Δips Raw.Raw ->
+  Φcps Raw.Raw Variable -> DC.Δcps Raw.Raw ->
+  Φcis Raw.Raw Variable -> DC.Δcis Raw.Raw ->
+  DT.Diff Raw.Raw
+δconstructorRawType prefix ips δips cps δcps cis δcis =
+  -- foldrWith mkPi $ foldrWith mkApp $ foldrWith (mkApp . fst)
+
+  δquantifyVariables ips δips
+  $ δquantifyVariables cps δcps
+  $ δapplyTerms cis δcis
+  $ prefix
+
+  -- WAS:
+  -- processPs nPs (processIs nIs prefix δis) δps
+
+  -- where
+
+  --   processIs ::
+  --     Int ->
+  --     DT.Diff Raw.Raw ->
+  --     DL.Diff (Raw.Term Variable) (DT.Diff Raw.Raw) ->
+  --     DT.Diff Raw.Raw
+  --   processIs n base = \case
+  --     DL.Insert t δ -> DT.InsApp () (processIs n base δ) (DT.Replace t)
+  --     DL.Same -> DT.nCpyApps n base
+  --     δ -> error $ printf "TODO: processIs %s" (show δ)
+
+  --   processPs ::
+  --     Int ->
+  --     DT.Diff Raw.Raw ->
+  --     Δcps Raw.Raw ->
+  --     DT.Diff Raw.Raw
+  --   processPs n base = \case
+  --     DL.Insert (b, t) δ ->
+  --       DT.InsPi () (DT.Replace t) (Binder (Just b)) (processPs n base δ)
+  --     DL.Keep δ ->
+  --       DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
+  --     DL.Modify DP.Same δ ->
+  --       DT.CpyPi DT.Same DA.Same (processPs (n-1) base δ)
+  --     DL.Modify (DP.Modify δl δr) δ ->
+  --       DT.CpyPi δr (DB.fromΔVariable δl) (processPs (n-1) base δ)
+  --     DL.Same ->
+  --       DT.nCpyPis n base
+  --     δ -> error $ printf "TODO: processPs %s" (show δ)

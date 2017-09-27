@@ -116,14 +116,18 @@ rawConstructor rawInd (Constructor _ cn cps cis) =
   Constructor rawInd cn (map cpRaw cps) (map ciRaw cis)
 
 constructorType' :: ∀ α.
+  Bool ->
   Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   TypeX α Variable
-constructorType' indName indParams consParams consIndices =
-  --foldrWith onIndParamOutside indParams
-  foldrWith onParam consParams
-  $ foldrWith onIndex consIndices
-  $ foldrWith onIndParamInside indParams
-  $ Var Nothing indName
+constructorType' shouldQuantifyIndParams n ips cps cis =
+  (if shouldQuantifyIndParams
+   then foldrWith onIndParamOutside ips
+   else id
+  )
+  $ foldrWith onParam cps
+  $ foldrWith onIndex cis
+  $ foldrWith onIndParamInside ips
+  $ Var Nothing n
 
   where
 
@@ -136,30 +140,30 @@ constructorType' indName indParams consParams consIndices =
     onIndParamInside :: Φip α Variable -> TermX α Variable -> TermX α Variable
     onIndParamInside (α, v, _) t = App α t (Var Nothing v)
 
-    -- onIndParamOutside :: Φip α Variable -> TermX α Variable -> TermX α Variable
-    -- onIndParamOutside (v, p) t = Pi α p (abstractVariable v t)
+    onIndParamOutside :: Φip α Variable -> TermX α Variable -> TermX α Variable
+    onIndParamOutside (α, v, p) t = Pi α p (abstractVariable v t)
 
 constructorRawType' ::
-  Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
+  Bool -> Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   Raw.Type Variable
-constructorRawType' indName indParams consParams consIndices =
-  constructorType' indName indParams' consParams' consIndices'
+constructorRawType' b n ips cps cis =
+  constructorType' b n ips' cps' cis'
   where
-    indParams'   = map ipRaw indParams
-    consParams'  = map cpRaw consParams
-    consIndices' = map ciRaw consIndices
+    ips'   = map ipRaw ips
+    cps'  = map cpRaw cps
+    cis' = map ciRaw cis
 
-constructorRawType :: Constructor Raw.Raw Variable -> Raw.Type Variable
-constructorRawType (Constructor (Inductive indName indParams _ _) _ consParams consIndices) =
-  constructorRawType' indName indParams consParams consIndices
+constructorRawType :: Bool -> Constructor Raw.Raw Variable -> Raw.Type Variable
+constructorRawType b (Constructor (Inductive n ips _ _) _ cps cis) =
+  constructorRawType' b n ips cps cis
 
 -- | Constructs the type of the inductive type
 inductiveRawType' ::
   Φips Raw.Raw Variable ->
   Φiis Raw.Raw Variable ->
   Raw.Type Variable
-inductiveRawType' indParams indIndices =
-    foldrWith onParam indParams
+inductiveRawType' ips indIndices =
+    foldrWith onParam ips
   $ foldrWith onIndex indIndices
   $ Type
   where
@@ -173,6 +177,7 @@ inductiveRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
 inductiveRawType (Inductive _ ps is _) = inductiveRawType' ps is
 
 constructorCheckedType' ::
+  Bool ->
   Variable ->
   Φips (C.Checked Variable) Variable ->
   Φcps (C.Checked Variable) Variable ->
@@ -181,9 +186,9 @@ constructorCheckedType' ::
 constructorCheckedType' = constructorType'
 
 constructorCheckedType ::
-  Constructor (C.Checked Variable) Variable -> C.Type Variable
-constructorCheckedType (Constructor (Inductive indName indParams _ _) _ consParams consIndices) =
-  constructorCheckedType' indName indParams consParams consIndices
+  Bool -> Constructor (C.Checked Variable) Variable -> C.Type Variable
+constructorCheckedType b (Constructor (Inductive n ips _ _) _ cps cis) =
+  constructorCheckedType' b n ips cps cis
 
 inductiveFamilyType' :: Φiis α Variable -> TypeX α Variable
 inductiveFamilyType' is = foldrWith onIndex is Type
@@ -246,8 +251,8 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
       ++ [ text "." ]
 
 instance PrettyPrintableUnannotated (Constructor α Variable) where
-  prettyDocU (Constructor (Inductive indName indParams _ _) cName cParams cIndices) = do
-    cDoc <- prettyDocU (constructorRawType' indName indParams cParams cIndices)
+  prettyDocU (Constructor (Inductive n ips _ _) cName cParams cIndices) = do
+    cDoc <- prettyDocU (constructorRawType' False n ips cParams cIndices)
     return $ fillSep
       [ prettyDoc cName
       , text ":"

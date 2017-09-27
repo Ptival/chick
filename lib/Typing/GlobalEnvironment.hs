@@ -57,7 +57,7 @@ unwrapRawInductive ind@(I.Inductive indName _ _ cs) =
   GlobalAssum indName (I.inductiveRawType ind) : map constructorAssumption cs
   where
     constructorAssumption cons@(I.Constructor _ cv _ _) =
-      GlobalAssum cv (I.constructorRawType cons)
+      GlobalAssum cv (I.constructorRawType True cons)
 
 {-|
 An inductive brings into scope:
@@ -74,7 +74,7 @@ unwrapInductive ind@(I.Inductive n _ _ cs) =
   GlobalAssum n (I.inductiveType ind) : map constructorAssumption cs
   where
     constructorAssumption cons@(I.Constructor _ cv _ _) =
-      GlobalAssum cv (I.constructorCheckedType cons)
+      GlobalAssum cv (I.constructorCheckedType True cons)
 
 {-| 'lookupDecl v ge' tries to find a top-level declaration named 'v' in
 'ge'.  It will find either a global assumption, a global declaration,
@@ -170,4 +170,4 @@ addInductive ind = addGlobalAssum (Binder $ Just $ I.inductiveName ind, I.induct
 addConstructor ::
   I.Constructor Raw.Raw Variable ->
   GlobalEnvironment Raw.Raw Variable -> GlobalEnvironment Raw.Raw Variable
-addConstructor c = addGlobalAssum (Binder $ Just $ I.constructorName c, I.constructorRawType c)
+addConstructor c = addGlobalAssum (Binder $ Just $ I.constructorName c, I.constructorRawType True c)

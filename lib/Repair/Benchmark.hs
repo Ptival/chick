@@ -259,9 +259,9 @@ repairListToVec = RepairScriptBenchmark
     , Inductive indList
     , Definition "list1"
       (unsafeParseRaw "List nat")
-      (unsafeParseRaw "cons O nil")
+      (unsafeParseRaw "cons nat O (nil nat)")
     , Definition "length"
-      (unsafeParseRaw "(T : Type) → List T → nat")
+      (unsafeParseRaw "∀ (T : Type), List T → nat")
       (unsafeParseRaw
        "λ T l , List_rec T (λ _ , nat) O (λ _ _ lt , S lt) l")
     ]
@@ -276,9 +276,9 @@ repairListToVec = RepairScriptBenchmark
     , Inductive indVec
     , Definition "list1"
       (unsafeParseRaw "Vec nat (_ : nat)")
-      (unsafeParseRaw "vcons O (_ : nat) nil")
+      (unsafeParseRaw "vcons nat O (_ : nat) (vnil nat)")
     , Definition "length"
-      (unsafeParseRaw "(T : Type) → Vec T (_ : nat) → nat")
+      (unsafeParseRaw "∀ (T : Type), Vec T (_ : nat) → nat")
       (unsafeParseRaw
        "λ T l , Vec_rec T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
     ]

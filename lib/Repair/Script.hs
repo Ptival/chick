@@ -59,10 +59,11 @@ withStateFromConstructors ::
   , Member Trace r
   ) =>
   DT.Diff Raw.Raw ->
+  I.Φips Raw.Raw Variable -> DI.Δips Raw.Raw ->
   [I.Constructor Raw.Raw Variable] ->
   DL.Diff (I.Constructor Raw.Raw Variable) (DC.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withStateFromConstructors prefix l δl e =
+withStateFromConstructors prefix ips δips l δl e =
 
   trace "ADDING A CONSTRUCTOR" >>
   traceState >>
@@ -79,7 +80,7 @@ withStateFromConstructors prefix l δl e =
 
     ( c@(I.Constructor _ _consName cps cis) : cs,
       DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
-      let δτc = DC.δconstructorRawType prefix cps δcps cis δcis in
+      let δτc = DI.δconstructorRawType prefix ips δips cps δcps cis δcis in
       go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs
 
     (_c : _cs, DL.Modify _ _)     -> todo "Modify"
@@ -92,7 +93,7 @@ withStateFromConstructors prefix l δl e =
     go c δge cs δcs =
       withState (over environment (GE.addConstructor c) >>> over δenvironment δge) $ do
       sanityCheck
-      withStateFromConstructors prefix cs δcs $ do
+      withStateFromConstructors prefix ips δips cs δcs $ do
         e
 
 -- | `withStateFromVernacular v δv` takes a vernacular command `v` and its (assumed repaired) diff `δv`
@@ -119,10 +120,10 @@ withStateFromVernacular v δv e =
     sanityCheck
     e
 
-  (Inductive ind@(I.Inductive indName ps is cs), DV.ModifyInductive δind@(DI.Modify δindName δps δis δcs)) -> do
+  (Inductive ind@(I.Inductive indName ips iis cs), DV.ModifyInductive δind@(DI.Modify δindName δips δiis δcs)) -> do
     let τind = I.inductiveRawType ind
-    let δτind = DI.δinductiveRawType (length ps) δps (length is) δis
-    let prefix = DI.δinductiveRawConstructorPrefix δindName (length ps) δps
+    let δτind = DI.δinductiveRawType (length ips) δips (length iis) δiis
+    let prefix = DI.δinductiveRawConstructorPrefix δindName (length ips) δips
     δeliminatorType <- case δmkEliminatorType () ind δind of
       Nothing -> throwError "δmkEliminatorType failed"
       Just e -> return e
@@ -140,7 +141,7 @@ withStateFromVernacular v δv e =
        (DL.Modify (DGD.ModifyGlobalAssum (δeliminatorName δind) δeliminatorType))
       ) $ do
       sanityCheck
-      withStateFromConstructors prefix cs δcs e
+      withStateFromConstructors prefix ips δips cs δcs e
 
   (Inductive ind, DV.ModifyInductive DI.Same) -> unchangedInductive ind
   (Inductive ind, DV.Same)                    -> unchangedInductive ind
@@ -148,7 +149,7 @@ withStateFromVernacular v δv e =
   _ -> exc $ printf "TODO: %s" (show (v, δv))
 
   where
-    unchangedInductive ind@(I.Inductive indName _ _ cs) = do
+    unchangedInductive ind@(I.Inductive indName ips _ cs) = do
       let τind = I.inductiveRawType ind
       withState
         (over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
@@ -162,7 +163,7 @@ withStateFromVernacular v δv e =
          over δenvironment DL.Keep
         ) $ do
         sanityCheck
-        withStateFromConstructors DT.Same cs DL.Same e
+        withStateFromConstructors DT.Same ips DL.Same cs DL.Same e
 
 -- | `repair s δs` takes a script `s` and a script diff `δs`, and it computes a repaired script diff
 -- | `δs'`, that propagates changes down the line

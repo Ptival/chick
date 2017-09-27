@@ -89,6 +89,9 @@ repairArgs args τ0 δτ0 δfun =
           δarg <- repair arg τ1 δ1
           go (ΔT.CpyApp acc δarg) args τ2 δ2
 
+        ([], ΔT.CpyPi _ _ _) -> do
+          exc "repairArgs: CpyPi, but empty argument list, does this happen?"
+
         ([], ΔT.CpyVar _) -> return acc
 
         ([], ΔT.InsApp _ _ _) -> return acc -- TODO: can we do better here?
@@ -118,7 +121,8 @@ repairArgs args τ0 δτ0 δfun =
               go (ΔT.CpyApp acc ΔT.Same) args τ' ΔT.Same
             _         -> return acc
 
-        _ -> exc $ printf "repairArgs, TODO: %s" (show δτ)
+        _ -> exc $ printf "repairArgs, TODO:\nargs: %s\nτ: %s\nδτ: %s"
+             (show args) (show τ) (show δτ)
 
     hole = \case
       ΔT.Replace τ' -> ΔT.Replace (Annot () (Hole ()) τ')
