@@ -35,6 +35,7 @@ module Term.Term
   , getName
   , holeSymbol
   , lamSymbol
+  , postForallSymbol
   , postLamSymbol
 --  , rAnnot
 --  , rApp
@@ -86,12 +87,13 @@ One could either:
 -}
 
 annotSymbol, arrowSymbol, forallSymbol, holeSymbol :: String
-lamSymbol, postLamSymbol, wildcardSymbol :: String
+lamSymbol, postForallSymbol, postLamSymbol, wildcardSymbol :: String
 annotSymbol = ":"
 arrowSymbol = "→"
 forallSymbol = "∀"
-holeSymbol  = "?"
+holeSymbol  = "_"
 lamSymbol = "λ"
+postForallSymbol = ","
 postLamSymbol = ","
 wildcardSymbol = "_"
 

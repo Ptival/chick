@@ -36,8 +36,8 @@ unsafeParseRaw s =
     -- for sake of testing, let's permute
     δcs = DL.Permute [1, 0] $ DL.Modify δfalse $ DL.Modify δtrue $ DL.Same
 
-    δfalse = DC.Modify (DA.Replace "zero") DL.Same DL.Same
-    δtrue = DC.Modify (DA.Replace "succ") δsuccPs DL.Same
+    δfalse = DC.Modify (DA.Replace "O") DL.Same DL.Same
+    δtrue = DC.Modify (DA.Replace "S") δsuccPs DL.Same
 
     δsuccPs = DL.Insert ((), "n", "nat") DL.Same
 
@@ -69,7 +69,7 @@ unsafeParseRaw s =
     δis = DL.Insert ((), "size", "nat") DL.Same
     δcs = DL.Modify δnil $ DL.Modify δcons $ DL.Same
 
-    δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert ((), "zero") DL.Same)
+    δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert ((), "O") DL.Same)
     δcons = DC.Modify (DA.Replace "vcons") δconsPs δconsIs
 
     δconsPs =
@@ -83,4 +83,4 @@ unsafeParseRaw s =
         )
       )
       $ DL.Same
-    δconsIs = DL.Insert ((), App () (Var Nothing "succ") (Var Nothing "n")) DL.Same
+    δconsIs = DL.Insert ((), App () (Var Nothing "S") (Var Nothing "n")) DL.Same

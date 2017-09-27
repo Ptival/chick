@@ -145,7 +145,7 @@ namedPiP topP selfP _nextP = do
     symbol ":"
     τ1 <- topP
     symbol ")"
-    symbol "→" -- I don't think we can commit prior to this, unfortunately
+    symbol postForallSymbol -- I don't think we can commit prior to this, unfortunately
     return (bs, τ1)
   τ2 <- selfP
   return $ pis bs τ1 τ2
