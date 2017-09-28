@@ -263,7 +263,16 @@ repairListToVec = RepairScriptBenchmark
     , Definition "length"
       (unsafeParseRaw "∀ (T : Type), List T → nat")
       (unsafeParseRaw
-       "λ T l , List_rec T (λ _ , nat) O (λ _ _ lt , S lt) l")
+       "λ T l , List_rect T (λ _ , nat) O (λ _ _ lt , S lt) l")
+    , Definition "hd"
+      (unsafeParseRaw "∀ (A : Type), A → List A → A")
+      (unsafeParseRaw "λ A default l, List_rect A (λ _, A) default (λ x _ _, x) l")
+    , Definition "tl"
+      (unsafeParseRaw "∀ (A : Type), List A → List A")
+      (unsafeParseRaw "λ A l, List_rect A (λ _, List A) (nil A) (λ _ x _, x) l")
+    -- , Definition "In"
+    --   (unsafeParseRaw "∀ (A : Type), A → List A → Type")
+    --   (unsafeParseRaw "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))")
     ]
 
   , repairScriptDiff =
@@ -280,7 +289,7 @@ repairListToVec = RepairScriptBenchmark
     , Definition "length"
       (unsafeParseRaw "∀ (T : Type), Vec T (_ : nat) → nat")
       (unsafeParseRaw
-       "λ T l , Vec_rec T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
+       "λ T l , Vec_rect T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
     ]
 
   }

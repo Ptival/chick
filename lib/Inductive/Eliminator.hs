@@ -180,4 +180,4 @@ mkEliminatorRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
 mkEliminatorRawType = mkEliminatorType ()
 
 mkEliminatorName :: Variable -> Variable
-mkEliminatorName (Variable v) = Variable (v ++ "_rec")
+mkEliminatorName (Variable v) = Variable (v ++ "_rect")
