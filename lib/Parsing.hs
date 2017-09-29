@@ -32,11 +32,17 @@ binOpN = BinaryOpParser NonAssociative
 parser :: [[ModularParser (Raw.Term Variable)]]
 parser =
   -- low precedence
-  [ [TopSelfNextParser letP, TopSelfNextParser lamP]
-  , [binOpN annotSymbol (Annot ())]
-  , [TopSelfNextParser namedPiP, binOpR arrowSymbol (\ τ1 τ2 -> Pi () τ1 (abstractAnonymous τ2))]
-  , [binOpL "" (App ())]
-  , [AtomParser holeP, AtomParser typeP, AtomParser varP]
+  [ [ TopSelfNextParser letP
+    , TopSelfNextParser lamP
+    ]
+  , [ binOpN annotSymbol (Annot ())]
+  , [ TopSelfNextParser namedPiP
+    , binOpR arrowSymbol (\ τ1 τ2 -> Pi () τ1 (abstractAnonymous τ2))
+    ]
+  , [ binOpL "" (App ()) ]
+  , [ AtomParser holeP
+    , AtomParser typeP, AtomParser varP
+    ]
   ]
   -- high precedence
 
