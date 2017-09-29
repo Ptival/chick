@@ -23,18 +23,10 @@ module StandardLibrary
 import Inductive.Inductive
 import Parsing
 import Parsing.Inductive
-import Parsing.Utils
--- import PrettyPrinting.PrettyPrintable
--- import PrettyPrinting.PrettyPrintableUnannotated
--- import PrettyPrinting.Utils
--- import Term.Binder
 import Term.Raw                                  as Raw
 import Term.Term
--- import Term.TypeChecked                          as Checked
 import Text.Megaparsec
 import Text.Printf
--- import Typing.GlobalEnvironment
--- import Work
 
 -- main :: IO ()
 -- main = forM_ (unGlobalEnvironment stdlib) $ \ d ->
