@@ -4,12 +4,8 @@ module Parsing where
 
 import           Control.Applicative
 import           Control.Monad.Fix
-import           Data.Functor
---import           Data.Maybe
 import           Text.Megaparsec
-import qualified Text.Megaparsec.Lexer as L
 import           Text.Megaparsec.String
-import           Text.Printf
 
 import           Parsing.Utils
 import           Term.Binder
@@ -140,21 +136,25 @@ letP topP selfP _nextP = do
 
 namedPiP :: Parser3 (Raw.Term Variable)
 namedPiP topP selfP _nextP = do
-  (bs, τ1) <- try $ do
+  groups <- try $ do
     symbol forallSymbol
-    symbol "("
-    bs <- some binderP
-    symbol ":"
-    τ1 <- topP
-    symbol ")"
+    groups <- many $ do
+      symbol "("
+      bs <- some binderP
+      symbol ":"
+      τ1 <- topP
+      symbol ")"
+      return (bs, τ1)
     symbol postForallSymbol -- I don't think we can commit prior to this, unfortunately
-    return (bs, τ1)
+    return groups
   τ2 <- selfP
-  return $ pis bs τ1 τ2
+  return $ pis groups τ2
   where
-    pis :: [Binder Variable] -> (Raw.Term Variable) -> (Raw.Term Variable) -> (Raw.Term Variable)
-    pis []       _  τ2 = τ2
-    pis (b : bs) τ1 τ2 = Pi () τ1 (abstractBinder b $ pis bs τ1 τ2)
+    pis :: [([Binder Variable], Raw.Term Variable)] -> (Raw.Term Variable) -> (Raw.Term Variable)
+    pis [] τ2 = τ2
+    pis (((b : bs), τ1) : τ1s) τ2 =
+      Pi () τ1 (abstractBinder b $ pis ((bs, τ1) : τ1s) τ2)
+    pis (([], _) : τ1s) τ2 = pis τ1s τ2
 
 typeP :: Parser (Raw.Term Variable)
 typeP = Type <$ rword "Type"
