@@ -67,6 +67,10 @@ findLocalDeclarationDiff v γ δγ =
       case unLocalContext γ of
         [] -> exc "DL.Change but empty context"
         LocalAssum b _ : γ' -> do
+          error "YO WHEN DOES THIS HAPPEN!?"
+          -- FIXME FIXME FIXME
+          -- Hmmm, this is sketchy, is this looking for what happened to an
+          -- old v, or what turned something into a new v?
           b' <- DA.patch b δb
           if b' == Binder (Just v)
           then return dld

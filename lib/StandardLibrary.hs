@@ -22,6 +22,8 @@ module StandardLibrary
 
 import Inductive.Inductive
 import Parsing
+import Parsing.Inductive
+import Parsing.Utils
 -- import PrettyPrinting.PrettyPrintable
 -- import PrettyPrinting.PrettyPrintableUnannotated
 -- import PrettyPrinting.Utils
@@ -29,6 +31,7 @@ import Parsing
 import Term.Raw                                  as Raw
 import Term.Term
 -- import Term.TypeChecked                          as Checked
+import Text.Megaparsec
 import Text.Printf
 -- import Typing.GlobalEnvironment
 -- import Work
@@ -86,6 +89,13 @@ unsafeParseRaw s =
     Nothing -> error $ printf "unsafeParseRaw: could not parse %s" s
     Just t  -> t
 
+unsafeParseInductive :: [String] -> Inductive Raw.Raw Variable
+unsafeParseInductive ss =
+  let s = unlines ss in
+  case parseMaybe inductiveP s of
+    Nothing -> error $ printf "unsafeParseInductive: could not parse\n%s" s
+    Just t  -> t
+
 τId, tId :: Raw.Term Variable
 τId = unsafeParseRaw "(T : Type) → T → T"
 tId = unsafeParseRaw "λ T x . x"
@@ -95,121 +105,58 @@ tId = unsafeParseRaw "λ T x . x"
   "(A B C : Type) → (A → B → C) → (B → A → C)"
 tFlip = unsafeParseRaw "λ A B C f b a . f a b"
 
-{-
-inductive Bool : Type where
-  true  : Bool
-  false : Bool
--}
 indBool :: Inductive Raw.Raw Variable
-indBool =
-  Inductive "bool" [] []
-  [ trueBool
-  , falseBool
+indBool = unsafeParseInductive
+  [ "Inductive bool : Type :="
+  , "| true : bool"
+  , "| false : bool"
+  , "."
   ]
 
-trueBool, falseBool :: Constructor Raw.Raw Variable
-trueBool  = Constructor indBool "true"  [] []
-falseBool = Constructor indBool "false" [] []
-
-{-
-inductive nat : Type where
-  zero : nat
-  succ : (n : nat) → ℕ
--}
 indNat :: Inductive Raw.Raw Variable
-indNat =
-  Inductive "nat" [] []
-  [ zeroNat
-  , succNat
+indNat = unsafeParseInductive
+  [ "Inductive nat : Type :="
+  , "| O : nat"
+  , "| S : nat → nat"
+  , "."
   ]
 
-zeroNat, succNat :: Constructor Raw.Raw Variable
-zeroNat = Constructor indNat "O" [] []
-succNat = Constructor indNat "S" [((), "n", "nat")] []
-
-{-
-inductive List (A : Type) : Type where
-  nil  :                         List A
-  cons : (x : A) (xs : List A) → List A
--}
 indList :: Inductive Raw.Raw Variable
-indList =
-  Inductive "List" [((), "A", Type)] []
-  [ nilList
-  , consList
+indList = unsafeParseInductive
+  [ "Inductive List (A : Type) : Type :="
+  , "| nil : List A"
+  , "| cons : ∀ (x : A) (xs : List A), List A"
+  , "."
   ]
 
-nilList, consList :: Constructor Raw.Raw Variable
-nilList  = Constructor indList "nil"  [] []
-consList = Constructor indList "cons"
-    [ ((), "x", "A")
-    , ((), "xs", unsafeParseRaw "List A")
-    ]
-    []
-
-{-
-inductive Fin : nat → Type where
-  zero : {n : nat} → Fin (suc n)
-  suc  : {n : nat} (i : Fin n) → Fin (suc n)
--}
 indFin :: Inductive Raw.Raw Variable
-indFin =
-  Inductive "Fin" [] [((), "bound", "nat")]
-  [ zeroFin
-  , succFin
+indFin = unsafeParseInductive
+  [ "Inductive Fin : ∀ (bound : nat), Type :="
+  , "| fzero : ∀ (n : nat), Fin (S n)"
+  , "| fsucc : ∀ (n : nat) (i : Fin n), Fin (S n)"
+  , "."
   ]
 
-zeroFin, succFin :: Constructor Raw.Raw Variable
-zeroFin =
-  Constructor indFin "O"
-  [ ((), "n", "nat") ]
-  [ ((), unsafeParseRaw "S n") ]
-succFin =
-  Constructor indFin "succ"
-  [ ((), "n", "nat")
-  , ((), "i", unsafeParseRaw "Fin n")
-  ]
-  [ ((), unsafeParseRaw "S n") ]
-
-{-
-inductive Vec (A : Type) : nat → Type where
-  nil  : Vec A zero
-  cons : {n : nat} → (x : A) (xs : Vec A n) → Vec A (suc n)
--}
 indVec :: Inductive Raw.Raw Variable
-indVec =
-  Inductive "Vec" [((), "A", Type)] [((), "size", "nat")]
-  [ nilVec
-  , consVec
+indVec = unsafeParseInductive
+  [ "Inductive Vec (A : Type) : ∀ (size : nat), Type :="
+  , "| vnil : Vec A O"
+  , "| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Fin (S n)"
+  , "."
   ]
 
-nilVec, consVec :: Constructor Raw.Raw Variable
-nilVec = Constructor indVec "vnil"  [] [((), Var Nothing "O")]
-consVec =
-  Constructor indVec "vcons"
-  [ ((), "h", "A")
-  , ((), "n", "nat")
-  , ((), "t", unsafeParseRaw "Vec A n")
-  ]
-  [ ((), unsafeParseRaw "S n") ]
-
-{-
-inductive ⊥ : Set where
--}
 indEmpty :: Inductive Raw.Raw Variable
-indEmpty =
-  Inductive "⊥" [] [] []
+indEmpty = unsafeParseInductive
+  [ "Inductive False : Type :="
+  , "."
+  ]
 
-{-
-inductive ⊤ : Set where
-  tt : ⊤
--}
 indUnit :: Inductive Raw.Raw Variable
-indUnit =
-  Inductive "⊤" [] [] [ttUnit]
-
-ttUnit :: Constructor Raw.Raw Variable
-ttUnit = Constructor indUnit "tt" [] []
+indUnit = unsafeParseInductive
+  [ "Inductive unit : Type :="
+  , "| tt : unit"
+  , "."
+  ]
 
 inductives :: [Inductive Raw.Raw Variable]
 inductives =

@@ -172,39 +172,3 @@ runParserTerm = runParser langP "runParserTerm"
 
 parseMaybeTerm :: String -> Maybe (Raw.Term Variable)
 parseMaybeTerm = parseMaybe langP
-
--- Utilities
-
-sc :: Parser ()
-sc = L.space (void spaceChar) lineCmnt blockCmnt
-  where
-    lineCmnt  = empty -- L.skipLineComment "//"
-    blockCmnt = L.skipBlockComment "(*" "*)"
-
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
-
-symbol :: String -> Parser ()
-symbol = void . L.symbol sc
-
-parens :: Parser a -> Parser a
-parens = between (symbol "(") (symbol ")")
-
-rword :: String -> Parser ()
-rword w = string w *> notFollowedBy alphaNumChar *> sc
-
-reservedWords :: [String] -- list of reserved words
-reservedWords =
-  [ "let"
-  , "in"
-  , "λ"
-  ]
-
-identifier :: Parser String
-identifier = (lexeme . try) (p >>= check)
-  where
-    p       = (:) <$> letterChar <*> many (alphaNumChar <|> char '_')
-    check x =
-      if x `elem` reservedWords
-      then fail $ printf "keyword %s cannot be an identifier" (show x)
-      else return x
