@@ -42,7 +42,7 @@ import           Vernacular
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
   []
-  -- ++ [repairFlippedArguments]
+  ++ [repairFlippedArguments]
   ++ [repairListToVec]
 
 -- do not use `unsafeParseRaw` anywhere else!
@@ -290,6 +290,14 @@ repairListToVec = RepairScriptBenchmark
       (unsafeParseRaw "∀ (T : Type), Vec T (_ : nat) → nat")
       (unsafeParseRaw
        "λ T l , Vec_rect T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
+    , Definition "hd"
+      (unsafeParseRaw "∀ (A : Type), A → Vec A (_ : nat) → A")
+      (unsafeParseRaw
+       "λ A default l, Vec_rect A (λ _ _, A) default (λ x _ _ _, x) (_ : nat) l")
+    , Definition "tl"
+      (unsafeParseRaw "∀ (A : Type), Vec A (_ : nat) → Vec A (_ : nat)")
+      (unsafeParseRaw
+       "λ A l, Vec_rect A (λ _ _, Vec A (_ : nat)) (vnil A) (λ _ _ x _, x) (_ : nat) l")
     ]
 
   }
