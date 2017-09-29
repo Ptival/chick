@@ -67,7 +67,9 @@ binOpLP :: String -> (a -> a -> a) -> Parser3 a
 binOpLP s k _topP _selfP nextP = chainl1 nextP (symbol s *> return k)
 
 binOpRP :: String -> (a -> a -> a) -> Parser3 a
-binOpRP s k _topP selfP nextP = k <$> try (nextP <* symbol s) <*> selfP
+binOpRP s k _topP selfP nextP = try $ k <$> (nextP <* symbol s) <*> selfP
+-- ^ we can't commit after the symbol, because it could be the prefix of
+-- something else
 
 {-
 -- short for:
