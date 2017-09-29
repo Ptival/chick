@@ -13,14 +13,11 @@ import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
-import qualified Diff.Atom as DA
 import qualified Diff.List as DL
 import qualified Diff.LocalDeclaration as DLD
--- import qualified Diff.Term as DT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
-import           Term.Binder
 import           Term.Variable
 import           Typing.LocalContext
 import           Typing.LocalDeclaration
@@ -63,29 +60,13 @@ findLocalDeclarationDiff v γ δγ =
 
     DL.Modify DLD.Same δ -> findLocalDeclarationDiff v γ (DL.Keep δ)
 
-    DL.Modify dld@(DLD.ModifyLocalAssum δb _δτ) δ ->
+    DL.Modify dld δ ->
       case unLocalContext γ of
         [] -> exc "DL.Change but empty context"
-        LocalAssum b _ : γ' -> do
-          error "YO WHEN DOES THIS HAPPEN!?"
-          -- FIXME FIXME FIXME
-          -- Hmmm, this is sketchy, is this looking for what happened to an
-          -- old v, or what turned something into a new v?
-          b' <- DA.patch b δb
-          if b' == Binder (Just v)
+        ld : γ' -> do
+          if nameOf ld == Just v
           then return dld
           else findLocalDeclarationDiff v (LocalContext γ') δ
-        _ -> exc "DLD.ModifyLocalAssum, but not LocalAssum"
-
-    DL.Modify dld@(DLD.ModifyLocalDef δv _δτ) δ ->
-      case unLocalContext γ of
-        []    -> exc "DL.Change but empty context"
-        LocalDef lv _ _ : γ' -> do
-          v' <- DA.patch lv δv
-          if v' == v
-          then return dld
-          else findLocalDeclarationDiff v (LocalContext γ') δ
-        _ -> exc "DLD.ModifyLocalDef, but not LocalDef"
 
     DL.Permute _ _ -> exc "TODO: Permute"
 
