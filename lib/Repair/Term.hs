@@ -197,7 +197,6 @@ genericRepair t τ = do
       -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
       return ΔT.Same
 
-
 -- | `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff describing
 -- | how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt` has type `patch τ δτ`.
 repair ::
@@ -221,22 +220,21 @@ repair t τ δτ =
 
   case δτ of
 
-  -- even though the type has not changed, the term might still need updating to deal with the
-  -- changes in the context
+  -- even though the type has not changed, the term might still need updating to
+  -- deal with the changes in the context
   ΔT.Same -> genericRepair t τ
 
   ΔT.Replace τ' -> return $ ΔT.Replace $ Annot () (Hole ()) τ'
 
-  ΔT.CpyApp _ _ ->
-    -- FIXME: I think this should need `repairArgs`
-    genericRepair t τ
+  ΔT.CpyApp _ _ -> genericRepair t τ
 
-  ΔT.CpyLam _ _     -> exc "CpyLam"
+  ΔT.CpyLam _ _ -> exc "CpyLam"
 
   ΔT.CpyVar ΔA.Same -> exc "CpyVar Same"
 
   ΔT.CpyVar (ΔA.Replace δv) -> do
     trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
+    _ <- exc "YO FIXME"
     return $ ΔT.Replace "TODO" -- TODO: confirm this is always good
 
   ΔT.InsApp _ _ _ -> genericRepair t τ -- not sure what to do here
