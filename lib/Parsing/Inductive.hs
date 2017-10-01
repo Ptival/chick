@@ -4,15 +4,15 @@ module Parsing.Inductive
   ( inductiveP
   ) where
 
-import           Control.Applicative
-import           Control.Monad.Fix
-import           Text.Megaparsec.String
+import Control.Applicative
+import Control.Monad.Fix
+import Text.Megaparsec.String
 
-import           Inductive.Inductive
+import Inductive.Inductive
 import Parsing
-import           Parsing.Utils
-import           Term.Raw as Raw
-import           Term.Term
+import Parsing.Utils
+import Term.Raw as Raw
+import Term.Term
 
 inductiveP :: Parser (Inductive Raw.Raw Variable)
 inductiveP = do
@@ -23,7 +23,6 @@ inductiveP = do
   iis <- iisP
   symbol ":="
   cs <- csP
-  symbol "."
   return $ fix $ \ ind -> Inductive n ips iis (map ($ ind) cs)
   where
     -- parses (v : τ)

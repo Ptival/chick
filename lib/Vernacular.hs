@@ -43,4 +43,8 @@ instance PrettyPrintableUnannotated (Vernacular α Variable) where
         ]
 
     Inductive ind -> do
-      prettyDocU ind
+      indDoc <- prettyDocU ind
+      return $ fillSep
+        [ indDoc
+        , text "."
+        ]

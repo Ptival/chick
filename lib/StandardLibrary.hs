@@ -5,11 +5,14 @@ module StandardLibrary
   ( τId
   , τFlip
   , inductives
+  , indAnd
   , indBool
   , indEmpty
+  , indEq
   , indFin
   , indList
   , indNat
+  , indOr
   , indUnit
   , indVec
   , tId
@@ -97,12 +100,23 @@ tId = unsafeParseRaw "λ T x . x"
   "(A B C : Type) → (A → B → C) → (B → A → C)"
 tFlip = unsafeParseRaw "λ A B C f b a . f a b"
 
+indAnd :: Inductive Raw.Raw Variable
+indAnd = unsafeParseInductive
+  [ "Inductive and (A B : Prop) : Prop :="
+  , "| conj : ∀ (a : A) (b : B), and A B"
+  ]
+
 indBool :: Inductive Raw.Raw Variable
 indBool = unsafeParseInductive
   [ "Inductive bool : Type :="
   , "| true : bool"
   , "| false : bool"
-  , "."
+  ]
+
+indEq :: Inductive Raw.Raw Variable
+indEq = unsafeParseInductive
+  [ "Inductive eq (A : Type) (x : A) : ∀ (other : A), Prop :="
+  , "eq_refl : eq A x x"
   ]
 
 indNat :: Inductive Raw.Raw Variable
@@ -110,7 +124,13 @@ indNat = unsafeParseInductive
   [ "Inductive nat : Type :="
   , "| O : nat"
   , "| S : nat → nat"
-  , "."
+  ]
+
+indOr :: Inductive Raw.Raw Variable
+indOr = unsafeParseInductive
+  [ "Inductive or (A B : Prop) : Prop :="
+  , "| or_introl : ∀ (a : A), or A B"
+  , "| or_intror : ∀ (b : B), or A B"
   ]
 
 indList :: Inductive Raw.Raw Variable
@@ -118,7 +138,6 @@ indList = unsafeParseInductive
   [ "Inductive List (A : Type) : Type :="
   , "| nil : List A"
   , "| cons : ∀ (x : A) (xs : List A), List A"
-  , "."
   ]
 
 indFin :: Inductive Raw.Raw Variable
@@ -126,7 +145,6 @@ indFin = unsafeParseInductive
   [ "Inductive Fin : ∀ (bound : nat), Type :="
   , "| fzero : ∀ (n : nat), Fin (S n)"
   , "| fsucc : ∀ (n : nat) (i : Fin n), Fin (S n)"
-  , "."
   ]
 
 indVec :: Inductive Raw.Raw Variable
@@ -134,29 +152,29 @@ indVec = unsafeParseInductive
   [ "Inductive Vec (A : Type) : ∀ (size : nat), Type :="
   , "| vnil : Vec A O"
   , "| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Fin (S n)"
-  , "."
   ]
 
 indEmpty :: Inductive Raw.Raw Variable
 indEmpty = unsafeParseInductive
   [ "Inductive False : Type :="
-  , "."
   ]
 
 indUnit :: Inductive Raw.Raw Variable
 indUnit = unsafeParseInductive
   [ "Inductive unit : Type :="
   , "| tt : unit"
-  , "."
   ]
 
 inductives :: [Inductive Raw.Raw Variable]
 inductives =
-  [ indBool
+  [ indAnd
+  , indBool
+  , indEmpty
+  , indEq
   , indNat
+  , indOr
   , indList
   , indFin
-  , indVec
-  , indEmpty
   , indUnit
+  , indVec
   ]

@@ -6,14 +6,13 @@
 
 module Repair.Benchmark where
 
--- import           Control.Lens ((&))
 import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
--- import           Control.Monad.Identity
 import           Data.Foldable
+import           Text.Megaparsec
 import           Text.Printf
 
 import qualified Diff.Atom as DA
@@ -21,8 +20,8 @@ import qualified Diff.List as DL
 import qualified Diff.Script as DS
 import qualified Diff.Term as DT
 import qualified Diff.Vernacular as DV
--- import qualified Inductive.Inductive as I
 import           Parsing
+import           Parsing.Vernacular
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.Script as RS
@@ -50,6 +49,14 @@ unsafeParseRaw :: String -> Raw.Term Variable
 unsafeParseRaw s =
   case parseMaybeTerm s of
     Nothing -> error $ printf "unsafeParseRaw: could not parse %s" s
+    Just t  -> t
+
+-- do not use `unsafeParseVernac` anywhere else!
+unsafeParseVernac :: [String] -> Vernacular Raw.Raw Variable
+unsafeParseVernac ss =
+  let s = concat ss in
+  case parseMaybe vernacularP s of
+    Nothing -> error $ printf "unsafeParseVernac: could not parse %s" s
     Just t  -> t
 
 patchProof ::
@@ -230,9 +237,10 @@ repairFlippedArguments :: RepairScriptBenchmark
 repairFlippedArguments = RepairScriptBenchmark
 
   { repairScriptFromScript = Script
-    [ Definition "foo"
-      (unsafeParseRaw "A → B → C → D → A")
-      (unsafeParseRaw "λ a b c d , a")
+    [ unsafeParseVernac
+      [ "Definition foo : A → B → C → D → A :="
+      , "λ a b c d , a."
+      ]
     , Definition "bar"
       (unsafeParseRaw "A → B → C → D → A")
       (unsafeParseRaw "λ a b c d , foo a b c d")
@@ -255,25 +263,29 @@ repairListToVec :: RepairScriptBenchmark
 repairListToVec = RepairScriptBenchmark
 
   { repairScriptFromScript = Script
-    [ Inductive indNat
-    , Inductive indList
-    , Definition "list1"
-      (unsafeParseRaw "List nat")
-      (unsafeParseRaw "cons nat O (nil nat)")
-    , Definition "length"
-      (unsafeParseRaw "∀ (T : Type), List T → nat")
-      (unsafeParseRaw
-       "λ T l , List_rect T (λ _ , nat) O (λ _ _ lt , S lt) l")
-    , Definition "hd"
-      (unsafeParseRaw "∀ (A : Type), A → List A → A")
-      (unsafeParseRaw "λ A default l, List_rect A (λ _, A) default (λ x _ _, x) l")
-    , Definition "tl"
-      (unsafeParseRaw "∀ (A : Type), List A → List A")
-      (unsafeParseRaw "λ A l, List_rect A (λ _, List A) (nil A) (λ _ x _, x) l")
-    -- , Definition "In"
-    --   (unsafeParseRaw "∀ (A : Type), A → List A → Type")
-    --   (unsafeParseRaw "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))")
-    ]
+  [ Inductive indNat
+  , Inductive indOr
+  , Inductive indList
+  , Definition "list1"
+    (unsafeParseRaw "List nat")
+    (unsafeParseRaw "cons nat O (nil nat)")
+  , Definition "length"
+    (unsafeParseRaw "∀ (T : Type), List T → nat")
+    (unsafeParseRaw
+    "λ T l , List_rect T (λ _ , nat) O (λ _ _ lt , S lt) l")
+  , Definition "hd"
+    (unsafeParseRaw "∀ (A : Type), A → List A → A")
+    (unsafeParseRaw "λ A default l, List_rect A (λ _, A) default (λ x _ _, x) l")
+  , Definition "tl"
+    (unsafeParseRaw "∀ (A : Type), List A → List A")
+    (unsafeParseRaw "λ A l, List_rect A (λ _, List A) (nil A) (λ _ x _, x) l")
+  , Definition "In"
+    (unsafeParseRaw "∀ (A : Type), A → List A → Type")
+    (unsafeParseRaw "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))")
+  , Definition "map"
+    (unsafeParseRaw "∀ (A : Type), A → List A → Type")
+    (unsafeParseRaw "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))")
+  ]
 
   , repairScriptDiff =
     DL.Keep

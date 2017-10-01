@@ -248,7 +248,6 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
         ]
       ]
       ++ (map (\ x -> fillSep [ text "|", x]) csDoc)
-      ++ [ text "." ]
 
 instance PrettyPrintableUnannotated (Constructor α Variable) where
   prettyDocU (Constructor (Inductive n ips _ _) cName cParams cIndices) = do
