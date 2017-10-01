@@ -108,7 +108,7 @@ indAnd = unsafeParseInductive
 
 indBool :: Inductive Raw.Raw Variable
 indBool = unsafeParseInductive
-  [ "Inductive bool : Type :="
+  [ "Inductive bool : Set :="
   , "| true : bool"
   , "| false : bool"
   ]
@@ -121,7 +121,7 @@ indEq = unsafeParseInductive
 
 indNat :: Inductive Raw.Raw Variable
 indNat = unsafeParseInductive
-  [ "Inductive nat : Type :="
+  [ "Inductive nat : Set :="
   , "| O : nat"
   , "| S : nat → nat"
   ]
@@ -135,14 +135,14 @@ indOr = unsafeParseInductive
 
 indList :: Inductive Raw.Raw Variable
 indList = unsafeParseInductive
-  [ "Inductive List (A : Type) : Type :="
-  , "| nil : List A"
-  , "| cons : ∀ (x : A) (xs : List A), List A"
+  [ "Inductive list (A : Type) : Type :="
+  , "| nil : list A"
+  , "| cons : ∀ (x : A) (xs : List A), list A"
   ]
 
 indFin :: Inductive Raw.Raw Variable
 indFin = unsafeParseInductive
-  [ "Inductive Fin : ∀ (bound : nat), Type :="
+  [ "Inductive Fin : ∀ (bound : nat), Set :="
   , "| fzero : ∀ (n : nat), Fin (S n)"
   , "| fsucc : ∀ (n : nat) (i : Fin n), Fin (S n)"
   ]
@@ -156,12 +156,12 @@ indVec = unsafeParseInductive
 
 indEmpty :: Inductive Raw.Raw Variable
 indEmpty = unsafeParseInductive
-  [ "Inductive False : Type :="
+  [ "Inductive False : Prop :="
   ]
 
 indUnit :: Inductive Raw.Raw Variable
 indUnit = unsafeParseInductive
-  [ "Inductive unit : Type :="
+  [ "Inductive unit : Set :="
   , "| tt : unit"
   ]
 

@@ -14,6 +14,7 @@ import           Parsing
 import qualified StandardLibrary as SL
 import qualified Term.Raw as Raw
 import           Term.Term
+import qualified Term.Universe as U
 
 -- do not use `unsafeParseRaw` anywhere else!
 unsafeParseRaw :: String -> Raw.Term Variable
@@ -24,7 +25,7 @@ unsafeParseRaw s =
 
 indBool :: Inductive Raw.Raw Variable
 indBool =
-  Inductive "bool" [] []
+  Inductive "bool" [] [] U.Set
   [ trueBool
   , falseBool
   ]
@@ -35,7 +36,7 @@ falseBool = Constructor indBool "false" [] []
 
 indNat :: Inductive Raw.Raw Variable
 indNat =
-  Inductive "nat" [] []
+  Inductive "nat" [] [] U.Set
   [ zeroNat
   , succNat
   ]
@@ -46,7 +47,7 @@ succNat = Constructor indNat "S" [((), "n", "nat")] []
 
 indList :: Inductive Raw.Raw Variable
 indList =
-  Inductive "List" [((), "A", Type)] []
+  Inductive "list" [((), "A", Type U.Type)] [] U.Type
   [ nilList
   , consList
   ]
@@ -55,13 +56,13 @@ nilList, consList :: Constructor Raw.Raw Variable
 nilList  = Constructor indList "nil"  [] []
 consList = Constructor indList "cons"
     [ ((), "x", "A")
-    , ((), "xs", unsafeParseRaw "List A")
+    , ((), "xs", unsafeParseRaw "list A")
     ]
     []
 
 indFin :: Inductive Raw.Raw Variable
 indFin =
-  Inductive "Fin" [] [((), "bound", "nat")]
+  Inductive "Fin" [] [((), "bound", "nat")] U.Set
   [ zeroFin
   , succFin
   ]
@@ -80,7 +81,7 @@ succFin =
 
 indVec :: Inductive Raw.Raw Variable
 indVec =
-  Inductive "Vec" [((), "A", Type)] [((), "size", "nat")]
+  Inductive "Vec" [((), "A", Type U.Type)] [((), "size", "nat")] U.Type
   [ nilVec
   , consVec
   ]
@@ -97,11 +98,11 @@ consVec =
 
 indEmpty :: Inductive Raw.Raw Variable
 indEmpty =
-  Inductive "False" [] [] []
+  Inductive "False" [] [] U.Prop []
 
 indUnit :: Inductive Raw.Raw Variable
 indUnit =
-  Inductive "unit" [] [] [ttUnit]
+  Inductive "unit" [] [] U.Set [ttUnit]
 
 ttUnit :: Constructor Raw.Raw Variable
 ttUnit = Constructor indUnit "tt" [] []

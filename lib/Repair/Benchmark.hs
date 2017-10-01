@@ -271,23 +271,23 @@ repairListToVec = RepairScriptBenchmark
   , Inductive indList
   ]
   ++ map unsafeParseVernac
-  [ [ "Definition list1 : List nat :="
+  [ [ "Definition list1 : list nat :="
     , "cons nat O (nil nat)"
     ]
-  , [ "Definition length : ∀ (T : Type), List T → nat :="
-    , "λ T l , List_rect T (λ _ , nat) O (λ _ _ lt , S lt) l"
+  , [ "Definition length : ∀ (T : Type), list T → nat :="
+    , "λ T l , list_rect T (λ _ , nat) O (λ _ _ lt , S lt) l"
     ]
-  , [ "Definition hd : ∀ (A : Type), A → List A → A :="
-    , "λ A default l, List_rect A (λ _, A) default (λ x _ _, x) l"
+  , [ "Definition hd : ∀ (A : Type), A → list A → A :="
+    , "λ A default l, list_rect A (λ _, A) default (λ x _ _, x) l"
     ]
-  , [ "Definition tl : ∀ (A : Type), List A → List A :="
-    , "λ A l, List_rect A (λ _, List A) (nil A) (λ _ x _, x) l"
+  , [ "Definition tl : ∀ (A : Type), list A → list A :="
+    , "λ A l, list_rect A (λ _, list A) (nil A) (λ _ x _, x) l"
     ]
-  , [ "Definition In : ∀ (A : Type), A → List A → Type :="
-    , "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
+  , [ "Definition In : ∀ (A : Type), A → list A → Type :="
+    , "λ A a l, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
     ]
-  , [ "Definition map : ∀ (A : Type), A → List A → Type :="
-    , "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
+  , [ "Definition map : ∀ (A : Type), A → list A → Type :="
+    , "λ A a l, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
     ]
   ]
 

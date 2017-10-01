@@ -19,6 +19,7 @@ import Data.Generic.Diff
 import Term.Binder
 import Term.Variable
 import Term.Term
+import qualified Term.Universe as U
 
 type TermDiff α = EditScript (TermXFamily α) (TermX α Variable) (TermX α Variable)
 
@@ -29,12 +30,13 @@ data TermXFamily α :: * -> * -> * where
   Lam'   :: TermXFamily α (TermX α Variable)             (Cons (NameScope (TermX α) Variable)                                           Nil)
   Let'   :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (NameScope (TermX α) Variable) Nil))
   Pi'    :: TermXFamily α (TermX α Variable)             (Cons (TypeX α Variable)                  (Cons (NameScope (TypeX α) Variable) Nil))
-  Type'  :: TermXFamily α (TermX α Variable)                                                                                            Nil
+  Type'  :: TermXFamily α (TermX α Variable)             (Cons U.Universe                                                               Nil)
   Var'   :: TermXFamily α (TermX α Variable)             (Cons Variable                                                                 Nil)
   Scope' :: TermXFamily α (NameScope (TermX α) Variable) (Cons (Name Variable ())                  (Cons (TermX α Variable)             Nil))
   Name'     :: Name Variable () -> TermXFamily α (Name Variable ()) Nil
   Binder'   :: Binder Variable  -> TermXFamily α (Binder Variable)  Nil
   Variable' :: Variable         -> TermXFamily α Variable           Nil
+  Universe' :: U.Universe       -> TermXFamily α U.Universe         Nil
 
 instance
   (Default α, Eq α, Show α) =>
@@ -66,7 +68,7 @@ instance
   fields   Lam' (Lam   _ bt)     = Just (CCons bt CNil)
   fields   Let' (Let   _ t1 bt2) = Just (CCons t1 (CCons bt2 CNil))
   fields    Pi' (Pi    _ τ1 bτ2) = Just (CCons τ1 (CCons bτ2 CNil))
-  fields  Type' (Type)           = Just CNil
+  fields  Type' (Type  u)        = Just (CCons u CNil)
   fields   Var' (Var   _ v)      = Just (CCons v CNil)
   fields Scope' s =
     let (b, t) = unscopeTerm s in
@@ -86,13 +88,14 @@ instance
   apply   Lam' (CCons bt CNil)             = Lam   def bt
   apply   Let' (CCons t1 (CCons bt2 CNil)) = Let   def t1 bt2
   apply    Pi' (CCons τ1 (CCons bτ2 CNil)) = Pi    def τ1 bτ2
-  apply  Type' CNil                        = Type
+  apply  Type' (CCons u CNil)              = Type  u
   apply   Var' (CCons v CNil)              = Var   def v
   apply Scope' (CCons n (CCons t CNil))    = abstract1Name (name n) t
   --apply (Scope' s) (CCons t CNil) = s
   apply (Name'     n) CNil = n
   apply (Binder'   b) CNil = b
   apply (Variable' v) CNil = v
+  apply (Universe' u) CNil = u
 
   string  Annot' = "Annot"
   string    App' = "App"
@@ -106,6 +109,7 @@ instance
   string (Name'     n) = show n
   string (Binder'   b) = show b
   string (Variable' v) = show v
+  string (Universe' u) = show u
 
 instance (Default α, Eq α, Show α) => Type (TermXFamily α) Variable where
   constructors = [ Abstr Variable' ]
@@ -115,6 +119,9 @@ instance (Default α, Eq α, Show α) => Type (TermXFamily α) (Binder Variable)
 
 instance (Default α, Eq α, Show α) => Type (TermXFamily α) (Name Variable ()) where
   constructors = [ Abstr Name' ]
+
+instance (Default α, Eq α, Show α) => Type (TermXFamily α) U.Universe where
+  constructors = [ Abstr Universe' ]
 
 instance
   ( Default α

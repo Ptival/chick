@@ -1,3 +1,4 @@
+{-# language LambdaCase #-}
 {-# language RankNTypes #-}
 
 module Parsing.Inductive
@@ -22,7 +23,7 @@ inductiveP = do
   symbol ":"
   (iis, u) <- iisP
   symbol ":="
-  cs <- csP
+  cs <- csP ips
   return $ fix $ \ ind -> Inductive n ips iis u (map ($ ind) cs)
   where
 
@@ -38,19 +39,20 @@ inductiveP = do
       -- check sort?
       return (cis, univ)
 
-    csP = many $ do
+    csP ips = many $ do
       symbol "|"
       cn <- variableP
       symbol ":"
       cτ <- termP
-      let (cps, cis) = analyzeConstructor cτ
+      let (cps, cis) = analyzeConstructor ips cτ
       return $ \ ind -> Constructor ind cn cps cis
 
-    analyzeConstructor τ =
+    analyzeConstructor ips τ =
       let (pis,  τ1) = peelPis  ([], τ ) in
       let (apps,  _) = peelApps ([], τ1) in
+      let apps' = drop (length ips) apps in
       -- check τ2?
-      (pis, apps)
+      (pis, apps')
 
     peelPis (rpis, Pi α τ1 bτ2) =
       let (_, τ2) = unscopeTerm bτ2 in

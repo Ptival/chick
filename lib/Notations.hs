@@ -3,10 +3,11 @@
 module Notations where
 
 --import Bound
-import Bound.Name
-import Data.Default
+import           Bound.Name
+import           Data.Default
 
-import Term.Term
+import           Term.Term
+import qualified Term.Universe as U
 
 -- Annot
 infix 0 ^::
@@ -43,8 +44,14 @@ infixr 1 ^->
 τ ^-> t = Pi def τ (abstractAnonymous t)
 
 -- Type
+prop :: Default α => TypeX α ν
+prop = Type U.Prop
+
+set :: Default α => TypeX α ν
+set = Type U.Set
+
 type' :: Default α => TypeX α ν
-type' = Type
+type' = Type U.Type
 
 -- Var
 var :: Default α => ν -> TermX α ν

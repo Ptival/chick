@@ -115,6 +115,7 @@ Library
                   Term.Term
                   Term.TypeChecked
                   Term.TypeErrored
+                  Term.Universe
                   Term.Variable
                   TypeCheckingFailure
                   Typing.Free
