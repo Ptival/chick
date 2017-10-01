@@ -22,11 +22,11 @@ repair ::
   , Member (State RepairState) r
   ) =>
   I.Inductive Raw.Raw Variable -> DI.Diff Raw.Raw -> Eff r (DI.Diff Raw.Raw)
-repair (I.Inductive _n _ps _is _cs) = \case
+repair (I.Inductive _n _ps _is _u _cs) = \case
 
-  DI.Modify δn δps δis δcs -> do
+  DI.Modify δn δps δis δu δcs -> do
     -- FIXME
-    return $ DI.Modify δn δps δis δcs
+    return $ DI.Modify δn δps δis δu δcs
 
   DI.Same -> do
     -- FIXME

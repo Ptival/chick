@@ -24,6 +24,7 @@ import           Inductive.Motive
 import           Term.Binder
 import           Term.Term
 import qualified Term.Raw as Raw
+import qualified Term.Universe as U
 import           Utils
 
 applyTerms :: [(α, TermX α Variable)] -> TermX α Variable -> TermX α Variable
@@ -123,15 +124,15 @@ mkEliminatorType' :: ∀ α.
   Variable ->
   Φips α Variable ->
   Φiis α Variable ->
+  U.Universe ->
   [(Variable, Φcps α Variable, Φcis α Variable)] ->
   TypeX α Variable
-mkEliminatorType'
-  α inductiveName inductiveParameters inductiveIndices constructors =
+mkEliminatorType' α n ips iis _ cs =
 
-  quantifyVariables   inductiveParameters
+  quantifyVariables   ips
   $ quantifyVariables [(α, motive, motiveType)]
   $ quantifyCases
-  $ quantifyVariables inductiveIndices
+  $ quantifyVariables iis
   $ quantifyVariables [(α, discriminee, discrimineeType)]
   $ outputType
 
@@ -141,21 +142,20 @@ mkEliminatorType'
     discriminee = "instance"
 
     discrimineeType =
-        applyVariables inductiveIndices
-      $ applyVariables inductiveParameters
-      $ Var Nothing inductiveName
+        applyVariables iis
+      $ applyVariables ips
+      $ Var Nothing n
 
-    motiveType =
-      mkMotiveType' α inductiveName inductiveParameters inductiveIndices Type
+    -- for now we only make the Type-motive, it's easy to make the Set and Prop ones too
+    motiveType = mkMotiveType' α n ips iis (Type U.Type)
 
-    outputType = App α (applyVariables inductiveIndices motive) discriminee
+    outputType = App α (applyVariables iis motive) discriminee
 
-    quantifyCases = foldrWith quantifyCase constructors
+    quantifyCases = foldrWith quantifyCase cs
 
     quantifyCase (consName, consParameters, consIndices) acc =
       Pi α
-      (mkCase α
-       inductiveName inductiveParameters inductiveIndices
+      (mkCase α n ips iis
        consName consParameters consIndices
        motive)
       (abstractAnonymous acc)
@@ -167,8 +167,8 @@ unpackConstructors :: [Constructor α ν] -> [(ν, Φcps α ν, Φcis α ν)]
 unpackConstructors = map unpackConstructor
 
 mkEliminatorType :: α -> Inductive α Variable -> TypeX α Variable
-mkEliminatorType α (Inductive n ps is cs) =
-  mkEliminatorType' α n ps is (unpackConstructors cs)
+mkEliminatorType α (Inductive n ps is u cs) =
+  mkEliminatorType' α n ps is u (unpackConstructors cs)
   -- mkEliminatorType' α n ps is (instantiateConstructors cs)
   -- eliminatorType' α n ps (instantiateBinders "i" is) (instantiateConstructors cs)
   -- where

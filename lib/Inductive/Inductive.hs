@@ -41,6 +41,7 @@ import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.TypeChecked as C
+import           Term.Universe (Universe)
 import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 import           Utils
@@ -57,6 +58,7 @@ data Inductive α ν =
   { inductiveName         :: ν
   , inductiveParameters   :: Φips α ν
   , inductiveIndices      :: Φiis α ν
+  , inductiveUniverse     :: Universe
   , inductiveConstructors :: [Constructor α ν]
   }
 
@@ -107,9 +109,9 @@ ciRaw :: Φci α ν -> Φci Raw.Raw ν
 ciRaw (_, τ) = ((), Raw.raw τ)
 
 rawInductive :: Inductive α ν -> Inductive Raw.Raw ν
-rawInductive (Inductive n ips iis ics) =
+rawInductive (Inductive n ips iis u ics) =
   fix $ \ ind' ->
-  Inductive n (map ipRaw ips) (map iiRaw iis) (map (rawConstructor ind') ics)
+  Inductive n (map ipRaw ips) (map iiRaw iis) u (map (rawConstructor ind') ics)
 
 rawConstructor :: Inductive Raw.Raw ν -> Constructor α ν -> Constructor Raw.Raw ν
 rawConstructor rawInd (Constructor _ cn cps cis) =
@@ -154,18 +156,19 @@ constructorRawType' b n ips cps cis =
     cis' = map ciRaw cis
 
 constructorRawType :: Bool -> Constructor Raw.Raw Variable -> Raw.Type Variable
-constructorRawType b (Constructor (Inductive n ips _ _) _ cps cis) =
+constructorRawType b (Constructor (Inductive n ips _ _ _) _ cps cis) =
   constructorRawType' b n ips cps cis
 
 -- | Constructs the type of the inductive type
 inductiveRawType' ::
+  Universe ->
   Φips Raw.Raw Variable ->
   Φiis Raw.Raw Variable ->
   Raw.Type Variable
-inductiveRawType' ips indIndices =
+inductiveRawType' univ ips indIndices =
     foldrWith onParam ips
   $ foldrWith onIndex indIndices
-  $ Type
+  $ Type univ
   where
     -- onIndexOrParam :: (Binder Variable, Raw.Type Variable) -> Raw.Type Variable -> Raw.Type Variable
     onParam (α, v, p) t = Pi α p (abstractVariable v t)
@@ -174,7 +177,7 @@ inductiveRawType' ips indIndices =
 
 -- | Constructs the type of the inductive type
 inductiveRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
-inductiveRawType (Inductive _ ps is _) = inductiveRawType' ps is
+inductiveRawType (Inductive _ ips iis u _) = inductiveRawType' u ips iis
 
 constructorCheckedType' ::
   Bool ->
@@ -187,21 +190,21 @@ constructorCheckedType' = constructorType'
 
 constructorCheckedType ::
   Bool -> Constructor (C.Checked Variable) Variable -> C.Type Variable
-constructorCheckedType b (Constructor (Inductive n ips _ _) _ cps cis) =
+constructorCheckedType b (Constructor (Inductive n ips _ _ _) _ cps cis) =
   constructorCheckedType' b n ips cps cis
 
-inductiveFamilyType' :: Φiis α Variable -> TypeX α Variable
-inductiveFamilyType' is = foldrWith onIndex is Type
+inductiveFamilyType' :: Φiis α Variable -> Universe -> TypeX α Variable
+inductiveFamilyType' iis u = foldrWith onIndex iis (Type u)
   where onIndex (α, v, i) t = Pi α i (abstractVariable v t)
 
 -- | Sometimes, we can't call `inductiveType` because the constructors are not checked yet.
 -- | `inductiveType'` lets us call with just the minimal information.
-inductiveType' :: Φips α Variable -> Φiis α Variable -> TypeX α Variable
-inductiveType' ps is = foldrWith onParam ps $ inductiveFamilyType' is
+inductiveType' :: Φips α Variable -> Φiis α Variable -> Universe -> TypeX α Variable
+inductiveType' ips iis u = foldrWith onParam ips $ inductiveFamilyType' iis u
   where onParam (α, v, p) t = Pi α p (abstractVariable v t)
 
 inductiveType :: Inductive (C.Checked Variable) Variable -> C.Type Variable
-inductiveType (Inductive _ ps is _) = inductiveType' ps is
+inductiveType (Inductive _ ps is u _) = inductiveType' ps is u
 
 -- arrows :: [Doc a] -> Doc a
 -- arrows = encloseSep mempty mempty (text " →")
@@ -222,10 +225,10 @@ boundTermDocVariable (_, v, t) = do
   return $ parens . fillSep $ [ prettyDoc v, text ":", tDoc ]
 
 instance PrettyPrintableUnannotated (Inductive α Variable) where
-  prettyDocU (Inductive n ps is cs) = do
-    psDoc <- mapM boundTermDocVariable ps
+  prettyDocU (Inductive n ips iis u cs) = do
+    psDoc <- mapM boundTermDocVariable ips
     csDoc <- mapM prettyDocU cs
-    isDoc <- prettyDocU (inductiveFamilyType' is)
+    isDoc <- prettyDocU (inductiveFamilyType' iis u)
     -- isDoc <- mapM boundTermDocBinder is
     -- isDoc <- mapM boundTermDocVariable is
     return $ vsep $
@@ -236,7 +239,7 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
         ++
         (
           -- mempty creates an unwanted space, so have to use []
-          if length ps == 0
+          if length ips == 0
           then []
           else [encloseSep mempty mempty mempty psDoc]
         )
@@ -250,7 +253,7 @@ instance PrettyPrintableUnannotated (Inductive α Variable) where
       ++ (map (\ x -> fillSep [ text "|", x]) csDoc)
 
 instance PrettyPrintableUnannotated (Constructor α Variable) where
-  prettyDocU (Constructor (Inductive n ips _ _) cName cParams cIndices) = do
+  prettyDocU (Constructor (Inductive n ips _ _ _) cName cParams cIndices) = do
     cDoc <- prettyDocU (constructorRawType' False n ips cParams cIndices)
     return $ fillSep
       [ prettyDoc cName

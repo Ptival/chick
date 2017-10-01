@@ -116,7 +116,7 @@ indBool = unsafeParseInductive
 indEq :: Inductive Raw.Raw Variable
 indEq = unsafeParseInductive
   [ "Inductive eq (A : Type) (x : A) : ∀ (other : A), Prop :="
-  , "eq_refl : eq A x x"
+  , "| eq_refl : eq A x x"
   ]
 
 indNat :: Inductive Raw.Raw Variable

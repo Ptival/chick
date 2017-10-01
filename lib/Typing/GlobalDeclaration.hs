@@ -65,4 +65,4 @@ instance
 nameOf :: GlobalDeclaration α ν -> ν
 nameOf (GlobalAssum v _) = v
 nameOf (GlobalDef v _ _) = v
-nameOf (GlobalInd (Inductive v _ _ _)) = v
+nameOf (GlobalInd   ind) = inductiveName ind

@@ -31,6 +31,7 @@ import           Term.Binder
 import           Term.Term
 -- import qualified Term.TypeChecked as C
 import qualified Term.Raw as Raw
+import qualified Term.Universe as U
 import qualified Typing.LocalContext as LC
 import           Typing.LocalDeclaration
 import           Utils
@@ -60,8 +61,10 @@ repairArgs ::
   Eff r (ΔT.Diff Raw.Raw)
 repairArgs args τ0 δτ0 δfun =
   trace "Repair.Term/repairArgs with:" >>
-  trace (prettyStr δτ0) >>
-  (trace $ printf "δfun: %s" (prettyStr δfun)) >>
+  trace (printf "> args: %s" (prettyStr args)) >>
+  trace (printf "> τ0:   %s" (prettyStr   τ0)) >>
+  trace (printf "> δτ0:  %s" (prettyStr  δτ0)) >>
+  trace (printf "> δfun: %s" (prettyStr δfun)) >>
   go δfun args τ0 δτ0
   where
 
@@ -70,12 +73,15 @@ repairArgs args τ0 δτ0 δfun =
     -- go accumulates the resulting diff in an unintuitive way
     go acc args τ δτ =
 
-      -- (do
-      --   trace $ printf "go: %s" (prettyStrU τ)
-      --   τ' <- ΔT.patch τ δτ
-      --   trace $ printf "δτ: %s" (prettyStrU τ')
-      -- )
-      -- >>
+      (do
+        trace $ "Repair.Term/repairArgs/go:"
+        trace $ printf "> args: %s" (prettyStr args)
+        trace $ printf "> τ:    %s" (prettyStr τ)
+        trace $ printf "> δτ:   %s" (prettyStr δτ)
+        τ' <- ΔT.patch τ δτ
+        trace $ printf "> τ':   %s" (prettyStr τ')
+      )
+      >>
 
       case (args, δτ) of
 
@@ -89,8 +95,9 @@ repairArgs args τ0 δτ0 δfun =
           δarg <- repair arg τ1 δ1
           go (ΔT.CpyApp acc δarg) args τ2 δ2
 
-        ([], ΔT.CpyPi _ _ _) -> do
-          exc "repairArgs: CpyPi, but empty argument list, does this happen?"
+        ([], ΔT.CpyPi _ _ _) ->
+          -- this happens when the function was partially applied
+          return acc
 
         ([], ΔT.CpyVar _) -> return acc
 
@@ -184,9 +191,9 @@ genericRepair t τ = do
         >>> over RS.δcontext (ΔL.Keep)
         ) $ do
         ΔT.CpyPi
-          <$> repair τ1 Type ΔT.Same
+          <$> repair τ1 (Type U.Type) ΔT.Same
           <*> pure ΔA.Same
-          <*> repair τ2 Type ΔT.Same
+          <*> repair τ2 (Type U.Type) ΔT.Same
 
     _ -> do
       -- s :: RS.State <- get

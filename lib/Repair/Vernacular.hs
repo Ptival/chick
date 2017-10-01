@@ -26,6 +26,7 @@ import           Repair.State
 import qualified Repair.Term as RT
 import qualified Term.Raw as Raw
 import           Term.Term
+import qualified Term.Universe as U
 import           Vernacular
 
 -- | `repair v δv` takes a vernacular command `v` and a command diff `δv`, and it computes a repaired
@@ -55,7 +56,7 @@ repair v δv =
       DV.ModifyInductive <$> RI.repair ind δind
 
     (Definition _ τ t, DV.Same) -> do
-      δτ <- RT.repair τ Type DT.Same
+      δτ <- RT.repair τ (Type U.Type) DT.Same
       δt <- RT.repair t τ δτ
       return $ DV.ModifyDefinition DA.Same δτ δt
 

@@ -16,6 +16,7 @@ import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
 import           Parsing
 import           Term.Term
+import qualified Term.Universe as U
 import qualified Term.Raw as Raw
 
 -- do not use `unsafeParseRaw` anywhere else!
@@ -26,7 +27,7 @@ unsafeParseRaw s =
     Just t  -> t
 
 δBoolToNat :: DI.Diff Raw.Raw
-δBoolToNat = DI.Modify δn δps δis δcs
+δBoolToNat = DI.Modify δn δps δis DA.Same δcs
 
   where
 
@@ -42,12 +43,12 @@ unsafeParseRaw s =
     δsuccPs = DL.Insert ((), "n", "nat") DL.Same
 
 δNatToList :: DI.Diff Raw.Raw
-δNatToList = DI.Modify δn δps δis δcs
+δNatToList = DI.Modify δn δps δis DA.Same δcs
 
   where
 
     δn = DA.Replace "List"
-    δps = DL.Insert ((), "A", Type) DL.Same
+    δps = DL.Insert ((), "A", Type U.Type) DL.Same
     δis = DL.Same
     δcs = DL.Modify δzeroToNil $ DL.Modify δsuccToCons $ DL.Same
 
@@ -60,7 +61,7 @@ unsafeParseRaw s =
       $ DL.Same
 
 δListToVec :: DI.Diff Raw.Raw
-δListToVec = DI.Modify δn δps δis δcs
+δListToVec = DI.Modify δn δps δis DA.Same δcs
 
   where
 

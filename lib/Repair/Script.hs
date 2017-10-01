@@ -40,6 +40,7 @@ import           Script
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
+import qualified Term.Universe as U
 import qualified Typing.GlobalEnvironment as GE
 -- import qualified Typing.LocalContext as LC
 import           Utils
@@ -48,7 +49,7 @@ import           Vernacular
 vernacularDiffToGlobalEnvironmentDiff :: DV.Diff Raw.Raw -> DGE.Diff Raw.Raw -> DGE.Diff Raw.Raw
 vernacularDiffToGlobalEnvironmentDiff = \case
   DV.ModifyDefinition δn δτ δt -> DL.Modify (DGD.ModifyGlobalDef δn δτ δt)
-  DV.ModifyInductive (DI.Modify δn _δps _δis _δcs) ->
+  DV.ModifyInductive (DI.Modify δn _δps _δis _δu _δcs) ->
     let δτ = DT.Same in
     DL.Modify (DGD.ModifyGlobalAssum δn δτ)
   _ -> error "TODO: vernacularDiffToGlobalEnvironmentDiff"
@@ -120,7 +121,8 @@ withStateFromVernacular v δv e =
     sanityCheck
     e
 
-  (Inductive ind@(I.Inductive indName ips iis cs), DV.ModifyInductive δind@(DI.Modify δindName δips δiis δcs)) -> do
+  ( Inductive ind@(I.Inductive indName ips iis _u cs)
+    , DV.ModifyInductive δind@(DI.Modify δindName δips δiis _δu δcs)) -> do
     let τind = I.inductiveRawType ind
     let δτind = DI.δinductiveRawType (length ips) δips (length iis) δiis
     let prefix = DI.δinductiveRawConstructorPrefix δindName (length ips) δips
@@ -149,7 +151,7 @@ withStateFromVernacular v δv e =
   _ -> exc $ printf "TODO: %s" (show (v, δv))
 
   where
-    unchangedInductive ind@(I.Inductive indName ips _ cs) = do
+    unchangedInductive ind@(I.Inductive indName ips _ _ cs) = do
       let τind = I.inductiveRawType ind
       withState
         (over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
@@ -211,7 +213,7 @@ repair script@(Script s) δs =
         -- eventually, might want to update the name in case of collision?
         def@(Definition n τ t) -> do
           trace $ printf "*** Attempting to repair %s" (prettyStr def)
-          δτ <- RT.repair τ Type DT.Same
+          δτ <- RT.repair τ (Type U.Type) DT.Same
           trace $ printf "*** Repaired type, δτ: %s" (prettyStr δτ)
           τ' <- DT.patch τ δτ
           trace $ printf "*** Repaired type, τ': %s" (prettyStr τ')

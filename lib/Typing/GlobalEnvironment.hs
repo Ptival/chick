@@ -53,7 +53,7 @@ addGlobalInd :: I.Inductive ξ ν -> GlobalEnvironment ξ ν -> GlobalEnvironmen
 addGlobalInd i (GlobalEnvironment γ) = GlobalEnvironment (GlobalInd i : γ)
 
 unwrapRawInductive :: I.Inductive Raw.Raw Variable -> [GlobalDeclaration Raw.Raw Variable]
-unwrapRawInductive ind@(I.Inductive indName _ _ cs) =
+unwrapRawInductive ind@(I.Inductive indName _ _ _ cs) =
   GlobalAssum indName (I.inductiveRawType ind) : map constructorAssumption cs
   where
     constructorAssumption cons@(I.Constructor _ cv _ _) =
@@ -70,7 +70,7 @@ TODO: - recursors
 -}
 unwrapInductive ::
   I.Inductive (Checked Variable) Variable -> [GlobalDeclaration (Checked Variable) Variable]
-unwrapInductive ind@(I.Inductive n _ _ cs) =
+unwrapInductive ind@(I.Inductive n _ _ _ cs) =
   GlobalAssum n (I.inductiveType ind) : map constructorAssumption cs
   where
     constructorAssumption cons@(I.Constructor _ cv _ _) =

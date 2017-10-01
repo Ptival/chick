@@ -1,6 +1,14 @@
 {-# language RankNTypes #-}
 
-module Parsing where
+module Parsing
+  ( binderP
+  , bindingP
+  , bindingsP
+  , parseMaybeTerm
+  , runParserTerm
+  , termP
+  , variableP
+  ) where
 
 import           Control.Applicative
 import           Control.Monad.Fix
@@ -9,9 +17,9 @@ import           Text.Megaparsec.String
 
 import           Parsing.Utils
 import           Term.Binder
---import           Term.Bound
 import           Term.Raw as Raw
 import           Term.Term
+import qualified Term.Universe as U
 
 type Parser1 a = Parser a -> Parser  a
 type Parser2 a = Parser a -> Parser1 a
@@ -163,7 +171,11 @@ namedPiP topP selfP _nextP = do
     pis (([], _) : τ1s) τ2 = pis τ1s τ2
 
 typeP :: Parser (Raw.Term Variable)
-typeP = Type <$ rword "Type"
+typeP = Type <$> (propP <|> setP <|> typeP')
+  where
+    propP  = U.Prop <$ rword "Prop"
+    setP   = U.Set  <$ rword "Set"
+    typeP' = U.Type <$ rword "Type"
 
 varP :: Parser (Raw.Term Variable)
 varP = Var Nothing <$> variableP
@@ -178,3 +190,13 @@ runParserTerm = runParser langP "runParserTerm"
 
 parseMaybeTerm :: String -> Maybe (Raw.Term Variable)
 parseMaybeTerm = parseMaybe langP
+
+bindingP :: Parser b -> Parser ([b], Term Variable)
+bindingP bindP = parens $ do
+  bs <- some bindP
+  symbol ":"
+  τ1 <- termP
+  return (bs, τ1)
+
+bindingsP :: Parser b -> Parser [([b], Term Variable)]
+bindingsP bindP = many (bindingP bindP)

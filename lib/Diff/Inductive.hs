@@ -34,9 +34,11 @@ import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.Universe ()
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
+import           Term.Universe
 import           Text.Printf
 
 -- type Term α = TypeX α Variable
@@ -49,6 +51,8 @@ type Δips α = DL.Diff (Φip α Variable) (Δip α)
 
 type Δii  α = D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)
 type Δiis α = DL.Diff (Φii α Variable) (Δii α)
+
+type Δu = DA.Diff Universe
 
 -- type Φi  α = BoundTerm α
 -- type Δi  α = DP.Diff (DA.Diff (Binder Variable)) (DT.Diff α)
@@ -79,16 +83,16 @@ type Δcs α = DL.Diff (Constructor α Variable) (Δc α)
 
 data Diff α
   = Same
-  | Modify Δn (Δips α) (Δiis α) (Δcs α)
+  | Modify Δn (Δips α) (Δiis α) Δu (Δcs α)
 
 instance Show α => Show (Diff α) where
   show Same             = "Same"
-  show (Modify _ _ _ _) = "Modify _ _ _ _"
+  show (Modify _ _ _ _ _) = "Modify _ _ _ _"
 
 instance PrettyPrintable α => PrettyPrintable (Diff α) where
   prettyDoc = \case
     Same               -> text "Same"
-    Modify δ1 δ2 δ3 δ4 -> fillSep [ text "Modify", go δ1 , go δ2, go δ3, go δ4 ]
+    Modify δ1 δ2 δ3 δ4 δ5 -> fillSep [ text "Modify", go δ1 , go δ2, go δ3, go δ4, go δ5 ]
 
     where
       go :: PrettyPrintable a => a -> Doc ()
@@ -115,14 +119,15 @@ patch ::
   , Show α
   ) =>
   Inductive α Variable -> Diff α -> Eff r (Inductive α Variable)
-patch ind@(Inductive n ps is cs) = \case
-  Same                  -> return ind
-  Modify δn δps δis δcs -> do
+patch ind@(Inductive n ps is u cs) = \case
+  Same                     -> return ind
+  Modify δn δps δis δu δcs -> do
     n'  <- DA.patch n δn
     ps' <- DL.patch patchParameter ps δps
     is' <- DL.patch patchIndex is δis
+    u'  <- DA.patch u δu
     cs' <- DL.patch DC.patch cs δcs -- δcs -- note: the constructors still refer to the old inductive!
-    return $ fix $ \ind' -> Inductive n' ps' is' $ map (updateConstructorInd ind') cs'
+    return $ fix $ \ind' -> Inductive n' ps' is' u' $ map (updateConstructorInd ind') cs'
       where
         updateConstructorInd ind' (Constructor _ cn cps cis) = Constructor ind' cn cps cis
 

@@ -54,7 +54,7 @@ unsafeParseRaw s =
 -- do not use `unsafeParseVernac` anywhere else!
 unsafeParseVernac :: [String] -> Vernacular Raw.Raw Variable
 unsafeParseVernac ss =
-  let s = concat ss in
+  let s = unlines (ss ++ ["."]) in
   case parseMaybe vernacularP s of
     Nothing -> error $ printf "unsafeParseVernac: could not parse %s" s
     Just t  -> t
@@ -239,11 +239,12 @@ repairFlippedArguments = RepairScriptBenchmark
   { repairScriptFromScript = Script
     [ unsafeParseVernac
       [ "Definition foo : A → B → C → D → A :="
-      , "λ a b c d , a."
+      , "λ a b c d , a"
       ]
-    , Definition "bar"
-      (unsafeParseRaw "A → B → C → D → A")
-      (unsafeParseRaw "λ a b c d , foo a b c d")
+    , unsafeParseVernac
+      [ "Definition bar : A → B → C → D → A :="
+      , "λ a b c d , foo a b c d"
+      ]
     ]
 
   , repairScriptDiff =
@@ -257,59 +258,62 @@ repairFlippedArguments = RepairScriptBenchmark
       DL.Same
 
   , repairScriptExpected = Nothing
+
   }
 
 repairListToVec :: RepairScriptBenchmark
 repairListToVec = RepairScriptBenchmark
 
-  { repairScriptFromScript = Script
-  [ Inductive indNat
+  { repairScriptFromScript = Script $
+  [ Inductive indEq
   , Inductive indOr
+  , Inductive indNat
   , Inductive indList
-  , Definition "list1"
-    (unsafeParseRaw "List nat")
-    (unsafeParseRaw "cons nat O (nil nat)")
-  , Definition "length"
-    (unsafeParseRaw "∀ (T : Type), List T → nat")
-    (unsafeParseRaw
-    "λ T l , List_rect T (λ _ , nat) O (λ _ _ lt , S lt) l")
-  , Definition "hd"
-    (unsafeParseRaw "∀ (A : Type), A → List A → A")
-    (unsafeParseRaw "λ A default l, List_rect A (λ _, A) default (λ x _ _, x) l")
-  , Definition "tl"
-    (unsafeParseRaw "∀ (A : Type), List A → List A")
-    (unsafeParseRaw "λ A l, List_rect A (λ _, List A) (nil A) (λ _ x _, x) l")
-  , Definition "In"
-    (unsafeParseRaw "∀ (A : Type), A → List A → Type")
-    (unsafeParseRaw "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))")
-  , Definition "map"
-    (unsafeParseRaw "∀ (A : Type), A → List A → Type")
-    (unsafeParseRaw "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))")
+  ]
+  ++ map unsafeParseVernac
+  [ [ "Definition list1 : List nat :="
+    , "cons nat O (nil nat)"
+    ]
+  , [ "Definition length : ∀ (T : Type), List T → nat :="
+    , "λ T l , List_rect T (λ _ , nat) O (λ _ _ lt , S lt) l"
+    ]
+  , [ "Definition hd : ∀ (A : Type), A → List A → A :="
+    , "λ A default l, List_rect A (λ _, A) default (λ x _ _, x) l"
+    ]
+  , [ "Definition tl : ∀ (A : Type), List A → List A :="
+    , "λ A l, List_rect A (λ _, List A) (nil A) (λ _ x _, x) l"
+    ]
+  , [ "Definition In : ∀ (A : Type), A → List A → Type :="
+    , "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
+    ]
+  , [ "Definition map : ∀ (A : Type), A → List A → Type :="
+    , "λ A a l, List_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
+    ]
   ]
 
   , repairScriptDiff =
-    DL.Keep
+    DL.nKeeps 3
     $ DL.Modify (DV.ModifyInductive δListToVec)
     $ DL.Same
 
-  , repairScriptExpected = Just $ Script
+  , repairScriptExpected = Just $ Script $
     [ Inductive indNat
+    , Inductive indOr
     , Inductive indVec
-    , Definition "list1"
-      (unsafeParseRaw "Vec nat (_ : nat)")
-      (unsafeParseRaw "vcons nat O (_ : nat) (vnil nat)")
-    , Definition "length"
-      (unsafeParseRaw "∀ (T : Type), Vec T (_ : nat) → nat")
-      (unsafeParseRaw
-       "λ T l , Vec_rect T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l")
-    , Definition "hd"
-      (unsafeParseRaw "∀ (A : Type), A → Vec A (_ : nat) → A")
-      (unsafeParseRaw
-       "λ A default l, Vec_rect A (λ _ _, A) default (λ x _ _ _, x) (_ : nat) l")
-    , Definition "tl"
-      (unsafeParseRaw "∀ (A : Type), Vec A (_ : nat) → Vec A (_ : nat)")
-      (unsafeParseRaw
-       "λ A l, Vec_rect A (λ _ _, Vec A (_ : nat)) (vnil A) (λ _ _ x _, x) (_ : nat) l")
+    ]
+    ++ map unsafeParseVernac
+    [ [ "Definition list1 : Vec nat (_ : nat) :="
+      , "vcons nat O (_ : nat) (vnil nat)"
+      ]
+    , [ "Definition length : ∀ (T : Type), Vec T (_ : nat) → nat :="
+      , "λ T l , Vec_rect T (λ _ _ , nat) O (λ _ _ _ lt , S lt) (_ : nat) l"
+      ]
+    , [ "Definition hd : ∀ (A : Type), A → Vec A (_ : nat) → A :="
+      , "λ A default l, Vec_rect A (λ _ _, A) default (λ x _ _ _, x) (_ : nat) l"
+      ]
+    , [ "Definition tl : ∀ (A : Type), Vec A (_ : nat) → Vec A (_ : nat) :="
+      , "λ A l, Vec_rect A (λ _ _, Vec A (_ : nat)) (vnil A) (λ _ _ x _, x) (_ : nat) l"
+      ]
     ]
 
   }
@@ -323,13 +327,14 @@ repairScriptBenchmark = do
     printScript s
     result <- runTrace . runError $ DS.patch s δs
     s' <- case result of
-      Left  (_e :: String) -> error "..."
+      Left  (e :: String) ->
+        error $ printf "Could not patch the original script:\n%s" e
       Right s'             -> return s'
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
-    runSkipTrace (repairScript s δs) >>= \case
-    -- runTrace (repairScript s δs) >>= \case
+    -- runSkipTrace (repairScript s δs) >>= \case
+    runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' -> case me of
         Nothing -> do

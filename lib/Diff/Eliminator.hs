@@ -221,14 +221,14 @@ import           Utils
 δmkEliminatorType ::
   (Eq α, PrettyPrintable α) =>
   α -> Inductive α Variable -> DI.Diff α -> Maybe (DT.Diff α)
-δmkEliminatorType α (Inductive n ips iis cs) δi = case δi of
+δmkEliminatorType α (Inductive n ips iis _u cs) δi = case δi of
   DI.Same -> Just DT.Same
-  DI.Modify δn δips δiis δcs ->
+  DI.Modify δn δips δiis _δu δcs ->
     δmkEliminatorType' α n δn ips δips iis δiis cs δcs
 
 δeliminatorName :: DI.Diff α -> DA.Diff Variable
 δeliminatorName = \case
   DI.Same -> DA.Same
-  DI.Modify δn _ _ _ -> case δn of
+  DI.Modify δn _ _ _ _ -> case δn of
     DA.Same -> DA.Same
     DA.Replace r -> DA.Replace $ mkEliminatorName r

@@ -66,6 +66,7 @@ import Text.Printf
 
 import Term.Binder
 import Term.Variable
+import Term.Universe (Universe)
 
 {-
 The type-ascription symbol unfortunately cannot be ":" like you would expect,
@@ -106,7 +107,7 @@ data TermX α ν
   | Lam   α             (NameScope (TermX α) ν)
   | Let   α (TermX α ν) (NameScope (TermX α) ν)
   | Pi    α (TypeX α ν) (NameScope (TypeX α) ν)
-  | Type
+  | Type  Universe
   -- it's really annoying not to have annotations on Var when type-checking
   -- but having α makes it not an applicative (can't come up with arbitrary α)
   -- so (Maybe α) lets us put stuff there when handy, but not always
@@ -134,7 +135,7 @@ instance Bifunctor TermX where
       Lam   a bt     -> Lam   (l a)         (bimapScope bt)
       Let   a t1 bt2 -> Let   (l a) (go t1) (bimapScope bt2)
       Pi    a τ1 bτ2 -> Pi    (l a) (go τ1) (bimapScope bτ2)
-      Type           -> Type
+      Type  u        -> Type  u
       Var   a v      -> Var   (l <$> a) (r v)
 
 instance Eq1 (TermX α) where
@@ -147,7 +148,7 @@ instance Eq1 (TermX α) where
       (Lam _ bt,     Lam _ bt')      -> liftEq eqVar bt bt'
       (Let _ t1 bt2, Let _ t1' bt2') -> t1 === t1' && liftEq eqVar bt2 bt2'
       (Pi _ τ1 bτ2,  Pi _ τ1' bτ2')  -> τ1 === τ1' && liftEq eqVar bτ2 bτ2'
-      (Type,         Type)           -> True
+      (Type u,       Type u')        -> u == u'
       (Var _ v,      Var _ v')       -> eqVar v v'
       (_,            _)              -> False
 
@@ -158,7 +159,7 @@ instance (Eq ν) => Eq (TermX α ν) where
   Lam   _ bt     == Lam   _ bt'      = bt == bt'
   Let   _ t1 bt2 == Let   _ t1' bt2' = t1 == t1' && bt2 == bt2'
   Pi    _ τ1 bτ2 == Pi    _ τ1' bτ2' = τ1 == τ1' && bτ2 == bτ2'
-  Type           == Type             = True
+  Type  u        == Type  u'         = u == u'
   Var   _ v      == Var   _ v'       = v  == v'
   _              == _ = False
 
@@ -177,7 +178,7 @@ instance Monad (TermX α) where
   Lam   a bt     >>= f = Lam   a             (bt  >>>= f)
   Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (bt2 >>>= f)
   Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (bτ2 >>>= f)
-  Type           >>= _ = Type
+  Type  u        >>= _ = Type  u
   Var   _ v      >>= f = f v
 
 --deriving instance Foldable (TermX α)
@@ -258,7 +259,7 @@ annotationOf = \case
   Lam   a _   -> Just a
   Let   a _ _ -> Just a
   Pi    a _ _ -> Just a
-  Type        -> Nothing -- removed annotation because it makes TypeChecked infinite
+  Type  _     -> Nothing -- removed annotation because it makes TypeChecked infinite
   Var   a _   -> a -- maybe-d annotation to make TermX applicative
 
 annotateHead :: α -> TermX β ν -> TermX α ν
@@ -309,7 +310,7 @@ instance (Show α) => Show1 (TermX α) where
         Lam   a bt     -> showString "Lam ("   . shows a . showString ") (" . liftShowsPrec sP sL p bt . showString ")"
         Let   a t1 bt2 -> showString "Let ("   . shows a . showString ") (" . liftShowsPrec sP sL p t1 . showString ") (" . liftShowsPrec sP sL p bt2 . showString ")"
         Pi    a τ1 bτ2 -> showString "Pi ("    . shows a . showString ") (" . liftShowsPrec sP sL p τ1 . showString ") (" . liftShowsPrec sP sL p bτ2 . showString ")"
-        Type           -> showString "Type"
+        Type  u        -> showString (show u)
         Var   a v      -> showString "Var (" . shows a . showString ") (" . sP p v . showString ")"
 
 instance (PrintfArg α, Show α) => PrintfArg (TermX α Variable) where

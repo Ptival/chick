@@ -20,5 +20,5 @@ raw = \case
   Lam   _ bt     -> Lam   () (hoistScope raw bt)
   Let   _ t1 bt2 -> Let   () (raw t1) (hoistScope raw bt2)
   Pi    _ τ1 bτ2 -> Pi    () (raw τ1) (hoistScope raw bτ2)
-  Type           -> Type
+  Type  u        -> Type  u
   Var   _ v      -> Var   Nothing v

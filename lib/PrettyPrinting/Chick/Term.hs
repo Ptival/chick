@@ -83,7 +83,7 @@ prettyTermDocPrec precs = goTerm
               ]
             , PrecArrow)
 
-      Type -> (text "Type", PrecAtom)
+      Type u -> (text (show u), PrecAtom)
 
       Var _ v -> (prettyDoc v, PrecAtom)
 

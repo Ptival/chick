@@ -52,6 +52,6 @@ mkMotiveType :: ∀ α.
   Inductive α Variable ->
   TypeX α Variable ->
   TypeX α Variable
-mkMotiveType α (Inductive n ps is _) universe =
-  mkMotiveType' α n ps is universe
+mkMotiveType α (Inductive n ips iis _ _) universe =
+  mkMotiveType' α n ips iis universe
   -- mkMotiveType' α n ps (instantiateBinders "i" is) universe

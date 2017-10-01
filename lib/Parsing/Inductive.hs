@@ -20,25 +20,23 @@ inductiveP = do
   n <- variableP
   ips <- ipsP
   symbol ":"
-  iis <- iisP
+  (iis, u) <- iisP
   symbol ":="
   cs <- csP
-  return $ fix $ \ ind -> Inductive n ips iis (map ($ ind) cs)
+  return $ fix $ \ ind -> Inductive n ips iis u (map ($ ind) cs)
   where
-    -- parses (v : τ)
-    bindingP = parens $ do
-      v <- variableP
-      symbol ":"
-      τ <- termP
-      return ((), v, τ)
 
-    ipsP = many bindingP
+    mkIps (bs, τ) = map (\ b -> ((), b, τ)) bs
+    ipsP = concatMap mkIps <$> bindingsP variableP
 
     iisP = do
       τ <- termP
-      let (cis, _sort) = peelPis ([], τ)
+      let (cis, univTerm) = peelPis ([], τ)
+      let univ = case univTerm of
+              Type u -> u
+              _ -> error "ill-formed inductive indices"
       -- check sort?
-      return cis
+      return (cis, univ)
 
     csP = many $ do
       symbol "|"

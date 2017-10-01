@@ -6,11 +6,10 @@
 
 module Term.TypeChecked where
 
---import Data.Default
-import GHC.Generics
+import           GHC.Generics
 
 import           Term.Term
---import qualified Term.Raw  as Raw
+import qualified Term.Universe as U
 
 -- need data here to allow the recursion
 data Checked ν = Checked { unChecked :: (TermX (Checked ν) ν) }
@@ -21,5 +20,5 @@ type Term ν = TermX (Checked ν) ν
 type Type ν = Term ν
 
 typeOf :: Term ν -> Maybe (Term ν)
-typeOf Type = Just $ Type
-typeOf t    = unChecked <$> annotationOf t
+typeOf (Type _) = Just $ (Type U.Type)
+typeOf t        = unChecked <$> annotationOf t
