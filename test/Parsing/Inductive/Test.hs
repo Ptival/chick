@@ -2,7 +2,7 @@
 
 module Parsing.Inductive.Test
   ( test
-  , tests
+  , unitTests
   ) where
 
 import           Test.Tasty
@@ -107,8 +107,8 @@ indUnit =
 ttUnit :: Constructor Raw.Raw Variable
 ttUnit = Constructor indUnit "tt" [] []
 
-tests :: TestTree
-tests = testGroup "Parsing.Inductive" $ []
+unitTests :: TestTree
+unitTests = testGroup "Parsing.Inductive" $ []
   ++ [testCase "bool"  $ indBool  @?= SL.indBool ]
   ++ [testCase "empty" $ indEmpty @?= SL.indEmpty]
   ++ [testCase "fin"   $ indFin   @?= SL.indFin  ]
@@ -118,4 +118,4 @@ tests = testGroup "Parsing.Inductive" $ []
   ++ [testCase "vec"   $ indVec   @?= SL.indVec  ]
 
 test :: IO ()
-test = defaultMain tests
+test = defaultMain unitTests

@@ -81,12 +81,12 @@ testδListToVec ::
   Eff r Bool
 testδListToVec = test indList δListToVec indVec
 
-tests ::
+unitTests ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
   [(String, Eff r Bool)]
-tests =
+unitTests =
   [ ("testδBoolToNat", testδBoolToNat)
   , ("testδNatToList", testδNatToList)
   , ("testδListToVec", testδListToVec)
@@ -95,7 +95,7 @@ tests =
 main :: IO ()
 main = do
   putStrLn "\n"
-  forM_ tests $ \ (name, t) -> do
+  forM_ unitTests $ \ (name, t) -> do
     (runSkipTrace $ runError t) >>= \case
       Right True -> putStrLn $ printf "[✓] %s" name
       Right False -> do
