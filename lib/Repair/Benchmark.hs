@@ -38,6 +38,8 @@ import qualified Typing.LocalContext as LC
 import           Utils
 import           Vernacular
 
+import qualified Inductive.Inductive as I
+
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
   []

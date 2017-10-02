@@ -47,7 +47,7 @@ unsafeParseRaw s =
 
   where
 
-    δn = DA.Replace "List"
+    δn = DA.Replace "list"
     δps = DL.Insert ((), "A", Type U.Type) DL.Same
     δis = DL.Same
     δcs = DL.Modify δzeroToNil $ DL.Modify δsuccToCons $ DL.Same
@@ -57,7 +57,7 @@ unsafeParseRaw s =
 
     δsuccToConsPs =
       DL.Insert ((), "x", "A")
-      $ DL.Modify (D3.Modify DA.Same (DA.Replace "xs") (DT.Replace (unsafeParseRaw "List A")))
+      $ DL.Modify (D3.Modify DA.Same (DA.Replace "xs") (DT.Replace (unsafeParseRaw "list A")))
       $ DL.Same
 
 δListToVec :: DI.Diff Raw.Raw

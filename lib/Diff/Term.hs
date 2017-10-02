@@ -189,7 +189,7 @@ extractPi = \case
   Pi a τ1 bτ2 -> do
     let (b, τ2) = unscopeTerm bτ2
     return (a, τ1, b, τ2)
-  t -> throwExc $ printf "extracePi: not a Pi: %s" (prettyStrU t)
+  t -> throwExc $ printf "extractPi: not a Pi: %s" (prettyStrU t)
 
 mkApps :: TermX α Variable -> [(α, TermX α Variable)] -> TermX α Variable
 mkApps f []           = f

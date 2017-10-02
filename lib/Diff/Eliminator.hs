@@ -30,6 +30,7 @@ import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
 import           Inductive.Eliminator
 import           Inductive.Inductive
+import           Inductive.Utils
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import           Utils

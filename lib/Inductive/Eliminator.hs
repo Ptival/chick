@@ -8,7 +8,6 @@
 
 module Inductive.Eliminator
   ( addRecursiveMotive
-  , applyVariables
   , mkEliminatorName
   , mkCase
   , mkEliminatorRawType
@@ -21,33 +20,12 @@ import           Data.String
 
 import           Inductive.Inductive
 import           Inductive.Motive
+import           Inductive.Utils
 import           Term.Binder
 import           Term.Term
 import qualified Term.Raw as Raw
 import qualified Term.Universe as U
 import           Utils
-
-applyTerms :: [(α, TermX α Variable)] -> TermX α Variable -> TermX α Variable
-applyTerms = foldlWith (\ a (α, t) -> mkApp α a t)
-
-applyVariables :: [(α, Variable, b)] -> TermX α Variable -> TermX α Variable
-applyVariables l = applyTerms (map (\ (α, ν, _) -> (α, Var Nothing ν)) l)
-
-mkApp :: α -> TermX α ν -> TermX α ν -> TermX α ν
-mkApp α a t = App α a t
-
-quantifyVariables ::
-  [(α, Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
-quantifyVariables =
-  quantifyBinders . map (\ (α, v, τ) -> (α, Binder (Just v), τ))
-
-quantifyBinders ::
-  [(α, Binder Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
-quantifyBinders = foldrWith (\ (α, b, τ) a -> mkPi α (b, τ) a)
-
-mkPi ::
-  α -> (Binder Variable, TypeX α Variable) -> TypeX α Variable -> TermX α Variable
-mkPi α (b, τ1) τ2 = Pi α τ1 (abstractBinder b τ2)
 
 -- `acc` will contain the concrete indices, and will be well-sorted since
 -- we peel from the outermost application

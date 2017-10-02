@@ -137,7 +137,7 @@ indList :: Inductive Raw.Raw Variable
 indList = unsafeParseInductive
   [ "Inductive list (A : Type) : Type :="
   , "| nil : list A"
-  , "| cons : ∀ (x : A) (xs : List A), list A"
+  , "| cons : ∀ (x : A) (xs : list A), list A"
   ]
 
 indFin :: Inductive Raw.Raw Variable

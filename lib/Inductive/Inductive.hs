@@ -33,6 +33,7 @@ module Inductive.Inductive
 import           Control.Monad.Reader
 import           Data.Default
 
+import           Inductive.Utils
 import           Precedence
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
@@ -128,7 +129,7 @@ constructorType' shouldQuantifyIndParams n ips cps cis =
   )
   $ foldrWith onParam cps
   $ foldrWith onIndex cis
-  $ foldrWith onIndParamInside ips
+  $ applyVariables ips
   $ Var Nothing n
 
   where
@@ -139,9 +140,6 @@ constructorType' shouldQuantifyIndParams n ips cps cis =
     onParam :: Φcp α Variable -> TermX α Variable -> TermX α Variable
     onParam (α, v, p) t = Pi α p (abstractVariable v t)
 
-    onIndParamInside :: Φip α Variable -> TermX α Variable -> TermX α Variable
-    onIndParamInside (α, v, _) t = App α t (Var Nothing v)
-
     onIndParamOutside :: Φip α Variable -> TermX α Variable -> TermX α Variable
     onIndParamOutside (α, v, p) t = Pi α p (abstractVariable v t)
 
@@ -151,8 +149,8 @@ constructorRawType' ::
 constructorRawType' b n ips cps cis =
   constructorType' b n ips' cps' cis'
   where
-    ips'   = map ipRaw ips
-    cps'  = map cpRaw cps
+    ips' = map ipRaw ips
+    cps' = map cpRaw cps
     cis' = map ciRaw cis
 
 constructorRawType :: Bool -> Constructor Raw.Raw Variable -> Raw.Type Variable

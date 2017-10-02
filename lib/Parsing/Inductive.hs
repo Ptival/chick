@@ -50,7 +50,7 @@ inductiveP = do
     analyzeConstructor ips τ =
       let (pis,  τ1) = peelPis  ([], τ ) in
       let (apps,  _) = peelApps ([], τ1) in
-      let apps' = drop (length ips) apps in
+      let apps' = reverse (drop (length ips) (reverse apps)) in
       -- check τ2?
       (pis, apps')
 

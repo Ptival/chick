@@ -82,17 +82,20 @@ Library
                   Inductive.Utils
                   Notations
                   Parsing
-                    -- Parsing.Atomic
-                    -- Parsing.Tactic
+                  -- Parsing.Atomic
+                  Parsing.Inductive
+                  -- Parsing.Tactic
                   Parsing.Utils
-                    -- Playground
+                  Parsing.Vernacular
+                  -- Playground
                   Precedence
                   PrettyPrinting.Chick.Term
                   PrettyPrinting.Term
                   PrettyPrinting.PrettyPrintable
                   PrettyPrinting.PrettyPrintableAnnotated
                   PrettyPrinting.PrettyPrintableUnannotated
-                    -- PrettyPrinting.Tactic
+                  -- PrettyPrinting.Tactic
+                  PrettyPrinting.Universe
                   PrettyPrinting.Utils
                   Repair.Benchmark
                   Repair.Inductive
@@ -118,20 +121,20 @@ Library
                   Term.Universe
                   Term.Variable
                   TypeCheckingFailure
-                  Typing.Free
+                  -- Typing.Free
                   Typing.GlobalDeclaration
                   Typing.GlobalEnvironment
-                  Typing.Inductive
+                  -- Typing.Inductive
                   Typing.LocalContext
-                  Typing.LocalContextOps
+                  --Typing.LocalContextOps
                   Typing.LocalDeclaration
-                  Typing.TypeCheckOps
-                  Typing.TypeChecker
+                  -- Typing.TypeCheckOps
+                  -- Typing.TypeChecker
                   Typing.Utils
                   Utils
                   Vernacular
                   WellFormed
-                  Work
+                  -- Work
 
 Test-suite Test
   default-language: Haskell2010
