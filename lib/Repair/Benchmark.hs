@@ -38,8 +38,6 @@ import qualified Typing.LocalContext as LC
 import           Utils
 import           Vernacular
 
-import qualified Inductive.Inductive as I
-
 repairScriptBenchmarks :: [RepairScriptBenchmark]
 repairScriptBenchmarks =
   []
@@ -335,8 +333,8 @@ repairScriptBenchmark = do
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
-    -- runSkipTrace (repairScript s δs) >>= \case
-    runTrace (repairScript s δs) >>= \case
+    runSkipTrace (repairScript s δs) >>= \case
+    -- runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' -> case me of
         Nothing -> do
@@ -356,4 +354,5 @@ repairScriptBenchmark = do
             printScript s''
             putStrLn $ show s''
   where
-    printScript (Script s) = forM_ s $ putStrLn . prettyStr
+    printScript :: Script α Variable -> IO ()
+    printScript = putStrLn . prettyStrU

@@ -15,4 +15,4 @@ data Script α ν = Script [Vernacular α ν]
 deriving instance Eq (Script α Variable)
 
 instance PrettyPrintableUnannotated (Script α Variable) where
-  prettyDocU (Script s) = encloseSep lbracket rbracket comma <$> mapM prettyDocU s
+  prettyDocU (Script s) = vsep . punctuate line <$> mapM prettyDocU s

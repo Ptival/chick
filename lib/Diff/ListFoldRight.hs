@@ -12,13 +12,13 @@ import qualified Diff.List as DL
 import Diff.ListFold
 import Diff.Utils
 
-δListFoldRight :: ∀ τ δτ a. ΔListFold τ δτ a -> [τ] -> DL.Diff τ δτ -> a -> a
+δListFoldRight :: ∀ τ δτ δ. ΔListFold τ δτ δ -> [τ] -> DL.Diff τ δτ -> δ -> δ
 δListFoldRight
   (ΔListFold
    { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame })
   = go
   where
-    go :: [τ] -> DL.Diff τ δτ -> a -> a
+    go :: [τ] -> DL.Diff τ δτ -> δ -> δ
     go l δl = case (δl, l) of
       (DL.Insert  t δt,     l') -> onInsert  t   l' . go l' δt
       (DL.Keep      δt, e : l') -> onKeep      e l' . go l' δt

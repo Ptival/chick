@@ -53,10 +53,12 @@ findLocalDeclarationDiff v γ δγ =
         Nothing -> exc $ printf "Not found: %s" (show v)
         Just _  -> return DLD.Same
 
-    DL.Insert ld δ ->
-      if nameOf ld == Just v
-      then exc "TODO: this might be DLD.Change, but could be we want to skip..."
-      else findLocalDeclarationDiff v γ δ
+    DL.Insert _ δ ->
+      -- We're looking for the "old" v, not a new one
+      findLocalDeclarationDiff v γ δ
+      -- if nameOf ld == Just v
+      -- then exc "TODO: this might be DLD.Change, but could be we want to skip..."
+      -- else findLocalDeclarationDiff v γ δ
 
     DL.Modify DLD.Same δ -> findLocalDeclarationDiff v γ (DL.Keep δ)
 
