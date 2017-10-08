@@ -84,6 +84,7 @@ Library
                   Parsing
                   -- Parsing.Atomic
                   Parsing.Inductive
+                  Parsing.Inductive.Test
                   -- Parsing.Tactic
                   Parsing.Utils
                   Parsing.Vernacular
