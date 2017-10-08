@@ -287,7 +287,7 @@ repairListToVec = RepairScriptBenchmark
     , "λ A a l, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
     ]
   , [ "Definition map : ∀ (A : Type), A → list A → Type :="
-    , "λ A a l, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
+    , "λ A a, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
     ]
   ]
 
