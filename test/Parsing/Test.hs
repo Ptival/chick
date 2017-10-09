@@ -1,5 +1,6 @@
 module Parsing.Test
-  ( unitTests
+  ( main
+  , unitTests
   ) where
 
 import Data.Maybe
@@ -21,3 +22,15 @@ unitTests =
     ++ [ testCase "application" $ testParses "a b" @? "application" ]
     ++ [ testCase "parentheses" $ testParses "a (b (c d) e) (f g) (h)" @? "parentheses" ]
     ++ [ testCase "lambda"      $ testParses "λ f _ x , f x" @? "lambda" ]
+    ++ [ testCase "empty match" $ testParses "match foo with end" @? "empty match" ]
+    ++ [ testCase "match bool"
+       $ testParses "match b with | true => x | false => y end"
+       @? "match bool"
+       ]
+    ++ [ testCase "match list"
+       $ testParses "match l with | nil _ => O | cons _ h t => S _ end"
+       @? "match list"
+       ]
+
+main :: IO ()
+main = defaultMain unitTests

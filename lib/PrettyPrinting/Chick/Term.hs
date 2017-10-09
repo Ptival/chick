@@ -60,6 +60,26 @@ prettyTermDocPrec precs = goTerm
          ]
         , PrecLet)
 
+      Match _ d bs ->
+        (line <> (indent 2 . align . vsep $ matchDoc), PrecMatch)
+        where
+          matchDoc = []
+            ++ [ fillSep [ text "match", go (PrecMin, TolerateEqual) d, text "with" ] ]
+            ++ map goBranch bs
+            ++ [ text "end" ]
+          goBranch (ctor, nbArgs, bbody) =
+            let (namer, body) = unscopeNames bbody in
+            fillSep $
+            [ text "|"
+            , prettyDoc ctor
+            , fillSep $ map (maybeVarDoc . namer) [0..nbArgs-1]
+            , text "=>"
+            , go (PrecMin, TolerateEqual) body
+            ]
+          maybeVarDoc = \case
+            Nothing -> text "_"
+            Just v  -> prettyDoc v
+
       Pi _ τ1 bτ2 ->
         let (b, τ2) = unscopeTerm bτ2 in
         case unBinder b of
@@ -71,14 +91,16 @@ prettyTermDocPrec precs = goTerm
               ]
             , PrecArrow)
           Just _ ->
-            (fillSep
+            (hcat
               [ text "∀"
+              , space
               , parens $ fillSep
                 [ prettyDoc b
                 , char ':'
                 , go (PrecMin, TolerateEqual) τ1
                 ]
               , comma
+              , softline
               , go (PrecArrow, TolerateEqual) τ2
               ]
             , PrecArrow)
@@ -92,9 +114,12 @@ prettyTermDocPrec precs = goTerm
       Lam _ bt ->
         let n = getName bt in
         goLams (prettyDoc n : l) (instantiate1Name (Var Nothing n) bt)
-      t -> fillSep
-          [ text lamSymbol
-          , fillSep . reverse $ l
-          , text postLamSymbol
-          , go (PrecMin, TolerateEqual) t
-          ]
+      t ->
+        hcat
+        [ text lamSymbol
+        , space
+        , fillSep . reverse $ l
+        , text postLamSymbol
+        , softline
+        , go (PrecMin, TolerateEqual) t
+        ]

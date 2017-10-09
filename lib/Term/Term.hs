@@ -10,6 +10,7 @@
 {-# language KindSignatures #-}
 {-# language LambdaCase #-}
 -- {-# language MultiParamTypeClasses #-}
+{-# language OverloadedStrings #-}
 {-# language RankNTypes #-}
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
@@ -47,6 +48,7 @@ module Term.Term
 --  , rVar
   , simultaneousSubstitute
   , substitute
+  , unscopeNames
   , unscopeTerm
   , wildcardSymbol
   ) where
@@ -54,9 +56,11 @@ module Term.Term
 import Bound ((>>>=))
 import Bound.Name
 import Bound.Scope
+import Control.Lens
 import Control.Monad
-import Data.Bifunctor
+-- import Data.Bifunctor
 import Data.Functor.Classes
+import Data.List
 import Data.String
 import Data.Typeable
 --import GHC.Exts                  (Constraint)
@@ -98,7 +102,17 @@ postForallSymbol = ","
 postLamSymbol = ","
 wildcardSymbol = "_"
 
-type NameScope = Scope (Name Variable ())
+type NameScope  = Scope (Name Variable ())
+type NamesScope = Scope (Name Variable Int)
+
+data Pattern ν = Pattern [ν]
+  deriving
+    ( Foldable
+    , Functor
+    , Generic
+    , Traversable
+    , Typeable
+    )
 
 data TermX α ν
   = Annot α (TermX α ν) (TypeX α ν)
@@ -106,6 +120,7 @@ data TermX α ν
   | Hole  α
   | Lam   α             (NameScope (TermX α) ν)
   | Let   α (TermX α ν) (NameScope (TermX α) ν)
+  | Match α (TermX α ν) [(Variable, Int, NamesScope (TermX α) ν)]
   | Pi    α (TypeX α ν) (NameScope (TypeX α) ν)
   | Type  Universe
   -- it's really annoying not to have annotations on Var when type-checking
@@ -126,17 +141,19 @@ type TypeX = TermX
 
 instance Bifunctor TermX where
   bimap l r =
-    let go = bimap l r in
-    let bimapScope s = hoistScope (bimap l id) (r <$> s) in
     \case
       Annot a t  τ   -> Annot (l a) (go t)  (go τ)
       App   a t1 t2  -> App   (l a) (go t1) (go t2)
       Hole  a        -> Hole  (l a)
       Lam   a bt     -> Lam   (l a)         (bimapScope bt)
       Let   a t1 bt2 -> Let   (l a) (go t1) (bimapScope bt2)
+      Match a d bs   -> Match (l a) (go d)  (map (bimap id bimapScope) bs)
       Pi    a τ1 bτ2 -> Pi    (l a) (go τ1) (bimapScope bτ2)
       Type  u        -> Type  u
       Var   a v      -> Var   (l <$> a) (r v)
+    where
+      go = bimap l r
+      bimapScope s = hoistScope (bimap l id) (r <$> s)
 
 instance Eq1 (TermX α) where
   liftEq eqVar term1 term2 =
@@ -177,6 +194,7 @@ instance Monad (TermX α) where
   Hole  a        >>= _ = Hole  a
   Lam   a bt     >>= f = Lam   a             (bt  >>>= f)
   Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (bt2 >>>= f)
+  Match a d  bs  >>= f = Match a (d >>= f)   (map (bimap id (>>>= f)) bs)
   Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (bτ2 >>>= f)
   Type  u        >>= _ = Type  u
   Var   _ v      >>= f = f v
@@ -258,6 +276,7 @@ annotationOf = \case
   Hole  a     -> Just a
   Lam   a _   -> Just a
   Let   a _ _ -> Just a
+  Match a _ _ -> Just a
   Pi    a _ _ -> Just a
   Type  _     -> Nothing -- removed annotation because it makes TypeChecked infinite
   Var   a _   -> a -- maybe-d annotation to make TermX applicative
@@ -289,6 +308,18 @@ abstractBinder b =
 abstractVariable :: (Monad f) => Eq ν => ν -> f ν -> Scope (Name ν ()) f ν
 abstractVariable = abstract1Name
 
+unscopeNames ::
+  Scope (Name Variable Int) (TermX ξ) Variable ->
+  (Int -> Maybe Variable, TermX ξ Variable)
+unscopeNames s =
+  let bs = bindings s in
+  let f ndx = name <$> find ((==) ndx . snd . view _Name) bs in
+  let g ndx = case f ndx of
+        Nothing -> error "This should not happen!"
+        Just v  -> Var Nothing v
+  in
+  (f, instantiateName g s)
+
 unscopeTerm :: Scope (Name Variable ()) (TermX ξ) Variable -> (Binder Variable, TermX ξ Variable)
 unscopeTerm t =
   let n = getName t in
@@ -298,6 +329,7 @@ unscopeTerm t =
 instance IsString (TermX α Variable) where
   fromString s = Var Nothing (fromString s)
 
+deriving instance (Show ν) => Show (Pattern ν)
 deriving instance (Show α, Show ν) => Show (TermX α ν)
 
 instance (Show α) => Show1 (TermX α) where
@@ -309,6 +341,7 @@ instance (Show α) => Show1 (TermX α) where
         Hole  a        -> showString "Hole ("  . shows a . showString ")"
         Lam   a bt     -> showString "Lam ("   . shows a . showString ") (" . liftShowsPrec sP sL p bt . showString ")"
         Let   a t1 bt2 -> showString "Let ("   . shows a . showString ") (" . liftShowsPrec sP sL p t1 . showString ") (" . liftShowsPrec sP sL p bt2 . showString ")"
+        Match a d  _bs -> showString "Match (" . shows a . showString ") (" . go d . showString ") (FIXME)"
         Pi    a τ1 bτ2 -> showString "Pi ("    . shows a . showString ") (" . liftShowsPrec sP sL p τ1 . showString ") (" . liftShowsPrec sP sL p bτ2 . showString ")"
         Type  u        -> showString (show u)
         Var   a v      -> showString "Var (" . shows a . showString ") (" . sP p v . showString ")"

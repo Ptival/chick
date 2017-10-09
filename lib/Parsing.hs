@@ -10,8 +10,10 @@ module Parsing
   , variableP
   ) where
 
+import           Bound.Name
 import           Control.Applicative
 import           Control.Monad.Fix
+import           Data.List
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
@@ -40,8 +42,9 @@ binOpN = BinaryOpParser NonAssociative
 parser :: [[ModularParser (Raw.Term Variable)]]
 parser =
   -- low precedence
-  [ [ TopSelfNextParser letP
-    , TopSelfNextParser lamP
+  [ [ TopSelfNextParser lamP
+    , TopSelfNextParser letP
+    , TopSelfNextParser matchP
     ]
   , [ binOpN annotSymbol (Annot ())]
   , [ TopSelfNextParser namedPiP
@@ -147,6 +150,24 @@ letP topP selfP _nextP = do
   t2 <- selfP
   return $ Let () b t1 t2
 -}
+
+matchP :: Parser3 (Raw.Term Variable)
+matchP topP _selfP _nextP = do
+  try $ rword "match"
+  discriminee <- topP
+  rword "with"
+  branches <- many $ do
+    symbol "|"
+    ctor <- variableP
+    args <- many binderP
+    -- TODO: check for unicity of bound names
+    symbol "=>"
+    body <- topP
+    return (ctor, length args, abstractName (indexIn args) body)
+  rword "end"
+  return $ Match () discriminee branches
+  where
+    indexIn l v = Binder (Just v) `elemIndex` l
 
 namedPiP :: Parser3 (Raw.Term Variable)
 namedPiP topP selfP _nextP = do

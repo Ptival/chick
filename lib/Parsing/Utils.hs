@@ -35,9 +35,12 @@ rword w = string w *> notFollowedBy alphaNumChar *> sc
 reservedWords :: [String] -- list of reserved words
 reservedWords =
   [ "λ"
+  , "end"
   , "in"
   , "Inductive"
   , "let"
+  , "match"
+  , "with"
   ]
 
 identifier :: Parser String

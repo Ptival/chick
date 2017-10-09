@@ -32,19 +32,24 @@ instance PrettyPrintableUnannotated (Vernacular α Variable) where
       let nDoc = prettyDoc n
       τDoc <- prettyDocU τ
       tDoc <- prettyDocU t
-      return $ fillSep
+      return $ hcat
         [ text "Definition"
+        , space
         , nDoc
+        , softline
         , text ":"
+        , space
         , τDoc
+        , softline
         , text ":="
+        , softline
         , tDoc
         , text "."
         ]
 
     Inductive ind -> do
       indDoc <- prettyDocU ind
-      return $ fillSep
+      return $ hcat
         [ indDoc
         , text "."
         ]

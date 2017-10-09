@@ -25,6 +25,7 @@ data Precedence
   | PrecArrow
   | PrecLam
   | PrecLet
+  | PrecMatch
 
   deriving (Eq, Generic, Serial m, Show)
 
@@ -35,14 +36,14 @@ instance Default PrecedenceTable where
 
  def = PrecedenceTable
    -- low precedence
-   [ [PrecMin]              -- 200 in Coq
+   [ [PrecMin]                     -- 200 in Coq
 
-   , [PrecLam, PrecLet]     -- 200 in Coq
+   , [PrecLam, PrecLet, PrecMatch] -- 200 in Coq
    , [PrecAnnot]
-   , [PrecArrow]            --  99 in Coq (as a Reserved Notation)
-   , [PrecApp]              --  10 in Coq
+   , [PrecArrow]                   --  99 in Coq (as a Reserved Notation)
+   , [PrecApp]                     --  10 in Coq
 
-   , [PrecMax, PrecAtom]    --   0 in Coq
+   , [PrecMax, PrecAtom]           --   0 in Coq
    ]
    -- high precedence
 
