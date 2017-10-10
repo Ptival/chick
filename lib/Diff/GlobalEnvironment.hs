@@ -5,6 +5,7 @@
 module Diff.GlobalEnvironment
   ( Diff
   , findGlobalDeclarationDiff
+  , findGlobalIndDiff
   , patch
   ) where
 
@@ -16,6 +17,7 @@ import           Text.Printf
 import qualified Diff.List as DL
 import qualified Diff.GlobalDeclaration as DGD
 import           Diff.Utils
+import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
 import qualified Term.Raw as Raw
 import           Term.Variable
@@ -36,15 +38,18 @@ patch (GlobalEnvironment e) δe = do
   return $ GlobalEnvironment e'
 
 -- annotation has to be Raw because of inductives
+-- TODO: need to decide whether this find inductives or not, so far no?
 findGlobalDeclarationDiff ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
   Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Eff r (DGD.Diff Raw.Raw)
-findGlobalDeclarationDiff v e δe =
-  -- trace (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff:\nSearching %s in %s" (prettyStr v) (prettyStrU e)) >>
-  -- trace (printf "δe: %s" (prettyStr δe)) >>
-  let exc (reason :: String) = throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason in
+findGlobalDeclarationDiff v e δe = do
+  -- trace (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff:\nSearching %s in %s" (prettyStr v) (prettyStrU e))
+  -- trace (printf "δe: %s" (prettyStr δe))
+  let exc (reason :: String) =
+        throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason
+
   case δe of
 
     DL.Same ->
@@ -59,25 +64,24 @@ findGlobalDeclarationDiff v e δe =
 
     DL.Modify DGD.Same δ -> findGlobalDeclarationDiff v e (DL.Keep δ)
 
-    DL.Modify dgd@(DGD.ModifyGlobalAssum _δv _δτ) δ ->
+    DL.Modify dgd δ ->
       case unGlobalEnvironment e of
         []    -> exc "DL.Modify but empty environment"
         h : e' -> do
-          -- v' <- DA.patch (nameOf h) δv
-          if nameOf h == v --v' == v
-          then return dgd
-          else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
+          case dgd of
 
-    DL.Modify dgd@(DGD.ModifyGlobalDef _δv _δτ _) δ ->
-      case unGlobalEnvironment e of
-        []    -> exc "DL.Modify but empty environment"
-        h : e' -> do
-          -- v' <- DA.patch (nameOf h) δv
-          if nameOf h == v --v' == v
-          then return dgd
-          else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
+            DGD.ModifyGlobalAssum _δv _δτ ->
+              if nameOf h == v --v' == v
+              then return dgd
+              else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
-    DL.Modify (DGD.ModifyGlobalInd _δind) _δ -> exc "TODO: patch GlobalInd"
+            DGD.ModifyGlobalDef _δv _δτ _ ->
+              if nameOf h == v --v' == v
+              then return dgd
+              else findGlobalDeclarationDiff v (GlobalEnvironment e') δ
+
+            DGD.ModifyGlobalInd _δind ->
+              findGlobalDeclarationDiff v (GlobalEnvironment e') δ
 
     DL.Permute _ _ -> exc "TODO: Permute"
 
@@ -92,3 +96,18 @@ findGlobalDeclarationDiff v e δe =
     DL.Remove _ -> exc "TODO: Remove"
 
     DL.Replace _ -> exc "TODO: Replace"
+
+-- Assumption: the ind existed before, and we're just trying to find how it was
+-- modified
+findGlobalIndDiff ind e δe = do
+  let exc (reason :: String) =
+        throwExc $ printf "Diff.GlobalEnvironment/findGlobalIndDiff: %s" reason
+  case (δe, unGlobalEnvironment e) of
+    (DL.Insert _ δ, _) -> findGlobalIndDiff ind e δ
+    (DL.Modify (DGD.ModifyGlobalInd δind) δ, GlobalInd ind' : e') ->
+      if inductiveName ind' == inductiveName ind
+      then return δind
+      else findGlobalIndDiff ind (GlobalEnvironment e') δ
+    (DL.Modify _ δ, _ : e') ->
+      findGlobalIndDiff ind (GlobalEnvironment e') δ
+    _ -> exc $ printf "Diff.GlobalEnvironment/findGlobalIndDiff: %s" (prettyStr δe)

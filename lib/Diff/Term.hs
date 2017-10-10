@@ -4,7 +4,8 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Diff.Term
-  ( Diff(..)
+  ( BranchDiff
+  , Diff(..)
   , extractApps
   , extractLams
   , extractPi

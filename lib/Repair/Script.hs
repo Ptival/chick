@@ -121,7 +121,7 @@ withStateFromVernacular v δv e =
     sanityCheck
     e
 
-  ( Inductive ind@(I.Inductive indName ips iis _u cs)
+  (   Inductive ind@(I.Inductive indName ips iis _u cs)
     , DV.ModifyInductive δind@(DI.Modify δindName δips δiis _δu δcs)) -> do
     let τind = I.inductiveRawType ind
     let δτind = DI.δinductiveRawType (length ips) δips (length iis) δiis
@@ -131,19 +131,24 @@ withStateFromVernacular v δv e =
       Just e -> return e
     trace (printf "PREFIX: %s" (show prefix))
     withState
-      (over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
-       over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
-      )
-      $ withState
-      (over  environment
-       (GE.addGlobalAssum (Binder (Just (mkEliminatorName indName)),
-                           mkEliminatorRawType ind
-                           )) >>>
-       over δenvironment
-       (DL.Modify (DGD.ModifyGlobalAssum (δeliminatorName δind) δeliminatorType))
+      (
+        over  environment (GE.addGlobalInd ind) >>>
+        over δenvironment (DL.Modify (DGD.ModifyGlobalInd δind)) >>>
+        over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
+        over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
       ) $ do
-      sanityCheck
-      withStateFromConstructors prefix ips δips cs δcs e
+      -- DO NOT MERGE WITH PREVIOUS withState
+      withState
+        (over  environment (GE.addGlobalAssum ( Binder (Just (mkEliminatorName indName))
+                                              , mkEliminatorRawType ind
+                                              )
+                           ) >>>
+        over δenvironment (DL.Modify ( DGD.ModifyGlobalAssum (δeliminatorName δind)
+                                       δeliminatorType)
+                          )
+        ) $ do
+        sanityCheck
+        withStateFromConstructors prefix ips δips cs δcs e
 
   (Inductive ind, DV.ModifyInductive DI.Same) -> unchangedInductive ind
   (Inductive ind, DV.Same)                    -> unchangedInductive ind

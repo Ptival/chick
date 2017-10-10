@@ -43,11 +43,13 @@ instance PrettyPrintableUnannotated (TermX ξ Variable) =>
 
 addGlobalAssum :: (Binder ν, TypeX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalAssum (Binder Nothing,  _) γ = γ
-addGlobalAssum (Binder (Just v), τ) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalAssum v τ) : γ)
+addGlobalAssum (Binder (Just v), τ) (GlobalEnvironment γ) =
+  GlobalEnvironment ((GlobalAssum v τ) : γ)
 
 addGlobalDef :: (Binder ν, TypeX ξ ν, TermX ξ ν) -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalDef (Binder Nothing,  _, _) γ = γ
-addGlobalDef (Binder (Just v), τ, t) (GlobalEnvironment γ) = GlobalEnvironment ((GlobalDef v τ t) : γ)
+addGlobalDef (Binder (Just v), τ, t) (GlobalEnvironment γ) =
+  GlobalEnvironment ((GlobalDef v τ t) : γ)
 
 addGlobalInd :: I.Inductive ξ ν -> GlobalEnvironment ξ ν -> GlobalEnvironment ξ ν
 addGlobalInd i (GlobalEnvironment γ) = GlobalEnvironment (GlobalInd i : γ)
@@ -91,6 +93,27 @@ lookupDecl target = find found . unGlobalEnvironment
       GlobalDef   v _ _ | v                 == target -> True
       GlobalInd   i     | I.inductiveName i == target -> True
       _ -> False
+
+lookupInductiveByName ::
+  Eq ν => ν -> GlobalEnvironment α ν -> Maybe (I.Inductive α ν)
+lookupInductiveByName target =
+  find found . concatMap selectInductives . unGlobalEnvironment
+  where
+    selectInductives = \case
+      GlobalInd i -> [i]
+      _ -> []
+    found i = I.inductiveName i == target
+
+lookupInductiveByConstructor ::
+  Eq ν => ν -> GlobalEnvironment α ν -> Maybe (I.Inductive α ν)
+lookupInductiveByConstructor target =
+  find foundInductive . concatMap selectInductives . unGlobalEnvironment
+  where
+    selectInductives = \case
+      GlobalInd i -> [i]
+      _ -> []
+    foundInductive   i = any foundConstructor (I.inductiveConstructors i)
+    foundConstructor c = I.constructorName c == target
 
 lookupRawType ::
   Variable -> GlobalEnvironment Raw.Raw Variable ->

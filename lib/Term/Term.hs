@@ -109,7 +109,12 @@ wildcardSymbol = "_"
 type NameScope  = Scope (Name Variable ())
 type NamesScope = Scope (Name Variable Int)
 
-data Branch α ν = Branch Variable Int (NamesScope (TermX α) ν)
+data Branch α ν =
+  Branch
+  { branchConstructor :: Variable
+  , branchNbArguments :: Int
+  , branchBody        :: NamesScope (TermX α) ν
+  }
   deriving
     ( Foldable
     , Functor

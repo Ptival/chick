@@ -29,7 +29,7 @@ data GlobalDeclaration α ν
     , globalDefType :: TypeX α ν
     , globalDefDefn :: TermX α ν
     }
-  | GlobalInd   (Inductive α ν)
+  | GlobalInd (Inductive α ν)
 
 deriving instance Eq (GlobalDeclaration α Variable)
 deriving instance (Show α, Show ν) => Show (GlobalDeclaration α ν)
@@ -65,4 +65,4 @@ instance
 nameOf :: GlobalDeclaration α ν -> ν
 nameOf (GlobalAssum v _) = v
 nameOf (GlobalDef v _ _) = v
-nameOf (GlobalInd   ind) = inductiveName ind
+nameOf (GlobalInd ind)   = inductiveName ind

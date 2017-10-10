@@ -5,6 +5,7 @@
 module Repair.Utils
   ( lookupType
   , findDeclarationDiff
+  , findGlobalDeclarationDiff
   , unpackDeclarationDiff
   ) where
 
@@ -15,14 +16,14 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
-import qualified Diff.Atom as DA
-import qualified Diff.Binder as DB
-import qualified Diff.GlobalDeclaration as DGD
-import qualified Diff.GlobalEnvironment as DGE
-import qualified Diff.LocalContext as DLC
-import qualified Diff.LocalDeclaration as DLD
-import qualified Diff.Term as DT
--- import qualified Diff.Term as DT
+import qualified Diff.Atom as ΔA
+import qualified Diff.Binder as ΔB
+import qualified Diff.GlobalDeclaration as ΔGD
+import qualified Diff.GlobalEnvironment as ΔGE
+import qualified Diff.LocalContext as ΔLC
+import qualified Diff.LocalDeclaration as ΔLD
+import qualified Diff.Term as ΔT
+-- import qualified Diff.Term as ΔT
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           Repair.State
@@ -43,20 +44,30 @@ lookupType target = do
     Nothing -> exc $ printf "Could not find %s in either local context or global environment" (prettyStr target)
     Just τ  -> return τ
 
+findGlobalDeclarationDiff ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
+  ) =>
+  Variable -> Eff r (ΔGD.Diff Raw.Raw)
+findGlobalDeclarationDiff v = do
+  RepairState _ _ e δe <- get
+  ΔGE.findGlobalDeclarationDiff v e δe
+
 findDeclarationDiff ::
   ( Member (Exc String) r
   , Member Trace r
   , Member (State RepairState) r
   ) =>
-  Variable -> Eff r (Either (DLD.Diff Raw.Raw) (DGD.Diff Raw.Raw))
+  Variable -> Eff r (Either (ΔLD.Diff Raw.Raw) (ΔGD.Diff Raw.Raw))
 findDeclarationDiff v = do
   let exc (reason :: String) = throwExc $ printf "Repair.Utils/findDeclarationDiff: %s" reason
   RepairState γ δγ e δe <- get
   result <-
-    (Left <$> DLC.findLocalDeclarationDiff  v γ δγ)
+    (Left <$> ΔLC.findLocalDeclarationDiff  v γ δγ)
     `catchError`
     (\ (localError :: String) ->
-        (Right <$> DGE.findGlobalDeclarationDiff v e δe)
+        (Right <$> ΔGE.findGlobalDeclarationDiff v e δe)
         `catchError`
         (\ (globalError :: String) -> exc $ printf
           "Could not find %s in either local context or global environment:\n  > %s\n  > %s"
@@ -66,18 +77,18 @@ findDeclarationDiff v = do
   return result
 
 unpackDeclarationDiff ::
-  Either (DLD.Diff Raw.Raw) (DGD.Diff Raw.Raw) ->
-  (DA.Diff Variable, DT.Diff Raw.Raw)
+  Either (ΔLD.Diff Raw.Raw) (ΔGD.Diff Raw.Raw) ->
+  (ΔA.Diff Variable, ΔT.Diff Raw.Raw)
 unpackDeclarationDiff = \case
   Left dld ->
     case dld of
-      DLD.Same -> (DA.Same, DT.Same)
-      DLD.ModifyLocalAssum δb δτv ->
-        let δv = DB.toΔVariable δb in
+      ΔLD.Same -> (ΔA.Same, ΔT.Same)
+      ΔLD.ModifyLocalAssum δb δτv ->
+        let δv = ΔB.toΔVariable δb in
         (δv, δτv)
-      DLD.ModifyLocalDef δv δτv -> (δv, δτv)
+      ΔLD.ModifyLocalDef δv δτv -> (δv, δτv)
   Right dgd ->case dgd of
-    DGD.Same                       -> (DA.Same, DT.Same)
-    DGD.ModifyGlobalAssum δv δτv   -> (δv, δτv)
-    DGD.ModifyGlobalDef   δv δτv _ -> (δv, δτv)
-    DGD.ModifyGlobalInd   _        -> error "TODO if this happens 2"
+    ΔGD.Same                       -> (ΔA.Same, ΔT.Same)
+    ΔGD.ModifyGlobalAssum δv δτv   -> (δv, δτv)
+    ΔGD.ModifyGlobalDef   δv δτv _ -> (δv, δτv)
+    ΔGD.ModifyGlobalInd   _        -> error "TODO if this happens 2"

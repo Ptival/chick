@@ -10,19 +10,26 @@ module Repair.Term where
 
 import           Control.Arrow
 import           Control.Lens hiding (preview)
+import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
+import           Data.Maybe
+import           Data.List
 import           Text.Printf
 
 import qualified Diff.Atom as ΔA
--- import qualified Diff.GlobalDeclaration as ΔGD
+import qualified Diff.GlobalDeclaration as ΔGD
+import qualified Diff.GlobalEnvironment as ΔGE
+import qualified Diff.Inductive as ΔI
 -- import qualified Diff.LocalContext as ΔLC
 import qualified Diff.LocalDeclaration as ΔLD
 import qualified Diff.List as ΔL
 import qualified Diff.Term as ΔT
+import qualified Diff.Triple as Δ3
 import           Diff.Utils
+import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.State as RS
@@ -32,6 +39,7 @@ import           Term.Term
 -- import qualified Term.TypeChecked as C
 import qualified Term.Raw as Raw
 import qualified Term.Universe as U
+import qualified Typing.GlobalEnvironment as GE
 import qualified Typing.LocalContext as LC
 import           Typing.LocalDeclaration
 import           Utils
@@ -135,6 +143,58 @@ repairArgs args τ0 δτ0 δfun =
       ΔT.Replace τ' -> ΔT.Replace (Annot () (Hole ()) τ')
       _             -> ΔT.Replace (Hole ())
 
+-- permutations l r returns a pair (plr, prl) s.t.
+-- permute plr l = r
+-- permute prl r = l
+-- Input:    l = [0, 1, 2, 3, 4]   r = [4, 2, 3, 0, 1]
+-- Output: plr = [4, 2, 3, 0, 1] prl = [3, 4, 1, 2, 0]
+computePermutations :: Eq a => [a] -> [a] -> ([Int], [Int])
+computePermutations l r = go l r
+  where
+    go []        []        = ([], [])
+    go (hl : tl) (hr : tr) = (lindex hr : tl', rindex hl : tr')
+      where (tl', tr') = go tl tr
+    go _ _ = error "computePermutations expect two lists of same length"
+    lindex i = fromJust $ elemIndex i l
+    rindex i = fromJust $ elemIndex i r
+
+-- repairBranches ::
+--   ( Member (Exc String) r
+--   , Member Trace r
+--   , Member (State RS.RepairState) r
+--   ) =>
+--   _ -> _ -> _ -> Eff r _
+repairBranches bs ind δind = do
+  -- the original branches are in some permutation of the original list of constructors,
+  -- let's build a permutation from and back to that order
+  let (pMatchToInd, pIndToMatch) =
+        computePermutations
+        (map branchConstructor bs)
+        (map constructorName (inductiveConstructors ind))
+  error "FIXME"
+
+guessIndMatched ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RS.RepairState) r
+  ) =>
+  Raw.Term Variable -> [Branch Raw.Raw Variable] -> Eff r (Inductive Raw.Raw Variable)
+guessIndMatched discriminee _branches = do
+  let exc (s :: String) = throwExc $ printf "Repair.Term/guessIndMatched: %s" s
+  trace "*** Trying to guess matched type using discriminee"
+  case discriminee of
+    Var _ v -> do
+      τv <- lookupType v
+      (fun, _) <- ΔT.extractApps τv
+      case fun of
+        Var _ indName -> do
+          RS.RepairState _ _ e _ <- get
+          case GE.lookupInductiveByName indName e of
+            Just ind -> return ind
+            Nothing -> exc "TODO 2"
+        _ -> exc "TODO 3"
+    _ -> exc "TODO 4"
+
 -- | `unknownTypeRepair t` attempts to repair `t` without any information
 unknownTypeRepair ::
   ( Member (Exc String) r
@@ -191,9 +251,17 @@ unknownTypeRepair t = do
 
     Match _ d bs -> do
       δd <- unknownTypeRepair d
-      return $ ΔT.CpyMatch δd ΔL.Same
+      -- eventually, it'd be nice to have the type at which the match is done already
+      -- figured out
+      ind  <- guessIndMatched d bs
+      -- trace $ printf "*** INDUCTIVE MATCHED: %s" (prettyStr ind)
+      RS.RepairState _ _ e δe <- get
+      δind <- ΔGE.findGlobalIndDiff ind e δe
+      -- trace $ printf "*** δINDUCTIVE MATCHED: %s" (prettyStr δind)
+      δbs <- repairBranches bs ind δind
+      return $ ΔT.CpyMatch δd δbs
 
-    _ -> exc "YO THIS HAPPENS"
+    _ -> exc $ printf "YO THIS HAPPENS: %s" (prettyStr t)
 
 -- | `genericRepair t τ` attempts to repair `t` without more information about
 -- | how its type `τ` changed
