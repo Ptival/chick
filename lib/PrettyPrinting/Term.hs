@@ -13,11 +13,20 @@ import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Utils
 import Term.Term
 
-instance PrettyPrintableUnannotated (TermX ξ Variable) where
+instance PrettyPrintableUnannotated (Branch α Variable) where
+  prettyDocU b = do
+    precs <- ask
+    return $ PPChick.prettyBranchDocPrec precs b
+
+instance PrettyPrintableUnannotated (TermX α Variable) where
   prettyDocU t = do
     precs <- ask
     return $ par precs (PrecMin, TolerateEqual) . PPChick.prettyTermDocPrec precs $ t
 
-instance PrettyPrintable (TermX ξ Variable) where
+instance PrettyPrintable (Branch α Variable) where
+  prettyDoc t = runReader (prettyDocU t) def
+  prettyStr = prettyStrU
+
+instance PrettyPrintable (TermX α Variable) where
   prettyDoc t = runReader (prettyDocU t) def
   prettyStr = prettyStrU

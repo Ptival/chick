@@ -277,8 +277,14 @@ repairListToVec = RepairScriptBenchmark
   , [ "Definition length : ∀ (T : Type), list T → nat :="
     , "λ T l , list_rect T (λ _ , nat) O (λ _ _ lt , S lt) l"
     ]
-  , [ "Definition lengthh : ∀ (T : Type), list T → nat :="
+  , [ "Definition length2 : ∀ (T : Type), list T → nat :="
     , "λ T l , match l with"
+    , "        | nil  _     => O"
+    , "        | cons _ h t => S (lengthh T t)"
+    , "        end"
+    ]
+  , [ "Definition length3 : ∀ (T : Type), list T → nat :="
+    , "λ T l , match nil T with"
     , "        | nil  _     => O"
     , "        | cons _ h t => S (lengthh T t)"
     , "        end"
@@ -286,15 +292,15 @@ repairListToVec = RepairScriptBenchmark
   , [ "Definition hd : ∀ (A : Type), A → list A → A :="
     , "λ A default l, list_rect A (λ _, A) default (λ x _ _, x) l"
     ]
-  , [ "Definition tl : ∀ (A : Type), list A → list A :="
-    , "λ A l, list_rect A (λ _, list A) (nil A) (λ _ x _, x) l"
-    ]
-  , [ "Definition In : ∀ (A : Type), A → list A → Type :="
-    , "λ A a l, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
-    ]
-  , [ "Definition map : ∀ (A : Type), A → list A → Type :="
-    , "λ A a, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
-    ]
+  -- , [ "Definition tl : ∀ (A : Type), list A → list A :="
+  --   , "λ A l, list_rect A (λ _, list A) (nil A) (λ _ x _, x) l"
+  --   ]
+  -- , [ "Definition In : ∀ (A : Type), A → list A → Type :="
+  --   , "λ A a l, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
+  --   ]
+  -- , [ "Definition map : ∀ (A : Type), A → list A → Type :="
+  --   , "λ A a, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
+  --   ]
   ]
 
   , repairScriptDiff =
@@ -339,8 +345,8 @@ repairScriptBenchmark = do
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
-    runSkipTrace (repairScript s δs) >>= \case
-    -- runTrace (repairScript s δs) >>= \case
+    --runSkipTrace (repairScript s δs) >>= \case
+    runTrace (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' -> case me of
         Nothing -> do

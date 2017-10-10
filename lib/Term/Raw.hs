@@ -20,7 +20,7 @@ raw = \case
   Hole  _        -> Hole  ()
   Lam   _ bt     -> Lam   () (hoistScope raw bt)
   Let   _ t1 bt2 -> Let   () (raw t1) (hoistScope raw bt2)
-  Match _ d  bs  -> Match () (raw d)  (map (bimap id (hoistScope raw)) bs)
+  Match _ d  bs  -> Match () (raw d)  (map (bimap (const ()) id) bs)
   Pi    _ τ1 bτ2 -> Pi    () (raw τ1) (hoistScope raw bτ2)
   Type  u        -> Type  u
   Var   _ v      -> Var   Nothing v

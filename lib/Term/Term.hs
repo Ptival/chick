@@ -22,6 +22,7 @@
 module Term.Term
   ( module Term.Binder
   , module Term.Variable
+  , Branch(..)
   , NameScope
   , TermX(..)
   , TypeX
@@ -36,6 +37,7 @@ module Term.Term
   , getName
   , holeSymbol
   , lamSymbol
+  , packBranch
   , postForallSymbol
   , postLamSymbol
 --  , rAnnot
@@ -48,6 +50,7 @@ module Term.Term
 --  , rVar
   , simultaneousSubstitute
   , substitute
+  , unpackBranch
   , unscopeNames
   , unscopeTerm
   , wildcardSymbol
@@ -61,6 +64,7 @@ import Control.Monad
 -- import Data.Bifunctor
 import Data.Functor.Classes
 import Data.List
+import Data.Maybe
 import Data.String
 import Data.Typeable
 --import GHC.Exts                  (Constraint)
@@ -105,7 +109,7 @@ wildcardSymbol = "_"
 type NameScope  = Scope (Name Variable ())
 type NamesScope = Scope (Name Variable Int)
 
-data Pattern ν = Pattern [ν]
+data Branch α ν = Branch Variable Int (NamesScope (TermX α) ν)
   deriving
     ( Foldable
     , Functor
@@ -120,7 +124,7 @@ data TermX α ν
   | Hole  α
   | Lam   α             (NameScope (TermX α) ν)
   | Let   α (TermX α ν) (NameScope (TermX α) ν)
-  | Match α (TermX α ν) [(Variable, Int, NamesScope (TermX α) ν)]
+  | Match α (TermX α ν) [Branch α ν]
   | Pi    α (TypeX α ν) (NameScope (TypeX α) ν)
   | Type  Universe
   -- it's really annoying not to have annotations on Var when type-checking
@@ -139,6 +143,11 @@ type TypeX = TermX
 
 -- $(makeBoomerangs ''TermX)
 
+instance Bifunctor Branch where
+  bimap l r (Branch a b c) = Branch a b (bimapScope c)
+    where
+      bimapScope s = hoistScope (bimap l id) (r <$> s)
+
 instance Bifunctor TermX where
   bimap l r =
     \case
@@ -147,7 +156,7 @@ instance Bifunctor TermX where
       Hole  a        -> Hole  (l a)
       Lam   a bt     -> Lam   (l a)         (bimapScope bt)
       Let   a t1 bt2 -> Let   (l a) (go t1) (bimapScope bt2)
-      Match a d bs   -> Match (l a) (go d)  (map (bimap id bimapScope) bs)
+      Match a d bs   -> Match (l a) (go d)  (bimap l r <$> bs)
       Pi    a τ1 bτ2 -> Pi    (l a) (go τ1) (bimapScope bτ2)
       Type  u        -> Type  u
       Var   a v      -> Var   (l <$> a) (r v)
@@ -194,7 +203,9 @@ instance Monad (TermX α) where
   Hole  a        >>= _ = Hole  a
   Lam   a bt     >>= f = Lam   a             (bt  >>>= f)
   Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (bt2 >>>= f)
-  Match a d  bs  >>= f = Match a (d >>= f)   (map (bimap id (>>>= f)) bs)
+  Match a d  bs  >>= f = Match a (d >>= f)   (map bindBranch bs)
+    where
+      bindBranch (Branch ctor args sbody) = Branch ctor args (sbody >>>= f)
   Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (bτ2 >>>= f)
   Type  u        >>= _ = Type  u
   Var   _ v      >>= f = f v
@@ -308,19 +319,30 @@ abstractBinder b =
 abstractVariable :: (Monad f) => Eq ν => ν -> f ν -> Scope (Name ν ()) f ν
 abstractVariable = abstract1Name
 
-unscopeNames ::
-  Scope (Name Variable Int) (TermX ξ) Variable ->
-  (Int -> Maybe Variable, TermX ξ Variable)
-unscopeNames s =
-  let bs = bindings s in
-  let f ndx = name <$> find ((==) ndx . snd . view _Name) bs in
-  let g ndx = case f ndx of
-        Nothing -> error "This should not happen!"
-        Just v  -> Var Nothing v
-  in
-  (f, instantiateName g s)
+mkVarAtIndex :: NamesScope (TermX α) Variable -> Int -> Maybe Variable
+mkVarAtIndex s ndx = name <$> find ((==) ndx . snd . view _Name) (bindings s)
 
-unscopeTerm :: Scope (Name Variable ()) (TermX ξ) Variable -> (Binder Variable, TermX ξ Variable)
+unscopeNames ::
+  Scope (Name Variable Int) (TermX α) Variable ->
+  (Int -> Binder Variable, TermX α Variable)
+unscopeNames s =
+  let varAtIndex = mkVarAtIndex s in
+  (Binder <$> varAtIndex, instantiateName (Var Nothing <$> fromJust <$> varAtIndex) s)
+
+unpackBranch :: Branch α Variable -> (Variable, [Binder Variable], TermX α Variable)
+unpackBranch (Branch ctor nbArgs sbody) = (ctor, args, body)
+  where
+    (binderAtIndex, body) = unscopeNames sbody
+    args = map binderAtIndex [0..nbArgs-1]
+
+packBranch :: (Variable, [Binder Variable], TermX α Variable) -> Branch α Variable
+packBranch (ctor, args, body) = Branch ctor nbArgs sbody
+  where
+    nbArgs = length args
+    sbody = abstractName (indexIn args) body
+    indexIn l v = Binder (Just v) `elemIndex` l
+
+unscopeTerm :: Scope (Name Variable ()) (TermX α) Variable -> (Binder Variable, TermX α Variable)
 unscopeTerm t =
   let n = getName t in
   let b = if unVariable n == "_" then Nothing else Just n in
@@ -329,7 +351,7 @@ unscopeTerm t =
 instance IsString (TermX α Variable) where
   fromString s = Var Nothing (fromString s)
 
-deriving instance (Show ν) => Show (Pattern ν)
+deriving instance (Show α, Show ν) => Show (Branch α ν)
 deriving instance (Show α, Show ν) => Show (TermX α ν)
 
 instance (Show α) => Show1 (TermX α) where
@@ -356,15 +378,15 @@ getName t =
     _ -> Variable "_"
 
 -- prettyTermDocPrec ::
---   forall a ξ. PrecedenceTable -> TermX ξ Variable -> (Doc a, Precedence)
+--   forall a α. PrecedenceTable -> TermX α Variable -> (Doc a, Precedence)
 -- prettyTermDocPrec precs = goTerm
 
 --   where
 
---     go :: (Precedence, Tolerance) -> TermX ξ Variable -> Doc a
+--     go :: (Precedence, Tolerance) -> TermX α Variable -> Doc a
 --     go pt = par precs pt . prettyTermDocPrec precs
 
---     goTerm :: TermX ξ Variable -> (Doc a, Precedence)
+--     goTerm :: TermX α Variable -> (Doc a, Precedence)
 --     goTerm = \case
 
 --       Annot _ t τ ->
@@ -424,7 +446,7 @@ getName t =
 
 --       Var _ v -> (prettyDoc v, PrecAtom)
 
---     goLams :: [Doc a] -> TermX ξ Variable -> Doc a
+--     goLams :: [Doc a] -> TermX α Variable -> Doc a
 --     goLams l = \case
 --       Lam _ bt ->
 --         let n = getName bt in

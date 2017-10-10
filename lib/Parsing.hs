@@ -10,10 +10,8 @@ module Parsing
   , variableP
   ) where
 
-import           Bound.Name
 import           Control.Applicative
 import           Control.Monad.Fix
-import           Data.List
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
@@ -163,11 +161,9 @@ matchP topP _selfP _nextP = do
     -- TODO: check for unicity of bound names
     symbol "=>"
     body <- topP
-    return (ctor, length args, abstractName (indexIn args) body)
+    return $ packBranch (ctor, args, body)
   rword "end"
   return $ Match () discriminee branches
-  where
-    indexIn l v = Binder (Just v) `elemIndex` l
 
 namedPiP :: Parser3 (Raw.Term Variable)
 namedPiP topP selfP _nextP = do

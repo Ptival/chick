@@ -28,6 +28,8 @@ import           Text.Printf
 import           Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as DA
+import qualified Diff.List as DL
+import qualified Diff.Triple as D3
 import           Diff.Utils
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
@@ -36,11 +38,18 @@ import           Term.Binder
 import           Term.Term
 import           Utils
 
+type BranchDiff α =
+  D3.Diff
+  (DA.Diff Variable)
+  (DL.Diff (Binder Variable) (DA.Diff (Binder Variable)))
+  (Diff α)
+
 data Diff α
   = Same
   | Replace    (TermX α Variable)
   | CpyApp     (Diff α) (Diff α)
   | CpyLam     (DA.Diff (Binder Variable)) (Diff α)
+  | CpyMatch   (Diff α) (DL.Diff (Branch α Variable) (BranchDiff α))
   | CpyPi      (Diff α) (DA.Diff (Binder Variable)) (Diff α)
   | CpyVar     (DA.Diff Variable)
   | InsApp     α (Diff α) (Diff α)
@@ -58,6 +67,7 @@ instance PrettyPrintable (Diff α) where
     Replace t         -> fillSep [ text "Replace",    go t ]
     CpyApp δ1 δ2      -> fillSep [ text "CpyApp",     go δ1, go δ2 ]
     CpyLam δ1 δ2      -> fillSep [ text "CpyLam",     go δ1, go δ2 ]
+    CpyMatch δ1 δ2    -> fillSep [ text "CpyMatch",   go δ1, go δ2 ]
     CpyPi  δ1 δ2 δ3   -> fillSep [ text "CpyPi",      go δ1, go δ2, go δ3 ]
     CpyVar δ1         -> fillSep [ text "CpyVar",     go δ1 ]
     InsApp _ δ1 δ2    -> fillSep [ text "InsApp",     go δ1, go δ2 ]
@@ -72,18 +82,31 @@ instance PrettyPrintable (Diff α) where
       go :: PrettyPrintable a => a -> Doc ()
       go = parens . prettyDoc
 
+patchBranch ::
+  ( Member (Exc String) r
+  , Member Trace r
+  ) =>
+  Branch α Variable -> BranchDiff α -> Eff r (Branch α Variable)
+patchBranch b D3.Same = return b
+patchBranch b (D3.Modify δctor δargs δbody) = do
+  let (ctor, args, body) = unpackBranch b
+  ctor' <- DA.patch ctor δctor
+  args' <- DL.patch DA.patch args δargs
+  body' <- patch body δbody
+  return $ packBranch (ctor', args', body')
+
 patch ::
   ( Member (Exc String) r
   , Member Trace r
   ) =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
-patch t d =
+patch t δt =
 
   let exc (s :: String) = throwExc $ printf "Diff.Term/patch: %s" s in
 
   -- trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview d)) >>
 
-  case (t, d) of
+  case (t, δt) of
 
   (_, Same) -> return t
 
@@ -96,6 +119,10 @@ patch t d =
     let (b, t') = unscopeTerm bt in
     Lam a <$> (abstractBinder <$> DA.patch b db <*> patch t' dt)
   (_, CpyLam _ _) -> exc "CpyLam, not a Lam"
+
+  (Match a d bs, CpyMatch δd δbs) ->
+    Match a <$> patch d δd <*> DL.patch patchBranch bs δbs
+  (_, CpyMatch _ _) -> exc "CpyMatch, not a Match"
 
   (Pi a τ1 bτ2, CpyPi d1 db d2) ->
     let (b, τ2) = unscopeTerm bτ2 in

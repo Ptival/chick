@@ -7,7 +7,10 @@
 {-# language StandaloneDeriving #-}
 {-# language UnicodeSyntax #-}
 
-module PrettyPrinting.Chick.Term where
+module PrettyPrinting.Chick.Term
+  ( prettyBranchDocPrec
+  , prettyTermDocPrec
+  )where
 
 import Bound.Name
 import Text.PrettyPrint.Annotated.WL
@@ -17,6 +20,17 @@ import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Utils
 import Term.Binder
 import Term.Term
+
+prettyBranchDocPrec :: PrecedenceTable -> Branch α Variable -> Doc ()
+prettyBranchDocPrec precs b =
+  let (ctor, args, body) = unpackBranch b in
+  fillSep $
+  [ text "|"
+  , prettyDoc ctor
+  , fillSep $ map prettyDoc args
+  , text "=>"
+  , fst $ prettyTermDocPrec precs body
+  ]
 
 prettyTermDocPrec :: ∀ α. PrecedenceTable -> TermX α Variable -> (Doc (), Precedence)
 prettyTermDocPrec precs = goTerm
@@ -65,20 +79,9 @@ prettyTermDocPrec precs = goTerm
         where
           matchDoc = []
             ++ [ fillSep [ text "match", go (PrecMin, TolerateEqual) d, text "with" ] ]
-            ++ map goBranch bs
+            ++ map (prettyBranchDocPrec precs) bs
             ++ [ text "end" ]
-          goBranch (ctor, nbArgs, bbody) =
-            let (namer, body) = unscopeNames bbody in
-            fillSep $
-            [ text "|"
-            , prettyDoc ctor
-            , fillSep $ map (maybeVarDoc . namer) [0..nbArgs-1]
-            , text "=>"
-            , go (PrecMin, TolerateEqual) body
-            ]
-          maybeVarDoc = \case
-            Nothing -> text "_"
-            Just v  -> prettyDoc v
+
 
       Pi _ τ1 bτ2 ->
         let (b, τ2) = unscopeTerm bτ2 in

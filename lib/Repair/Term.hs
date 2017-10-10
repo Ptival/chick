@@ -135,25 +135,29 @@ repairArgs args τ0 δτ0 δfun =
       ΔT.Replace τ' -> ΔT.Replace (Annot () (Hole ()) τ')
       _             -> ΔT.Replace (Hole ())
 
--- | `genericRepair t τ` attempts to repair `t` without more information about
--- | how its type `τ` changed
-genericRepair ::
+-- | `unknownTypeRepair t` attempts to repair `t` without any information
+unknownTypeRepair ::
   ( Member (Exc String) r
   , Member Trace r
   , Member (State RS.RepairState) r
   ) =>
-  Raw.Term Variable -> Raw.Type Variable -> Eff r (ΔT.Diff Raw.Raw)
-genericRepair t τ = do
+  Raw.Term Variable -> Eff r (ΔT.Diff Raw.Raw)
+unknownTypeRepair t = do
 
   let exc (reason :: String) =
-        throwExc $ printf "Repair.Term/genericRepair: %s" reason
+        throwExc $ printf "Repair.Term/unknownTypeRepair: %s" reason
 
-  trace $ printf "Repair.Term/genericRepair(t: %s, τ: %s)"
-    (prettyStrU t) (prettyStrU τ)
+  trace $ printf "Repair.Term/unknownTypeRepair(t: %s)" (prettyStrU t)
 
   case t of
 
-    -- f x y z   is   (((f x) y) z)
+    Type _ -> return ΔT.Same
+
+    Var _ v -> do
+      τv <- lookupType v
+      (δv, δτv) <- unpackDeclarationDiff <$> findDeclarationDiff v
+      repairArgs [] τv δτv (ΔT.CpyVar δv)
+
     App _ _ _ -> do
       -- (f, [x, y, z])
       (fun, args)   <- ΔT.extractApps t
@@ -174,16 +178,6 @@ genericRepair t τ = do
 
         _ -> exc "repair, Same, App, Not Var"
 
-    -- even though the diff is same, something inside might need updating
-    Lam _ bt -> do
-      let (b, tlam) = unscopeTerm bt
-      (_, τ1, _, τ2) <- ΔT.extractPi τ
-      withState
-        (   over RS.context  (LC.addLocalAssum (b, τ1))
-        >>> over RS.δcontext (ΔL.Keep)
-        ) $ do
-        ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
-
     Pi _ τ1 bτ2 -> do
       let (b, τ2) = unscopeTerm bτ2
       withState
@@ -195,14 +189,41 @@ genericRepair t τ = do
           <*> pure ΔA.Same
           <*> repair τ2 (Type U.Type) ΔT.Same
 
-    _ -> do
-      -- s :: RS.State <- get
-      -- trace $ printf "SAME:        %s" (prettyStrU t)
-      -- let γ = view RS.context s
-      -- trace $ printf "CONTEXT BEF:\n%s" (prettyStrU γ)
-      -- γ' <- ΔLC.patch γ (view RS.contextDiff s)
-      -- trace $ printf "CONTEXT AFT:\n%s" (prettyStrU γ')
-      return ΔT.Same
+    Match _ d bs -> do
+      δd <- unknownTypeRepair d
+      return $ ΔT.CpyMatch δd ΔL.Same
+
+    _ -> exc "YO THIS HAPPENS"
+
+-- | `genericRepair t τ` attempts to repair `t` without more information about
+-- | how its type `τ` changed
+genericRepair ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RS.RepairState) r
+  ) =>
+  Raw.Term Variable -> Raw.Type Variable -> Eff r (ΔT.Diff Raw.Raw)
+genericRepair t τ = do
+
+  let exc (reason :: String) =
+        throwExc $ printf "Repair.Term/genericRepair: %s" reason
+
+  trace $ printf "Repair.Term/genericRepair(t: %s, τ: %s)"
+    (prettyStrU t) (prettyStrU τ)
+
+  case t of
+
+    -- even though the diff is same, something inside might need updating
+    Lam _ bt -> do
+      let (b, tlam) = unscopeTerm bt
+      (_, τ1, _, τ2) <- ΔT.extractPi τ
+      withState
+        (   over RS.context  (LC.addLocalAssum (b, τ1))
+        >>> over RS.δcontext (ΔL.Keep)
+        ) $ do
+        ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
+
+    _ -> unknownTypeRepair t
 
 -- | `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff describing
 -- | how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt` has type `patch τ δτ`.
@@ -237,7 +258,7 @@ repair t τ δτ =
 
   ΔT.CpyLam _ _ -> exc "CpyLam"
 
-  ΔT.CpyVar ΔA.Same -> exc "CpyVar Same"
+  ΔT.CpyVar ΔA.Same -> genericRepair t τ
 
   ΔT.CpyVar (ΔA.Replace δv) -> do
     trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
