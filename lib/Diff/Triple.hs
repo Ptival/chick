@@ -4,6 +4,9 @@
 
 module Diff.Triple
   ( Diff(..)
+  , extract1
+  , extract2
+  , extract3
   , patch
   , patchMaybe
   ) where
@@ -16,6 +19,18 @@ data Diff δ1 δ2 δ3
   = Same
   | Modify δ1 δ2 δ3
   deriving (Show)
+
+extract1 :: δ1 -> Diff δ1 δ2 δ3 -> δ1
+extract1 same Same           = same
+extract1 _    (Modify δ _ _) = δ
+
+extract2 :: δ2 -> Diff δ1 δ2 δ3 -> δ2
+extract2 same Same           = same
+extract2 _    (Modify _ δ _) = δ
+
+extract3 :: δ3 -> Diff δ1 δ2 δ3 -> δ3
+extract3 same Same           = same
+extract3 _    (Modify _ _ δ) = δ
 
 instance (PrettyPrintable δ1, PrettyPrintable δ2, PrettyPrintable δ3) =>
          PrettyPrintable (Diff δ1 δ2 δ3) where

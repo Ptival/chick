@@ -1,3 +1,4 @@
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE DataKinds #-}
@@ -5,12 +6,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Repair.Term where
 
 import           Control.Arrow
 import           Control.Lens hiding (preview)
-import           Control.Monad
+--import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
@@ -21,10 +23,10 @@ import           Text.Printf
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.Constructor as ΔC
-import qualified Diff.GlobalDeclaration as ΔGD
+--import qualified Diff.GlobalDeclaration as ΔGD
 import qualified Diff.GlobalEnvironment as ΔGE
 import qualified Diff.Inductive as ΔI
--- import qualified Diff.LocalContext as ΔLC
+import qualified Diff.LocalContext as ΔLC
 import qualified Diff.LocalDeclaration as ΔLD
 import qualified Diff.List as ΔL
 import qualified Diff.Term as ΔT
@@ -159,33 +161,139 @@ computePermutations l r = go l r
     lindex i = fromJust $ elemIndex i l
     rindex i = fromJust $ elemIndex i r
 
+withStateFromConstructorArgs :: ∀ r a.
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RS.RepairState) r
+  ) =>
+  [Binder Variable] ->
+  ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable)) ->
+  Φcps Raw.Raw Variable ->
+  ΔC.Δcps Raw.Raw -> Eff r a -> Eff r a
+withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
+  go cpArgs (map (view _3) cps) δcpArgs δcps
+  where
+
+    go ::
+      [Binder Variable] -> [Raw.Term Variable] ->
+      ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable)) ->
+      ΔC.Δcps Raw.Raw -> Eff r a
+
+    go [] [] _ _ = e
+
+    go (a : as) (cp : cps) δargs δcps = do
+
+      let (δassum, δargs', δcps') = nextδassum (δargs, δcps)
+
+      trace "*** Adding local assumption:"
+      trace $ printf "(%s, %s)" (preview a) (preview cp)
+      trace "*** Adding delta local assumption:"
+      trace $ printf "%s" (prettyStr $ δassum ΔL.Same)
+
+      withState (   over RS.context  (LC.addLocalAssum (a, cp))
+                >>> over RS.δcontext δassum
+                ) $ do
+        RS.sanityCheck
+        go as cps δargs' δcps'
+
+    go _ _ _ _ = error "different lengths in withStateFromConstructors"
+
+    nextδassum ::
+      ( ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable))
+      , _
+      ) ->
+      ( ΔLC.Diff α -> ΔLC.Diff α
+      , _
+      , _
+      )
+    nextδassum (δargs, δcps) = case (δargs, δcps) of
+
+      (ΔL.Insert _ δargs', ΔL.Insert _ δcps') ->
+        -- we skip the inserted ones, because they don't bind
+        nextδassum (δargs', δcps')
+
+      (ΔL.Keep δargs', ΔL.Keep δps') -> (ΔL.Keep, δargs', δps')
+
+      (ΔL.Modify δa δargs', ΔL.Modify δp δps') ->
+        ( ΔL.Modify (ΔLD.ModifyLocalAssum δa (Δ3.extract3 ΔT.Same δp))
+        , δargs', δps')
+
+      _ -> error $ printf "TODO: %s, %s" (preview δargs) (preview δcps)
+
 repairBranch ::
   ( Member (Exc String) r
   , Member Trace r
   , Member (State RS.RepairState) r
   ) =>
-  Branch Raw.Raw Variable -> Constructor Raw.Raw Variable -> ΔC.Diff Raw.Raw ->
+  Branch Raw.Raw Variable -> Constructor Raw.Raw Variable ->
+  ΔI.Diff Raw.Raw -> ΔC.Diff Raw.Raw ->
   Eff r (ΔT.BranchDiff Raw.Raw)
-repairBranch b c δc = do
-  let (ctor, args, body) = unpackBranch b
-  case δc of
-    ΔC.Same -> do
-      δbody <- unknownTypeRepair body
-      return $ Δ3.Modify ΔA.Same ΔL.Same δbody
-    ΔC.Modify δn δps δis -> do
-      let (ctor, args, body) = unpackBranch b
-      _
+repairBranch b c@(Constructor _ _ cps _) δi δc = do
 
--- repairBranches ::
---   ( Member (Exc String) r
---   , Member Trace r
---   , Member (State RS.RepairState) r
---   ) =>
---   _ -> _ -> _ -> Eff r _
-repairBranches bs (Inductive _ _ _ _ cs) ΔI.Same =
+  trace ">>> repairBranch"
+  trace $ printf "> %s" (preview b)
+  trace $ printf "> %s" (preview c)
+
+  let (_, args, body) = unpackBranch b
+  let nbIps = length . inductiveParameters . constructorInductive $ c
+
+  let (δctor, δcps) =
+        case δc of
+        ΔC.Same             -> (ΔA.Same, ΔL.Same)
+        ΔC.Modify δn δcps _ -> (δn, δcps)
+
+  -- for `withState`, we only care about parameters to the constructors, as they are
+  -- the only ones that may bind
+  let cpArgs = drop nbIps args
+  let δcpArgs = bimap extractL extractR δcps
+
+  -- δargs is composed of two parts, reflecting:
+  -- - the changes made to the inductive type parameters
+  -- - the changes made to the constructor parameters
+  let δips =
+        case δi of
+        ΔI.Same                 -> ΔL.Same
+        ΔI.Modify  _ δips _ _ _ -> δips
+  let δipArgs = bimap extractL extractR δips
+  let δargs = merge nbIps δipArgs δcpArgs
+
+  δbody <- withStateFromConstructorArgs cpArgs δcpArgs cps δcps
+           $ unknownTypeRepair body
+  return $ Δ3.Modify δctor δargs δbody
+
+  where
+
+    extractL :: Φcp Raw.Raw Variable -> Binder Variable
+    extractL = Binder . Just . view _2
+
+    extractR :: ΔC.Δcp Raw.Raw -> ΔA.Diff (Binder Variable)
+    extractR Δ3.Same            = ΔA.Same
+    extractR (Δ3.Modify _ δv _) = Binder . Just <$> δv
+
+    merge ::
+      Int ->
+      ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable)) ->
+      ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable)) ->
+      ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable))
+    merge 0     ΔL.Same         δcpsAs = δcpsAs
+    merge 0     δipsAs          _      = error $ printf "TODO %s" (preview δipsAs)
+    merge nbIps (ΔL.Keep δipAs) δcpAs = ΔL.Keep $ merge (nbIps - 1) δipAs   δcpAs
+    merge nbIps ΔL.Same         δcpAs = ΔL.Keep $ merge (nbIps - 1) ΔL.Same δcpAs
+    merge as δipAs δcpAs = error $ printf "merge %s %s %s" (preview as) (preview δipAs) (preview δcpAs)
+
+repairBranches ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RS.RepairState) r
+  ) =>
+  [Branch Raw.Raw Variable] ->
+  Inductive Raw.Raw Variable ->
+  ΔI.Diff Raw.Raw ->
+  Eff r (ΔL.Diff t (ΔT.BranchDiff Raw.Raw))
+repairBranches _ _ ΔI.Same =
   -- FIXME: fix body of branches
   return $ ΔL.Same
-repairBranches bs (Inductive _ _ _ _ cs) (ΔI.Modify _ _ _ _ δcs) = do
+repairBranches bs (Inductive _ _ _ _ cs) δi@(ΔI.Modify _ _ _ _ δcs) = do
   -- the original branches are in some permutation of the original list of constructors,
   -- let's build a permutation from and back to that order
   let (pMatchToInd, pIndToMatch) =
@@ -193,14 +301,15 @@ repairBranches bs (Inductive _ _ _ _ cs) (ΔI.Modify _ _ _ _ δcs) = do
         (map branchConstructor bs)
         (map constructorName   cs)
   let sortedBranches = permute pMatchToInd bs
-  let (sortedDeltas, inserts) = go ([], []) (sortedBranches, cs, δcs)
+  (sortedDeltas, inserts) <- go ([], []) (sortedBranches, cs, δcs)
   return $ foldr (.) id (permute pIndToMatch sortedDeltas ++ inserts) ΔL.Same
   where
     go (δbs, δins) = \case
       (     _,     cs, ΔL.Same) ->
-        (δbs ++ replicate (length cs) ΔL.Keep, δins)
-      (b : bs, c : cs, ΔL.Modify δc δcs) ->
-        go (δbs ++ [ΔL.Modify (repairBranch b c δc)], δins) (bs, cs, δcs)
+        return (δbs ++ replicate (length cs) ΔL.Keep, δins)
+      (b : bs, c : cs, ΔL.Modify δc δcs) -> do
+        δb <- repairBranch b c δi δc
+        go (δbs ++ [ΔL.Modify δb], δins) (bs, cs, δcs)
       _ -> error $ printf "FIXME NOW: %s" (prettyStr δcs)
 
 guessIndMatched ::
@@ -304,8 +413,8 @@ genericRepair ::
   Raw.Term Variable -> Raw.Type Variable -> Eff r (ΔT.Diff Raw.Raw)
 genericRepair t τ = do
 
-  let exc (reason :: String) =
-        throwExc $ printf "Repair.Term/genericRepair: %s" reason
+  -- let exc (reason :: String) =
+  --       throwExc $ printf "Repair.Term/genericRepair: %s" reason
 
   trace $ printf "Repair.Term/genericRepair(t: %s, τ: %s)"
     (prettyStrU t) (prettyStrU τ)
@@ -356,6 +465,8 @@ repair t τ δτ =
   ΔT.CpyApp _ _ -> genericRepair t τ
 
   ΔT.CpyLam _ _ -> exc "CpyLam"
+
+  ΔT.CpyMatch _ _ -> exc "CpyMatch"
 
   ΔT.CpyVar ΔA.Same -> genericRepair t τ
 

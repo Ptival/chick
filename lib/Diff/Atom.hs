@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Diff.Atom
   ( Diff(..)
@@ -14,7 +15,7 @@ import PrettyPrinting.PrettyPrintable
 data Diff a
   = Same
   | Replace a
-  deriving (Show)
+  deriving (Functor, Show)
 
 instance PrettyPrintable a => PrettyPrintable (Diff a) where
   prettyDoc Same        = text "Same"

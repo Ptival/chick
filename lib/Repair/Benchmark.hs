@@ -280,7 +280,7 @@ repairListToVec = RepairScriptBenchmark
   , [ "Definition length2 : ∀ (T : Type), list T → nat :="
     , "λ T l , match l with"
     , "        | nil  _     => O"
-    , "        | cons _ h t => S (lengthh T t)"
+    , "        | cons _ h t => S O"
     , "        end"
     ]
   -- , [ "Definition hd : ∀ (A : Type), A → list A → A :="
