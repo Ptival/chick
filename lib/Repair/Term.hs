@@ -20,6 +20,7 @@ import           Data.List
 import           Text.Printf
 
 import qualified Diff.Atom as ΔA
+import qualified Diff.Constructor as ΔC
 import qualified Diff.GlobalDeclaration as ΔGD
 import qualified Diff.GlobalEnvironment as ΔGE
 import qualified Diff.Inductive as ΔI
@@ -158,20 +159,49 @@ computePermutations l r = go l r
     lindex i = fromJust $ elemIndex i l
     rindex i = fromJust $ elemIndex i r
 
+repairBranch ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RS.RepairState) r
+  ) =>
+  Branch Raw.Raw Variable -> Constructor Raw.Raw Variable -> ΔC.Diff Raw.Raw ->
+  Eff r (ΔT.BranchDiff Raw.Raw)
+repairBranch b c δc = do
+  let (ctor, args, body) = unpackBranch b
+  case δc of
+    ΔC.Same -> do
+      δbody <- unknownTypeRepair body
+      return $ Δ3.Modify ΔA.Same ΔL.Same δbody
+    ΔC.Modify δn δps δis -> do
+      let (ctor, args, body) = unpackBranch b
+      _
+
 -- repairBranches ::
 --   ( Member (Exc String) r
 --   , Member Trace r
 --   , Member (State RS.RepairState) r
 --   ) =>
 --   _ -> _ -> _ -> Eff r _
-repairBranches bs ind δind = do
+repairBranches bs (Inductive _ _ _ _ cs) ΔI.Same =
+  -- FIXME: fix body of branches
+  return $ ΔL.Same
+repairBranches bs (Inductive _ _ _ _ cs) (ΔI.Modify _ _ _ _ δcs) = do
   -- the original branches are in some permutation of the original list of constructors,
   -- let's build a permutation from and back to that order
   let (pMatchToInd, pIndToMatch) =
         computePermutations
         (map branchConstructor bs)
-        (map constructorName (inductiveConstructors ind))
-  error "FIXME"
+        (map constructorName   cs)
+  let sortedBranches = permute pMatchToInd bs
+  let (sortedDeltas, inserts) = go ([], []) (sortedBranches, cs, δcs)
+  return $ foldr (.) id (permute pIndToMatch sortedDeltas ++ inserts) ΔL.Same
+  where
+    go (δbs, δins) = \case
+      (     _,     cs, ΔL.Same) ->
+        (δbs ++ replicate (length cs) ΔL.Keep, δins)
+      (b : bs, c : cs, ΔL.Modify δc δcs) ->
+        go (δbs ++ [ΔL.Modify (repairBranch b c δc)], δins) (bs, cs, δcs)
+      _ -> error $ printf "FIXME NOW: %s" (prettyStr δcs)
 
 guessIndMatched ::
   ( Member (Exc String) r
@@ -254,11 +284,12 @@ unknownTypeRepair t = do
       -- eventually, it'd be nice to have the type at which the match is done already
       -- figured out
       ind  <- guessIndMatched d bs
-      -- trace $ printf "*** INDUCTIVE MATCHED: %s" (prettyStr ind)
+      trace $ printf "*** INDUCTIVE MATCHED: %s" (prettyStr ind)
       RS.RepairState _ _ e δe <- get
       δind <- ΔGE.findGlobalIndDiff ind e δe
-      -- trace $ printf "*** δINDUCTIVE MATCHED: %s" (prettyStr δind)
+      trace $ printf "*** δINDUCTIVE MATCHED: %s" (prettyStr δind)
       δbs <- repairBranches bs ind δind
+      trace $ printf "*** PROPOSED: %s" (prettyStr δbs)
       return $ ΔT.CpyMatch δd δbs
 
     _ -> exc $ printf "YO THIS HAPPENS: %s" (prettyStr t)
