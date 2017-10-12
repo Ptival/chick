@@ -200,11 +200,11 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
 
     nextδassum ::
       ( ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable))
-      , _
+      , ΔL.Diff (Φcp Raw.Raw Variable) (ΔC.Δcp Raw.Raw)
       ) ->
-      ( ΔLC.Diff α -> ΔLC.Diff α
-      , _
-      , _
+      ( ΔLC.Diff Raw.Raw -> ΔLC.Diff Raw.Raw
+      , ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable))
+      , ΔL.Diff (Φcp Raw.Raw Variable) (ΔC.Δcp Raw.Raw)
       )
     nextδassum (δargs, δcps) = case (δargs, δcps) of
 
@@ -425,6 +425,7 @@ genericRepair t τ = do
     Lam _ bt -> do
       let (b, tlam) = unscopeTerm bt
       (_, τ1, _, τ2) <- ΔT.extractPi τ
+      -- FIXME: should we not try to repair τ1 and τ2 here?
       withState
         (   over RS.context  (LC.addLocalAssum (b, τ1))
         >>> over RS.δcontext (ΔL.Keep)
@@ -458,17 +459,17 @@ repair t τ δτ =
 
   -- even though the type has not changed, the term might still need updating to
   -- deal with the changes in the context
-  ΔT.Same -> genericRepair t τ
+  ΔT.Same -> genericRepair t τ -- OK
 
   ΔT.Replace τ' -> return $ ΔT.Replace $ Annot () (Hole ()) τ'
 
-  ΔT.CpyApp _ _ -> genericRepair t τ
+  ΔT.CpyApp _ _ -> genericRepair t τ -- FIXME improve this?
 
-  ΔT.CpyLam _ _ -> exc "CpyLam"
+  ΔT.CpyLam _ _ -> genericRepair t τ -- FIXME: improve this
 
-  ΔT.CpyMatch _ _ -> exc "CpyMatch"
+  ΔT.CpyMatch _ _ -> genericRepair t τ -- FIXME: improve this
 
-  ΔT.CpyVar ΔA.Same -> genericRepair t τ
+  ΔT.CpyVar ΔA.Same -> genericRepair t τ -- OK
 
   ΔT.CpyVar (ΔA.Replace δv) -> do
     trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
@@ -477,9 +478,9 @@ repair t τ δτ =
 
   ΔT.InsApp _ _ _ -> genericRepair t τ -- not sure what to do here
 
-  ΔT.InsLam _ _ _   -> exc "InsLam"
-  ΔT.PermutLams _ _ -> exc "PermutLams"
-  ΔT.PermutApps _ _ -> exc "PermutApps"
+  ΔT.InsLam _ _ _   -> genericRepair t τ -- FIXME: improve this
+  ΔT.PermutLams _ _ -> genericRepair t τ -- FIXME: improve this
+  ΔT.PermutApps _ _ -> genericRepair t τ -- FIXME: improve this
 
   ΔT.CpyPi d1 δb d2 ->
     case (t, τ) of
@@ -517,4 +518,4 @@ repair t τ δτ =
     let lams' = permute p lams
     ΔT.PermutLams p <$> repair (ΔT.mkLams lams' trest) (ΔT.mkPis pis' τrest) d1
 
-  ΔT.RemovePi _ -> exc "RemovePi"
+  ΔT.RemovePi _ -> genericRepair t τ -- FIXME: improve this
