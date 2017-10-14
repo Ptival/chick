@@ -16,7 +16,12 @@ import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
 
 data Vernacular α ν
-  = Definition ν (TypeX α ν) (TermX α ν)
+  = Definition
+    { definitionIsFixpoint :: Bool
+    , definitionName :: ν
+    , definitionType :: TypeX α ν
+    , definitionTerm :: TermX α ν
+    }
   | Inductive (I.Inductive α ν)
   deriving (Show)
 
@@ -28,12 +33,12 @@ instance PrettyPrintable (Vernacular α Variable) where
 instance PrettyPrintableUnannotated (Vernacular α Variable) where
   prettyDocU = \case
 
-    Definition n τ t -> do
+    Definition b n τ t -> do
       let nDoc = prettyDoc n
       τDoc <- prettyDocU τ
       tDoc <- prettyDocU t
       return $ hcat
-        [ text "Definition"
+        [ text (if b then "Fixpoint" else "Definition")
         , space
         , nDoc
         , softline

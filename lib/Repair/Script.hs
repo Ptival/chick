@@ -18,17 +18,17 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
-import qualified Diff.Atom as DA
-import qualified Diff.Constructor as DC
+import qualified Diff.Atom as ΔA
+import qualified Diff.Constructor as ΔC
 import           Diff.Eliminator
-import qualified Diff.GlobalDeclaration as DGD
-import qualified Diff.GlobalEnvironment as DGE
-import qualified Diff.Inductive as DI
-import qualified Diff.List as DL
-import qualified Diff.Script as DS
-import qualified Diff.Term as DT
+import qualified Diff.GlobalDeclaration as ΔGD
+import qualified Diff.GlobalEnvironment as ΔGE
+import qualified Diff.Inductive as ΔI
+import qualified Diff.List as ΔL
+import qualified Diff.Script as ΔS
+import qualified Diff.Term as ΔT
 import           Diff.Utils
-import qualified Diff.Vernacular as DV
+import qualified Diff.Vernacular as ΔV
 import           Inductive.Eliminator
 import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintable
@@ -46,12 +46,13 @@ import qualified Typing.GlobalEnvironment as GE
 import           Utils
 import           Vernacular
 
-vernacularDiffToGlobalEnvironmentDiff :: DV.Diff Raw.Raw -> DGE.Diff Raw.Raw -> DGE.Diff Raw.Raw
+vernacularDiffToGlobalEnvironmentDiff ::
+  ΔV.Diff Raw.Raw -> ΔGE.Diff Raw.Raw -> ΔGE.Diff Raw.Raw
 vernacularDiffToGlobalEnvironmentDiff = \case
-  DV.ModifyDefinition δn δτ δt -> DL.Modify (DGD.ModifyGlobalDef δn δτ δt)
-  DV.ModifyInductive (DI.Modify δn _δps _δis _δu _δcs) ->
-    let δτ = DT.Same in
-    DL.Modify (DGD.ModifyGlobalAssum δn δτ)
+  ΔV.ModifyDefinition _ δn δτ δt -> ΔL.Modify (ΔGD.ModifyGlobalDef δn δτ δt)
+  ΔV.ModifyInductive (ΔI.Modify δn _δps _δis _δu _δcs) ->
+    let δτ = ΔT.Same in
+    ΔL.Modify (ΔGD.ModifyGlobalAssum δn δτ)
   _ -> error "TODO: vernacularDiffToGlobalEnvironmentDiff"
 
 withStateFromConstructors ::
@@ -59,36 +60,36 @@ withStateFromConstructors ::
   , Member (State RepairState) r
   , Member Trace r
   ) =>
-  DT.Diff Raw.Raw ->
-  I.Φips Raw.Raw Variable -> DI.Δips Raw.Raw ->
+  ΔT.Diff Raw.Raw ->
+  I.Φips Raw.Raw Variable -> ΔI.Δips Raw.Raw ->
   [I.Constructor Raw.Raw Variable] ->
-  DL.Diff (I.Constructor Raw.Raw Variable) (DC.Diff Raw.Raw) ->
+  ΔL.Diff (I.Constructor Raw.Raw Variable) (ΔC.Diff Raw.Raw) ->
   Eff r a -> Eff r a
 withStateFromConstructors prefix ips δips l δl e =
 
-  trace "ADDING A CONSTRUCTOR" >>
+  trace "ADΔING A CONSTRUCTOR" >>
   traceState >>
 
   let todo (s :: String) = error $ printf "TODO: Repair.Script/wSFC %s" s in
   case (l, δl) of
 
-    ([], DL.Same) -> e
+    ([], ΔL.Same) -> e
 
     ([], _) -> todo "Empty list, other cases"
 
-    (_c : _cs, DL.Insert  _  _)   -> todo "Insert"
-    (_c : _cs, DL.Keep    _)      -> todo "Keep"
+    (_c : _cs, ΔL.Insert  _  _)   -> todo "Insert"
+    (_c : _cs, ΔL.Keep    _)      -> todo "Keep"
 
     ( c@(I.Constructor _ _consName cps cis) : cs,
-      DL.Modify (DC.Modify δconsName δcps δcis) δcs) ->
-      let δτc = DI.δconstructorRawType prefix ips δips cps δcps cis δcis in
-      go c (DL.Modify (DGD.ModifyGlobalAssum δconsName δτc)) cs δcs
+      ΔL.Modify (ΔC.Modify δconsName δcps δcis) δcs) ->
+      let δτc = ΔI.δconstructorRawType prefix ips δips cps δcps cis δcis in
+      go c (ΔL.Modify (ΔGD.ModifyGlobalAssum δconsName δτc)) cs δcs
 
-    (_c : _cs, DL.Modify _ _)     -> todo "Modify"
-    (_c : _cs, DL.Permute _  _)   -> todo "Permute"
-    (_c : _cs, DL.Remove  _)      -> todo "Remove"
-    (_c : _cs, DL.Replace _)      -> todo "Replace"
-    (c : cs, DL.Same) -> go c DL.Keep cs DL.Same
+    (_c : _cs, ΔL.Modify _ _)     -> todo "Modify"
+    (_c : _cs, ΔL.Permute _  _)   -> todo "Permute"
+    (_c : _cs, ΔL.Remove  _)      -> todo "Remove"
+    (_c : _cs, ΔL.Replace _)      -> todo "Replace"
+    (c : cs, ΔL.Same) -> go c ΔL.Keep cs ΔL.Same
 
     where
     go c δge cs δcs =
@@ -104,7 +105,7 @@ withStateFromVernacular ::
   ( Member (Exc String) r
   , Member (State RepairState) r
   , Member Trace r
-  ) => Vernacular Raw.Raw Variable -> DV.Diff Raw.Raw -> Eff r a -> Eff r a
+  ) => Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Eff r a -> Eff r a
 withStateFromVernacular v δv e =
 
   let exc (reason :: String) =
@@ -113,7 +114,7 @@ withStateFromVernacular v δv e =
 
   case (v, δv) of
 
-  (Definition n τ t, _) ->
+  (Definition _ n τ t, _) ->
     withState
     (over environment  (GE.addGlobalDef (Binder (Just n), τ, t))   >>>
      over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv))
@@ -121,11 +122,11 @@ withStateFromVernacular v δv e =
     sanityCheck
     e
 
-  (   Inductive ind@(I.Inductive indName ips iis _u cs)
-    , DV.ModifyInductive δind@(DI.Modify δindName δips δiis _δu δcs)) -> do
+  (Inductive ind@(I.Inductive indName ips iis _u cs)
+    , ΔV.ModifyInductive δind@(ΔI.Modify δindName δips δiis _δu δcs)) -> do
     let τind = I.inductiveRawType ind
-    let δτind = DI.δinductiveRawType (length ips) δips (length iis) δiis
-    let prefix = DI.δinductiveRawConstructorPrefix δindName (length ips) δips
+    let δτind = ΔI.δinductiveRawType (length ips) δips (length iis) δiis
+    let prefix = ΔI.δinductiveRawConstructorPrefix δindName (length ips) δips
     δeliminatorType <- case δmkEliminatorType () ind δind of
       Nothing -> throwError "δmkEliminatorType failed"
       Just e -> return e
@@ -133,9 +134,9 @@ withStateFromVernacular v δv e =
     withState
       (
         over  environment (GE.addGlobalInd ind) >>>
-        over δenvironment (DL.Modify (DGD.ModifyGlobalInd δind)) >>>
+        over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalInd δind)) >>>
         over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
-        over δenvironment (DL.Modify (DGD.ModifyGlobalAssum δindName δτind))
+        over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalAssum δindName δτind))
       ) $ do
       -- DO NOT MERGE WITH PREVIOUS withState
       withState
@@ -143,15 +144,15 @@ withStateFromVernacular v δv e =
                                               , mkEliminatorRawType ind
                                               )
                            ) >>>
-        over δenvironment (DL.Modify ( DGD.ModifyGlobalAssum (δeliminatorName δind)
+        over δenvironment (ΔL.Modify ( ΔGD.ModifyGlobalAssum (δeliminatorName δind)
                                        δeliminatorType)
                           )
         ) $ do
         sanityCheck
         withStateFromConstructors prefix ips δips cs δcs e
 
-  (Inductive ind, DV.ModifyInductive DI.Same) -> unchangedInductive ind
-  (Inductive ind, DV.Same)                    -> unchangedInductive ind
+  (Inductive ind, ΔV.ModifyInductive ΔI.Same) -> unchangedInductive ind
+  (Inductive ind, ΔV.Same)                    -> unchangedInductive ind
 
   _ -> exc $ printf "TODO: %s" (show (v, δv))
 
@@ -160,17 +161,17 @@ withStateFromVernacular v δv e =
       let τind = I.inductiveRawType ind
       withState
         (over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
-         over δenvironment DL.Keep
+         over δenvironment ΔL.Keep
         )
         $ withState
         (over  environment
          (GE.addGlobalAssum (Binder (Just (mkEliminatorName indName)),
                             mkEliminatorRawType ind
                             )) >>>
-         over δenvironment DL.Keep
+         over δenvironment ΔL.Keep
         ) $ do
         sanityCheck
-        withStateFromConstructors DT.Same ips DL.Same cs DL.Same e
+        withStateFromConstructors ΔT.Same ips ΔL.Same cs ΔL.Same e
 
 -- | `repair s δs` takes a script `s` and a script diff `δs`, and it computes a repaired script diff
 -- | `δs'`, that propagates changes down the line
@@ -179,7 +180,7 @@ repair ::
   , Member Trace r
   , Member (State RepairState) r
   ) =>
-  Script Raw.Raw Variable -> DS.Diff Raw.Raw -> Eff r (DS.Diff Raw.Raw)
+  Script Raw.Raw Variable -> ΔS.Diff Raw.Raw -> Eff r (ΔS.Diff Raw.Raw)
 repair script@(Script s) δs =
 
   trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU script) (prettyStr δs)) >>
@@ -190,54 +191,63 @@ repair script@(Script s) δs =
   case (s, δs) of
 
     -- keeping, but still repairing
-    (v : s', DL.Keep δs') -> do
-      δv' <- RV.repair v DV.Same
+    (v : s', ΔL.Keep δs') -> do
+      δv' <- RV.repair v ΔV.Same
       -- trace $ printf "Repair.Script/repair > δv' %s" (prettyStr δv')
-      v' <- DV.patch v δv'
+      v' <- ΔV.patch v δv'
       trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
       trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
       withStateFromVernacular v δv' $
-        DL.Modify δv' <$> repair (Script s') δs'
+        ΔL.Modify δv' <$> repair (Script s') δs'
 
-    (v : s', DL.Modify δv δs') -> do
+    (v : s', ΔL.Modify δv δs') -> do
       δv' <- RV.repair v δv
       -- trace $ printf "Repair.Script/repair > δv' %s" (prettyStr δv')
-      v' <- DV.patch v δv'
+      v' <- ΔV.patch v δv'
       trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
       trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
       withStateFromVernacular v δv' $
-        DL.Modify δv' <$> repair (Script s') δs'
+        ΔL.Modify δv' <$> repair (Script s') δs'
 
     -- even if the diff is same, we still might need to do some repair to account for changes in the
     -- global environment
-    ([], DL.Same) -> return DL.Same
+    ([], ΔL.Same) -> return ΔL.Same
 
-    (cmd : cmds, DL.Same) ->
+    (cmd : cmds, ΔL.Same) ->
       case cmd of
 
         -- eventually, might want to update the name in case of collision?
-        def@(Definition n τ t) -> do
+        def@(Definition b n τ t) -> do
           trace $ printf "*** Attempting to repair %s" (prettyStr def)
-          δτ <- RT.repair τ (Type U.Type) DT.Same
+          δτ <- RT.repair τ (Type U.Type) ΔT.Same
           trace $ printf "*** Repaired type, δτ: %s" (prettyStr δτ)
-          τ' <- DT.patch τ δτ
+          τ' <- ΔT.patch τ δτ
           trace $ printf "*** Repaired type, τ': %s" (prettyStr τ')
-          δt <- RT.repair t τ    δτ
+          let scopeIfFixpoint =
+                if b
+                then withScopedGlobalDef
+                     ((Binder (Just n)),  τ,  t)
+                     -- here we don't have δt yet since we are computing it...
+                     -- TODO: check that putting ΔT.Same does not cause problems
+                     (ΔA.Same,           δτ, ΔT.Same)
+                else id
+          δt <- scopeIfFixpoint $ RT.repair t τ δτ
           trace $ printf "*** Repaired term, δt: %s" (prettyStr δt)
-          t' <- DT.patch t δt
+          t' <- ΔT.patch t δt
           trace $ printf "*** Repaired term, t': %s" (prettyStr t')
-          withState
-            (over  environment (GE.addGlobalDef (Binder (Just n), τ, t)) >>>
-             over δenvironment (DL.Modify (DGD.ModifyGlobalDef DA.Same δτ δt))
-            ) $ do
+          withScopedGlobalDef
+            ((Binder (Just n)),  τ,  t)
+            (ΔA.Same,           δτ, δt)
+            $ do
             trace "Repair.Script:180"
             sanityCheck
-            DL.Modify (DV.ModifyDefinition DA.Same δτ δt) <$> repair (Script cmds) DL.Same
+            ΔL.Modify (ΔV.ModifyDefinition ΔA.Same ΔA.Same δτ δt)
+              <$> repair (Script cmds) ΔL.Same
 
         Inductive _ind -> do
           -- I guess this one is weird:
           -- - it might be that the inductive type mentions a type that has been updated
           -- - it might be that constructor types mention a type that has been updated
-          return DL.Same
+          return ΔL.Same
 
     _ -> exc $ printf "TODO: %s" (show (s, δs))

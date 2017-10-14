@@ -15,11 +15,11 @@ import           Data.Foldable
 import           Text.Megaparsec
 import           Text.Printf
 
-import qualified Diff.Atom as DA
-import qualified Diff.List as DL
-import qualified Diff.Script as DS
-import qualified Diff.Term as DT
-import qualified Diff.Vernacular as DV
+import qualified Diff.Atom as ΔA
+import qualified Diff.List as ΔL
+import qualified Diff.Script as ΔS
+import qualified Diff.Term as ΔT
+import qualified Diff.Vernacular as ΔV
 import           Parsing
 import           Parsing.Vernacular
 import           PrettyPrinting.PrettyPrintable
@@ -60,7 +60,7 @@ unsafeParseVernac ss =
     Just t  -> t
 
 patchProof ::
-  Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw ->
+  Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw ->
   Eff '[Trace] (Either String (Raw.Term Variable))
 patchProof t τ δτ = runAll repairThenPatch
   where
@@ -71,9 +71,9 @@ patchProof t τ δτ = runAll repairThenPatch
     initialRepairState =
       RepairState
       (LC.LocalContext [])
-      DL.Same
+      ΔL.Same
       (GE.GlobalEnvironment [])
-      DL.Same
+      ΔL.Same
     repairThenPatch =
       RT.repair t τ δτ
       >>=
@@ -81,15 +81,15 @@ patchProof t τ δτ = runAll repairThenPatch
           trace $ printf "REPAIR COMPLETED: %s" $ prettyStr δ
           return δ
       )
-      >>= DT.patch t
+      >>= ΔT.patch t
 
 patchProofTrace ::
-  Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw ->
+  Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw ->
   IO (Either String (Raw.Term Variable))
 patchProofTrace t τ δτ = runTrace $ patchProof t τ δτ
 
 patchProofSkipTrace ::
-  Raw.Term Variable -> Raw.Type Variable -> DT.Diff Raw.Raw ->
+  Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw ->
   Either String (Raw.Term Variable)
 patchProofSkipTrace t τ δτ = skipTrace $ patchProof t τ δτ
 
@@ -97,7 +97,7 @@ data RepairTermBenchmark = RepairTermBenchmark
   { repairTermFromTerm :: Raw.Term Variable
   , repairTermFromType :: Raw.Type Variable
   , repairTermToType   :: Raw.Type Variable
-  , repairTermDiff     :: DT.Diff Raw.Raw
+  , repairTermDiff     :: ΔT.Diff Raw.Raw
   , repairTermExpected :: Raw.Term Variable
   }
 
@@ -109,8 +109,8 @@ termBench1 =
   , repairTermFromType = unsafeParseRaw "B → B"
   , repairTermToType   = unsafeParseRaw "A → B → B"
   , repairTermDiff     =
-    DT.InsPi () (DT.Replace "A") (Binder Nothing)
-    $ DT.Same
+    ΔT.InsPi () (ΔT.Replace "A") (Binder Nothing)
+    $ ΔT.Same
   , repairTermExpected = unsafeParseRaw "λ _ b , b"
   }
 
@@ -120,9 +120,9 @@ termBench2 =
   , repairTermFromType = unsafeParseRaw "B → B"
   , repairTermToType   = unsafeParseRaw "B → A → B"
   , repairTermDiff     =
-    DT.CpyPi DT.Same DA.Same
-    $ DT.InsPi () (DT.Replace "A") (Binder Nothing)
-    $ DT.Same
+    ΔT.CpyPi ΔT.Same ΔA.Same
+    $ ΔT.InsPi () (ΔT.Replace "A") (Binder Nothing)
+    $ ΔT.Same
   , repairTermExpected = unsafeParseRaw "λ b _ , b"
   }
 
@@ -132,8 +132,8 @@ termBench3 =
   , repairTermFromType = unsafeParseRaw "(A → B) → A → B"
   , repairTermToType   = unsafeParseRaw "A → (A → B) → B"
   , repairTermDiff     =
-    DT.PermutPis [1, 0]
-    $ DT.Same
+    ΔT.PermutPis [1, 0]
+    $ ΔT.Same
   , repairTermExpected = unsafeParseRaw "λ a f , f a"
   }
 
@@ -143,13 +143,13 @@ termBench4 =
   , repairTermFromType = unsafeParseRaw "(A → C) → A → C"
   , repairTermToType   = unsafeParseRaw "(A → B → C) → A → B → C"
   , repairTermDiff     =
-      DT.CpyPi
-      (DT.CpyPi DT.Same DA.Same
-       (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same)
+      ΔT.CpyPi
+      (ΔT.CpyPi ΔT.Same ΔA.Same
+       (ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing) ΔT.Same)
       )
-      DA.Same
-      (DT.CpyPi DT.Same DA.Same
-       (DT.InsPi () (DT.Replace "B") (Binder Nothing) DT.Same)
+      ΔA.Same
+      (ΔT.CpyPi ΔT.Same ΔA.Same
+       (ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing) ΔT.Same)
       )
   , repairTermExpected = unsafeParseRaw "λ f a _ , f a (_ : B)"
   }
@@ -160,15 +160,15 @@ termBench5 =
   , repairTermFromType = unsafeParseRaw "(A → C → D) → A → C → D"
   , repairTermToType   = unsafeParseRaw "(A → B → C → D) → A → B → C → D"
   , repairTermDiff     =
-      DT.CpyPi
-      ( DT.CpyPi DT.Same DA.Same
-      $ DT.InsPi () (DT.Replace "B") (Binder Nothing)
-      $ DT.CpyPi DT.Same DA.Same DT.Same
+      ΔT.CpyPi
+      ( ΔT.CpyPi ΔT.Same ΔA.Same
+      $ ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing)
+      $ ΔT.CpyPi ΔT.Same ΔA.Same ΔT.Same
       )
-      DA.Same
-      ( DT.CpyPi DT.Same DA.Same
-      $ DT.InsPi () (DT.Replace "B") (Binder Nothing)
-      $ DT.Same
+      ΔA.Same
+      ( ΔT.CpyPi ΔT.Same ΔA.Same
+      $ ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing)
+      $ ΔT.Same
       )
   , repairTermExpected = unsafeParseRaw "λ f a _ c , f a (_ : B) c"
   }
@@ -188,7 +188,7 @@ repairTermBenchmark = do
     putStrLn $
       printf "Attempting to patch `%s` assumed to have type `%s` to type `%s`"
       (prettyStrU fromTerm) (prettyStrU fromType) (prettyStrU toType)
-    diffed <- runSkipTrace . runError $ DT.patch fromType diff
+    diffed <- runSkipTrace . runError $ ΔT.patch fromType diff
     if diffed == (Right toType :: Either String (Raw.Type Variable))
       then
       runSkipTrace (patchProof fromTerm fromType diff) >>= \case
@@ -211,7 +211,7 @@ repairTermBenchmark = do
             putStrLn $ printf "Diffed   type: %s" (prettyStrU d)
 
 repairScript ::
-  Script Raw.Raw Variable -> DS.Diff Raw.Raw ->
+  Script Raw.Raw Variable -> ΔS.Diff Raw.Raw ->
   Eff '[Trace] (Either String (Script Raw.Raw Variable))
 repairScript s δs = runAll repairThenPatch
   where
@@ -220,15 +220,15 @@ repairScript s δs = runAll repairThenPatch
       . liftM fst
       . flip runState initialRepairState
     initialRepairState =
-      RepairState (LC.LocalContext []) DL.Same (GE.GlobalEnvironment []) DL.Same
+      RepairState (LC.LocalContext []) ΔL.Same (GE.GlobalEnvironment []) ΔL.Same
     repairThenPatch = do
       δs' <- RS.repair s δs
       trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
-      DS.patch s δs'
+      ΔS.patch s δs'
 
 data RepairScriptBenchmark = RepairScriptBenchmark
   { repairScriptFromScript :: Script Raw.Raw Variable
-  , repairScriptDiff       :: DS.Diff Raw.Raw
+  , repairScriptDiff       :: ΔS.Diff Raw.Raw
   , repairScriptExpected   :: Maybe (Script Raw.Raw Variable)
   }
   deriving (Show)
@@ -248,14 +248,15 @@ repairFlippedArguments = RepairScriptBenchmark
     ]
 
   , repairScriptDiff =
-      DL.Modify
-      (DV.ModifyDefinition
-        DA.Same
-        (DT.PermutPis [3, 1, 0, 2] DT.Same)
-        DT.Same
+      ΔL.Modify
+      (ΔV.ModifyDefinition
+        ΔA.Same
+        ΔA.Same
+        (ΔT.PermutPis [3, 1, 0, 2] ΔT.Same)
+        ΔT.Same
       )
       $
-      DL.Same
+      ΔL.Same
 
   , repairScriptExpected = Nothing
 
@@ -292,18 +293,18 @@ repairListToVec = RepairScriptBenchmark
   -- , [ "Definition In : ∀ (A : Type), A → list A → Type :="
   --   , "λ A a l, list_rect A (λ _, Type) False (λ _ b m, or (eq A b a) (In A a m))"
   --   ]
-  , [ "Definition map : ∀ (A : Type) (B : Type) (f : A → B), list A → Type :="
+  , [ "Fixpoint map : ∀ (A : Type) (B : Type) (f : A → B), list A → Type :="
     , "λ A B f l, match l with"
     , "           | nil _      => nil B"
-    , "           | cons _ h t => cons B (f h) t"
+    , "           | cons _ h t => cons B (f h) (map A B f t)"
     , "           end"
     ]
   ]
 
   , repairScriptDiff =
-    DL.nKeeps 3
-    $ DL.Modify (DV.ModifyInductive δListToVec)
-    $ DL.Same
+    ΔL.nKeeps 3
+    $ ΔL.Modify (ΔV.ModifyInductive δListToVec)
+    $ ΔL.Same
 
   , repairScriptExpected = Just $ Script $
     [ Inductive indNat
@@ -334,7 +335,7 @@ repairScriptBenchmark = do
     putStrLn $ "(*" ++ replicate 70 '*' ++ "*)"
     putStrLn "\n(*** Before: ***)\n"
     printScript s
-    result <- runTrace . runError $ DS.patch s δs
+    result <- runTrace . runError $ ΔS.patch s δs
     s' <- case result of
       Left  (e :: String) ->
         error $ printf "Could not patch the original script:\n%s" e

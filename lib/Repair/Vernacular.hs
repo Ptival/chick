@@ -42,23 +42,26 @@ repair v δv =
   let exc (reason :: String) = throwExc $ printf "Repair.Vernacular/repair: %s" reason in
   case (v, δv) of
 
-    (Definition _ τ t, DV.ModifyDefinition δn δτ DT.Same) -> do
+    (Definition b _ τ t, DV.ModifyDefinition δb δn δτ DT.Same) -> do
+      -- FIXME: need to deal with b
       δt <- RT.repair t τ δτ
       trace $ printf "Repair term: %s" (show δt)
-      return $ DV.ModifyDefinition δn δτ δt
+      return $ DV.ModifyDefinition δb δn δτ δt
 
-    (Definition _ _ _, DV.ModifyDefinition _ _ _) -> do
+    (Definition _ _ _ _, DV.ModifyDefinition _ _ _ _) -> do
       exc $ "TODO: 1"
 
-    (_, DV.ModifyDefinition _ _ _) -> exc "ModifyDefinition, but not a Definition"
+    (_, DV.ModifyDefinition _ _ _ _) ->
+      exc "ModifyDefinition, but not a Definition"
 
     (Inductive ind, DV.ModifyInductive δind) -> do
       DV.ModifyInductive <$> RI.repair ind δind
 
-    (Definition _ τ t, DV.Same) -> do
+    (Definition b _ τ t, DV.Same) -> do
+      -- FIXME: need to deal with b
       δτ <- RT.repair τ (Type U.Type) DT.Same
       δt <- RT.repair t τ δτ
-      return $ DV.ModifyDefinition DA.Same δτ δt
+      return $ DV.ModifyDefinition DA.Same DA.Same δτ δt
 
     (Inductive ind, DV.Same) -> do
       δind <- RI.repair ind DI.Same

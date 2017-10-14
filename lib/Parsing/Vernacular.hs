@@ -22,11 +22,11 @@ vernacularP =
 
 definitionP :: Parser (Vernacular Raw.Raw Variable)
 definitionP = do
-  rword "Definition"
+  b <- (rword "Definition" *> return False <|> rword "Fixpoint" *> return True)
   n <- variableP
   symbol ":"
   τ <- termP
   symbol ":="
   t <- termP
   symbol "."
-  return $ Definition n τ t
+  return $ Definition b n τ t

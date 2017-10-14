@@ -21,6 +21,10 @@ class PrettyPrintable t where
 instance PrettyPrintable () where
   prettyDoc () = text "()"
 
+instance PrettyPrintable Bool where
+  prettyDoc False = text "False"
+  prettyDoc True  = text "True"
+
 instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (l, r) where
   prettyDoc (l, r) = encloseSep lparen rparen comma [prettyDoc l, prettyDoc r]
 

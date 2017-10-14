@@ -491,7 +491,7 @@ repair t τ δτ =
           >>> over RS.δcontext (ΔL.Modify (ΔLD.ModifyLocalAssum δb d1))
           ) $ do
           ΔT.CpyLam ΔA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
-      _ -> exc "repair: CpyPi Same"
+      _ -> genericRepair t τ
 
   ΔT.InsPi _ d1 _b d2      -> do
     -- I think what we want here is:
