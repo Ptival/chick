@@ -7,7 +7,7 @@ module StandardLibrary
   , inductives
   , indAnd
   , indBool
-  , indEmpty
+  , indFalse
   , indEq
   , indFin
   , indList
@@ -154,8 +154,8 @@ indVec = unsafeParseInductive
   , "| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Fin (S n)"
   ]
 
-indEmpty :: Inductive Raw.Raw Variable
-indEmpty = unsafeParseInductive
+indFalse :: Inductive Raw.Raw Variable
+indFalse = unsafeParseInductive
   [ "Inductive False : Prop :="
   ]
 
@@ -169,7 +169,7 @@ inductives :: [Inductive Raw.Raw Variable]
 inductives =
   [ indAnd
   , indBool
-  , indEmpty
+  , indFalse
   , indEq
   , indNat
   , indOr

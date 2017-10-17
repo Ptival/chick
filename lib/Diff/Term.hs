@@ -16,6 +16,8 @@ module Diff.Term
   , mkPis
   , nCpyApps
   , nCpyPis
+  , nInsertApps
+  , nRemoveApps
   , patch
   , patchMaybe
   ) where
@@ -59,7 +61,8 @@ data Diff α
   | PermutApps [Int] (Diff α)
   | PermutLams [Int] (Diff α)
   | PermutPis  [Int] (Diff α)
-  | RemovePi   (Diff α)
+  | RemoveApp  (Diff α) -- removes the right term
+  | RemovePi   (Diff α) -- removes the left term and binder
   deriving (Show)
 
 instance PrettyPrintable (Diff α) where
@@ -77,6 +80,7 @@ instance PrettyPrintable (Diff α) where
     PermutApps p δ1   -> fillSep [ text "PermutApp",  (text $ show p), go δ1 ]
     PermutLams p δ1   -> fillSep [ text "PermutLam",  (text $ show p), go δ1 ]
     PermutPis  p δ1   -> fillSep [ text "PermutPi",   (text $ show p), go δ1 ]
+    RemoveApp δ1      -> fillSep [ text "RemoveApp",  go δ1 ]
     RemovePi δ1       -> fillSep [ text "RemovePi",   go δ1 ]
 
     where
@@ -150,6 +154,9 @@ patch t δt =
   (_, PermutPis p d') -> do
     (pis, rest) <- extractSomePis (length p) t
     patch (mkPis (permute p pis) rest) d'
+
+  (App _ t1 _, RemoveApp δ) -> patch t1 δ
+  (_, RemoveApp _) -> exc "RemoveApp: not an App"
 
   (Pi _ _ bτ2, RemovePi δ) ->
     let (_, τ2) = unscopeTerm bτ2 in
@@ -240,6 +247,17 @@ nCpyPis :: Int -> Diff α -> Diff α
 nCpyPis 0 base         = base
 nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
 nCpyPis n base         = CpyPi Same DA.Same $ nCpyPis (n - 1) base
+
+nInsertApps :: Int -> (α, TermX α Variable) -> Diff α -> Diff α
+nInsertApps 0 _      base         = base
+nInsertApps n _      _    | n < 0 = error "nRemoveApps: n became negative!"
+nInsertApps n (α, a) base         =
+  InsApp α (nInsertApps (n - 1) (α, a) base) (Replace a)
+
+nRemoveApps :: Int -> Diff α -> Diff α
+nRemoveApps 0 base         = base
+nRemoveApps n _    | n < 0 = error "nRemoveApps: n became negative!"
+nRemoveApps n base         = RemoveApp $ nRemoveApps (n - 1) base
 
 patchMaybe :: TermX α Variable -> Diff α -> Maybe (TermX α Variable)
 patchMaybe t d = rightToMaybe @String . skipTrace . runError $ patch t d

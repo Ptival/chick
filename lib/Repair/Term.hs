@@ -136,6 +136,16 @@ repairArgs args τ0 δτ0 δfun =
               go (ΔT.CpyApp acc ΔT.Same) args τ' ΔT.Same
             _         -> return acc
 
+        (_, ΔT.Replace τ') -> do
+          -- if this happens, we have no reason to believe that the remaining arguments
+          -- are relevant to the replacement type: we need to drop them all, and then
+          -- insert as many arguments as the replacement type calls for
+          pis <- ΔT.extractPis τ'
+          return
+            . ΔT.nInsertApps (length pis) ((), Hole ())
+            . ΔT.nRemoveApps (length args)
+            $ acc
+
         _ -> exc $ printf "repairArgs, TODO:\nargs: %s\nτ: %s\nδτ: %s"
              (show args) (show τ) (show δτ)
 
@@ -501,5 +511,7 @@ repair t τ δτ =
     (lams, trest) <- ΔT.extractSomeLams (length p) t -- TODO: catchError and try something else?
     let lams' = permute p lams
     ΔT.PermutLams p <$> repair (ΔT.mkLams lams' trest) (ΔT.mkPis pis' τrest) d1
+
+  ΔT.RemoveApp _ -> genericRepair t τ -- FIXME: improve this
 
   ΔT.RemovePi _ -> genericRepair t τ -- FIXME: improve this
