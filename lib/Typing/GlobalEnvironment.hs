@@ -7,7 +7,16 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Typing.GlobalEnvironment where
+module Typing.GlobalEnvironment
+  ( GlobalEnvironment(..)
+  , addConstructor
+  , addGlobalAssum
+  , addGlobalDef
+  , addGlobalInd
+  , addInductiveType
+  , lookupInductiveByName
+  , lookupRawType
+  ) where
 
 --import           Control.Applicative
 import           Control.Monad
@@ -185,10 +194,11 @@ isInductive ge = go
         _ -> Nothing
 
 -- | Adds the type of an inductive to the global environment
-addInductive ::
+addInductiveType ::
   I.Inductive Raw.Raw Variable ->
   GlobalEnvironment Raw.Raw Variable -> GlobalEnvironment Raw.Raw Variable
-addInductive ind = addGlobalAssum (Binder $ Just $ I.inductiveName ind, I.inductiveRawType ind)
+addInductiveType ind =
+  addGlobalAssum (Binder $ Just $ I.inductiveName ind, I.inductiveRawType ind)
 
 addConstructor ::
   I.Constructor Raw.Raw Variable ->

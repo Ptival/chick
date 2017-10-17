@@ -10,7 +10,6 @@ module Repair.Script
   ) where
 
 import           Control.Arrow
-import           Control.Lens hiding (preview)
 -- import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
@@ -41,9 +40,7 @@ import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.Universe as U
-import qualified Typing.GlobalEnvironment as GE
 -- import qualified Typing.LocalContext as LC
-import           Utils
 import           Vernacular
 
 vernacularDiffToGlobalEnvironmentDiff ::
@@ -93,7 +90,7 @@ withStateFromConstructors prefix ips δips l δl e =
 
     where
     go c δge cs δcs =
-      withState (over environment (GE.addConstructor c) >>> over δenvironment δge) $ do
+      withConstructor c >>> withδGlobalEnv δge $ do
       sanityCheck
       withStateFromConstructors prefix ips δips cs δcs $ do
         e
@@ -115,9 +112,8 @@ withStateFromVernacular v δv e =
   case (v, δv) of
 
   (Definition _ n τ t, _) ->
-    withState
-    (over environment  (GE.addGlobalDef (Binder (Just n), τ, t))   >>>
-     over δenvironment (vernacularDiffToGlobalEnvironmentDiff δv))
+    withGlobalDef (Binder (Just n), τ, t)
+    >>> withδGlobalEnv (vernacularDiffToGlobalEnvironmentDiff δv)
     $ do
     sanityCheck
     e
@@ -131,23 +127,17 @@ withStateFromVernacular v δv e =
       Nothing -> throwError "δmkEliminatorType failed"
       Just e -> return e
     trace (printf "PREFIX: %s" (show prefix))
-    withState
-      (
-        over  environment (GE.addGlobalInd ind) >>>
-        over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalInd δind)) >>>
-        over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
-        over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalAssum δindName δτind))
-      ) $ do
+    withInductive ind
+      >>> withModifyGlobalInd δind
+      >>> withInductiveType ind
+      >>> withModifyGlobalAssum (δindName, δτind)
+      $ do
       -- DO NOT MERGE WITH PREVIOUS withState
-      withState
-        (over  environment (GE.addGlobalAssum ( Binder (Just (mkEliminatorName indName))
-                                              , mkEliminatorRawType ind
-                                              )
-                           ) >>>
-        over δenvironment (ΔL.Modify ( ΔGD.ModifyGlobalAssum (δeliminatorName δind)
-                                       δeliminatorType)
-                          )
-        ) $ do
+      -- because mkEliminatorName needs the previous things in scope
+      withGlobalAssum ( Binder (Just (mkEliminatorName indName))
+                      , mkEliminatorRawType ind)
+        >>> withModifyGlobalAssum (δeliminatorName δind, δeliminatorType)
+        $ do
         sanityCheck
         withStateFromConstructors prefix ips δips cs δcs e
 
@@ -159,17 +149,12 @@ withStateFromVernacular v δv e =
   where
     unchangedInductive ind@(I.Inductive indName ips _ _ cs) = do
       let τind = I.inductiveRawType ind
-      withState
-        (over  environment (GE.addGlobalAssum (Binder (Just indName), τind)) >>>
-         over δenvironment ΔL.Keep
-        )
-        $ withState
-        (over  environment
-         (GE.addGlobalAssum (Binder (Just (mkEliminatorName indName)),
-                            mkEliminatorRawType ind
-                            )) >>>
-         over δenvironment ΔL.Keep
-        ) $ do
+      withGlobalAssum (Binder . Just $ indName, τind)
+        >>> withδGlobalEnv ΔL.Keep
+        >>> withGlobalAssum ( Binder (Just (mkEliminatorName indName))
+                        , mkEliminatorRawType ind)
+        >>> withδGlobalEnv  ΔL.Keep
+        $ do
         sanityCheck
         withStateFromConstructors ΔT.Same ips ΔL.Same cs ΔL.Same e
 
@@ -225,19 +210,17 @@ repair script@(Script s) δs =
           trace $ printf "*** Repaired type, τ': %s" (prettyStr τ')
           let scopeIfFixpoint =
                 if b
-                then withScopedGlobalDef
-                     ((Binder (Just n)),  τ,  t)
+                then withGlobalDef ((Binder (Just n)),  τ,  t)
                      -- here we don't have δt yet since we are computing it...
                      -- TODO: check that putting ΔT.Same does not cause problems
-                     (ΔA.Same,           δτ, ΔT.Same)
+                     >>> withModifyGlobalDef (ΔA.Same, δτ, ΔT.Same)
                 else id
           δt <- scopeIfFixpoint $ RT.repair t τ δτ
           trace $ printf "*** Repaired term, δt: %s" (prettyStr δt)
           t' <- ΔT.patch t δt
           trace $ printf "*** Repaired term, t': %s" (prettyStr t')
-          withScopedGlobalDef
-            ((Binder (Just n)),  τ,  t)
-            (ΔA.Same,           δτ, δt)
+          withGlobalDef ((Binder (Just n)),  τ,  t)
+            >>> withModifyGlobalDef (ΔA.Same, δτ, δt)
             $ do
             trace "Repair.Script:180"
             sanityCheck

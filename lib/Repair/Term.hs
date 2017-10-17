@@ -43,9 +43,6 @@ import           Term.Term
 import qualified Term.Raw as Raw
 import qualified Term.Universe as U
 import qualified Typing.GlobalEnvironment as GE
-import qualified Typing.LocalContext as LC
-import           Typing.LocalDeclaration
-import           Utils
 
 -- | For example:
 -- | τ  = A → C → D                             t  = (f a) c
@@ -190,9 +187,7 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
       trace "*** Adding delta local assumption:"
       trace $ printf "%s" (prettyStr $ δassum ΔL.Same)
 
-      withState (   over RS.context  (LC.addLocalAssum (a, cp))
-                >>> over RS.δcontext δassum
-                ) $ do
+      RS.withLocalAssum (a, cp) >>> RS.withδLocalContext δassum $ do
         RS.sanityCheck
         go as cps δargs' δcps'
 
@@ -379,10 +374,7 @@ unknownTypeRepair t = do
 
     Pi _ τ1 bτ2 -> do
       let (b, τ2) = unscopeTerm bτ2
-      withState
-        (   over RS.context  (LC.addLocalAssum (b, τ1))
-        >>> over RS.δcontext (ΔL.Keep)
-        ) $ do
+      RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $ do
         ΔT.CpyPi
           <$> repair τ1 (Type U.Type) ΔT.Same
           <*> pure ΔA.Same
@@ -426,10 +418,7 @@ genericRepair t τ = do
       let (b, tlam) = unscopeTerm bt
       (_, τ1, _, τ2) <- ΔT.extractPi τ
       -- FIXME: should we not try to repair τ1 and τ2 here?
-      withState
-        (   over RS.context  (LC.addLocalAssum (b, τ1))
-        >>> over RS.δcontext (ΔL.Keep)
-        ) $ do
+      RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $ do
         ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
 
     _ -> unknownTypeRepair t
@@ -482,15 +471,13 @@ repair t τ δτ =
   ΔT.PermutLams _ _ -> genericRepair t τ -- FIXME: improve this
   ΔT.PermutApps _ _ -> genericRepair t τ -- FIXME: improve this
 
-  ΔT.CpyPi d1 δb d2 ->
+  ΔT.CpyPi δ1 δb δ2 ->
     case (t, τ) of
       (Lam _ bt, Pi _ τ1 bτ2) -> do
         let (b, _) = unscopeTerm bt
-        withState
-          (   over RS.context  (LC.addLocalAssum (b, τ1))
-          >>> over RS.δcontext (ΔL.Modify (ΔLD.ModifyLocalAssum δb d1))
-          ) $ do
-          ΔT.CpyLam ΔA.Same <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) d2
+        RS.withLocalAssum (b, τ1) >>> RS.withModifyLocalAssum (δb, δ1) $ do
+          ΔT.CpyLam ΔA.Same
+            <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) δ2
       _ -> genericRepair t τ
 
   ΔT.InsPi _ d1 _b d2      -> do
@@ -498,18 +485,15 @@ repair t τ δτ =
     -- - find a b' binder like b that is free in t
     -- - InsLam b'
     -- - recursively diff by substituting b' for b
-    s <- get
     let varsFreeInTerm = foldr (\ v -> (v :)) [] t
-    let varsBoundInContext = LC.boundNames (view RS.context s)
+    boundVarsInContext <- RS.boundVarsInContext
     trace $ printf "Variables free  in the term:    %s" (show . map prettyStr $ varsFreeInTerm)
-    trace $ printf "Variables bound in the context: %s" (show . map prettyStr $ varsBoundInContext)
-    let v :: Variable = "todo"
+    trace $ printf "Variables bound in the context: %s" (show . map prettyStr $ boundVarsInContext)
+    let v :: Variable = "TODO"
     let b = Binder (Just v)
     τ1' <- ΔT.patch τ d1
-    withState
-      (   over RS.context  id
-      >>> over RS.δcontext (ΔL.Insert (LocalAssum (Binder (Just v)) τ1'))
-      ) $ ΔT.InsLam () b <$> repair t τ d2
+    RS.withInsertLocalAssum (Binder . Just $ v, τ1') $
+      ΔT.InsLam () b <$> repair t τ d2
 
   ΔT.PermutPis p d1      -> do
     (pis, τrest) <- ΔT.extractSomePis (length p) τ
