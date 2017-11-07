@@ -7,8 +7,8 @@ nixpkgs.stdenv.lib.overrideDerivation chick (old: {
     cabal-install
     #coq_8_6
     ncurses
-    haskellPackages.ghc-mod
-    #stack
+    #haskellPackages.ghc-mod
+    stack
   ]);
   shellHook = ''
     export SSL_CERT_FILE="/etc/ssl/certs/ca-bundle.crt"
