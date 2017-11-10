@@ -26,6 +26,7 @@ data Diff t δt
   | Remove        (Diff t δt)
   | Replace [t]
   | Same
+  deriving (Eq)
 
 instance (Show t, Show δt) => Show (Diff t δt) where
   show = \case

@@ -18,7 +18,7 @@ import PrettyPrinting.PrettyPrintable
 data Diff δ1 δ2 δ3
   = Same
   | Modify δ1 δ2 δ3
-  deriving (Show)
+  deriving (Eq, Show)
 
 extract1 :: δ1 -> Diff δ1 δ2 δ3 -> δ1
 extract1 same Same           = same

@@ -14,6 +14,7 @@ module Diff.Guess.Term
   , guessδ
   , makeNode
   , recommended
+  , traceGuessδ
   ) where
 
 import           Control.Lens hiding (children, preview)
@@ -29,8 +30,9 @@ import qualified Data.List as List
 import           Data.Ord
 import           Prelude hiding (product)
 import           Text.Printf
-import           Util ((<&&>))
+import           Util ((<&&>), count)
 
+import qualified Diff.Atom as ΔA
 import qualified Diff.Term as ΔT
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
@@ -82,12 +84,14 @@ termHeight t = case termChildren t of
   [] -> 1 -- huh... why would they choose this...?
   c  -> 1 + maximum (map termHeight c)
 
+newtype HIList α = HIList { unHIList :: [Node α] }
+
+instance Show α => Show (HIList α) where
+  show = show . unHIList
+
 peekMax :: HIList α -> Int
 peekMax (HIList [])      = 0
 peekMax (HIList (h : _)) = height h
-
-newtype HIList α = HIList { unHIList :: [Node α] }
-  deriving (Show)
 
 insert :: Node α -> HIList α -> HIList α
 insert n = HIList . List.insertBy (comparing $ Down . height) n . unHIList
@@ -97,10 +101,10 @@ product l1 l2 = [ (a, b) | a <- l1, b <- l2 ]
 
 {- dice computes a ratio of subnodes that are isomorphic -}
 dice :: [(Node α, Node α)] -> Node α -> Node α -> Double
-dice m t1 t2 = (2 * lengthOf t1s) / (lengthOf s1 + lengthOf s2)
+dice m t1 t2 = (2 * fromIntegral c) / (lengthOf s1 + lengthOf s2)
   where
     lengthOf = fromIntegral . List.length
-    t1s = filter (\ t1' -> (t1', t2) `elem` m) s1
+    c = count (\ t1' -> (t1', t2) `elem` m) s1
     s1 = nodeDescendants t1
     s2 = nodeDescendants t2
 
@@ -120,7 +124,7 @@ data Node α = Node
 type Mapping α = [(Node α, Node α)]
 
 instance Show α => Show (Node α) where
-  show n = printf "(%s : %s)" (show . identifier $ n) (label n)
+  show n = printf "(%s : %s)" (show . identifier $ n) (preview . node $ n)
 
 fresh :: (Member (State Int) r) => Eff r Int
 fresh = get <* modify ((+) (1 :: Int))
@@ -162,7 +166,7 @@ makeLenses ''TopDownState
 open ::
   ( Member (State (TopDownState α)) r
   ) => Node α -> Lens' (TopDownState α) (HIList α) -> Eff r ()
-open t lens = forM_ (children t) $ \ c -> do
+open t lens = forM_ (reverse $ children t) $ \ c -> do
   modify $ over lens $ insert c
 
 pop ::
@@ -193,6 +197,7 @@ push node lens = do
 
 runTopDown :: ∀ α r.
   ( Member Trace r
+  , Show α
   ) =>
   Node α -> Node α -> Int -> Eff r (TopDownState α)
 runTopDown n1 n2 minHeight =
@@ -214,7 +219,9 @@ topDown :: ∀ α r.
   ( Member (Reader (TopDownReader α)) r
   , Member (State  (TopDownState  α)) r
   , Member Trace r
-  ) => Eff r ()
+  , Show α
+  ) =>
+  Eff r ()
 topDown = do
 
   root1 <- view (readerRoot1 @α) <$> ask
@@ -223,6 +230,9 @@ topDown = do
   push root2 stateL2
 
   whileM_ condition1 $ do
+
+    trace "topDown loop"
+
     l1 <- view (stateL1 @α) <$> get
     l2 <- view (stateL2 @α) <$> get
 
@@ -230,41 +240,77 @@ topDown = do
       then do
       if peekMax l1 > peekMax l2
         then do
+        trace "pop l1"
         ts <- pop @α stateL1
         forM_ ts $ \t -> open t stateL1
         else do
+        trace "pop l2"
         ts <- pop @α stateL2
         forM_ ts $ \t -> open t stateL2
       else do
+      trace "pop both"
       h1 <- pop @α stateL1
       h2 <- pop @α stateL2
+      trace $ printf "h1: %s" (show h1)
+      trace $ printf "h2: %s" (show h2)
       forM_ (product h1 h2) $ \ (t1, t2) -> do
         let set1 = nodeAndDescendants root1
         let set2 = nodeAndDescendants root2
         when (isomorphic t1 t2) $ do
+          trace "ISOMORPHIC!"
           if (  List.any (\ tx -> isomorphic t1 tx && tx /= t2) set2
              || List.any (\ tx -> isomorphic tx t2 && tx /= t1) set1
              )
             then do
+            trace $ printf "Adding candidate mapping (%s, %s)" (show t1) (show t2)
             modify $ over stateA $ (:) (t1, t2)
             else do
             addIsomorphicDescendants t1 t2
+      a <- view (stateA @α) <$> get
+      m <- view (stateM @α) <$> get
+      let aum = List.union a m
+      forM_ [ t1 | t1 <- h1
+                 , not (List.any ((==) t1 . fst) aum) ] $ \ t1 -> do
+        open t1 stateL1
+      forM_ [ t2 | t2 <- h2
+                 , not (List.any ((==) t2 . snd) aum) ] $ \ t2 -> do
+        open t2 stateL2
 
-    m <- view stateM <$> get
-    modify $ over stateA $ List.sortBy (comparing (parentDice m))
+  trace "Now sorting candidate mappings by dice"
+  m <- view stateM <$> get
+  modify $ over stateA $ List.sortBy (comparing (parentDice m))
 
-    whileM_ condition2 $ do
-      (t1, t2) <- popHead @α stateA
-      addIsomorphicDescendants t1 t2
-      modify $ over stateA $ filter ((==) t1 . fst) . filter ((==) t2 . snd)
+  a <- view (stateA @α) <$> get
+  forM_ a $ \ (t1, t2) -> do
+    trace $ printf "A: (%s, %s)" (show $ t1) (show $ t2)
+    trace $ printf "Parents : %s, %s"
+      (show $ preview . node <$> parent t1)
+      (show $ preview . node <$> parent t2)
+    trace $ printf "Parent dice: %s" (show . parentDice m $ (t1, t2))
+  trace $ printf "About to go through:\n%s" (show a)
+  whileM_ condition2 $ do
+    (t1, t2) <- popHead @α stateA
+    trace $ printf "Popped %s" (show (t1, t2))
+    addIsomorphicDescendants t1 t2
+    modify $ over stateA $ filter ((/=) t1 . fst) . filter ((/=) t2 . snd)
+
+  trace "END OF TOP-DOWN PHASE:"
+  m <- view (stateM @α) <$> get
+  trace $ show m
 
   where
 
     addIsomorphicDescendants t1 t2 = do
       let st1 = nodeAndDescendants t1
       let st2 = nodeAndDescendants t2
+      trace $ printf "Node and descendants for %s" (show (t1, t2))
+      trace $ printf "t1: %s" (preview . node $ t1)
+      trace $ printf "t2: %s" (preview . node $ t2)
+      trace $ printf "are %s" (show (st1, st2))
       forM_ (product st1 st2) $ \ (n1, n2) -> do
+        trace $ printf "Pondering: %s" (show (n1, n2))
         when (isomorphic n1 n2) $ do
+          trace "Adding isomorphic descendants"
           modify $ over stateM $ (:) (n1, n2)
 
     condition1 = do
@@ -273,6 +319,8 @@ topDown = do
       let minHeight = view readerMinHeight r
       let l1 = view stateL1 s
       let l2 = view stateL2 s
+      trace $ printf "l1: %s" (show l1)
+      trace $ printf "l2: %s" (show l2)
       return $ min (peekMax l1) (peekMax l2) > minHeight
 
     parentDice :: [(Node α, Node α)] -> (Node α, Node α) -> Double
@@ -339,12 +387,15 @@ candidate :: ∀ α r.
   ( Member (Reader (BottomUpReader α)) r
   , Member (State  (BottomUpState  α)) r
   , Member Trace r
+  , Show α
   ) => Node α -> Eff r (Maybe (Node α))
 candidate t1 = do
   root2 <- view (bottomUpReaderRoot2 @α) <$> ask
   candidates root2 t1 >>= \case
     [] -> return Nothing
     cs -> do
+      trace $ printf "Candidates for %s" (preview . node $ t1)
+      trace $ printf "%s" (show cs)
       m <- getM
       return $ Just (List.maximumBy (comparing (dice m t1)) cs)
   where
@@ -359,6 +410,7 @@ candidate t1 = do
 
 runBottomUp :: ∀ α r.
   ( Member Trace r
+  , Show α
   ) =>
   Node α -> Node α -> Mapping α -> Double -> Eff r (BottomUpState α)
 runBottomUp n1 n2 m minDice =
@@ -377,25 +429,36 @@ bottomUp :: ∀ α r.
   ( Member (Reader (BottomUpReader α)) r
   , Member (State  (BottomUpState  α)) r
   , Member Trace r
+  , Show α
   ) => Eff r ()
 bottomUp = do
+
+  trace "STARTING BOTTOM-UP PHASE"
 
   root1   <- view (bottomUpReaderRoot1   @α) <$> ask
   -- root2   <- view (bottomUpReaderRoot2   @α) <$> ask
   minDice <- view (bottomUpReaderMinDice @α) <$> ask
 
   forM_ [ t1 | t1 <- nodeAndDescendantsPostOrder root1 ] $ \ t1 -> do
+    trace $ printf "BU: %s" (preview . node $ t1)
+    whenM (isUnmatched1 t1)        $ trace "is unmatched"
+    forM_ (children t1) $ \ c -> trace $ printf "child: %s" (show c)
+    whenM (hasMatchedChildren1 t1) $ trace "has matched children"
     whenM (isUnmatched1 t1 <&&> hasMatchedChildren1 t1) $ do
+      trace $ "let's find a candidate"
       candidate t1 >>= \case
         Nothing -> return ()
         Just t2 -> do
+          trace $ printf "Found a candidate: %s" (preview . node $ t2)
           m <- getM
           when (dice m t1 t2 > minDice) $ do
+            trace "Adding bottom-up mapping"
             modify $ over bottomUpStateM $ List.union [(t1, t2)]
             -- TODO: opt
 
 algorithm ::
   ( Member Trace r
+  , Show α
   ) =>
   Int -> Double -> Int -> Node α -> Node α -> Eff r (Mapping α)
 algorithm minHeight minDice _maxSize n1 n2 = do
@@ -407,16 +470,32 @@ algorithm minHeight minDice _maxSize n1 n2 = do
 
 recommended ::
   ( Member Trace r
+  , Show α
   ) =>
   Node α -> Node α -> Eff r (Mapping α)
-recommended = algorithm 0 0.5 100
+recommended = algorithm 0 0.0 100
 
-guessδ :: TermX α Variable -> TermX α Variable -> Maybe (ΔT.Diff α)
+guessδ :: Show α => TermX α Variable -> TermX α Variable -> Maybe (ΔT.Diff α)
 guessδ t1 t2 =
   let (n1, n2) = fst . run $ runState s (0 :: Int) in
   let m = skipTrace $ recommended n1 n2 in
   let δ = skipTrace $ mkGuessδ n1 n2 m in
   δ
+  where
+    s = do
+      n1 <- makeNode t1
+      n2 <- makeNode t2
+      return (n1, n2)
+
+traceGuessδ ::
+  Show α =>
+  TermX α Variable -> TermX α Variable -> IO (Maybe (ΔT.Diff α))
+traceGuessδ t1 t2 = do
+  let (n1, n2) = fst . run $ runState s (0 :: Int)
+  m <- runTrace $ recommended n1 n2
+  putStrLn $ printf "MAPPING:\n%s\n" (show m)
+  δ <- runTrace $ mkGuessδ n1 n2 m
+  return δ
   where
     s = do
       n1 <- makeNode t1
@@ -435,26 +514,36 @@ mkGuessδ n1 n2 m = go n1 n2
 
       trace $ printf "Guessing δ for (%s, %s)" (preview (node n1)) (preview (node n2))
 
-      case () of
-        () | (n1, n2) `elem` m -> do
-               if isomorphic n1 n2
-                 then return $ Just ΔT.Same
-                 else do
-                 trace "A"
-                 return Nothing
-           | height n1 > height n2 -> do
-               return $ Just $ ΔT.Replace (node n2)
-           | height n2 > height n1 -> do
-               case (node n2, children n2) of
-                 (Pi α _ _, [τ1, τ2]) -> do
-                   δ1 <- go n1 τ1
-                   δ2 <- go n1 τ2
-                   return $ ΔT.InsPi <$> Just α <*> δ1 <*> Just (Binder Nothing) <*> δ2
-                 _ -> do
-                   trace  "D"
-                   return Nothing
-           | otherwise -> do
-               return $ Just $ ΔT.Replace (node n2)
+      if (n1, n2) `elem` m
+        then do
+        if isomorphic n1 n2
+          then do
+          trace "Isomorphic!"
+          return $ Just ΔT.Same
+          else do
+          trace "A"
+          return Nothing
+        else do
+        case (node n1, children n1, node n2, children n2) of
+          (Pi _ _ _, [τ1, τ2], Pi α' _ _, [τ1', τ2']) -> do
+            if partitions m (τ1, τ1') (τ2, τ2')
+              then do
+              δ1 <- go τ1 τ1'
+              δ2 <- go τ2 τ2'
+              return $ ΔT.CpyPi <$> δ1 <*> Just ΔA.Same <*> δ2
+              else do
+              δ1 <- go n1 τ1
+              δ2 <- go n1 τ2
+              return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
+          (Var _ _, _, Pi α' _ _, [τ1', τ2']) -> do
+            δ1 <- go n1 τ1'
+            δ2 <- go n1 τ2'
+            return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
+          _ -> do
+            trace  "D"
+            return Nothing
+
+    partitions m (n1, n1') (n2, n2') = True
 
 -- main :: Node α -> Node α -> IO ()
 -- main n1 n2 = do

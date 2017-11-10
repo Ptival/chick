@@ -63,7 +63,7 @@ data Diff α
   | PermutPis  [Int] (Diff α)
   | RemoveApp  (Diff α) -- removes the right term
   | RemovePi   (Diff α) -- removes the left term and binder
-  deriving (Show)
+  deriving (Eq, Show)
 
 instance PrettyPrintable (Diff α) where
   prettyDoc = \case

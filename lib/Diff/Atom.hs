@@ -15,7 +15,7 @@ import PrettyPrinting.PrettyPrintable
 data Diff a
   = Same
   | Replace a
-  deriving (Functor, Show)
+  deriving (Eq, Functor, Show)
 
 instance PrettyPrintable a => PrettyPrintable (Diff a) where
   prettyDoc Same        = text "Same"

@@ -116,7 +116,8 @@ data Branch α ν =
   , branchBody        :: NamesScope (TermX α) ν
   }
   deriving
-    ( Foldable
+    ( Eq
+    , Foldable
     , Functor
     , Generic
     , Traversable
