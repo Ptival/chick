@@ -15,7 +15,9 @@ guessδBench :: RepairTermBenchmark -> Maybe (ΔT.Diff Raw.Raw)
 guessδBench b = guessδ (repairTermFromType b) (repairTermToType b)
 
 testBench :: RepairTermBenchmark -> Assertion
-testBench b = guessδBench b @?= Just (repairTermDiff b)
+testBench b =
+  let guess = guessδBench b in
+  ΔT.patchMaybe (repairTermFromType b) <$> guess @?= Just (Just (repairTermToType b))
 
 unitTests :: TestTree
 unitTests = testGroup "Diff.Guess.Term" $ []

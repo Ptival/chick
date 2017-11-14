@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
@@ -21,6 +22,7 @@ import           Control.Lens hiding (children, preview)
 import           Control.Monad
 import           Control.Monad.Extra (whenM)
 import           Control.Monad.Freer
+import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Reader
 import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
@@ -54,19 +56,48 @@ label n = case node n of
   Type  _     -> "Type"
   Var   _ v   -> printf "Var(%s)" (show v)
 
+-- Turns out we need to help the GumTree algorithm when we don't have any
+-- unique matches
+
+-- termChildren :: TermX α Variable -> [TermX α Variable]
+-- termChildren = go
+--   where
+--     go input = case input of
+--       Annot _ t τ -> [t, τ]
+--       App _ t1 t2 -> [t1, t2]
+--       Hole _ -> []
+--       Lam _ bt -> let (_, t) = unscopeTerm bt in [t]
+--       Let _ t1 bt2 -> [t1, t2] where (_, t2) = unscopeTerm bt2
+--       Match _ t bs -> t : map branchChild bs
+--       Pi _ τ1 bτ2 -> let (_, τ2) = unscopeTerm bτ2 in [τ1, τ2]
+--       Type _ -> []
+--       Var _ _ -> []
+
 termChildren :: TermX α Variable -> [TermX α Variable]
 termChildren = go
   where
-    go = \case
-      Annot _ t τ    -> [t, τ]
-      App   _ a b    -> [a, b]
-      Hole  _        -> []
-      Lam   _ bt     -> [t]      where (_, t) = unscopeTerm bt
-      Let   _ t1 bt2 -> [t1, t2] where (_, t2) = unscopeTerm bt2
-      Match _ t  bs  -> t : map branchChild bs
-      Pi    _ τ1 bτ2 -> [τ1, τ2] where (_, τ2) = unscopeTerm bτ2
-      Type  _        -> []
-      Var   _ _      -> []
+    go input = case input of
+      Annot _ t τ -> [t, τ]
+      App _ _ _ ->
+        case run $ runError (ΔT.extractApps input) of
+        Left (_ :: String) -> error "This should not happen"
+        Right (c, cs) -> c : map (view _2) cs
+      Hole _ -> []
+      Lam _ _ ->
+        case run $ runError (ΔT.extractLams input) of
+        Left (_ :: String) -> error "This should not happen"
+        Right (cs, c) -> map (variableFromBinder . view _2) cs ++ [c]
+      Let _ t1 bt2 -> [t1, t2] where (_, t2) = unscopeTerm bt2
+      Match _ t bs -> t : map branchChild bs
+      Pi _ _ _ ->
+        case run $ runError (ΔT.extractPis input) of
+        Left (_ :: String) -> error "This should not happen"
+        Right (cs, c) -> map (view _3) cs ++ [c]
+      Type _ -> []
+      Var _ _ -> []
+    variableFromBinder (Binder b) = case b of
+      Nothing -> Var Nothing (Variable "_")
+      Just v  -> Var Nothing v
 
 nodeDescendants :: Node α -> [Node α]
 nodeDescendants t = c ++ concatMap nodeDescendants c
@@ -104,7 +135,7 @@ dice :: [(Node α, Node α)] -> Node α -> Node α -> Double
 dice m t1 t2 = (2 * fromIntegral c) / (lengthOf s1 + lengthOf s2)
   where
     lengthOf = fromIntegral . List.length
-    c = count (\ t1' -> (t1', t2) `elem` m) s1
+    c = count (`elem` m) (product s1 s2)
     s1 = nodeDescendants t1
     s2 = nodeDescendants t2
 
@@ -451,6 +482,7 @@ bottomUp = do
         Just t2 -> do
           trace $ printf "Found a candidate: %s" (preview . node $ t2)
           m <- getM
+          trace $ printf "Candidate dice: %s" (show $ dice m t1 t2)
           when (dice m t1 t2 > minDice) $ do
             trace "Adding bottom-up mapping"
             modify $ over bottomUpStateM $ List.union [(t1, t2)]
@@ -502,8 +534,20 @@ traceGuessδ t1 t2 = do
       n2 <- makeNode t2
       return (n1, n2)
 
+matchPairs m l1 l2 = go l1 l2
+  where
+    go [] [] = []
+    go l1@(n1 : t1) l2@(n2 : t2)
+      | (n1, n2) `elem` m         = (Just n1, Just n2) : go t1 t2
+      | List.any (matchesL n1) t2 = (Nothing, Just n2) : go l1 t2
+      | List.any (matchesR n2) t1 = (Just n1, Nothing) : go t1 l2
+      | otherwise                 = (Just n1, Nothing) : (Nothing, Just n2) : go t1 t2
+    matchesL nL nR = (nL, nR) `elem` m
+    matchesR nR nL = (nL, nR) `elem` m
+
 mkGuessδ ::
   ( Member Trace r
+  , Show α
   ) =>
   Node α -> Node α -> Mapping α -> Eff r (Maybe (ΔT.Diff α))
 mkGuessδ n1 n2 m = go n1 n2
@@ -521,29 +565,71 @@ mkGuessδ n1 n2 m = go n1 n2
           trace "Isomorphic!"
           return $ Just ΔT.Same
           else do
-          trace "A"
-          return Nothing
+          trace "Not isomorphic!"
+          case (node n1, node n2) of
+            (Pi _ _ _, Pi _ _ _) -> do
+              trace $ show $ node n1
+              trace $ show $ node n2
+              let pairs = matchPairs m (children n1) (children n2)
+              (δ, _) <- foldM foldPis (id, (node n1, node n2)) pairs
+              return $ Just $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
         else do
+
         case (node n1, children n1, node n2, children n2) of
-          (Pi _ _ _, [τ1, τ2], Pi α' _ _, [τ1', τ2']) -> do
-            if partitions m (τ1, τ1') (τ2, τ2')
-              then do
-              δ1 <- go τ1 τ1'
-              δ2 <- go τ2 τ2'
-              return $ ΔT.CpyPi <$> δ1 <*> Just ΔA.Same <*> δ2
-              else do
-              δ1 <- go n1 τ1
-              δ2 <- go n1 τ2
-              return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
+
+          (Pi _ _ bτ2, τs, Pi α' _ bτ2', τs') -> do
+            trace "YOLO"
+            trace $ show $ matchPairs m (children n1) (children n2)
+            return Nothing
+            -- if containMatches m τ τ'
+            --   then do
+            --   δ1 <- go τ τ'
+            --   let (_, τ2)  = unscopeTerm bτ2
+            --   let (_, τ2') = unscopeTerm bτ2'
+            --   δ2 <- go _
+            --   return $ ΔT.CpyPi <$> δ1 <*> Just ΔA.Same <*> δ2
+            --   else do
+            --   δ1 <- go n1 τ1
+            --   δ2 <- go n1 τ2
+            --   return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
+
           (Var _ _, _, Pi α' _ _, [τ1', τ2']) -> do
             δ1 <- go n1 τ1'
             δ2 <- go n1 τ2'
             return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
-          _ -> do
+
+          _isomoprhic -> do
             trace  "D"
             return Nothing
 
-    partitions m (n1, n1') (n2, n2') = True
+    containMatches m n1 n2 = True
+
+    foldPis (δ, (t, t')) = \case
+      (Nothing, Nothing) -> error "This should not happen"
+      (Nothing, Just _) -> do
+        trace "Branch 1"
+        let (Pi α' τ1' bτ2') = t'
+        let (b, τ2') = unscopeTerm bτ2'
+        return $ (δ . ΔT.InsPi α' (ΔT.Replace τ1') b, (t, τ2'))
+      (Just _,  Nothing) -> do
+        trace "Branch 2"
+        let (Pi _ τ1 bτ2) = t
+        let (b, τ2) = unscopeTerm bτ2
+        return $ (δ . ΔT.RemovePi, (τ2, t'))
+      (Just τ1, Just τ1') -> do
+        case (t, t') of
+          (Pi _ _ bτ2, Pi _ _ bτ2') -> do
+            trace $ printf "TO THE LEFT: (%s, %s)" (show τ1) (show τ1')
+            go τ1 τ1' >>= \case
+              Nothing -> error "I think this should not happen"
+              Just δ1 -> do
+                trace $ printf "Diff for left branch:\n%s" (show δ1)
+                let (_, τ2) = unscopeTerm bτ2
+                let (_, τ2') = unscopeTerm bτ2'
+                return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (τ2, τ2'))
+          (_, _) -> do
+            -- nothing to do here?
+            return $ (δ, (t, t'))
 
 -- main :: Node α -> Node α -> IO ()
 -- main n1 n2 = do

@@ -208,8 +208,10 @@ extractSomePis _ t              =
   throwExc $ printf "extractPis: not a Pi: %s" (prettyStrU t)
 
 extractPis ::
-  Member (Exc String) r =>
-  TermX α Variable -> Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
+  ( Member (Exc String) r
+  ) =>
+  TermX α Variable ->
+  Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
 extractPis = \case
   Pi a τ1 bτ2 -> do
     let (b, τ2) = unscopeTerm bτ2
@@ -218,8 +220,10 @@ extractPis = \case
   t -> return ([], t)
 
 extractPi ::
-  Member (Exc String) r =>
-  TermX α Variable -> Eff r (α, TermX α Variable, Binder Variable, TermX α Variable)
+  ( Member (Exc String) r
+  ) =>
+  TermX α Variable ->
+  Eff r (α, TermX α Variable, Binder Variable, TermX α Variable)
 extractPi = \case
   Pi a τ1 bτ2 -> do
     let (b, τ2) = unscopeTerm bτ2
