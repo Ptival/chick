@@ -29,6 +29,7 @@ import           Control.Monad.Freer.Trace
 import           Control.Monad.Loops
 import           Data.Function
 import qualified Data.List as List
+import           Data.Maybe
 import           Data.Ord
 import           Prelude hiding (product)
 import           Text.Printf
@@ -36,6 +37,7 @@ import           Util ((<&&>), count)
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.Term as ΔT
+import           Diff.Utils
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
@@ -534,14 +536,85 @@ traceGuessδ t1 t2 = do
       n2 <- makeNode t2
       return (n1, n2)
 
+unsafeSplitWhen :: (t -> Bool) -> [t] -> ([t], t, [t])
+unsafeSplitWhen p [] = error "unsafeSplitWhen"
+unsafeSplitWhen p (h : t) | p h       = ([], h, t)
+                          | otherwise = over _1 ((:) h) $ unsafeSplitWhen p t
+
+{- expandSpanning equals l1 l2 splits two lists, respectively, into (pre1,
+post1) and (pre2, post2) s.t. no element of pre1 has an equal element in post2,
+and no element of pre2 has an equal element in post1.  It does so while minimizing
+the length of pre1 and post1.
+
+expandSpanning (=) [a, b, c, d, e, f] [c, a, e, g] =
+(([a, b, c, d, e], [f]), ([c, a, e], [g]))
+-}
+
+expandSpanning :: (a -> b -> Bool) -> [a] -> [b] -> (([a], [a]), ([b], [b]))
+expandSpanning equals (h1 : t1) (h2 : t2) = go ([h1], t1) ([h2], t2)
+  where
+    go s1@(pre1, post1) s2@(pre2, post2) =
+      case List.find (isIn2 post2) pre1 of
+      Nothing ->
+        case List.find (isIn1 post1) pre2 of
+        Nothing -> (s1, s2)
+        Just e2 ->
+          let (l1, e1, r1) = unsafeSplitWhen (`equals` e2) post1 in
+          go (pre1 ++ l1 ++ [e1], r1) (pre2, post2)
+      Just e1 ->
+        let (l2, e2, r2) = unsafeSplitWhen (equals e1) post2 in
+        go (pre1, post1) (pre2 ++ l2 ++ [e2], r2)
+    isIn1 l e = List.any (`equals` e) l
+    isIn2 l e = List.any (equals e) l
+expandSpanning _ [] [] = (([], []), ([] ,[]))
+
+{- generatePermutation takes two lists with matching elements, and generate a permutation
+such that:
+
+- matching elements are permuted to appear in the order of the second list
+- non matching elements are left at the position they were in the first list
+
+i.e.
+
+l1 = A X Y D Z F G H
+l2 = D G U A V H F
+
+permutation should yield:
+
+r =  D X Y G Z A H F
+
+-}
+generatePermutation equals l1 l2 =
+  let replacements =
+        catMaybes
+        $ map (\ e2 -> List.findIndex (\ e1 -> equals e1 e2) l1) l2
+  in go (zip l1 [0..]) replacements
+  where
+    go [] _ = []
+    go ((e1, _) : l1) (r : rs) | List.any (\ e2 -> equals e1 e2) l2 = r : go l1 rs
+    go ((_, p1) : l1) rs = p1 : go l1 rs
+
+data Match α
+  = Matched        (Node α) (Node α)
+  | LeftUnmatched  (Node α)
+  | RightUnmatched (Node α)
+  | Permuted       [Int]
+  deriving (Show)
+
+matchPairs :: Mapping α -> [Node α] -> [Node α] -> [Match α]
 matchPairs m l1 l2 = go l1 l2
   where
+    equals e1 e2 = (e1, e2) `elem` m
     go [] [] = []
     go l1@(n1 : t1) l2@(n2 : t2)
-      | (n1, n2) `elem` m         = (Just n1, Just n2) : go t1 t2
-      | List.any (matchesL n1) t2 = (Nothing, Just n2) : go l1 t2
-      | List.any (matchesR n2) t1 = (Just n1, Nothing) : go t1 l2
-      | otherwise                 = (Just n1, Nothing) : (Nothing, Just n2) : go t1 t2
+      | (n1, n2) `elem` m         = Matched n1 n2 : go t1 t2
+      | List.any (matchesL n1) t2 && List.any (matchesR n2) t1
+      = let ((pre1, post1), (pre2, post2)) = expandSpanning equals l1 l2 in
+        let p = generatePermutation equals pre1 pre2 in
+        Permuted p : go (permute p pre1 ++ post1) (pre2 ++ post2)
+      | List.any (matchesL n1) t2 = RightUnmatched n2 : go l1 t2
+      | List.any (matchesR n2) t1 = LeftUnmatched n1 : go t1 l2
+      | otherwise                 = LeftUnmatched n1 : RightUnmatched n2 : go t1 t2
     matchesL nL nR = (nL, nR) `elem` m
     matchesR nR nL = (nL, nR) `elem` m
 
@@ -571,16 +644,17 @@ mkGuessδ n1 n2 m = go n1 n2
               trace $ show $ node n1
               trace $ show $ node n2
               let pairs = matchPairs m (children n1) (children n2)
+              trace $ printf "PAIRS:\n%s" (show pairs)
               (δ, _) <- foldM foldPis (id, (node n1, node n2)) pairs
               return $ Just $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
+            (_, _) -> error "TODO not isomorphic, not Pis"
         else do
 
         case (node n1, children n1, node n2, children n2) of
 
           (Pi _ _ bτ2, τs, Pi α' _ bτ2', τs') -> do
-            trace "YOLO"
             trace $ show $ matchPairs m (children n1) (children n2)
-            return Nothing
+            error "FINISH ME"
             -- if containMatches m τ τ'
             --   then do
             --   δ1 <- go τ τ'
@@ -598,38 +672,36 @@ mkGuessδ n1 n2 m = go n1 n2
             δ2 <- go n1 τ2'
             return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
 
-          _isomoprhic -> do
+          _ -> do
             trace  "D"
             return Nothing
 
-    containMatches m n1 n2 = True
-
     foldPis (δ, (t, t')) = \case
-      (Nothing, Nothing) -> error "This should not happen"
-      (Nothing, Just _) -> do
-        trace "Branch 1"
+      RightUnmatched _ -> do
         let (Pi α' τ1' bτ2') = t'
         let (b, τ2') = unscopeTerm bτ2'
         return $ (δ . ΔT.InsPi α' (ΔT.Replace τ1') b, (t, τ2'))
-      (Just _,  Nothing) -> do
-        trace "Branch 2"
+      LeftUnmatched _ -> do
         let (Pi _ τ1 bτ2) = t
-        let (b, τ2) = unscopeTerm bτ2
+        let (_, τ2) = unscopeTerm bτ2
         return $ (δ . ΔT.RemovePi, (τ2, t'))
-      (Just τ1, Just τ1') -> do
+      Matched τ1 τ1' -> do
         case (t, t') of
           (Pi _ _ bτ2, Pi _ _ bτ2') -> do
-            trace $ printf "TO THE LEFT: (%s, %s)" (show τ1) (show τ1')
             go τ1 τ1' >>= \case
               Nothing -> error "I think this should not happen"
               Just δ1 -> do
-                trace $ printf "Diff for left branch:\n%s" (show δ1)
                 let (_, τ2) = unscopeTerm bτ2
                 let (_, τ2') = unscopeTerm bτ2'
                 return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (τ2, τ2'))
           (_, _) -> do
             -- nothing to do here?
             return $ (δ, (t, t'))
+      Permuted p -> do
+        case ΔT.patchMaybe t (ΔT.PermutPis p ΔT.Same) of
+          Nothing -> error "computed permutation was incorrect"
+          Just tPatched -> do
+            return $ (δ . ΔT.PermutPis p, (tPatched, t'))
 
 -- main :: Node α -> Node α -> IO ()
 -- main n1 n2 = do

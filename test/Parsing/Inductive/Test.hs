@@ -110,7 +110,7 @@ ttUnit = Constructor indUnit "tt" [] []
 unitTests :: TestTree
 unitTests = testGroup "Parsing.Inductive" $ []
   ++ [testCase "bool"  $ indBool  @?= SL.indBool ]
-  ++ [testCase "empty" $ indEmpty @?= SL.indEmpty]
+  ++ [testCase "false" $ indEmpty @?= SL.indFalse]
   ++ [testCase "fin"   $ indFin   @?= SL.indFin  ]
   ++ [testCase "list"  $ indList  @?= SL.indList ]
   ++ [testCase "nat"   $ indNat   @?= SL.indNat  ]
