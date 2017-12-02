@@ -1,0 +1,28 @@
+{
+  "name": "peacoq-frontend",
+  "version": "0.0.1",
+  "description": "PeaCoq is a pretty rooster",
+  "author": "Valentin Robert <valentin.robert.42@gmail.com>",
+  "license": "GPL-3.0",
+  "repository": "http://github.com/Ptival/peacoq-frontend",
+  "dependencies": {
+    "codemirror": "^5.23.0",
+    "npm-check-updates": "2.11.3",
+    "requirejs": "^2.3.2",
+    "rxjs": "^5.4.0",
+    "s-expression": "^3.0.3"
+  },
+  "devDependencies": {
+    "@purescript/psci-support": "^3.0.0",
+    "@types/codemirror": "0.0.40",
+    "bower": "^1.8.2",
+    "chokidar-cli": "^1.2.0",
+    "npm-run-all": "^4.0.2",
+    "pulp": "^11.0.0"
+  },
+  "scripts": {
+    "all": "npm-run-all --parallel watch-browserify",
+    "pulp-server": "pulp server",
+    "watch-browserify": "pulp -w browserify -O -t output/app.js"
+  }
+}

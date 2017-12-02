@@ -1,0 +1,27 @@
+flags: {}
+extra-deps:
+  - gdiff-1.1
+  - GenericPretty-1.2.1
+  - snap-1.0.0.2
+  - heist-1.0.1.0
+  - map-syntax-0.2.0.2
+  - xmlhtml-0.2.5.1
+resolver: lts-9.12
+packages:
+  - '.'
+  - location:
+      git: https://github.com/ekmett/bound
+      commit: 32e513ff564bbe1d0f2c0265abfc63d07b6f50c3
+    extra-dep: true
+  - location:
+      git: https://github.com/IxpertaSolutions/freer-effects
+      commit: 39a7e62cc049d43d36ece4ac24ba19e545f0b726
+    extra-dep: true
+nix:
+  enable: true
+  #packages:
+  #  - binutils
+  #  - git
+  #  - ncurses
+  path: [nixpkgs=/home/ptival/nixpkgs]
+  shell-file: shell-stack.nix
