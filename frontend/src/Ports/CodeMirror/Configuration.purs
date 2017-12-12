@@ -7,6 +7,7 @@ type ConfigurationF f =
   { autofocus      :: f Boolean
   , lineNumbers    :: f Boolean
   , lineSeparator  :: f String
+  , lineWrapping   :: f Boolean
   , mode           :: f String
   , value          :: f String
   , viewportMargin :: f Number
@@ -20,6 +21,7 @@ toRaw c =
   { autofocus      : toNullable c.autofocus
   , lineNumbers    : toNullable c.lineNumbers
   , lineSeparator  : toNullable c.lineSeparator
+  , lineWrapping   : toNullable c.lineWrapping
   , mode           : toNullable c.mode
   , value          : toNullable c.value
   , viewportMargin : toNullable c.viewportMargin
@@ -30,6 +32,7 @@ def =
   { autofocus      : Nothing
   , lineNumbers    : Nothing
   , lineSeparator  : Nothing
+  , lineWrapping   : Nothing
   , mode           : Nothing
   , value          : Nothing
   , viewportMargin : Nothing

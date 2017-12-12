@@ -84,6 +84,10 @@ foreign import _setSize :: ∀ e. EU.EffFn3 e CodeMirror String String Unit
 setSize :: ∀ e. CodeMirror -> String -> String -> Eff e Unit
 setSize = EU.runEffFn3 _setSize
 
+foreign import _setValue :: ∀ e. EU.EffFn2 e Doc String Unit
+setValue :: ∀ e. Doc -> String -> Eff e Unit
+setValue d v = EU.runEffFn2 _setValue d v
+
 -- | All the `on` stuff is down here
 
 type ChangeObj =

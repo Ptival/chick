@@ -14,7 +14,8 @@ type Style = ∀ r i. H.IProp (style :: String | r) i
 componentStyle :: Style
 componentStyle = HCSS.style $ do
   flexColumn
-  CSS.height (CSS.fromString "50%")
+  --CSS.height (CSS.fromString "50%")
+  CSS.width  (CSS.fromString "33%")
 
 editorContextStyle :: Style
 editorContextStyle = HCSS.style do

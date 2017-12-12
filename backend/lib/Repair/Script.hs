@@ -175,6 +175,8 @@ repair script@(Script s) δs =
   let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
   case (s, δs) of
 
+    (_, ΔL.Replace s') -> repair (Script s') ΔL.Same
+
     -- keeping, but still repairing
     (v : s', ΔL.Keep δs') -> do
       δv' <- RV.repair v ΔV.Same
@@ -233,4 +235,4 @@ repair script@(Script s) δs =
           -- - it might be that constructor types mention a type that has been updated
           return ΔL.Same
 
-    _ -> exc $ printf "TODO: %s" (show (s, δs))
+    --_ -> exc $ printf "TODO: %s" (show (s, δs))

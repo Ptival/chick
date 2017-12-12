@@ -2,16 +2,19 @@ module Chick.Component where
 
 import CSS as CSS
 import CodeMirror.Component as CM
+import CodeMirror.Style (flexRow)
 import Control.Applicative (pure)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Aff.Console (CONSOLE)
 import Control.Monad.Eff.Console (log)
+import Control.Monad.Except (runExcept)
 import Data.Argonaut.Core (Json, fromObject, fromString, stringify)
 import Data.Either (Either(..))
-import Data.Either.Nested (Either2)
+import Data.Either.Nested (Either3)
+import Data.Foreign.Generic (decodeJSON)
 import Data.Function (const, ($))
-import Data.Functor.Coproduct.Nested (Coproduct2)
+import Data.Functor.Coproduct.Nested (Coproduct3)
 import Data.HTTP.Method (Method(..))
 import Data.Lens (Lens', lens, over)
 import Data.Maybe (Maybe(..))
@@ -21,7 +24,7 @@ import Data.Tuple (Tuple(..))
 import Data.Unit (Unit, unit)
 import Data.Void (Void)
 import Halogen as H
-import Halogen.Component.ChildPath (ChildPath(..), cp1, cp2)
+import Halogen.Component.ChildPath (ChildPath, cp1, cp2, cp3)
 import Halogen.HTML as HH
 import Halogen.HTML.CSS (style)
 import Network.HTTP.Affjax as AX
@@ -34,7 +37,7 @@ data Query a
   = AfterUpdated  String a
   | BeforeUpdated String a
 
-type ChildQuery = Coproduct2 CM.Query CM.Query
+type ChildQuery = Coproduct3 CM.Query CM.Query CM.Query
 
 type State =
   { codeBefore :: String
@@ -51,13 +54,16 @@ _codeAfter = lens _.codeAfter (_ { codeAfter = _ })
 _guess :: Lens' State (Maybe String)
 _guess = lens _.guess (_ { guess = _ })
 
-type Slot = Either2 Unit Unit
+type Slot = Either3 Unit Unit Unit
 
 cmSlotBefore :: ChildPath CM.Query ChildQuery Unit Slot
 cmSlotBefore = cp1
 
 cmSlotAfter :: ChildPath CM.Query ChildQuery Unit Slot
 cmSlotAfter = cp2
+
+cmSlotPatched :: ChildPath CM.Query ChildQuery Unit Slot
+cmSlotPatched = cp3
 
 type Input = Unit
 
@@ -70,6 +76,9 @@ handleCodeMirrorBefore = case _ of
 handleCodeMirrorAfter :: CM.Message -> Maybe (Query Unit)
 handleCodeMirrorAfter = case _ of
   CM.Updated code -> Just $ H.action $ AfterUpdated code
+
+handleCodeMirrorPatched :: CM.Message -> Maybe (Query Unit)
+handleCodeMirrorPatched = pure Nothing
 
 type ChickEffects e =
   ( ajax    :: AX.AJAX
@@ -101,25 +110,30 @@ guessText = case _ of
 render :: ∀ m e. MonadAff (ChickEffects e) m => State -> Render m
 render { codeBefore, codeAfter, guess } =
   HH.div [ style $ do
+              flexRow
               CSS.height    $ CSS.fromString "100%"
               --CSS.minHeight $ CSS.fromString "100%"
          ]
-  $  [ HH.div [] [ HH.text ("Before: " <> codeBefore) ] ]
-  <> [ HH.div [] [ HH.text ("After:  " <> codeAfter) ] ]
-  <> [ HH.div [] [ HH.text ("Guess:  " <> guessText guess) ] ]
-  <>
+  $
   [ HH.slot'
     cmSlotBefore
     unit
-    CM.codeMirrorComponent { code : initialCodeBefore }
+    CM.codeMirrorComponent { code : codeBefore }
     handleCodeMirrorBefore
   ]
   <>
   [ HH.slot'
     cmSlotAfter
     unit
-    CM.codeMirrorComponent { code : initialCodeAfter }
+    CM.codeMirrorComponent { code : codeAfter }
     handleCodeMirrorAfter
+  ]
+  <>
+  [ HH.slot'
+    cmSlotPatched
+    unit
+    CM.codeMirrorComponent { code : guessText guess }
+    handleCodeMirrorPatched
   ]
 
 mkGuessInput :: State -> Json
@@ -131,6 +145,9 @@ mkGuessInput { codeBefore, codeAfter } =
 
 type DSL = H.ParentDSL State Query ChildQuery Slot Message
 
+set :: ∀ e m a. MonadAff (ChickEffects e) m => Lens' State a -> a -> DSL m Unit
+set lens value = H.modify $ over lens $ const value
+
 updateGuess :: ∀ e m. MonadAff (ChickEffects e) m => DSL m Unit
 updateGuess = do
   s <- H.get
@@ -138,9 +155,13 @@ updateGuess = do
     affjaxQuery "chickGuess" (Just (stringify (mkGuessInput s)))
   case status of
     StatusCode 200 -> do
-      H.liftEff $ log "good status code :)"
-      H.liftEff $ log response
-      H.modify (over _guess $ const (Just response))
+      case runExcept (decodeJSON response) of
+        Left e -> H.liftEff $ log "Could not decode JSON"
+        Right r -> do
+          --H.liftEff $ log response
+          set _guess $ Just r
+          _ <- H.query' cmSlotPatched unit (H.action $ CM.SetValue r)
+          pure unit
     _ -> do
       H.liftEff $ log "bad status code :("
 
@@ -148,12 +169,12 @@ eval :: ∀ e m. MonadAff (ChickEffects e) m => Query ~> DSL m
 eval = case _ of
 
   BeforeUpdated bef next -> do
-    H.modify (over _codeBefore $ const bef)
+    set _codeBefore bef
     updateGuess
     pure next
 
   AfterUpdated aft next -> do
-    H.modify (over _codeAfter $ const aft)
+    set _codeAfter aft
     updateGuess
     pure next
 
@@ -172,12 +193,78 @@ chickComponent =
     , receiver     : const Nothing
     }
 
-initialCodeBefore :: String
-initialCodeBefore = """
-Definition f : (A → B) → A → B := λ f a, f a.
+commonPrefix :: String
+commonPrefix =
+  """Inductive and (A : Prop) (B : Prop) : Prop :=
+| conj : A → B → and A B.
+
+Inductive bool : Set :=
+| true : bool
+| false : bool.
+
+Inductive eq (A : Type) (x : A) : A → Prop :=
+| eq_refl : eq A x x.
+
+Inductive nat : Set :=
+| O : nat
+| S : nat → nat.
+
+Inductive or (A : Prop) (B : Prop) : Prop :=
+| or_introl : A → or A B
+| or_intror : B → or A B.
+
 """
 
-initialCodeAfter :: String
-initialCodeAfter = """
-Definition f : (A → B → C) → A → B → C := λ f a, f a.
+initialCodeBefore :: String
+initialCodeBefore =
+  commonPrefix
+  <> """Inductive list (A : Type) : Type :=
+| nil : list A
+| cons : A → list A → list A.
 """
+  <> commonSuffix
+
+initialCodeAfter :: String
+initialCodeAfter =
+  commonPrefix
+  <> """Inductive Vec (A : Type) : ∀ (size : nat), Type :=
+| vnil : Vec A O
+| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Vec A (S n).
+"""
+  <> commonSuffix
+
+commonSuffix :: String
+commonSuffix = """
+Definition a_list : list nat :=
+cons nat O (nil nat).
+
+Definition length : ∀ (T : Type), list T → nat :=
+λ T l , list_rect T (λ _ , nat) O (λ _ _ lt , S lt) l.
+"""
+
+-- Definition length2 : ∀ (T : Type), list T → nat :=
+-- λ T l , match l with
+--         | nil  _     => O
+--         | cons _ h t => S O
+--         end.
+
+-- Definition hd : ∀ (A : Type), A → list A → A :=
+-- λ A default l, list_rect A (λ _, A) default (λ x _ _, x) l.
+
+-- Definition tl : ∀ (A : Type), list A → list A :=
+-- λ A l, list_rect A (λ _, list A) (nil A) (λ _ x _, x) l.
+
+-- Definition In : ∀ (A : Type), A → list A → Type :=
+-- λ A a l, list_rect A (λ _, Type) False
+--          (λ _ b m, or (eq A b a) (In A a m)).
+
+-- Fixpoint map : ∀ (A : Type) (B : Type) (f : A → B), list A → Type :=
+-- λ A B f l,
+--   match l with
+--   | nil _      => nil B
+--   | cons _ h t => cons B (f h) (map A B f t)
+--   end.
+-- """
+
+initialCodePatched :: String
+initialCodePatched = ""

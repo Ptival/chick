@@ -78,7 +78,11 @@ Library
                   Diff.ConcatMap
                   Diff.Constructor
                   Diff.Eliminator
+                  Diff.Guess.Atom
+                  Diff.Guess.Inductive
+                  Diff.Guess.Script
                   Diff.Guess.Term
+                  Diff.Guess.Vernacular
                   Diff.GlobalDeclaration
                   Diff.GlobalEnvironment
                   Diff.Inductive
@@ -107,6 +111,7 @@ Library
                   -- Parsing.Atomic
                   Parsing.Inductive
                   Parsing.Inductive.Test
+                  Parsing.Script
                   -- Parsing.Tactic
                   Parsing.Utils
                   Parsing.Vernacular

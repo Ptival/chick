@@ -5,6 +5,7 @@ nixpkgs.haskell.lib.buildStackProject {
   buildInputs = (with nixpkgs; [
     binutils
     git
+    gmp
     ncurses
     #stack
     zlib

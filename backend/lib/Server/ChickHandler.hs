@@ -1,23 +1,24 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Server.ChickHandler where
 
 import           Control.Lens
 import           Control.Monad.Except
+import           Control.Monad.Freer.Trace
 import           Control.Monad.Loops (whileM)
 import           Control.Monad.Representable.Reader (ask)
 import           Data.Aeson
-import qualified Data.ByteString.UTF8 as BSU
-import qualified Data.ByteString.Lazy as BSL
+-- import qualified Data.ByteString.UTF8 as BSU
+-- import qualified Data.ByteString.Lazy as BSL
 import           Data.IORef
 import qualified Data.IntMap as IM
 import qualified Data.Text as T
 import           GHC.Generics
 import           Prelude hiding (init)
-
 import           Snap.Core
 import           Snap.Extras.JSON
 import           Snap.Snaplet
@@ -27,11 +28,15 @@ import           System.Directory (doesFileExist)
 import           System.IO
 import           System.Process
 import           System.Random
+import           Text.Megaparsec (parseMaybe)
 
-import           Diff.Guess.Term
-import           Parsing
+import qualified Diff.Guess.Script as ΔGS
+import           Parsing.Script
+import           PrettyPrinting.PrettyPrintableUnannotated
+import           Repair.Benchmark
 import           Server.Chick
 import           Server.Session
+import           Utils
 
 type ChickHandler a = Handler Chick Chick a
 
@@ -51,14 +56,29 @@ chickGuessHandler = do
     Just bodyLength -> do
       body <- readRequestBody bodyLength
       res <- case decode body of
-        Nothing -> return Nothing
+        Nothing -> return $ Just "decode body failed"
         Just (GuessInput { before, after }) -> do
-          case (parseMaybeTerm before, parseMaybeTerm after) of
-            (Just bef, Just aft) ->
-              case guessδ bef aft of
-              Nothing -> return Nothing
-              Just δ -> return $ Just δ
-            _ -> return Nothing
+          case (parseMaybe scriptP before, parseMaybe scriptP after) of
+            (Just bef, Just aft) -> do
+              liftIO $ do
+                putStrLn $ "bef: " ++ show bef
+                putStrLn $ "aft: " ++ show aft
+              δ <- liftIO $ runTrace $ ΔGS.guess bef aft
+              liftIO (runSkipTrace (repairScript bef δ)) >>= \case
+                Left e -> return $ Just e
+                Right patched ->
+                  return $ Just $
+                  "(*PATCHED!*)\n"
+                  ++ prettyStrU patched
+                  ++ "\n(*"
+                  ++ show δ
+                  ++ "*)"
+            (Nothing, Just _)  ->
+              return $ Just $ "Parsing before failed"
+            (Just _,  Nothing) ->
+              return $ Just $ "Parsing after  failed"
+            (Nothing, Nothing) ->
+              return $ Just $ "Parsing before and after failed"
       writeJSON res
 
 runCommandWithoutBuffering :: String -> IO (Handle, Handle, Handle, ProcessHandle)

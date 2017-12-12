@@ -12,6 +12,7 @@
 
 module Diff.Guess.Term
   ( algorithm
+  , guess
   , guessδ
   , makeNode
   , recommended
@@ -509,7 +510,22 @@ recommended ::
   Node α -> Node α -> Eff r (Mapping α)
 recommended = algorithm 0 0.0 100
 
-guessδ :: Show α => TermX α Variable -> TermX α Variable -> Maybe (ΔT.Diff α)
+guess ::
+  ( Member Trace r
+  , Show α
+  ) =>
+  TermX α Variable -> TermX α Variable -> Eff r (ΔT.Diff α)
+guess t1 t2 =
+  let (n1, n2) = fst . run $ runState s (0 :: Int) in
+  let m = skipTrace $ recommended n1 n2 in
+  mkGuessδ n1 n2 m
+  where
+    s = do
+      n1 <- makeNode t1
+      n2 <- makeNode t2
+      return (n1, n2)
+
+guessδ :: Show α => TermX α Variable -> TermX α Variable -> ΔT.Diff α
 guessδ t1 t2 =
   let (n1, n2) = fst . run $ runState s (0 :: Int) in
   let m = skipTrace $ recommended n1 n2 in
@@ -523,7 +539,7 @@ guessδ t1 t2 =
 
 traceGuessδ ::
   Show α =>
-  TermX α Variable -> TermX α Variable -> IO (Maybe (ΔT.Diff α))
+  TermX α Variable -> TermX α Variable -> IO (ΔT.Diff α)
 traceGuessδ t1 t2 = do
   let (n1, n2) = fst . run $ runState s (0 :: Int)
   m <- runTrace $ recommended n1 n2
@@ -537,20 +553,23 @@ traceGuessδ t1 t2 = do
       return (n1, n2)
 
 unsafeSplitWhen :: (t -> Bool) -> [t] -> ([t], t, [t])
-unsafeSplitWhen p [] = error "unsafeSplitWhen"
+unsafeSplitWhen _ [] = error "unsafeSplitWhen"
 unsafeSplitWhen p (h : t) | p h       = ([], h, t)
                           | otherwise = over _1 ((:) h) $ unsafeSplitWhen p t
 
 {- expandSpanning equals l1 l2 splits two lists, respectively, into (pre1,
 post1) and (pre2, post2) s.t. no element of pre1 has an equal element in post2,
 and no element of pre2 has an equal element in post1.  It does so while minimizing
-the length of pre1 and post1.
+the length of pre1 and pre2.
 
 expandSpanning (=) [a, b, c, d, e, f] [c, a, e, g] =
 (([a, b, c, d, e], [f]), ([c, a, e], [g]))
 -}
 
 expandSpanning :: (a -> b -> Bool) -> [a] -> [b] -> (([a], [a]), ([b], [b]))
+expandSpanning _ [] [] = (([], []), ([] ,[]))
+expandSpanning _ [] l2 = (([], []), ([], l2))
+expandSpanning _ l1 [] = (([], l1), ([], []))
 expandSpanning equals (h1 : t1) (h2 : t2) = go ([h1], t1) ([h2], t2)
   where
     go s1@(pre1, post1) s2@(pre2, post2) =
@@ -566,7 +585,6 @@ expandSpanning equals (h1 : t1) (h2 : t2) = go ([h1], t1) ([h2], t2)
         go (pre1, post1) (pre2 ++ l2 ++ [e2], r2)
     isIn1 l e = List.any (`equals` e) l
     isIn2 l e = List.any (equals e) l
-expandSpanning _ [] [] = (([], []), ([] ,[]))
 
 {- generatePermutation takes two lists with matching elements, and generate a permutation
 such that:
@@ -607,6 +625,8 @@ matchPairs m l1 l2 = go l1 l2
   where
     equals e1 e2 = (e1, e2) `elem` m
     go [] [] = []
+    go (n1 : t1) [] = LeftUnmatched  n1 : go [] t1
+    go [] (n2 : t2) = RightUnmatched n2 : go [] t2
     go l1@(n1 : t1) l2@(n2 : t2)
       | (n1, n2) `elem` m         = Matched n1 n2 : go t1 t2
       | List.any (matchesL n1) t2 && List.any (matchesR n2) t1
@@ -623,7 +643,7 @@ mkGuessδ ::
   ( Member Trace r
   , Show α
   ) =>
-  Node α -> Node α -> Mapping α -> Eff r (Maybe (ΔT.Diff α))
+  Node α -> Node α -> Mapping α -> Eff r (ΔT.Diff α)
 mkGuessδ n1 n2 m = go n1 n2
 
   where
@@ -637,7 +657,7 @@ mkGuessδ n1 n2 m = go n1 n2
         if isomorphic n1 n2
           then do
           trace "Isomorphic!"
-          return $ Just ΔT.Same
+          return $ ΔT.Same
           else do
           trace "Not isomorphic!"
           case (node n1, node n2) of
@@ -647,13 +667,13 @@ mkGuessδ n1 n2 m = go n1 n2
               let pairs = matchPairs m (children n1) (children n2)
               trace $ printf "PAIRS:\n%s" (show pairs)
               (δ, _) <- foldM foldPis (id, (node n1, node n2)) pairs
-              return $ Just $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
+              return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
             (_, _) -> error "TODO not isomorphic, not Pis"
         else do
 
         case (node n1, children n1, node n2, children n2) of
 
-          (Pi _ _ bτ2, τs, Pi α' _ bτ2', τs') -> do
+          (Pi _ _ _bτ2, _τs, Pi _α' _ _bτ2', _τs') -> do
             trace $ show $ matchPairs m (children n1) (children n2)
             error "FINISH ME"
             -- if containMatches m τ τ'
@@ -671,11 +691,11 @@ mkGuessδ n1 n2 m = go n1 n2
           (Var _ _, _, Pi α' _ _, [τ1', τ2']) -> do
             δ1 <- go n1 τ1'
             δ2 <- go n1 τ2'
-            return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
+            return $ ΔT.InsPi α' δ1 (Binder Nothing) δ2
 
           _ -> do
-            trace  "D"
-            return Nothing
+            trace "D"
+            error "TODO"
 
     foldPis (δ, (t, t')) = \case
       RightUnmatched _ -> do
@@ -683,18 +703,16 @@ mkGuessδ n1 n2 m = go n1 n2
         let (b, τ2') = unscopeTerm bτ2'
         return $ (δ . ΔT.InsPi α' (ΔT.Replace τ1') b, (t, τ2'))
       LeftUnmatched _ -> do
-        let (Pi _ τ1 bτ2) = t
+        let (Pi _ _ bτ2) = t
         let (_, τ2) = unscopeTerm bτ2
         return $ (δ . ΔT.RemovePi, (τ2, t'))
       Matched τ1 τ1' -> do
         case (t, t') of
           (Pi _ _ bτ2, Pi _ _ bτ2') -> do
-            go τ1 τ1' >>= \case
-              Nothing -> error "I think this should not happen"
-              Just δ1 -> do
-                let (_, τ2) = unscopeTerm bτ2
-                let (_, τ2') = unscopeTerm bτ2'
-                return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (τ2, τ2'))
+            δ1 <- go τ1 τ1'
+            let (_, τ2) = unscopeTerm bτ2
+            let (_, τ2') = unscopeTerm bτ2'
+            return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (τ2, τ2'))
           (_, _) -> do
             -- nothing to do here?
             return $ (δ, (t, t'))

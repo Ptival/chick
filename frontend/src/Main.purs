@@ -1,12 +1,12 @@
 module Main where
 
 import Prelude
-import Halogen as H
+--import Halogen as H
 import Halogen.Aff as HA
 import Chick.Component as Chick
 import Control.Monad.Aff (delay)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (log)
+--import Control.Monad.Eff.Console (log)
 import Control.Monad.Rec.Class (forever)
 import DOM.Node.ParentNode (QuerySelector(..))
 import Data.Time.Duration (Milliseconds(..))

@@ -151,7 +151,7 @@ indVec :: Inductive Raw.Raw Variable
 indVec = unsafeParseInductive
   [ "Inductive Vec (A : Type) : ∀ (size : nat), Type :="
   , "| vnil : Vec A O"
-  , "| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Fin (S n)"
+  , "| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Vec A (S n)"
   ]
 
 indFalse :: Inductive Raw.Raw Variable

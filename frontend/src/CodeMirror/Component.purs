@@ -1,7 +1,6 @@
 module CodeMirror.Component where
 
 import Prelude
-import CSS as CSS
 import CodeMirror.Style as CMS
 import Halogen as H
 import Halogen.HTML as HH
@@ -17,13 +16,11 @@ import Control.Monad.Aff.Class (class MonadAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 --import Control.Monad.Loops (whileM)
-import Control.Monad.State.Class (class MonadState, gets, modify)
+import Control.Monad.State.Class (gets)
 --import Data.Array (elem, fromFoldable, snoc)
 --import Data.Foldable (find)
-import Data.Lens (lens, over, view)
-import Data.Lens.Types (Lens')
 import Data.Maybe (Maybe(..))
-import Data.Traversable (for_, traverse, traverse_)
+import Data.Traversable (traverse, traverse_)
 --import Data.Tuple (snd)
 --import Halogen.HTML.CSS (style)
 import Halogen.Query (RefLabel(..))
@@ -51,30 +48,12 @@ initialState { code } =
   }
 
 data Query a
-  = Init         a
+  = Init                              a
+  | SetValue     String               a
   | HandleChange PCM.CodeMirrorChange (H.SubscribeStatus -> a)
 
 data Message
   = Updated String
-
-flex :: CSS.StyleM Unit
-flex = do
-  -- CSS.alignContent  $ CSS.stretch
-  -- CSS.alignItems    $ CSS.stretch
-  -- CSS.display       $ CSS.flex
-  pure unit
-
-flexCol :: CSS.StyleM Unit
-flexCol = do
-  -- flex
-  -- CSS.flexDirection $ CSS.column
-  pure unit
-
-flexRow :: CSS.StyleM Unit
-flexRow = do
-  -- flex
-  -- CSS.flexDirection $ CSS.row
-  pure unit
 
 render :: State -> H.ComponentHTML Query
 render { code } =
@@ -108,7 +87,7 @@ eval ::
 eval = case _ of
 
   HandleChange change status -> do
-    H.liftEff $ log $ "Change, removed: " <> change.changeObj.removed
+    -- H.liftEff $ log $ "Change, removed: " <> change.changeObj.removed
     getDoc >>= traverse_ \ doc -> do
       code <- H.liftEff $ PCM.getValue doc Nothing
       H.modify (_ { code = code })
@@ -122,6 +101,7 @@ eval = case _ of
         PCM.codeMirror element
           (CFG.def { autofocus      = Just true
                    , lineNumbers    = Just true
+                   , lineWrapping   = Just true
                    , mode           = Just "text/x-ocaml"
                    , value          = Just code
                    }
@@ -131,6 +111,11 @@ eval = case _ of
       subscribeTo
         (PCM.onCodeMirrorChange cm)
         HandleChange
+    pure next
+
+  SetValue value next -> do
+    getDoc >>= traverse_ \ doc -> H.liftEff do
+      PCM.setValue doc value
     pure next
 
   where

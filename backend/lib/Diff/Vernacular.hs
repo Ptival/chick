@@ -25,14 +25,16 @@ data Diff α
   = Same
   | ModifyDefinition (DA.Diff Bool) (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
   | ModifyInductive (DI.Diff α)
+  | Replace (Vernacular α Variable)
   deriving (Show)
 
 instance PrettyPrintable α => PrettyPrintable (Diff α) where
   prettyDoc = \case
-    Same                      -> text "Same"
+    Same -> text "Same"
     ModifyDefinition δ1 δ2 δ3 δ4 ->
       fillSep [ text "ModifyDefinition", go δ1, go δ2, go δ3, go δ4 ]
-    ModifyInductive  δ1       -> fillSep [ text "ModifyInductive",  go δ1 ]
+    ModifyInductive δ1 -> fillSep [ text "ModifyInductive",  go δ1 ]
+    Replace r -> fillSep [ text "Replace", go r ]
 
     where
       go :: PrettyPrintable a => a -> Doc ()
@@ -60,3 +62,4 @@ patch v δv =
       case v of
         Inductive ind -> Inductive <$> DI.patch ind δind
         _ -> exc "ModifyInductive: not an Inductive"
+    Replace r -> return r
