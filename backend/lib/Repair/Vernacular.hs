@@ -14,11 +14,11 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
-import qualified Diff.Atom as DA
-import qualified Diff.Inductive as DI
-import qualified Diff.Term as DT
+import qualified Diff.Atom as ΔA
+import qualified Diff.Inductive as ΔI
+import qualified Diff.Term as ΔT
 import           Diff.Utils
-import qualified Diff.Vernacular as DV
+import qualified Diff.Vernacular as ΔV
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.Inductive as RI
@@ -36,35 +36,40 @@ repair ::
   , Member Trace r
   , Member (State RepairState) r
   ) =>
-  Vernacular Raw.Raw Variable -> DV.Diff Raw.Raw -> Eff r (DV.Diff Raw.Raw)
+  Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Eff r (ΔV.Diff Raw.Raw)
 repair v δv =
   trace (printf "Repair.Vernacular/repair:\nv: %s\nδv: %s\n" (prettyStrU v) (prettyStr δv)) >>
   let exc (reason :: String) = throwExc $ printf "Repair.Vernacular/repair: %s" reason in
   case (v, δv) of
 
-    (Definition b _ τ t, DV.ModifyDefinition δb δn δτ DT.Same) -> do
+    (Definition _b _ τ t, ΔV.ModifyDefinition δb δn δτ ΔT.Same) -> do
       -- FIXME: need to deal with b
       δt <- RT.repair t τ δτ
       trace $ printf "Repair term: %s" (show δt)
-      return $ DV.ModifyDefinition δb δn δτ δt
+      return $ ΔV.ModifyDefinition δb δn δτ δt
 
-    (Definition _ _ _ _, DV.ModifyDefinition _ _ _ _) -> do
-      exc $ "TODO: 1"
+    -- TODO: can probably merge this with the previous one at some point
+    (Definition _ _ τ t, ΔV.ModifyDefinition δb δn δτ δt) -> do
+      -- FIXME: here I assume that the modification did not start refactoring
+      -- otherwise, we might get in double-repair issues
+      t' <- ΔT.patch t δt
+      δt' <- RT.repair t' τ δτ
+      return $ ΔV.ModifyDefinition δb δn δτ δt'
 
-    (_, DV.ModifyDefinition _ _ _ _) ->
+    (_, ΔV.ModifyDefinition _ _ _ _) ->
       exc "ModifyDefinition, but not a Definition"
 
-    (Inductive ind, DV.ModifyInductive δind) -> do
-      DV.ModifyInductive <$> RI.repair ind δind
+    (Inductive ind, ΔV.ModifyInductive δind) -> do
+      ΔV.ModifyInductive <$> RI.repair ind δind
 
-    (Definition b _ τ t, DV.Same) -> do
+    (Definition _b _ τ t, ΔV.Same) -> do
       -- FIXME: need to deal with b
-      δτ <- RT.repair τ (Type U.Type) DT.Same
+      δτ <- RT.repair τ (Type U.Type) ΔT.Same
       δt <- RT.repair t τ δτ
-      return $ DV.ModifyDefinition DA.Same DA.Same δτ δt
+      return $ ΔV.ModifyDefinition ΔA.Same ΔA.Same δτ δt
 
-    (Inductive ind, DV.Same) -> do
-      δind <- RI.repair ind DI.Same
-      return $ DV.ModifyInductive δind
+    (Inductive ind, ΔV.Same) -> do
+      δind <- RI.repair ind ΔI.Same
+      return $ ΔV.ModifyInductive δind
 
     _ -> exc $ printf "TODO: %s" (show δv)

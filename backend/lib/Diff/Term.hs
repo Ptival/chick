@@ -65,6 +65,7 @@ data Diff α
   | PermutLams [Int] (Diff α)
   | PermutPis  [Int] (Diff α)
   | RemoveApp  (Diff α) -- removes the right term
+  | RemoveLam  (Diff α)
   | RemovePi   (Diff α) -- removes the left term and binder
   deriving (Eq, Generic, Show)
 
@@ -84,6 +85,7 @@ instance PrettyPrintable (Diff α) where
     PermutLams p δ1   -> fillSep [ text "PermutLam",  (text $ show p), go δ1 ]
     PermutPis  p δ1   -> fillSep [ text "PermutPi",   (text $ show p), go δ1 ]
     RemoveApp δ1      -> fillSep [ text "RemoveApp",  go δ1 ]
+    RemoveLam δ1      -> fillSep [ text "RemoveApp",  go δ1 ]
     RemovePi δ1       -> fillSep [ text "RemovePi",   go δ1 ]
 
     where
@@ -110,15 +112,15 @@ patch ::
   , Member Trace r
   ) =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
-patch t δt =
+patch term δterm =
 
   let exc (s :: String) = throwExc $ printf "Diff.Term/patch: %s" s in
 
   --trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview δt)) >>
 
-  case (t, δt) of
+  case (term, δterm) of
 
-  (_, Same) -> return t
+  (_, Same) -> return term
 
   (_, Replace t') -> return t'
 
@@ -140,28 +142,34 @@ patch t δt =
   (_, CpyPi _ _ _) -> exc "CpyPi, not a Pi"
 
   (Var a v, CpyVar δv) -> Var a <$> DA.patch v δv
-  (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr t)
+  (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr term)
 
-  (_, InsApp a d1 d2) -> App a <$> patch t d1 <*> patch t d2
+  (_, InsApp a d1 d2) -> App a <$> patch term d1 <*> patch term d2
 
-  (_, InsLam a b d1) -> Lam a . abstractBinder b <$> patch t d1
+  (_, InsLam a b d1) -> Lam a . abstractBinder b <$> patch term d1
 
-  (_, InsPi a d1 b d2) -> Pi a <$> patch t d1 <*> (abstractBinder b <$> patch t d2)
+  (_, InsPi a d1 b d2) ->
+    Pi a <$> patch term d1 <*> (abstractBinder b <$> patch term d2)
 
   (_, PermutApps p δ') -> do
-    (fun, args) <- extractApps t
+    (fun, args) <- extractApps term
     patch (mkApps fun (permute p args)) δ'
 
   (_, PermutLams p d') -> do
-    (lams, rest) <- extractSomeLams (length p) t
+    (lams, rest) <- extractSomeLams (length p) term
     patch (mkLams (permute p lams) rest) d'
 
   (_, PermutPis p d') -> do
-    (pis, rest) <- extractSomePis (length p) t
+    (pis, rest) <- extractSomePis (length p) term
     patch (mkPis (permute p pis) rest) d'
 
   (App _ t1 _, RemoveApp δ) -> patch t1 δ
   (_, RemoveApp _) -> exc "RemoveApp: not an App"
+
+  (Lam _ bt, RemoveLam δ) ->
+    let (_, t) = unscopeTerm bt in
+    patch t δ
+  (_, RemoveLam _) -> exc "RemoveLam: not a Lam"
 
   (Pi _ _ bτ2, RemovePi δ) ->
     let (_, τ2) = unscopeTerm bτ2 in

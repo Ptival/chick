@@ -84,10 +84,7 @@ type Δcs α = DL.Diff (Constructor α Variable) (Δc α)
 data Diff α
   = Same
   | Modify Δn (Δips α) (Δiis α) Δu (Δcs α)
-
-instance Show α => Show (Diff α) where
-  show Same             = "Same"
-  show (Modify _ _ _ _ _) = "Modify _ _ _ _"
+  deriving (Show)
 
 instance PrettyPrintable α => PrettyPrintable (Diff α) where
   prettyDoc = \case

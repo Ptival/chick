@@ -79,6 +79,7 @@ Library
                   Diff.Constructor
                   Diff.Eliminator
                   Diff.Guess.Atom
+                  Diff.Guess.Constructor
                   Diff.Guess.Inductive
                   Diff.Guess.Script
                   Diff.Guess.Term

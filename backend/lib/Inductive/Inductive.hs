@@ -28,6 +28,8 @@ module Inductive.Inductive
   , inductiveRawType'
   , inductiveType
   , inductiveType'
+  , quantifyInductiveIndices
+  , quantifyInductiveParameters
   ) where
 
 import           Control.Monad.Reader
@@ -157,24 +159,32 @@ constructorRawType :: Bool -> Constructor Raw.Raw Variable -> Raw.Type Variable
 constructorRawType b (Constructor (Inductive n ips _ _ _) _ cps cis) =
   constructorRawType' b n ips cps cis
 
+quantifyInductiveParameters ::
+  Φips α Variable -> TypeX α Variable -> TypeX α Variable
+quantifyInductiveParameters = foldrWith onParam
+  where
+    onParam (α, v, p) t = Pi α p (abstractVariable v t)
+
+quantifyInductiveIndices ::
+  Φiis α Variable -> TypeX α Variable -> TypeX α Variable
+quantifyInductiveIndices = foldrWith onIndex
+  where
+    onIndex (α, v, i) t = Pi α i (abstractVariable v t)
+
 -- | Constructs the type of the inductive type
 inductiveRawType' ::
   Universe ->
-  Φips Raw.Raw Variable ->
-  Φiis Raw.Raw Variable ->
+  Φips α Variable ->
+  Φiis α Variable ->
   Raw.Type Variable
-inductiveRawType' univ ips indIndices =
-    foldrWith onParam ips
-  $ foldrWith onIndex indIndices
+inductiveRawType' univ ips iis =
+  Raw.raw
+  $ quantifyInductiveParameters ips
+  $ quantifyInductiveIndices    iis
   $ Type univ
-  where
-    -- onIndexOrParam :: (Binder Variable, Raw.Type Variable) -> Raw.Type Variable -> Raw.Type Variable
-    onParam (α, v, p) t = Pi α p (abstractVariable v t)
-    onIndex (α, v, i) t = Pi α i (abstractVariable v t)
-    -- onIndex (b, i) t = Pi () i (abstractBinder   b t)
 
 -- | Constructs the type of the inductive type
-inductiveRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
+inductiveRawType :: Inductive α Variable -> Raw.Type Variable
 inductiveRawType (Inductive _ ips iis u _) = inductiveRawType' u ips iis
 
 constructorCheckedType' ::
@@ -195,9 +205,11 @@ inductiveFamilyType' :: Φiis α Variable -> Universe -> TypeX α Variable
 inductiveFamilyType' iis u = foldrWith onIndex iis (Type u)
   where onIndex (α, v, i) t = Pi α i (abstractVariable v t)
 
--- | Sometimes, we can't call `inductiveType` because the constructors are not checked yet.
+-- | Sometimes, we can't call `inductiveType` because the constructors are not
+-- | checked yet.
 -- | `inductiveType'` lets us call with just the minimal information.
-inductiveType' :: Φips α Variable -> Φiis α Variable -> Universe -> TypeX α Variable
+inductiveType' ::
+  Φips α Variable -> Φiis α Variable -> Universe -> TypeX α Variable
 inductiveType' ips iis u = foldrWith onParam ips $ inductiveFamilyType' iis u
   where onParam (α, v, p) t = Pi α p (abstractVariable v t)
 

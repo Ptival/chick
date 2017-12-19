@@ -15,12 +15,12 @@ module Diff.ListFold
   , δListFoldMkPiVariables
   ) where
 
-import qualified Diff.Atom as DA
-import qualified Diff.Binder as DB
-import qualified Diff.List as DL
-import qualified Diff.Pair as D2
-import qualified Diff.Term as DT
-import qualified Diff.Triple as D3
+import qualified Diff.Atom as ΔA
+import qualified Diff.Binder as ΔB
+import qualified Diff.List as ΔL
+import qualified Diff.Pair as Δ2
+import qualified Diff.Term as ΔT
+import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
@@ -77,132 +77,138 @@ indicesListList l =
 δListFoldConcatMap ::
   (a -> [b]) ->
   (δa -> a -> Maybe a) ->
-  ΔListFold a δa (Maybe (DL.Diff b δb))
+  ΔListFold a δa (Maybe (ΔL.Diff b δb))
 δListFoldConcatMap f patchA = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert  a   _ acc = foldr (\ b acc -> DL.Insert b <$> acc) acc (f a)
-    onKeep    a   _ acc = foldr (\ _ acc -> DL.Keep     <$> acc) acc (f a)
+    onInsert  a   _ acc = foldr (\ b acc -> ΔL.Insert b <$> acc) acc (f a)
+    onKeep    a   _ acc = foldr (\ _ acc -> ΔL.Keep     <$> acc) acc (f a)
     onModify δa a _ acc =
       case patchA δa a of
       Nothing -> Nothing
-      Just a' -> foldrWith   (\ _ acc -> DL.Remove   <$> acc) (f a)
-                 $ foldrWith (\ b acc -> DL.Insert b <$> acc) (f a')
+      Just a' -> foldrWith   (\ _ acc -> ΔL.Remove   <$> acc) (f a)
+                 $ foldrWith (\ b acc -> ΔL.Insert b <$> acc) (f a')
                  $ acc
-    onPermute p l acc = DL.Permute (δpermute (take (length p) l) f p) <$> acc
+    onPermute p l acc = ΔL.Permute (δpermute (take (length p) l) f p) <$> acc
     onRemove  _ _ _acc = error "TODO: δListFoldConcatMap onRemove"
     onReplace _ _ _acc = error "TODO: δListFoldConcatMap onReplace"
-    onSame      l acc = DL.nKeeps (length l) <$> acc
+    onSame      l acc = ΔL.nKeeps (length l) <$> acc
 
 δListFoldConcatMap' ::
   (a -> [b]) ->
-  (δa -> a -> Maybe (DL.Diff b δb -> DL.Diff b δb)) ->
-  ΔListFold a δa (Maybe (DL.Diff b δb))
+  (δa -> a -> Maybe (ΔL.Diff b δb -> ΔL.Diff b δb)) ->
+  ΔListFold a δa (Maybe (ΔL.Diff b δb))
 δListFoldConcatMap' f patchBs = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert  a   _ acc = foldr (\ b acc -> DL.Insert b <$> acc) acc (f a)
-    onKeep    a   _ acc = foldr (\ _ acc -> DL.Keep     <$> acc) acc (f a)
+    onInsert  a   _ acc = foldr (\ b acc -> ΔL.Insert b <$> acc) acc (f a)
+    onKeep    a   _ acc = foldr (\ _ acc -> ΔL.Keep     <$> acc) acc (f a)
     onModify δa a _ acc =
       case patchBs δa a of
       Nothing -> Nothing
       Just δb -> δb <$> acc
-    onPermute p l acc = DL.Permute (δpermute (take (length p) l) f p) <$> acc
+    onPermute p l acc = ΔL.Permute (δpermute (take (length p) l) f p) <$> acc
     onRemove  _ _ _acc = error "TODO: δListFoldConcatMap' onRemove"
     onReplace _ _ _acc = error "TODO: δListFoldConcatMap' onReplace"
-    onSame      l acc = DL.nKeeps (length l) <$> acc
+    onSame      l acc = ΔL.nKeeps (length l) <$> acc
 
 δListFoldMkAppTerms ::
-  ΔListFold (α, TermX α Variable) (D2.Diff (DA.Diff α) (DT.Diff α)) (DT.Diff α)
+  ΔListFold (α, TermX α Variable) (Δ2.Diff (ΔA.Diff α) (ΔT.Diff α)) (ΔT.Diff α)
 δListFoldMkAppTerms = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert (α, t)   _  b = DT.InsApp α b (DT.Replace t)
-    onKeep          _ _  b = DT.CpyApp b DT.Same
-    onModify     δt _ _  b = DT.CpyApp b (D2.δsnd DT.Same δt)
+    onInsert (α, t)   _  b = ΔT.InsApp α b (ΔT.Replace t)
+    onKeep          _ _  b = ΔT.CpyApp b ΔT.Same
+    onModify     δt _ _  b = ΔT.CpyApp b (Δ2.δsnd ΔT.Same δt)
     onPermute     _   _  _ = error "TODO: δListFoldMkAppTerms onPermute"
     onRemove        _ _  _ = error "TODO: δListFoldMkAppTerms onRemove"
     onReplace     _   _  _ = error "TODO: δListFoldMkAppTerms onReplace"
-    onSame            l  b = DT.nCpyApps (length l) b
+    onSame            l  b = ΔT.nCpyApps (length l) b
 
+{-
+This dictionary explains how a list gets modified when trying to build a nested
+application `f a b c d e` out of a list `[a, b, c, d, e]`, when the list gets
+modified.  Not sure why I did not build it as a diff-transformer rather than
+fully-instantiated diffs...
+-}
 δListFoldMkAppVariables ::
   ΔListFold
   (α, Variable, TermX α Variable)
-  (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
+  (Δ3.Diff (ΔA.Diff α) (ΔA.Diff Variable) (ΔT.Diff α)) (ΔT.Diff α)
 δListFoldMkAppVariables = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert (α, v, _)   _ b = DT.InsApp α b (DT.Replace (Var Nothing v))
-    onKeep          _ _ b = DT.CpyApp b DT.Same
-    onModify      δ _ _ b =
+    onInsert (α, v, _)   _ b = ΔT.InsApp α b (ΔT.Replace (Var Nothing v))
+    onKeep _ _ b = ΔT.CpyApp b ΔT.Same
+    onModify δ _ _ b =
       case δ of
-      D3.Same -> DT.CpyApp b DT.Same
-      D3.Modify _ δv _ ->
+      Δ3.Same -> ΔT.CpyApp b ΔT.Same
+      Δ3.Modify _ δv _ ->
         case δv of
-        DA.Same -> DT.CpyApp b DT.Same
-        DA.Replace r -> DT.CpyApp b (DT.Replace (Var Nothing r))
+        ΔA.Same -> ΔT.CpyApp b ΔT.Same
+        ΔA.Replace r -> ΔT.CpyApp b (ΔT.Replace (Var Nothing r))
     onPermute _ _ _ = error "TODO: δListFoldMkAppVariables onPermute"
-    onRemove  _ _ _ = error "TODO: δListFoldMkAppVariables onRemove"
+    onRemove _ _ _ = ΔT.RemoveApp ΔT.Same
     onReplace _ _ _ = error "TODO: δListFoldMkAppVariables onReplace"
-    onSame      l b = DT.nCpyApps (length l) b
+    onSame l b = ΔT.nCpyApps (length l) b
 
 δListFoldMkPiGeneric ::
   PrettyPrintable τ =>
-  (τ -> (α, DT.Diff α, Binder Variable)) ->
-  (τ -> δτ -> (DT.Diff α, DA.Diff (Binder Variable))) ->
-  ΔListFold τ δτ (DT.Diff α)
+  (τ -> (α, ΔT.Diff α, Binder Variable)) ->
+  (τ -> δτ -> (ΔT.Diff α, ΔA.Diff (Binder Variable))) ->
+  ΔListFold τ δτ (ΔT.Diff α)
 δListFoldMkPiGeneric pi δpi = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    insert e δ = DT.InsPi α δτ b δ where (α, δτ, b) = pi e
+    insert e δ = ΔT.InsPi α δτ b δ where (α, δτ, b) = pi e
     onInsert e _    δ = insert e δ
-    onKeep _ _      δ = DT.CpyPi   DT.Same DA.Same δ
-    onModify δe e _ δ = DT.CpyPi   δτ      δb      δ where (δτ, δb) = δpi e δe
+    onKeep _ _      δ = ΔT.CpyPi   ΔT.Same ΔA.Same δ
+    onModify δe e _ δ = ΔT.CpyPi   δτ      δb      δ where (δτ, δb) = δpi e δe
     onPermute _p   _δ = error "TODO: δListFoldMkPiGeneric onPermute"
-    onRemove _ _    δ = DT.RemovePi δ
+    onRemove _ _    δ = ΔT.RemovePi δ
     onReplace l l'  δ =
       foldrWith   insert                   l'
-      $ foldrWith (\ _ δ -> DT.RemovePi δ) l
+      $ foldrWith (\ _ δ -> ΔT.RemovePi δ) l
       $ δ
-    onSame l        δ = DT.nCpyPis (length l) δ
+    onSame l        δ = ΔT.nCpyPis (length l) δ
 
 δListFoldMkPiGenericMaybe ::
-  (τ -> (α, DT.Diff α, Binder Variable)) ->
-  (τ -> δτ -> Maybe (DT.Diff α, DA.Diff (Binder Variable))) ->
-  ΔListFold τ δτ (Maybe (DT.Diff α))
+  (τ -> (α, ΔT.Diff α, Binder Variable)) ->
+  (τ -> δτ -> Maybe (ΔT.Diff α, ΔA.Diff (Binder Variable))) ->
+  ΔListFold τ δτ (Maybe (ΔT.Diff α))
 δListFoldMkPiGenericMaybe pi δpi = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    onInsert   e _   δ = DT.InsPi α   δτ          b       <$> δ
+    onInsert   e _   δ = ΔT.InsPi α   δτ          b       <$> δ
       where (α, δτ, b) =  pi  e
-    onKeep       _ _ δ = DT.CpyPi     DT.Same     DA.Same <$> δ
-    onModify  δe e _ δ = DT.CpyPi <$> δτ      <*> δb      <*> δ
+    onKeep       _ _ δ = ΔT.CpyPi     ΔT.Same     ΔA.Same <$> δ
+    onModify  δe e _ δ = ΔT.CpyPi <$> δτ      <*> δb      <*> δ
       where (δτ, δb) = unzipMaybe (δpi e δe)
-    onPermute    p _ δ = DT.PermutPis p <$> δ
+    onPermute    p _ δ = ΔT.PermutPis p <$> δ
     onRemove  _b    = error "TODO: δListFoldMkPiGenericMaybe onRemove"
     onReplace _l _δ = error "TODO: δListFoldMkPiGenericMaybe onReplace"
-    onSame     l  δ = DT.nCpyPis (length l) <$> δ
+    onSame     l  δ = ΔT.nCpyPis (length l) <$> δ
 
 δListFoldMkPiBinders ::
   PrettyPrintable α =>
   ΔListFold
   (α, Binder Variable, TermX α Variable)
-  (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)) (DT.Diff α)
+  (Δ3.Diff (ΔA.Diff α) (ΔA.Diff (Binder Variable)) (ΔT.Diff α)) (ΔT.Diff α)
 δListFoldMkPiBinders = δListFoldMkPiGeneric pi δpi
   where
-    pi  (α, b, i) = (α, DT.Replace i, b)
+    pi  (α, b, i) = (α, ΔT.Replace i, b)
     δpi _ δe = case δe of
-      D3.Same         -> (DT.Same, DA.Same)
-      D3.Modify _ δb δi -> (δi, δb)
+      Δ3.Same         -> (ΔT.Same, ΔA.Same)
+      Δ3.Modify _ δb δi -> (δi, δb)
 
 δListFoldMkPiVariables ::
   PrettyPrintable α =>
   ΔListFold
   (α, Variable, TermX α Variable)
-  (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
+  (Δ3.Diff (ΔA.Diff α) (ΔA.Diff Variable) (ΔT.Diff α)) (ΔT.Diff α)
 δListFoldMkPiVariables = δListFoldMkPiGeneric pi δpi
   where
-    pi  (α, v, i) = (α, DT.Replace i, Binder (Just v))
+    pi  (α, v, i) = (α, ΔT.Replace i, Binder (Just v))
     δpi _ δe = case δe of
-      D3.Same         -> (DT.Same, DA.Same)
-      D3.Modify _ δv δi -> (δi, DB.fromΔVariable δv)
+      Δ3.Same         -> (ΔT.Same, ΔA.Same)
+      Δ3.Modify _ δv δi -> (δi, ΔB.fromΔVariable δv)

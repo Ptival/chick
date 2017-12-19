@@ -514,4 +514,6 @@ repair t τ δτ =
 
   ΔT.RemoveApp _ -> genericRepair t τ -- FIXME: improve this
 
+  ΔT.RemoveLam _ -> genericRepair t τ -- FIXME: improve this
+
   ΔT.RemovePi _ -> genericRepair t τ -- FIXME: improve this

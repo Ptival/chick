@@ -6,6 +6,7 @@
 module Diff.List
   ( Diff(..)
   , nKeeps
+  , nRemoves
   , patch
   ) where
 
@@ -91,7 +92,7 @@ patch patchElem la δa =
           ph <- patchElem h δe
           pt <- go t δ
           return $ ph : pt
-        _     -> failWith "Modify, empty list"
+        _ -> failWith "Modify, empty list"
 
       Permute p δ ->
         let ll = length l in
@@ -110,3 +111,7 @@ patch patchElem la δa =
 nKeeps :: Int -> Diff τ δτ -> Diff τ δτ
 nKeeps 0 = id
 nKeeps n = Keep . nKeeps (n-1)
+
+nRemoves :: Int -> Diff τ δτ -> Diff τ δτ
+nRemoves 0 = id
+nRemoves n = Remove . nRemoves (n-1)

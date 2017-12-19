@@ -48,6 +48,7 @@ import           Utils
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δips α ->
   TermX α Variable -> DT.Diff α ->
+  -- oh gee Rick...
   Eff r (ΔListFold (α, Variable, TypeX α Variable)
          (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α))
          (Maybe (DL.Diff (α, Binder Variable, TypeX α Variable)
@@ -85,7 +86,9 @@ import           Utils
         Nothing -> Nothing
         Just a' -> onChanged a a' acc
   let onPermute _ _ _    = error "TODO: δconcatMapAddRecursiveMotive onPermute"
-  let onRemove  _ _ _acc = error "TODO: δconcatMapAddRecursiveMotive onRemove"
+  let onRemove  removed _ acc =
+        let howManyToRemove = length (addRec removed) in
+        DL.nRemoves howManyToRemove <$> acc
   let onReplace _ _ _acc = error "TODO: δconcatMapAddRecursiveMotive onReplace"
   let onSame      l acc = DL.nKeeps (length l) <$> acc
 

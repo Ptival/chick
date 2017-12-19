@@ -114,10 +114,16 @@ findGlobalIndDiff ind e δe = do
         throwExc $ printf "Diff.GlobalEnvironment/findGlobalIndDiff: %s" reason
   case (δe, unGlobalEnvironment e) of
     (ΔL.Insert _ δ, _) -> findGlobalIndDiff ind e δ
+    (ΔL.Keep δ, GlobalInd ind' : e') ->
+      if inductiveName ind' == inductiveName ind
+      then return ΔI.Same
+      else findGlobalIndDiff ind (GlobalEnvironment e') δ
+    (ΔL.Keep δ, _ : e') ->
+      findGlobalIndDiff ind (GlobalEnvironment e') δ
     (ΔL.Modify (ΔGD.ModifyGlobalInd δind) δ, GlobalInd ind' : e') ->
       if inductiveName ind' == inductiveName ind
       then return δind
       else findGlobalIndDiff ind (GlobalEnvironment e') δ
     (ΔL.Modify _ δ, _ : e') ->
       findGlobalIndDiff ind (GlobalEnvironment e') δ
-    _ -> exc $ printf "Diff.GlobalEnvironment/findGlobalIndDiff: %s" (prettyStr δe)
+    _ -> exc $ prettyStr δe

@@ -68,8 +68,7 @@ chickGuessHandler = do
                 Left e -> return $ Just e
                 Right patched ->
                   return $ Just $
-                  "(*PATCHED!*)\n"
-                  ++ prettyStrU patched
+                  prettyStrU patched
                   ++ "\n(*"
                   ++ show δ
                   ++ "*)"
