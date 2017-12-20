@@ -125,6 +125,10 @@ data Branch α ν =
     , Typeable
     )
 
+instance Eq1 (Branch α) where
+  liftEq eqVar (Branch c n b) (Branch c' n' b') =
+    c == c' && n == n' && liftEq eqVar b b'
+
 instance ToJSON α => ToJSON (Branch α Variable) where
   toJSON b =
     let (constructor, parameters, body) = unpackBranch b in
@@ -185,14 +189,23 @@ instance Eq1 (TermX α) where
     let (===) = liftEq eqVar in
     case (term1, term2) of
       (Annot _ t τ,  Annot _ t' τ')  -> t === t' && τ === τ'
+      (Annot _ _ _, _) -> False
       (App _ t1 t2,  App _ t1' t2')  -> t1 === t1' && t2 === t2'
+      (App _ _ _, _) -> False
       (Hole _,       Hole _)         -> True
+      (Hole _, _) -> False
       (Lam _ bt,     Lam _ bt')      -> liftEq eqVar bt bt'
+      (Lam _ _, _) -> False
       (Let _ t1 bt2, Let _ t1' bt2') -> t1 === t1' && liftEq eqVar bt2 bt2'
+      (Let _ _ _, _) -> False
+      (Match _ d bs, Match _ d' bs') -> d === d' && liftEq (liftEq eqVar) bs bs'
+      (Match _ _ _, _) -> False
       (Pi _ τ1 bτ2,  Pi _ τ1' bτ2')  -> τ1 === τ1' && liftEq eqVar bτ2 bτ2'
+      (Pi _ _ _, _) -> False
       (Type u,       Type u')        -> u == u'
+      (Type _, _) -> False
       (Var _ v,      Var _ v')       -> eqVar v v'
-      (_,            _)              -> False
+      (Var _ _, _) -> False
 
 instance (Eq ν) => Eq (TermX α ν) where
   Annot _ t τ    == Annot _ t' τ'    = t  == t'  && τ  == τ'
@@ -260,7 +273,7 @@ instance (ToJSON α) => ToJSON (TermX α Variable) where
       , "t2"     .= t2
       ]
 
-    Match _a d bs -> object
+    Match _a _d _bs -> object
       [ "tag" .= ("Match" :: String) ]
 
     Pi _a τ1 bτ2 ->

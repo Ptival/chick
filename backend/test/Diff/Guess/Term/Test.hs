@@ -8,16 +8,16 @@ import           Diff.Guess.Term
 import qualified Term.Raw as Raw
 import           Repair.Benchmark
 
-traceGuessδBench :: RepairTermBenchmark -> IO (Maybe (ΔT.Diff Raw.Raw))
+traceGuessδBench :: RepairTermBenchmark -> IO (ΔT.Diff Raw.Raw)
 traceGuessδBench b = traceGuessδ (repairTermFromType b) (repairTermToType b)
 
-guessδBench :: RepairTermBenchmark -> Maybe (ΔT.Diff Raw.Raw)
+guessδBench :: RepairTermBenchmark -> ΔT.Diff Raw.Raw
 guessδBench b = guessδ (repairTermFromType b) (repairTermToType b)
 
 testBench :: RepairTermBenchmark -> Assertion
 testBench b =
-  let guess = guessδBench b in
-  ΔT.patchMaybe (repairTermFromType b) <$> guess @?= Just (Just (repairTermToType b))
+  let g = guessδBench b in
+  ΔT.patchMaybe (repairTermFromType b) g @?= Just (repairTermToType b)
 
 unitTests :: TestTree
 unitTests = testGroup "Diff.Guess.Term" $ []
@@ -29,3 +29,11 @@ unitTests = testGroup "Diff.Guess.Term" $ []
 
 test :: IO ()
 test = defaultMain unitTests
+
+testAnonymous :: IO ()
+testAnonymous = do
+  let term = unsafeParseRaw "λ _ l, match l with | nil _ => O | cons _ _ _ => S O end"
+  putStrLn $ show (term == term)
+  res <- traceGuessδ term term
+  putStrLn $ show res
+  return ()
