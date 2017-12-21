@@ -31,6 +31,7 @@ guess (Script []) (Script []) = return ΔL.Same
 guess (Script []) (Script s2) = return $ ΔL.Replace s2
 guess (Script _)  (Script []) = return $ ΔL.Replace []
 
+test :: IO ()
 test = do
   let b = repairListToVec
   let s1 = repairScriptFromScript b

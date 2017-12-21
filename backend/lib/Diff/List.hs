@@ -36,12 +36,12 @@ instance (ToJSON t, ToJSON δt) => ToJSON (Diff t δt) where
 
 instance (Show t, Show δt) => Show (Diff t δt) where
   show = \case
-    Insert t  δ -> printf "Insert %s\n%s"  (show t)  (show δ)
-    Keep      δ -> printf "Keep\n%s"                 (show δ)
-    Modify δt δ -> printf "Modify %s\n%s"  (show δt) (show δ)
-    Permute p δ -> printf "Permute %s\n%s" (show p)  (show δ)
-    Remove    δ -> printf "Remove\n%s"               (show δ)
-    Replace l   -> printf "Replace %s"     (show l)
+    Insert t  δ -> printf "Insert (%s)\n%s"  (show t)  (show δ)
+    Keep      δ -> printf "Keep\n%s"                   (show δ)
+    Modify δt δ -> printf "Modify (%s)\n%s"  (show δt) (show δ)
+    Permute p δ -> printf "Permute (%s)\n%s" (show p)  (show δ)
+    Remove    δ -> printf "Remove\n%s"                 (show δ)
+    Replace l   -> printf "Replace (%s)"     (show l)
     Same        -> "Same"
 
 instance (PrettyPrintable t, PrettyPrintable δt) => PrettyPrintable (Diff t δt) where

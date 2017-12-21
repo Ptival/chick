@@ -29,6 +29,7 @@ import           System.IO
 import           System.Process
 import           System.Random
 import           Text.Megaparsec (parseMaybe)
+import           Text.Printf
 
 import qualified Diff.Guess.Script as ΔGS
 import           Parsing.Script
@@ -64,6 +65,7 @@ chickGuessHandler = do
                 putStrLn $ "bef: " ++ show bef
                 putStrLn $ "aft: " ++ show aft
               δ <- liftIO $ runTrace $ ΔGS.guess bef aft
+              liftIO $ putStrLn $ printf "GUESSED:\n%s" (show δ)
               liftIO (runSkipTrace (repairScript bef δ)) >>= \case
                 Left e -> return $ Just e
                 Right patched ->

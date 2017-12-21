@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Diff.Constructor
   ( Δcn
@@ -66,7 +67,11 @@ cisPatch = DL.patch ciPatch
 
 data Diff α
   = Same
-  | Modify Δcn (Δcps α) (Δcis α)
+  | Modify
+    { δcn  :: Δcn
+    , δcps :: Δcps α
+    , δcis :: Δcis α
+    }
   deriving (Show)
 
 instance PrettyPrintable α => PrettyPrintable (Diff α) where
@@ -87,7 +92,7 @@ patch ::
   Eff r (Constructor α Variable)
 patch c@(Constructor ind cn cps cis) d = case d of
   Same              -> return c
-  Modify δcn δcps δcis -> do
+  Modify { δcn, δcps, δcis } -> do
     cn'  <- DA.patch cn δcn
     cps' <- cpsPatch cps δcps
     cis' <- cisPatch cis δcis

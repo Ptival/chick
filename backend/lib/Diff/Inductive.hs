@@ -83,7 +83,13 @@ type Δcs α = DL.Diff (Constructor α Variable) (Δc α)
 
 data Diff α
   = Same
-  | Modify Δn (Δips α) (Δiis α) Δu (Δcs α)
+  | Modify
+    { δn   :: Δn
+    , δips :: Δips α
+    , δiis :: Δiis α
+    , δu   :: Δu
+    , δcs  :: Δcs α
+    }
   deriving (Show)
 
 instance PrettyPrintable α => PrettyPrintable (Diff α) where
