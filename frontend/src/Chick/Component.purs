@@ -220,13 +220,16 @@ initialCodeBefore =
   <> commonSuffix
 
 initialCodeAfter :: String
-initialCodeAfter =
-  commonPrefix
-  <> """Inductive Vec (A : Type) : ∀ (size : nat), Type :=
-| vnil : Vec A O
-| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Vec A (S n).
-"""
-  <> commonSuffix
+initialCodeAfter = initialCodeBefore
+
+-- initialCodeAfter :: String
+-- initialCodeAfter =
+--   commonPrefix
+--   <> """Inductive Vec (A : Type) : ∀ (size : nat), Type :=
+-- | vnil : Vec A O
+-- | vcons : ∀ (h : A) (n : nat) (t : Vec A n), Vec A (S n).
+-- """
+--   <> commonSuffix
 
 commonSuffix :: String
 commonSuffix =

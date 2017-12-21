@@ -335,9 +335,9 @@ guessIndMatched discriminee _branches = do
           RS.RepairState _ _ e _ <- get
           case GE.lookupInductiveByName indName e of
             Just ind -> return ind
-            Nothing -> exc "TODO 2"
-        _ -> exc "TODO 3"
-    _ -> exc "TODO 4"
+            Nothing -> exc $ printf "Could not find %s in global environment" (prettyStr indName)
+        _ -> exc "Could not guess the inductive being matched because the type of the discriminee did not look like a variable applied"
+    _ -> exc "Could not guess the inductive being matched because the term being matched is not a variable (TODO)"
 
 -- | `unknownTypeRepair t` attempts to repair `t` without any information
 unknownTypeRepair ::
