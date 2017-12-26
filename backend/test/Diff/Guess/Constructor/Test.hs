@@ -1,5 +1,7 @@
 module Diff.Guess.Constructor.Test where
 
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Trace
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Text.Megaparsec
@@ -24,28 +26,34 @@ unsafeParseInductive ss =
 indList1 :: Inductive Raw.Raw Variable
 indList1 = unsafeParseInductive
   [ "Inductive Vec (A : Type) : Type :="
-  , "| nil : list A"
-  , "| cons : ∀ (x : A) (xs : list A), list A"
+  , "| nil : Vec A"
+  , "| cons : ∀ (h : A) (t : Vec A), Vec A"
   ]
 
-traceGuessδBench :: RepairTermBenchmark -> IO (ΔT.Diff Raw.Raw)
-traceGuessδBench b = traceGuessδ (repairTermFromType b) (repairTermToType b)
+guessNil =
+  let l0 = inductiveConstructors indList in
+  let l1 = inductiveConstructors indList1 in
+  runTrace $ ΔGC.guess (l0 !! 0) (l1 !! 0)
 
-guessδBench :: RepairTermBenchmark -> ΔT.Diff Raw.Raw
-guessδBench b = guessδ (repairTermFromType b) (repairTermToType b)
+guessCons =
+  let l0 = inductiveConstructors indList in
+  let l1 = inductiveConstructors indList1 in
+  do
+    putStrLn $ show $ l0 == l1
+    runTrace $ ΔGC.guess (l0 !! 1) (l1 !! 1)
 
-testBench :: RepairTermBenchmark -> Assertion
-testBench b =
-  let g = guessδBench b in
-  ΔT.patchMaybe (repairTermFromType b) g @?= Just (repairTermToType b)
+-- testBench :: RepairTermBenchmark -> Assertion
+-- testBench b =
+--   let g = guessδBench b in
+--   ΔT.patchMaybe (repairTermFromType b) g @?= Just (repairTermToType b)
 
-unitTests :: TestTree
-unitTests = testGroup "Diff.Guess.Constructor" $ []
-  ++ [testCase "bench1" $ testBench termBench1 ]
-  ++ [testCase "bench2" $ testBench termBench2 ]
-  ++ [testCase "bench3" $ testBench termBench3 ]
-  ++ [testCase "bench4" $ testBench termBench4 ]
-  ++ [testCase "bench5" $ testBench termBench5 ]
+-- unitTests :: TestTree
+-- unitTests = testGroup "Diff.Guess.Constructor" $ []
+--   ++ [testCase "bench1" $ testBench termBench1 ]
+--   ++ [testCase "bench2" $ testBench termBench2 ]
+--   ++ [testCase "bench3" $ testBench termBench3 ]
+--   ++ [testCase "bench4" $ testBench termBench4 ]
+--   ++ [testCase "bench5" $ testBench termBench5 ]
 
-test :: IO ()
-test = defaultMain unitTests
+-- test :: IO ()
+-- test = defaultMain unitTests

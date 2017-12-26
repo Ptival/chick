@@ -19,6 +19,19 @@ testBench b =
   let g = guessδBench b in
   ΔT.patchMaybe (repairTermFromType b) g @?= Just (repairTermToType b)
 
+testTerms :: String -> String -> Assertion
+testTerms t1 t2 = do
+  g <- traceGuessδ (unsafeParseRaw t1) (unsafeParseRaw t2)
+  putStrLn $ show g
+
+testFlippedArguments = testTerms
+  "f b c d e"
+  "f a d c b"
+
+t1 = testTerms
+  "∀ (h : A) (t : list A), list A"
+  "∀ (h : A) (t : Vec A), Vec A"
+
 unitTests :: TestTree
 unitTests = testGroup "Diff.Guess.Term" $ []
   ++ [testCase "bench1" $ testBench termBench1 ]

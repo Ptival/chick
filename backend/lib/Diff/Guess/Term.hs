@@ -661,10 +661,18 @@ mkGuessδ n1 n2 m = go n1 n2
           else do
           trace "Matched, but not isomorphic!"
           case (node n1, node n2) of
+
+            (App _ _ _, App _ _ _) -> do
+              let pairs = matchPairs m (children n1) (children n2)
+              trace $ printf "About to foldApps (%s, %s)" (show $ children n1) (show $ children n2)
+              (δ, _) <- foldM foldApps (id, (node n1, node n2)) (reverse pairs)
+              return $ δ ΔT.Same
+
             (Lam _ _, Lam _ _) -> do
               let pairs = matchPairs m (children n1) (children n2)
               (δ, _) <- foldM foldLams (id, (node n1, node n2)) pairs
               return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
+
             -- when we have two non-isomorphic Pis to match together,
             -- we attempt to find a matching among the Pi-telescopes
             (Pi _ _ _, Pi _ _ _) -> do
@@ -674,7 +682,8 @@ mkGuessδ n1 n2 m = go n1 n2
               -- trace $ printf "PAIRS:\n%s" (show pairs)
               (δ, _) <- foldM foldPis (id, (node n1, node n2)) pairs
               return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
-            (_, _) -> error "TODO not isomorphic, not Pis"
+
+            (_, _) -> error $ printf "TODO not isomorphic: (%s, %s)" (preview (node n1)) (preview (node n2))
         else do
         trace "Unmatched"
         case (node n1, children n1, node n2, children n2) of
@@ -706,6 +715,33 @@ mkGuessδ n1 n2 m = go n1 n2
             trace $ printf "TODO: (%s, %s)" (show $ node n1) (show $ node n2)
             error "TODO"
 
+    -- NOTE: foldApps receives the diff list reversed
+    foldApps (δ, (t, t')) m = do
+      trace $ printf "foldApps (δ, (%s, %s)) %s" (prettyStr t) (prettyStr t') (show m)
+      case m of
+        RightUnmatched _ -> do
+          let (App α' t1' t2') = t'
+          return $ (δ . ΔT.InsApp α' (ΔT.Replace t1'), (t, t2'))
+        LeftUnmatched _ -> do
+          let (App _ _ t2) = t
+          return $ (δ . ΔT.RemoveApp, (t2, t'))
+        Matched t2 t2' -> do
+          case (t, t') of
+            (App _ t1 _, App _ t1' _) -> do
+              δ2 <- go t2 t2'
+              return $ (δ . flip ΔT.CpyApp δ2, (t1, t1'))
+            (_, _) -> do
+              error "This?"
+              -- nothing to do here?
+              return $ (δ, (t, t'))
+        Permuted p -> do
+          trace $ show p
+          trace $ show t
+          case ΔT.patchMaybe t (ΔT.PermutApps p ΔT.Same) of
+            Nothing -> error "computed permutation was incorrect"
+            Just tPatched -> do
+              return $ (δ . ΔT.PermutApps p, (tPatched, t'))
+
     foldLams (δ, (t, t')) = \case
       RightUnmatched _ -> do
         let (Lam α' bt') = t'
@@ -715,21 +751,21 @@ mkGuessδ n1 n2 m = go n1 n2
         let (Lam _ bt) = t
         let (_, t) = unscopeTerm bt
         return $ (δ . ΔT.RemoveLam, (t, t'))
-      Matched τ1 τ1' -> do
+      Matched t1 t1' -> do
         case (t, t') of
-          (Pi _ _ bτ2, Pi _ _ bτ2') -> do
-            δ1 <- go τ1 τ1'
-            let (_, τ2) = unscopeTerm bτ2
-            let (_, τ2') = unscopeTerm bτ2'
-            return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (τ2, τ2'))
+          (Lam _ bt, Lam _ bt') -> do
+            let (_, t2) = unscopeTerm bt
+            let (_, t2') = unscopeTerm bt'
+            δ1 <- go t1 t1'
+            return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (t2, t2'))
           (_, _) -> do
             -- nothing to do here?
             return $ (δ, (t, t'))
       Permuted p -> do
-        case ΔT.patchMaybe t (ΔT.PermutPis p ΔT.Same) of
+        case ΔT.patchMaybe t (ΔT.PermutLams p ΔT.Same) of
           Nothing -> error "computed permutation was incorrect"
           Just tPatched -> do
-            return $ (δ . ΔT.PermutPis p, (tPatched, t'))
+            return $ (δ . ΔT.PermutLams p, (tPatched, t'))
 
     foldPis (δ, (t, t')) = \case
       RightUnmatched _ -> do
