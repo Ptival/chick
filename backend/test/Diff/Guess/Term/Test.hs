@@ -5,6 +5,8 @@ import           Test.Tasty.HUnit
 
 import qualified Diff.Term as ΔT
 import           Diff.Guess.Term
+import           PrettyPrinting.PrettyPrintable
+--import           PrettyPrinting.Term
 import qualified Term.Raw as Raw
 import           Repair.Benchmark
 
@@ -19,15 +21,23 @@ testBench b =
   let g = guessδBench b in
   ΔT.patchMaybe (repairTermFromType b) g @?= Just (repairTermToType b)
 
-testTerms :: String -> String -> Assertion
+testTerms :: String -> String -> IO (ΔT.Diff Raw.Raw)
 testTerms t1 t2 = do
   g <- traceGuessδ (unsafeParseRaw t1) (unsafeParseRaw t2)
   putStrLn $ show g
+  return g
 
-testFlippedArguments = testTerms
-  "f b c d e"
-  "f a d c b"
+testFlippedArguments :: IO ()
+testFlippedArguments = do
+  let s1 = "f b y c d e"
+  let s2 = "f a d b x c"
+  let t1 = unsafeParseRaw s1
+  δ <- testTerms s1 s2
+  case ΔT.patchMaybe t1 δ of
+    Nothing -> putStrLn "Patching failed"
+    Just t2 -> putStrLn $ prettyStr t2
 
+t1 :: IO (ΔT.Diff Raw.Raw)
 t1 = testTerms
   "∀ (h : A) (t : list A), list A"
   "∀ (h : A) (t : Vec A), Vec A"

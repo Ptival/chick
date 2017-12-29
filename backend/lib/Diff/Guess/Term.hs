@@ -42,12 +42,13 @@ import           Diff.Utils
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
+import qualified Term.Raw as Raw
 import           Utils
 
 branchChild :: Branch α Variable -> TermX α Variable
 branchChild = view _3 . unpackBranch
 
-label :: Node α -> String
+label :: Node -> String
 label n = case node n of
   Annot _ _ _ -> "Annot"
   App   _ _ _ -> "App"
@@ -89,7 +90,8 @@ termChildren = go
       Lam _ _ ->
         case run $ runError (ΔT.extractLams input) of
         Left (_ :: String) -> error "This should not happen"
-        Right (cs, c) -> map (variableFromBinder . view _2) cs ++ [c]
+        Right (cs, c) ->
+          map (variableFromBinder . view _2) cs ++ [c]
       Let _ t1 bt2 -> [t1, t2] where (_, t2) = unscopeTerm bt2
       Match _ t bs -> t : map branchChild bs
       Pi _ _ _ ->
@@ -102,14 +104,14 @@ termChildren = go
       Nothing -> Var Nothing (Variable "_")
       Just v  -> Var Nothing v
 
-nodeDescendants :: Node α -> [Node α]
+nodeDescendants :: Node -> [Node]
 nodeDescendants t = c ++ concatMap nodeDescendants c
   where c = children t
 
-nodeAndDescendants :: Node α -> [Node α]
+nodeAndDescendants :: Node -> [Node]
 nodeAndDescendants n = n : nodeDescendants n
 
-nodeAndDescendantsPostOrder :: Node α -> [Node α]
+nodeAndDescendantsPostOrder :: Node -> [Node]
 nodeAndDescendantsPostOrder n =
   concatMap nodeAndDescendantsPostOrder (children n) ++ [n]
 
@@ -118,23 +120,24 @@ termHeight t = case termChildren t of
   [] -> 1 -- huh... why would they choose this...?
   c  -> 1 + maximum (map termHeight c)
 
-newtype HIList α = HIList { unHIList :: [Node α] }
+-- HI stands for height-indexed (invariant: decreasing heights)
+newtype HIList = HIList { unHIList :: [Node] }
 
-instance Show α => Show (HIList α) where
+instance Show HIList where
   show = show . unHIList
 
-peekMax :: HIList α -> Int
+peekMax :: HIList -> Int
 peekMax (HIList [])      = 0
 peekMax (HIList (h : _)) = height h
 
-insert :: Node α -> HIList α -> HIList α
+insert :: Node -> HIList -> HIList
 insert n = HIList . List.insertBy (comparing $ Down . height) n . unHIList
 
-product :: [Node α] -> [Node α] -> [(Node α, Node α)]
+product :: [Node] -> [Node] -> [(Node, Node)]
 product l1 l2 = [ (a, b) | a <- l1, b <- l2 ]
 
 {- dice computes a ratio of subnodes that are mapped together -}
-dice :: [(Node α, Node α)] -> Node α -> Node α -> Double
+dice :: [(Node, Node)] -> Node -> Node -> Double
 dice m t1 t2 = (2 * fromIntegral c) / (lengthOf s1 + lengthOf s2)
   where
     lengthOf = fromIntegral . List.length
@@ -142,28 +145,32 @@ dice m t1 t2 = (2 * fromIntegral c) / (lengthOf s1 + lengthOf s2)
     s1 = nodeDescendants t1
     s2 = nodeDescendants t2
 
-isomorphic :: Node α -> Node α -> Bool
+isomorphic :: Node -> Node -> Bool
 isomorphic n1 n2 =
   height n1 == height n2 -- maybe this helps performance?
   && node n1 == node n2
 
-data Node α = Node
-  { children   :: [Node α]
+-- NOTE: Taking care of annotations ends up being more work than I could care for
+-- because we must keep track of parent annotations for all children so that we
+-- know how to annotated when reconstructing.  It's simpler to just work on raw
+-- terms for now.
+data Node = Node
+  { children   :: [Node]
   , height     :: Int
   , identifier :: Int
-  , node       :: TermX α Variable
-  , parent     :: Maybe (Node α)
+  , node       :: Raw.Term Variable
+  , parent     :: Maybe Node
   }
 
-type Mapping α = [(Node α, Node α)]
+type Mapping = [(Node, Node)]
 
-instance Show α => Show (Node α) where
+instance Show Node where
   show n = printf "(%s : %s)" (show . identifier $ n) (preview . node $ n)
 
 fresh :: (Member (State Int) r) => Eff r Int
 fresh = get <* modify ((+) (1 :: Int))
 
-makeNode :: (Member (State Int) r) => TermX α Variable -> Eff r (Node α)
+makeNode :: (Member (State Int) r) => Raw.Term Variable -> Eff r Node
 makeNode t = ($ Nothing) <$> go t
   where
     go t = do
@@ -177,35 +184,35 @@ makeNode t = ($ Nothing) <$> go t
         , parent     = p
         }
 
-instance Eq (Node α) where
+instance Eq Node where
   (==) n1 n2 = identifier n1 == identifier n2
 
-data TopDownReader α = TopDownReader
+data TopDownReader = TopDownReader
   { _readerMinHeight :: Int
-  , _readerRoot1 :: Node α
-  , _readerRoot2 :: Node α
+  , _readerRoot1 :: Node
+  , _readerRoot2 :: Node
   }
   deriving (Show)
 makeLenses ''TopDownReader
 
-data TopDownState α = TopDownState
-  { _stateL1 :: HIList α
-  , _stateL2 :: HIList α
-  , _stateA  :: Mapping α
-  , _stateM  :: Mapping α
+data TopDownState = TopDownState
+  { _stateL1 :: HIList
+  , _stateL2 :: HIList
+  , _stateA  :: Mapping
+  , _stateM  :: Mapping
   }
   deriving (Show)
 makeLenses ''TopDownState
 
 open ::
-  ( Member (State (TopDownState α)) r
-  ) => Node α -> Lens' (TopDownState α) (HIList α) -> Eff r ()
+  ( Member (State TopDownState) r
+  ) => Node -> Lens' TopDownState HIList -> Eff r ()
 open t lens = forM_ (reverse $ children t) $ \ c -> do
   modify $ over lens $ insert c
 
 pop ::
-  ( Member (State (TopDownState α)) r
-  ) => Lens' (TopDownState α) (HIList  α) -> Eff r [Node α]
+  ( Member (State TopDownState) r
+  ) => Lens' TopDownState HIList -> Eff r [Node]
 pop lens = do
   l <- view lens <$> get
   let (popped, l') = List.partition ((==) (peekMax l) . height) (unHIList l)
@@ -213,8 +220,8 @@ pop lens = do
   return popped
 
 popHead ::
-  ( Member (State (TopDownState α)) r
-  ) => Lens' (TopDownState α) [a] -> Eff r a
+  ( Member (State TopDownState) r
+  ) => Lens' TopDownState [a] -> Eff r a
 popHead lens = do
   l <- view lens <$> get
   case l of
@@ -224,18 +231,17 @@ popHead lens = do
       return h
 
 push ::
-  ( Member (State (TopDownState α)) r
-  ) => Node α -> Lens' (TopDownState α) (HIList α) -> Eff r ()
+  ( Member (State TopDownState) r
+  ) => Node -> Lens' TopDownState HIList -> Eff r ()
 push node lens = do
   modify $ over lens $ insert node
 
-runTopDown :: ∀ α r.
+runTopDown :: ∀ r.
   ( Member Trace r
-  , Show α
   ) =>
-  Node α -> Node α -> Int -> Eff r (TopDownState α)
+  Node -> Node -> Int -> Eff r TopDownState
 runTopDown n1 n2 minHeight =
-  snd <$> runState (runReader (topDown @α) r) s0
+  snd <$> runState (runReader topDown r) s0
   where
     r = TopDownReader
       { _readerMinHeight = minHeight
@@ -249,17 +255,16 @@ runTopDown n1 n2 minHeight =
       , _stateM  = []
       }
 
-topDown :: ∀ α r.
-  ( Member (Reader (TopDownReader α)) r
-  , Member (State  (TopDownState  α)) r
+topDown :: ∀ r.
+  ( Member (Reader TopDownReader) r
+  , Member (State  TopDownState) r
   , Member Trace r
-  , Show α
   ) =>
   Eff r ()
 topDown = do
 
-  root1 <- view (readerRoot1 @α) <$> ask
-  root2 <- view (readerRoot2 @α) <$> ask
+  root1 <- view readerRoot1 <$> ask
+  root2 <- view readerRoot2 <$> ask
   push root1 stateL1
   push root2 stateL2
 
@@ -267,24 +272,24 @@ topDown = do
 
     trace "topDown loop"
 
-    l1 <- view (stateL1 @α) <$> get
-    l2 <- view (stateL2 @α) <$> get
+    l1 <- view stateL1 <$> get
+    l2 <- view stateL2 <$> get
 
     if peekMax l1 /= peekMax l2
       then do
       if peekMax l1 > peekMax l2
         then do
         -- trace "pop l1"
-        ts <- pop @α stateL1
+        ts <- pop stateL1
         forM_ ts $ \t -> open t stateL1
         else do
         -- trace "pop l2"
-        ts <- pop @α stateL2
+        ts <- pop stateL2
         forM_ ts $ \t -> open t stateL2
       else do
       -- trace "pop both"
-      h1 <- pop @α stateL1
-      h2 <- pop @α stateL2
+      h1 <- pop stateL1
+      h2 <- pop stateL2
       -- trace $ printf "h1: %s" (show h1)
       -- trace $ printf "h2: %s" (show h2)
       forM_ (product h1 h2) $ \ (t1, t2) -> do
@@ -300,8 +305,8 @@ topDown = do
             modify $ over stateA $ (:) (t1, t2)
             else do
             addIsomorphicDescendants t1 t2
-      a <- view (stateA @α) <$> get
-      m <- view (stateM @α) <$> get
+      a <- view stateA <$> get
+      m <- view stateM <$> get
       let aum = List.union a m
       forM_ [ t1 | t1 <- h1
                  , not (List.any ((==) t1 . fst) aum) ] $ \ t1 -> do
@@ -323,7 +328,7 @@ topDown = do
   --   trace $ printf "Parent dice: %s" (show . parentDice m $ (t1, t2))
   -- trace $ printf "About to go through:\n%s" (show a)
   whileM_ condition2 $ do
-    (t1, t2) <- popHead @α stateA
+    (t1, t2) <- popHead stateA
     -- trace $ printf "Popped %s" (show (t1, t2))
     addIsomorphicDescendants t1 t2
     modify $ over stateA $ filter ((/=) t1 . fst) . filter ((/=) t2 . snd)
@@ -348,8 +353,8 @@ topDown = do
           modify $ over stateM $ (:) (n1, n2)
 
     condition1 = do
-      r :: TopDownReader α <- ask
-      s :: TopDownState  α <- get
+      r :: TopDownReader <- ask
+      s :: TopDownState  <- get
       let minHeight = view readerMinHeight r
       let l1 = view stateL1 s
       let l2 = view stateL2 s
@@ -357,74 +362,73 @@ topDown = do
       -- trace $ printf "l2: %s" (show l2)
       return $ min (peekMax l1) (peekMax l2) > minHeight
 
-    parentDice :: [(Node α, Node α)] -> (Node α, Node α) -> Double
+    parentDice :: [(Node, Node)] -> (Node, Node) -> Double
     parentDice m (t1, t2) =
       case (parent t1, parent t2) of
       (Just p1, Just p2) -> dice m p1 p2
       _ -> 0
 
     condition2 = do
-      s :: TopDownState  α <- get
+      s :: TopDownState <- get
       let a = view stateA s
       return $ length a > 0
 
-data BottomUpReader α = BottomUpReader
-  { _bottomUpReaderRoot1 :: Node α
-  , _bottomUpReaderRoot2 :: Node α
+data BottomUpReader = BottomUpReader
+  { _bottomUpReaderRoot1 :: Node
+  , _bottomUpReaderRoot2 :: Node
   , _bottomUpReaderMinDice :: Double
   }
   deriving (Show)
 makeLenses ''BottomUpReader
 
-data BottomUpState α = BottomUpState
-  { _bottomUpStateM  :: Mapping α
+data BottomUpState = BottomUpState
+  { _bottomUpStateM  :: Mapping
   }
   deriving (Show)
 makeLenses ''BottomUpState
 
-getM :: ∀ α r.
-  ( Member (State  (BottomUpState  α)) r
-  ) => Eff r (Mapping α)
-getM = view (bottomUpStateM @α) <$> get
+getM :: ∀ r.
+  ( Member (State BottomUpState) r
+  ) => Eff r Mapping
+getM = view bottomUpStateM <$> get
 
 isMatched1 ::
-  ( Member (State (BottomUpState α)) r
+  ( Member (State BottomUpState) r
   ) =>
-  Node α -> Eff r Bool
+  Node -> Eff r Bool
 isMatched1 n = List.any ((==) n . fst) <$> getM
 
 isMatched2 ::
-  ( Member (State (BottomUpState α)) r
+  ( Member (State BottomUpState) r
   ) =>
-  Node α -> Eff r Bool
+  Node -> Eff r Bool
 isMatched2 n = List.any ((==) n . snd) <$> getM
 
 isUnmatched1 ::
-  ( Member (State (BottomUpState α)) r
+  ( Member (State BottomUpState) r
   ) =>
-  Node α -> Eff r Bool
+  Node -> Eff r Bool
 isUnmatched1 n = not <$> isMatched1 n
 
 isUnmatched2 ::
-  ( Member (State (BottomUpState α)) r
+  ( Member (State BottomUpState) r
   ) =>
-  Node α -> Eff r Bool
+  Node -> Eff r Bool
 isUnmatched2 n = not <$> isMatched2 n
 
 hasMatchedChildren1 ::
-  ( Member (State (BottomUpState α)) r
+  ( Member (State BottomUpState) r
   ) =>
-  Node α -> Eff r Bool
+  Node -> Eff r Bool
 hasMatchedChildren1 n = anyM isMatched1 (children n)
 
-candidate :: ∀ α r.
-  ( Member (Reader (BottomUpReader α)) r
-  , Member (State  (BottomUpState  α)) r
+candidate :: ∀ r.
+  ( Member (Reader BottomUpReader) r
+  , Member (State  BottomUpState) r
   , Member Trace r
-  , Show α
-  ) => Node α -> Eff r (Maybe (Node α))
+  ) => Node -> Eff r (Maybe Node)
 candidate t1 = do
-  root2 <- view (bottomUpReaderRoot2 @α) <$> ask
+  root2 <- view bottomUpReaderRoot2 <$> ask
   candidates root2 t1 >>= \case
     [] -> return Nothing
     cs -> do
@@ -433,7 +437,7 @@ candidate t1 = do
       m <- getM
       return $ Just (List.maximumBy (comparing (dice m t1)) cs)
   where
-    candidates :: Node α -> Node α -> Eff r [Node α]
+    candidates :: Node -> Node -> Eff r [Node]
     candidates root2 t1 = filterM (isCandidateFor t1) (nodeAndDescendants root2)
     isCandidateFor t1 t2 = do
       unmatched <- isUnmatched2 t2
@@ -442,13 +446,12 @@ candidate t1 = do
       return $ label t1 == label t2 && unmatched && matchingDescendants
     areMatchingDescendants (t1, t2) = List.elem (t1, t2) <$> getM
 
-runBottomUp :: ∀ α r.
+runBottomUp :: ∀ r.
   ( Member Trace r
-  , Show α
   ) =>
-  Node α -> Node α -> Mapping α -> Double -> Eff r (BottomUpState α)
+  Node -> Node -> Mapping -> Double -> Eff r BottomUpState
 runBottomUp n1 n2 m minDice =
-  snd <$> runState (runReader (bottomUp @α) r) s0
+  snd <$> runState (runReader bottomUp r) s0
   where
     r = BottomUpReader
       { _bottomUpReaderMinDice = minDice
@@ -459,19 +462,18 @@ runBottomUp n1 n2 m minDice =
       { _bottomUpStateM  = m
       }
 
-bottomUp :: ∀ α r.
-  ( Member (Reader (BottomUpReader α)) r
-  , Member (State  (BottomUpState  α)) r
+bottomUp :: ∀ r.
+  ( Member (Reader BottomUpReader) r
+  , Member (State  BottomUpState) r
   , Member Trace r
-  , Show α
   ) => Eff r ()
 bottomUp = do
 
   -- trace "STARTING BOTTOM-UP PHASE"
 
-  root1   <- view (bottomUpReaderRoot1   @α) <$> ask
+  root1   <- view bottomUpReaderRoot1   <$> ask
   -- root2   <- view (bottomUpReaderRoot2   @α) <$> ask
-  minDice <- view (bottomUpReaderMinDice @α) <$> ask
+  minDice <- view bottomUpReaderMinDice <$> ask
 
   forM_ [ t1 | t1 <- nodeAndDescendantsPostOrder root1 ] $ \ t1 -> do
     -- trace $ printf "BU: %s" (preview . node $ t1)
@@ -493,9 +495,8 @@ bottomUp = do
 
 algorithm ::
   ( Member Trace r
-  , Show α
   ) =>
-  Int -> Double -> Int -> Node α -> Node α -> Eff r (Mapping α)
+  Int -> Double -> Int -> Node -> Node -> Eff r Mapping
 algorithm minHeight minDice _maxSize n1 n2 = do
   s1 <- runTopDown  n1 n2 minHeight
   let m1 = view stateM s1
@@ -505,52 +506,41 @@ algorithm minHeight minDice _maxSize n1 n2 = do
 
 recommended ::
   ( Member Trace r
-  , Show α
   ) =>
-  Node α -> Node α -> Eff r (Mapping α)
+  Node -> Node -> Eff r Mapping
 recommended = algorithm 0 0.0 100
 
 guess ::
   ( Member Trace r
-  , Show α
   ) =>
-  TermX α Variable -> TermX α Variable -> Eff r (ΔT.Diff α)
-guess t1 t2 =
+  Raw.Term Variable -> Raw.Term Variable -> Eff r (ΔT.Diff Raw.Raw)
+guess = withNodeMapping mkGuessδ
+
+{- For many functions we will want to take as input two terms, and compute
+something based on the nodes of those terms and the mapping between those.
+-}
+withNodeMapping ::
+  (Node -> Node -> Mapping -> a) ->
+  Raw.Term Variable -> Raw.Term Variable -> a
+withNodeMapping k t1 t2 =
   let (n1, n2) = fst . run $ runState s (0 :: Int) in
   let m = skipTrace $ recommended n1 n2 in
-  mkGuessδ n1 n2 m
+  k n1 n2 m
   where
     s = do
       n1 <- makeNode t1
       n2 <- makeNode t2
       return (n1, n2)
 
-guessδ :: Show α => TermX α Variable -> TermX α Variable -> ΔT.Diff α
-guessδ t1 t2 =
-  let (n1, n2) = fst . run $ runState s (0 :: Int) in
-  let m = skipTrace $ recommended n1 n2 in
-  let δ = skipTrace $ mkGuessδ n1 n2 m in
-  δ
-  where
-    s = do
-      n1 <- makeNode t1
-      n2 <- makeNode t2
-      return (n1, n2)
+guessδ :: Raw.Term Variable -> Raw.Term Variable -> ΔT.Diff Raw.Raw
+guessδ t1 t2 = skipTrace (guess t1 t2)
 
 traceGuessδ ::
-  Show α =>
-  TermX α Variable -> TermX α Variable -> IO (ΔT.Diff α)
-traceGuessδ t1 t2 = do
-  let (n1, n2) = fst . run $ runState s (0 :: Int)
-  m <- runTrace $ recommended n1 n2
+  Raw.Term Variable -> Raw.Term Variable -> IO (ΔT.Diff Raw.Raw)
+traceGuessδ = withNodeMapping $ \ n1 n2 m -> do
   putStrLn $ printf "MAPPING:\n%s\n" (show m)
   δ <- runTrace $ mkGuessδ n1 n2 m
   return δ
-  where
-    s = do
-      n1 <- makeNode t1
-      n2 <- makeNode t2
-      return (n1, n2)
 
 unsafeSplitWhen :: (t -> Bool) -> [t] -> ([t], t, [t])
 unsafeSplitWhen _ [] = error "unsafeSplitWhen"
@@ -613,14 +603,32 @@ generatePermutation equals l1 l2 =
     go ((e1, _) : l1) (r : rs) | List.any (\ e2 -> equals e1 e2) l2 = r : go l1 rs
     go ((_, p1) : l1) rs = p1 : go l1 rs
 
-data Match α
-  = Matched        (Node α) (Node α)
-  | LeftUnmatched  (Node α)
-  | RightUnmatched (Node α)
+data Match
+  = Matched        Node Node
+  | LeftUnmatched  Node
+  | RightUnmatched Node
   | Permuted       [Int]
   deriving (Show)
 
-matchPairs :: Mapping α -> [Node α] -> [Node α] -> [Match α]
+{- `matchPairs m l1 l2` takes a mapping between nodes, and two lists of nodes,
+and computes a match between the two lists, which is a list of indications on
+how to relate elements from `l1` and `l2`, in order.
+For instance, given input lists:
+l1 = [a, b, c, d, e]
+l2 = [x, d, b, y]
+It should output:
+                      [a, b, c, d, e]   [x, d, b, y]
+LeftUnmatched a          [b, c, d, e]   [x, d, b, y]
+RightUnmatched x         [b, c, d, e]      [d, b, y]
+Permuted [1, 2, 0]       [c, d, b, e]      [d, b, y]
+LeftUnmatched c             [d, b, e]      [d, b, y]
+Matched d                      [b, e]         [b, y]
+Matched b                         [e]            [y]
+LeftUnmatched e                    []            [y]
+RightUnmatched y                   []             []
+
+-}
+matchPairs :: Mapping -> [Node] -> [Node] -> [Match]
 matchPairs m l1 l2 = go l1 l2
   where
     equals e1 e2 = (e1, e2) `elem` m
@@ -639,11 +647,15 @@ matchPairs m l1 l2 = go l1 l2
     matchesL nL nR = (nL, nR) `elem` m
     matchesR nR nL = (nL, nR) `elem` m
 
+data FoldAppsStatus
+  = NoPermutation
+  | DelayedPermutation [Int] Int -- need to insert a permutation later
+  deriving (Show)
+
 mkGuessδ ::
   ( Member Trace r
-  , Show α
   ) =>
-  Node α -> Node α -> Mapping α -> Eff r (ΔT.Diff α)
+  Node -> Node -> Mapping -> Eff r (ΔT.Diff Raw.Raw)
 mkGuessδ n1 n2 m = go n1 n2
 
   where
@@ -665,7 +677,8 @@ mkGuessδ n1 n2 m = go n1 n2
             (App _ _ _, App _ _ _) -> do
               let pairs = matchPairs m (children n1) (children n2)
               trace $ printf "About to foldApps (%s, %s)" (show $ children n1) (show $ children n2)
-              (δ, _) <- foldM foldApps (id, (node n1, node n2)) (reverse pairs)
+              let (Matched _ _ : pairsRest) = pairs -- if this fails, think about it
+              (δ, _) <- foldM foldApps (id, NoPermutation) pairsRest
               return $ δ ΔT.Same
 
             (Lam _ _, Lam _ _) -> do
@@ -715,32 +728,68 @@ mkGuessδ n1 n2 m = go n1 n2
             trace $ printf "TODO: (%s, %s)" (show $ node n1) (show $ node n2)
             error "TODO"
 
-    -- NOTE: foldApps receives the diff list reversed
-    foldApps (δ, (t, t')) m = do
-      trace $ printf "foldApps (δ, (%s, %s)) %s" (prettyStr t) (prettyStr t') (show m)
-      case m of
-        RightUnmatched _ -> do
-          let (App α' t1' t2') = t'
-          return $ (δ . ΔT.InsApp α' (ΔT.Replace t1'), (t, t2'))
+{-
+Oh boy, this is annoyingly convoluted.
+This one is not super intuitive.  A nested application sequence:
+
+(((((f b) y) c ) d) e)   --->   (((((f a) d) b) x) c)
+
+produces a matching:
+
+Matched f f, RightUnmatched a, Permute [3, 1, 0, 2], LeftUnmatched y,
+Matched d d, Matched b b, RightUnmatched x, Matched c c, LeftUnmatched e
+
+which should yield diff:
+
+RemoveApp (e), PermuteApps [3, 1, 0, 2], CpyApp (c), InsApp x, CpyApp (b),
+CpyApp (d), RemoveApp (y), InsApp a, Same (f)
+
+Process:
+Matched f f             ->   Same          (probably done at setup time)
+RightUnmatched a        ->   InsApp a
+Permuted [3, 1, 0, 2]   ->                 <delayed [3, 1, 0, 2] length: 4>
+Matched d d             ->   CpyApp (d)    <delayed [3, 1, 0, 2] length: 2>
+LeftUnmatched y         ->   RemoveApp (y) <delayed [3, 1, 0, 2] length: 3>
+Matched b b             ->   CpyApp (b)    <delayed [3, 1, 0, 2] length: 1>
+RightUnmatched x        ->   InsApp x      <delayed [3, 1, 0, 2] length: 1>
+Matched c c             ->   CpyApp (c)    <delayed [3, 1, 0, 2] length: 0>
+                             PermuteApps [3, 1, 0, 2]
+LeftUnmatched e         ->   RemoveApp (e)
+
+-}
+
+-- TODO: this handling of (t, t') does not make sense in this context anymore
+-- figure out whether we need them at all (for InsApp?)
+    foldApps (δ, s) m = do
+
+      trace $ printf "foldApps δ %s %s" (show m) (show s)
+
+      (δ, s) <- case s of
+        -- inject delayed permutation if needed
+        NoPermutation ->
+          case m of
+          Permuted p -> return (δ, DelayedPermutation p (length p))
+          _ -> return (δ, NoPermutation)
+        DelayedPermutation p 0 -> return (ΔT.PermutApps p . δ, NoPermutation)
+        DelayedPermutation p d -> do
+          let d' = case m of
+                RightUnmatched _ -> d     -- does not change count in original
+                LeftUnmatched _  -> d - 1
+                Matched _ _      -> d - 1
+                Permuted _ -> error "Permuception!"
+          return (δ, DelayedPermutation p d')
+
+      δ <- case m of
+        RightUnmatched t -> do
+          return $ flip (ΔT.InsApp ()) (ΔT.Replace (node t)) . δ
         LeftUnmatched _ -> do
-          let (App _ _ t2) = t
-          return $ (δ . ΔT.RemoveApp, (t2, t'))
-        Matched t2 t2' -> do
-          case (t, t') of
-            (App _ t1 _, App _ t1' _) -> do
-              δ2 <- go t2 t2'
-              return $ (δ . flip ΔT.CpyApp δ2, (t1, t1'))
-            (_, _) -> do
-              error "This?"
-              -- nothing to do here?
-              return $ (δ, (t, t'))
-        Permuted p -> do
-          trace $ show p
-          trace $ show t
-          case ΔT.patchMaybe t (ΔT.PermutApps p ΔT.Same) of
-            Nothing -> error "computed permutation was incorrect"
-            Just tPatched -> do
-              return $ (δ . ΔT.PermutApps p, (tPatched, t'))
+          return $ ΔT.RemoveApp . δ
+        Matched t t' -> do
+          δ2 <- go t t'
+          return $ flip ΔT.CpyApp δ2 . δ
+        Permuted _ -> return δ -- already injected a delayed permutation
+
+      return (δ, s)
 
     foldLams (δ, (t, t')) = \case
       RightUnmatched _ -> do
@@ -792,7 +841,7 @@ mkGuessδ n1 n2 m = go n1 n2
           Just tPatched -> do
             return $ (δ . ΔT.PermutPis p, (tPatched, t'))
 
--- main :: Node α -> Node α -> IO ()
+-- main :: Node -> Node -> IO ()
 -- main n1 n2 = do
 --   m <- recommended n1 n2
 --   runTrace (mkGuessδ n1 n2 m) >>= \case

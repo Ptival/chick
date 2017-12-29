@@ -11,8 +11,9 @@ module Diff.Term
   , extractLams
   , extractPi
   , extractPis
-  , extractSomePis
+  , extractSomeApps
   , extractSomeLams
+  , extractSomePis
   , mkLams
   , mkPis
   , nCpyApps
@@ -61,6 +62,8 @@ data Diff α
   | InsApp     α (Diff α) (Diff α)
   | InsLam     α (Binder Variable) (Diff α)
   | InsPi      α (Diff α) (Binder Variable) (Diff α)
+  -- NOTE: the semantics of PermutApps are now s.t. running permutation
+  -- [2, 0, 1] with term (f a b c d e) should yield term (f a b e c d)
   | PermutApps [Int] (Diff α)
   | PermutLams [Int] (Diff α)
   | PermutPis  [Int] (Diff α)
@@ -152,7 +155,7 @@ patch term δterm =
     Pi a <$> patch term d1 <*> (abstractBinder b <$> patch term d2)
 
   (_, PermutApps p δ') -> do
-    (fun, args) <- extractApps term
+    (fun, args) <- extractSomeApps (length p) term
     patch (mkApps fun (permute p args)) δ'
 
   (_, PermutLams p d') -> do
@@ -187,15 +190,26 @@ extractApps t = over _2 reverse <$> go t
       return $ (f, (a, t2) : args)
     go t1              = return (t1, [])
 
+extractSomeApps ::
+  Member (Exc String) r =>
+  Int -> TermX α Variable -> Eff r (TermX α Variable, [(α, TermX α Variable)])
+extractSomeApps 0 t = return (t, [])
+extractSomeApps n (App a t1 t2) = do
+  (f, args) <- extractSomeApps (n - 1) t1
+  return (f, args ++ [(a, t2)]) -- TODO: make this not quadratic, I'm being lazy
+extractSomeApps _ t =
+  let e :: String = printf "extractLams: not a Lam: %s" (prettyStrU t) in
+  throwExc e
+
 extractSomeLams ::
   Member (Exc String) r =>
   Int -> TermX α Variable -> Eff r ([(α, Binder Variable)], TermX α Variable)
-extractSomeLams 0 t           = return ([], t)
+extractSomeLams 0 t = return ([], t)
 extractSomeLams n (Lam a bt) = do
   let (b, t) = unscopeTerm bt
   (l, rest) <- extractSomeLams (n - 1) t
   return ((a, b) : l, rest)
-extractSomeLams _ t              =
+extractSomeLams _ t =
   let e :: String = printf "extractLams: not a Lam: %s" (prettyStrU t) in
   throwExc e
 
