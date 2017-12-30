@@ -4,9 +4,11 @@ import           Test.Tasty
 import           Test.Tasty.HUnit
 
 import qualified Diff.Term as ΔT
+import           Diff.Guess.Node
 import           Diff.Guess.Term
 import           PrettyPrinting.PrettyPrintable
 --import           PrettyPrinting.Term
+import           Term.Term
 import qualified Term.Raw as Raw
 import           Repair.Benchmark
 
@@ -60,3 +62,14 @@ testAnonymous = do
   res <- traceGuessδ term term
   putStrLn $ show res
   return ()
+
+testMatchPairs :: Raw.Term Variable -> Raw.Term Variable -> [Match]
+testMatchPairs = withNodeMapping $ \ n1 n2 m -> do
+  let c1 = children n1
+  let c2 = children n2
+  matchPairs m c1 c2
+
+-- FIXME: right now, this generates Permuted [2, 1, 0] instead of Permuted [1, 2, 0]
+-- which is correct but not what I'd prefer.
+testMatchPairs1 :: [Match]
+testMatchPairs1 = testMatchPairs (unsafeParseRaw "a b c d e") (unsafeParseRaw "x d b y")

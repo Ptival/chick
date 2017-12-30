@@ -11,30 +11,28 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Guess.Term
-  ( algorithm
+  ( Match(..)
+  , algorithm
   , guess
   , guessδ
   , makeNode
+  , matchPairs
   , recommended
   , traceGuessδ
+  , withNodeMapping
   ) where
 
 import           Control.Lens hiding (children, preview)
 import           Control.Monad
-import           Control.Monad.Extra (whenM)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Reader
 import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
-import           Control.Monad.Loops
 import           Data.Function
 import qualified Data.List as List
 import           Data.Maybe
-import           Data.Ord
 import           Prelude hiding (product)
 import           Text.Printf
-import           Util ((<&&>), count)
 
 import qualified Diff.Atom as ΔA
 import           Diff.Guess.BottomUp
@@ -52,8 +50,8 @@ import           Utils
 branchChild :: Branch α Variable -> TermX α Variable
 branchChild = view _3 . unpackBranch
 
--- Turns out we need to help the GumTree algorithm when we don't have any
--- unique matches
+-- Turns out we need to help the GumTree algorithm when we don't have any unique
+-- matches
 
 -- termChildren :: TermX α Variable -> [TermX α Variable]
 -- termChildren = go
@@ -465,17 +463,3 @@ LeftUnmatched e         ->   RemoveApp (e)
           Nothing -> error "computed permutation was incorrect"
           Just tPatched -> do
             return $ (δ . ΔT.PermutPis p, (tPatched, t'))
-
--- main :: Node -> Node -> IO ()
--- main n1 n2 = do
---   m <- recommended n1 n2
---   runTrace (mkGuessδ n1 n2 m) >>= \case
---     Nothing -> printf "Could not guess a diff"
---     Just δ  -> do
---       (runTrace $ runError $ ΔT.patch (node n1) δ) >>= \case
---         Left  e -> printf e
---         Right p ->
---           if node n2 == p
---           then printf "Guessed a correct diff!"
---           else printf "Guessed a bad diff..."
---   return ()

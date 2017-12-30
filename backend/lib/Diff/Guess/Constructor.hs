@@ -14,12 +14,12 @@ module Diff.Guess.Constructor
   , termDiffToListDiff
   ) where
 
-import Control.Monad
-import Control.Monad.Freer
+import           Control.Monad
+import           Control.Monad.Freer
 -- import Control.Monad.Freer.Exception
-import Control.Monad.Freer.Trace
-import Prelude hiding (product)
-import Text.Printf
+import           Control.Monad.Freer.Trace
+import           Prelude hiding (product)
+import           Text.Printf
 
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Term as ΔGT
@@ -29,9 +29,10 @@ import qualified Diff.Constructor as ΔC
 import qualified Diff.List as ΔL
 import qualified Diff.Term as ΔT
 import qualified Diff.Triple as Δ3
-import Inductive.Inductive
-import PrettyPrinting.Term ()
-import Term.Term
+import           Inductive.Inductive
+import           PrettyPrinting.Term ()
+import           Term.Term
+import qualified Term.Raw as Raw
 
 termDiffToListDiff ::
   Show α =>
@@ -58,9 +59,8 @@ termDiffToListDiff = go
 
 guess ::
   ( Member Trace r
-  , Show α
   ) =>
-  Constructor α Variable -> Constructor α Variable -> Eff r (ΔC.Diff α)
+  Constructor Raw.Raw Variable -> Constructor Raw.Raw Variable -> Eff r (ΔC.Diff Raw.Raw)
 guess c1@(Constructor _ n1 cps1 cis1) c2@(Constructor _ n2 cps2 cis2) =
   if c1 == c2
   then return ΔC.Same
