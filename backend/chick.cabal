@@ -79,10 +79,15 @@ Library
                   Diff.Constructor
                   Diff.Eliminator
                   Diff.Guess.Atom
+                  Diff.Guess.BottomUp
                   Diff.Guess.Constructor
+                  Diff.Guess.HIList
                   Diff.Guess.Inductive
+                  Diff.Guess.Mapping
+                  Diff.Guess.Node
                   Diff.Guess.Script
                   Diff.Guess.Term
+                  Diff.Guess.TopDown
                   Diff.Guess.Vernacular
                   Diff.GlobalDeclaration
                   Diff.GlobalEnvironment
