@@ -34,6 +34,10 @@ import           PrettyPrinting.Term ()
 import           Term.Term
 import qualified Term.Raw as Raw
 
+{- This is quite specific.  It takes a diff for a telescope, and turns it into a
+list of diffs for the parts of the telescope.  It should not concern itself with
+things beyond the telescope, I think.
+-}
 termDiffToListDiff ::
   Show α =>
   TermX α Variable -> ΔT.Diff α ->
@@ -55,6 +59,7 @@ termDiffToListDiff = go
       (ΔT.RemovePi δ2, Pi _ _ bτ2) ->
         let (_, τ2) = unscopeTerm bτ2 in
         ΔL.Remove (go τ2 δ2)
+      (ΔT.Replace (Var _ _), _) -> ΔL.Replace []
       _ -> error $ printf "TODO termDiffToListDiff: %s" (show δt)
 
 guess ::

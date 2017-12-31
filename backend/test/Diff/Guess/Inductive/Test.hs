@@ -4,6 +4,7 @@
 module Diff.Guess.Inductive.Test where
 
 import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Trace
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Text.Megaparsec
@@ -17,7 +18,6 @@ import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
 import qualified Term.Raw as Raw
 import           Term.Variable
-import           Utils
 
 unsafeParseInductive :: [String] -> Inductive Raw.Raw Variable
 unsafeParseInductive ss =
@@ -35,20 +35,23 @@ indList1 = unsafeParseInductive
 
 sanityCheck :: Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> Assertion
 sanityCheck i1 i2 = do
-  δ <- runSkipTrace $ guess i1 i2
-  runSkipTrace (runError (ΔI.patch i1 δ)) >>= \case
+  δ <- runTrace $ guess i1 i2
+  runTrace (runError (ΔI.patch i1 δ)) >>= \case
     Left (_ :: String) -> assertFailure "sanity check failed"
     Right i2'          -> i2' @?= i2
 
-mkTestCase :: Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> TestTree
-mkTestCase i1 i2 =
+mkSanityCheck :: Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> TestTree
+mkSanityCheck i1 i2 =
   testCase
   (printf "%s -> %s" (prettyStr $ inductiveName i1) (prettyStr $ inductiveName i2))
   (sanityCheck i1 i2)
 
+sanityChecks :: [TestTree]
+sanityChecks = [ mkSanityCheck i1 i2 | i1 <- inductives, i2 <- inductives ]
+
 unitTests :: TestTree
 unitTests = testGroup "Diff.Guess.Inductive" $ []
-  ++ [ mkTestCase i1 i2 | i1 <- inductives, i2 <- inductives ]
+  ++ sanityChecks
 
 test :: IO ()
 test = defaultMain unitTests

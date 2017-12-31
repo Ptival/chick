@@ -300,7 +300,9 @@ mkGuessδ n1 n2 m = go n1 n2
             (App _ _ _, App _ _ _) -> do
               let pairs = matchPairs m (children n1) (children n2)
               trace $ printf "About to foldApps (%s, %s)" (show $ children n1) (show $ children n2)
-              let (Matched _ _ : pairsRest) = pairs -- if this fails, think about it
+              let pairsRest = case pairs of
+                    Matched _ _ : pairsRest -> pairsRest
+                    _ -> error $ printf "Couldn't extract pairsRest from: %s" (show pairs)
               (δ, _) <- foldM foldApps (id, NoPermutation) pairsRest
               return $ δ ΔT.Same
 
@@ -339,17 +341,23 @@ mkGuessδ n1 n2 m = go n1 n2
             --   δ2 <- go n1 τ2
             --   return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
 
+          -- FIXME: now that I changed children to return the whole telescope
+          -- this might be too specific!
           (_, _, Pi α' _ _, [τ1', τ2']) -> do
             δ1 <- go n1 τ1'
             δ2 <- go n1 τ2'
             return $ ΔT.InsPi α' δ1 (Binder Nothing) δ2
 
-          (Var _ _, _, Var _ _, _) -> do
-            return $ ΔT.Replace (node n2)
+          (Pi _ _ _, _ : τ2 : _, Var _ _, _) -> do
+            δ <- go τ2 n2
+            return $ ΔT.RemovePi δ
+
+          -- no choice here
+          (Var _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
+          (Type _,  _, Var _ _, _) -> return $ ΔT.Replace (node n2)
 
           _ -> do
-            trace $ printf "TODO: (%s, %s)" (show $ node n1) (show $ node n2)
-            error "TODO"
+            error $ printf "TODO: (%s, %s) (%s, %s)" (preview $ node n1) (preview $ node n2) (show $ node n1) (show $ node n2)
 
 {-
 Oh boy, this is annoyingly convoluted.
