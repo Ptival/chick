@@ -4,21 +4,22 @@ module Diff.Guess.Vernacular
   ( guess
   ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Trace
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Trace
 
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Inductive as ΔGI
 import qualified Diff.Guess.Term as ΔGT
 import qualified Diff.Vernacular as ΔV
-import Term.Variable
-import Vernacular
+import qualified Term.Raw as Raw
+import           Term.Variable
+import           Vernacular
 
 guess ::
   ( Member Trace r
-  , Show α
   ) =>
-  Vernacular α Variable -> Vernacular α Variable -> Eff r (ΔV.Diff α)
+  Vernacular Raw.Raw Variable -> Vernacular Raw.Raw Variable ->
+  Eff r (ΔV.Diff Raw.Raw)
 guess (Definition f1 n1 τ1 t1) (Definition f2 n2 τ2 t2) = do
   δf <- ΔGA.guess f1 f2
   δn <- ΔGA.guess n1 n2

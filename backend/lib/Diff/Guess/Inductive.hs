@@ -13,31 +13,27 @@ module Diff.Guess.Inductive
   ( guess
   ) where
 
-import Control.Monad
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
-import Control.Monad.Freer.Trace
-import Prelude hiding (product)
+import           Control.Monad
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Trace
+import           Prelude hiding (product)
 
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Constructor as ΔGC
 import qualified Diff.Guess.Term as ΔGT
-import qualified Diff.Atom as ΔA
 import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
-import qualified Diff.Term as ΔT
-import qualified Diff.Triple as Δ3
-import Inductive.Inductive
-import PrettyPrinting.Term ()
-import Term.Term
+import           Inductive.Inductive
+import           PrettyPrinting.Term ()
+import           Term.Term
+import qualified Term.Raw as Raw
 
-import StandardLibrary
+import           StandardLibrary
 
 guess ::
   ( Member Trace r
-  , Show α
   ) =>
-  Inductive α Variable -> Inductive α Variable -> Eff r (ΔI.Diff α)
+  Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> Eff r (ΔI.Diff Raw.Raw)
 guess i1@(Inductive n1 ips1 iis1 u1 cs1) i2@(Inductive n2 ips2 iis2 u2 cs2) =
   if i1 == i2
   then return ΔI.Same
@@ -71,7 +67,3 @@ extract the information to create the list diff.
     δcsList <- mapM (uncurry ΔGC.guess) (zip cs1 cs2)
     let δcs = foldr ΔL.Modify ΔL.Same δcsList
     return $ ΔI.Modify δn δips δiis δu δcs
-
-test = do
-  δ <- runTrace $ guess indList indVec
-  putStrLn $ show δ
