@@ -30,6 +30,7 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Data.Function
 import qualified Data.List as List
+import           Data.List.HT
 import           Data.Maybe
 import           Prelude hiding (product)
 import           Text.Printf
@@ -343,18 +344,23 @@ mkGuessδ n1 n2 m = go n1 n2
 
           -- FIXME: now that I changed children to return the whole telescope
           -- this might be too specific!
-          (_, _, Pi α' _ _, [τ1', τ2']) -> do
-            δ1 <- go n1 τ1'
-            δ2 <- go n1 τ2'
-            return $ ΔT.InsPi α' δ1 (Binder Nothing) δ2
+          (_, _, Pi _ _ _, τs') -> do
+            δs' <- forM τs' (go n1)
+            case viewR δs' of
+              Nothing -> error "This should not happen"
+              Just (δs', δ') -> do
+                return $ foldr (\ δ δs -> ΔT.InsPi () δ (Binder Nothing) δs) δ' δs'
 
           (Pi _ _ _, _ : τ2 : _, Var _ _, _) -> do
             δ <- go τ2 n2
             return $ ΔT.RemovePi δ
 
           -- no choice here
-          (Var _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
-          (Type _,  _, Var _ _, _) -> return $ ΔT.Replace (node n2)
+          (App _ _ _, _, Var _ _,    _) -> return $ ΔT.Replace (node n2)
+          (Type _,    _, Var _ _,    _) -> return $ ΔT.Replace (node n2)
+          (Var _ _,   _, App _ _ _,  _) -> return $ ΔT.Replace (node n2)
+          (Var _ _,   _, Type _,     _) -> return $ ΔT.Replace (node n2)
+          (Var _ _,   _, Var _ _,    _) -> return $ ΔT.Replace (node n2)
 
           _ -> do
             error $ printf "TODO: (%s, %s) (%s, %s)" (preview $ node n1) (preview $ node n2) (show $ node n1) (show $ node n2)

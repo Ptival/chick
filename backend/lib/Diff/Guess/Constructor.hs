@@ -56,6 +56,9 @@ termDiffToListDiff = go
               Just t' -> t'
         in
         ΔL.Insert (α, v, τ) (go t δ2)
+      (ΔT.CpyPi _ _ δ2, Pi _ _ bτ2) ->
+        let (_, τ2) = unscopeTerm bτ2 in
+        ΔL.Keep (go τ2 δ2)
       (ΔT.RemovePi δ2, Pi _ _ bτ2) ->
         let (_, τ2) = unscopeTerm bτ2 in
         ΔL.Remove (go τ2 δ2)
