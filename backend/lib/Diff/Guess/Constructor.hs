@@ -68,7 +68,8 @@ termDiffToListDiff = go
 guess ::
   ( Member Trace r
   ) =>
-  Constructor Raw.Raw Variable -> Constructor Raw.Raw Variable -> Eff r (ΔC.Diff Raw.Raw)
+  Constructor Raw.Raw Variable -> Constructor Raw.Raw Variable ->
+  Eff r (ΔC.Diff Raw.Raw)
 guess c1@(Constructor _ n1 cps1 cis1) c2@(Constructor _ n2 cps2 cis2) =
   if c1 == c2
   then return ΔC.Same

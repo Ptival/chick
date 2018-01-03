@@ -104,7 +104,9 @@ patch patchElem la δa =
         h : t -> go t δ >>= return . (h :)
         _     -> failWith "Keep, empty list"
 
-      Remove δ -> go (tail l) δ
+      Remove δ -> case l of
+        [] -> failWith "Remove, empty list"
+        _ : t -> go t δ
 
       Replace r -> return r
 

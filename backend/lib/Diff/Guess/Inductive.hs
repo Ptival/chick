@@ -16,6 +16,7 @@ module Diff.Guess.Inductive
 import           Control.Monad
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Trace
+import           Data.Function.HT
 import           Prelude hiding (product)
 
 import qualified Diff.Guess.Atom as ΔGA
@@ -28,7 +29,7 @@ import           PrettyPrinting.Term ()
 import           Term.Term
 import qualified Term.Raw as Raw
 
-import           StandardLibrary
+--import           StandardLibrary
 
 guess ::
   ( Member Trace r
@@ -63,7 +64,17 @@ extract the information to create the list diff.
     trace $ show δiis
 
     δu  <- ΔGA.guess u1 u2
-    -- FIXME: for now I cheat and assume same number of constructors in same order
+
+    -- FIXME: for now I cheat and assume:
+    -- - constructors are in the same order
+    -- - if some are missing, they are the last ones
+    -- - if some are introduced, they are the last ones
+    -- Ideally, we'd have some heuristic to match seemingly-related constructors
     δcsList <- mapM (uncurry ΔGC.guess) (zip cs1 cs2)
-    let δcs = foldr ΔL.Modify ΔL.Same δcsList
+    let (l1, l2) = (length cs1, length cs2)
+    let base =
+          if l1 == l2 then ΔL.Same
+          else if l1 > l2 then nest (l1 - l2) ΔL.Remove ΔL.Same
+          else foldr ΔL.Insert ΔL.Same (drop l1 cs2)
+    let δcs = foldr ΔL.Modify base δcsList
     return $ ΔI.Modify δn δips δiis δu δcs
