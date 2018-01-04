@@ -63,13 +63,20 @@ testAnonymous = do
   putStrLn $ show res
   return ()
 
-testMatchPairs :: Raw.Term Variable -> Raw.Term Variable -> [Match]
+testMatchPairs :: Raw.Term Variable -> Raw.Term Variable -> IO [Match]
 testMatchPairs = withNodeMapping $ \ n1 n2 m -> do
+  putStrLn $ show m
   let c1 = children n1
   let c2 = children n2
-  matchPairs m c1 c2
+  putStrLn $ show c1
+  putStrLn $ show c2
+  return $ matchPairs m c1 c2
 
 -- FIXME: right now, this generates Permuted [2, 1, 0] instead of Permuted [1, 2, 0]
 -- which is correct but not what I'd prefer.
-testMatchPairs1 :: [Match]
+testMatchPairs1 :: IO [Match]
 testMatchPairs1 = testMatchPairs (unsafeParseRaw "a b c d e") (unsafeParseRaw "x d b y")
+
+-- FIXME: this should be a match but isn't for some reason
+testMatchPairs2 :: IO [Match]
+testMatchPairs2 = testMatchPairs (unsafeParseRaw "f") (unsafeParseRaw "f x")
