@@ -52,14 +52,14 @@ extract the information to create the list diff.
     let ipsTerm1 = quantifyInductiveParameters ips1 uniqueVar
     let ipsTerm2 = quantifyInductiveParameters ips2 uniqueVar
     δipsType <- ΔGT.guess ipsTerm1 ipsTerm2
-    let δips = ΔGC.termDiffToListDiff ipsTerm1 δipsType
+    let δips = ΔGC.telescopeDiffToListDiff ipsTerm1 δipsType
     trace "Guess for δips"
     trace $ show δips
 
     let iisTerm1 = quantifyInductiveIndices iis1 uniqueVar
     let iisTerm2 = quantifyInductiveIndices iis2 uniqueVar
     δiisType <- ΔGT.guess iisTerm1 iisTerm2
-    let δiis = ΔGC.termDiffToListDiff iisTerm1 δiisType
+    let δiis = ΔGC.telescopeDiffToListDiff iisTerm1 δiisType
     trace "Guess for δiis:"
     trace $ show δiis
 

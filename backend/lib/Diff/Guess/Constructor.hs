@@ -11,7 +11,7 @@
 
 module Diff.Guess.Constructor
   ( guess
-  , termDiffToListDiff
+  , telescopeDiffToListDiff
   ) where
 
 import           Control.Monad
@@ -27,6 +27,7 @@ import qualified Diff.Guess.Term as ΔGT
 import qualified Diff.Constructor as ΔC
 -- import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
+import qualified Diff.Pair as Δ2
 import qualified Diff.Term as ΔT
 import qualified Diff.Triple as Δ3
 import           Inductive.Inductive
@@ -38,12 +39,13 @@ import qualified Term.Raw as Raw
 list of diffs for the parts of the telescope.  It should not concern itself with
 things beyond the telescope, I think.
 -}
-termDiffToListDiff ::
+telescopeDiffToListDiff ::
   Show α =>
   TermX α Variable -> ΔT.Diff α ->
   ΔL.Diff (α, Variable, TermX α Variable) (Δ3.Diff d e f)
-termDiffToListDiff = go
+telescopeDiffToListDiff = go
   where
+    this :: String = "telescopeDiffToListDiff"
     go t δt = case (δt, t) of
       (ΔT.Same, _) -> ΔL.Same
       (ΔT.InsPi α δ1 b δ2, _) ->
@@ -52,7 +54,7 @@ termDiffToListDiff = go
               Just v' -> v'
         in
         let τ = case ΔT.patchMaybe t δ1 of
-              Nothing -> error "patch failed in termDiffToListDiff"
+              Nothing -> error $ printf "patch failed in %s" this
               Just t' -> t'
         in
         ΔL.Insert (α, v, τ) (go t δ2)
@@ -63,7 +65,19 @@ termDiffToListDiff = go
         let (_, τ2) = unscopeTerm bτ2 in
         ΔL.Remove (go τ2 δ2)
       (ΔT.Replace (Var _ _), _) -> ΔL.Replace []
-      _ -> error $ printf "TODO termDiffToListDiff: %s" (show δt)
+      _ -> error $ printf "TODO %s: %s" this (show δt)
+
+nestedApplicationsDiffToListDiff ::
+  Show α =>
+  TermX α Variable -> ΔT.Diff α ->
+  ΔL.Diff (α, TermX α Variable) (Δ2.Diff d e)
+nestedApplicationsDiffToListDiff = go
+  where
+    this :: String = "nestedApplicationsDiffToListDiff"
+    go t δt = case (δt, t) of
+      (ΔT.Replace (Var _ _), _) -> ΔL.Replace []
+      (ΔT.Same, _) -> ΔL.Same
+      _ -> error $ printf "TODO %s: %s" this (show δt)
 
 guess ::
   ( Member Trace r
@@ -78,14 +92,17 @@ guess c1@(Constructor _ n1 cps1 cis1) c2@(Constructor _ n2 cps2 cis2) =
 
     let uniqueVar = Var Nothing "__UNIQUE__"
 
-    let cpsTerm1 = quantifyInductiveParameters cps1 uniqueVar
-    let cpsTerm2 = quantifyInductiveParameters cps2 uniqueVar
+    let cpsTerm1 = quantifyConstructorParameters cps1 uniqueVar
+    let cpsTerm2 = quantifyConstructorParameters cps2 uniqueVar
     δcpsType <- ΔGT.guess cpsTerm1 cpsTerm2
-    let δcps = termDiffToListDiff cpsTerm1 δcpsType
+    let δcps = telescopeDiffToListDiff cpsTerm1 δcpsType
     trace "Guess for δcps"
     trace $ show δcps
 
     -- definitely a list diff-er for those
-    let δcis = ΔL.Same
+    let cisTerm1 = applyConstructorIndices cis1 uniqueVar
+    let cisTerm2 = applyConstructorIndices cis2 uniqueVar
+    δcisType <- ΔGT.guess cisTerm1 cisTerm2
+    let δcis = nestedApplicationsDiffToListDiff cisTerm1 δcisType
 
     return $ ΔC.Modify δn δcps δcis

@@ -20,6 +20,7 @@ module Inductive.Inductive
   , Φcis
   , Constructor(..)
   , Inductive(..)
+  , applyConstructorIndices
   , constructorCheckedType
   , constructorCheckedType'
   , constructorRawType
@@ -28,6 +29,7 @@ module Inductive.Inductive
   , inductiveRawType'
   , inductiveType
   , inductiveType'
+  , quantifyConstructorParameters
   , quantifyInductiveIndices
   , quantifyInductiveParameters
   ) where
@@ -120,30 +122,31 @@ rawConstructor :: Inductive Raw.Raw ν -> Constructor α ν -> Constructor Raw.R
 rawConstructor rawInd (Constructor _ cn cps cis) =
   Constructor rawInd cn (map cpRaw cps) (map ciRaw cis)
 
+quantifyConstructorParameters ::
+  Φcps α Variable -> TypeX α Variable -> TypeX α Variable
+quantifyConstructorParameters = foldrWith onParam
+  where
+    onParam (α, v, p) t = Pi α p (abstractVariable v t)
+
+applyConstructorIndices ::
+  Φcis α Variable -> TypeX α Variable -> TypeX α Variable
+applyConstructorIndices = foldrWith onIndex
+  where
+    onIndex (α, i) t = App α t i
+
 constructorType' :: ∀ α.
   Bool ->
   Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
   TypeX α Variable
 constructorType' shouldQuantifyIndParams n ips cps cis =
   (if shouldQuantifyIndParams
-   then foldrWith onIndParamOutside ips
+   then quantifyInductiveParameters ips
    else id
   )
-  $ foldrWith onParam cps
-  $ foldrWith onIndex cis
-  $ applyVariables ips
+  $ quantifyConstructorParameters cps
+  $ applyConstructorIndices       cis
+  $ applyVariables                ips
   $ Var Nothing n
-
-  where
-
-    onIndex :: Φci α Variable -> TermX α Variable -> TermX α Variable
-    onIndex (α, i) t = App α t i --(Raw.raw t) (Raw.raw i)
-
-    onParam :: Φcp α Variable -> TermX α Variable -> TermX α Variable
-    onParam (α, v, p) t = Pi α p (abstractVariable v t)
-
-    onIndParamOutside :: Φip α Variable -> TermX α Variable -> TermX α Variable
-    onIndParamOutside (α, v, p) t = Pi α p (abstractVariable v t)
 
 constructorRawType' ::
   Bool -> Variable -> Φips α Variable -> Φcps α Variable -> Φcis α Variable ->
