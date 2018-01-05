@@ -31,6 +31,7 @@ import qualified Diff.Pair as Δ2
 import qualified Diff.Term as ΔT
 import qualified Diff.Triple as Δ3
 import           Inductive.Inductive
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.Term ()
 import           Term.Term
 import qualified Term.Raw as Raw
@@ -67,17 +68,47 @@ telescopeDiffToListDiff = go
       (ΔT.Replace (Var _ _), _) -> ΔL.Replace []
       _ -> error $ printf "TODO %s: %s" this (show δt)
 
+{-
+This one is also annoying.  The idea is that we receive a diff from `f a b c` to
+`f c b`, and we want to turn that into a diff from `[a, b, c]` to `[c, b]`.
+It's useful because it lets us compute a diff for the list of indices of an
+inductive by re-using the term-diff algorithm.
+
+But it's hard because things like `ΔT.Same` need to be translated into the
+proper number of `ΔL.Keep`.  For instance:
+
+`f a b`   --->   `f a b c`
+δt = ΔT.InsApp ΔT.Same (ΔT.Replace c)
+but we need:
+δl = ΔL.Keep $ ΔL.Keep $ ΔL.Insert c $ ΔL.Same
+     ^^^^^^^^^^^^^^^^^ there's no information about those in δt
+-}
 nestedApplicationsDiffToListDiff ::
   Show α =>
   TermX α Variable -> ΔT.Diff α ->
   ΔL.Diff (α, TermX α Variable) (Δ2.Diff d e)
-nestedApplicationsDiffToListDiff = go
+nestedApplicationsDiffToListDiff = go ΔL.Same
   where
     this :: String = "nestedApplicationsDiffToListDiff"
-    go t δt = case (δt, t) of
-      (ΔT.Replace (Var _ _), _) -> ΔL.Replace []
-      (ΔT.Same, _) -> ΔL.Same
-      _ -> error $ printf "TODO %s: %s" this (show δt)
+    go δacc t δt = case (δt, t) of
+
+      (ΔT.InsApp α δf δarg, _) ->
+        let arg = case ΔT.patchMaybe t δarg of
+              Nothing -> error $ printf "patch failed in %s" this
+              Just t' -> t'
+        in
+        go (ΔL.Insert (α, arg) δacc) t δf
+
+      (ΔT.RemoveApp δf, App _ f _) -> go (ΔL.Remove δacc) f δf
+
+      -- this is just renaming the function?
+      (ΔT.Replace (Var _ _), Var _ _) -> ΔL.Replace []
+
+      (ΔT.Replace (Var _ _), App _ f _) -> go (ΔL.Remove δacc) f δt
+
+      (ΔT.Same, Var _ _) -> ΔL.Replace []
+
+      _ -> error $ printf "TODO %s: (%s, %s)" this (preview δt) (preview t)
 
 guess ::
   ( Member Trace r
@@ -103,6 +134,10 @@ guess c1@(Constructor _ n1 cps1 cis1) c2@(Constructor _ n2 cps2 cis2) =
     let cisTerm1 = applyConstructorIndices cis1 uniqueVar
     let cisTerm2 = applyConstructorIndices cis2 uniqueVar
     δcisType <- ΔGT.guess cisTerm1 cisTerm2
+    trace $ "CHECK THIS OUT"
+    trace $ show δcisType
     let δcis = nestedApplicationsDiffToListDiff cisTerm1 δcisType
+    trace "Guess for δcis"
+    trace $ show δcis
 
     return $ ΔC.Modify δn δcps δcis

@@ -342,8 +342,6 @@ mkGuessδ n1 n2 m = go n1 n2
             --   δ2 <- go n1 τ2
             --   return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
 
-          -- FIXME: now that I changed children to return the whole telescope
-          -- this might be too specific!
           (_, _, Pi _ _ _, τs') -> do
             δs' <- forM τs' (go n1)
             case viewR δs' of
@@ -355,12 +353,20 @@ mkGuessδ n1 n2 m = go n1 n2
             δ <- go τ2 n2
             return $ ΔT.RemovePi δ
 
+          (App _ _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
+          (Var _ _, _, App _ _ _, f' : args') -> do
+            -- if the Var on the left has a match on the right, InsApp, else Replace
+            if node n1 == node f'
+              then do
+              let δf = ΔT.Same
+              δargs <- forM args' (go n1)
+              return $ foldr (\ δ δs -> ΔT.InsApp () δs δ) δf δargs
+              else return $ ΔT.Replace (node n2)
+
           -- no choice here
-          (App _ _ _, _, Var _ _,    _) -> return $ ΔT.Replace (node n2)
-          (Type _,    _, Var _ _,    _) -> return $ ΔT.Replace (node n2)
-          (Var _ _,   _, App _ _ _,  _) -> return $ ΔT.Replace (node n2)
-          (Var _ _,   _, Type _,     _) -> return $ ΔT.Replace (node n2)
-          (Var _ _,   _, Var _ _,    _) -> return $ ΔT.Replace (node n2)
+          (Type _,  _, Var _ _, _) -> return $ ΔT.Replace (node n2)
+          (Var _ _, _, Type _,  _) -> return $ ΔT.Replace (node n2)
+          (Var _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
 
           _ -> do
             error $ printf "TODO: (%s, %s) (%s, %s)" (preview $ node n1) (preview $ node n2) (show $ node n1) (show $ node n2)
