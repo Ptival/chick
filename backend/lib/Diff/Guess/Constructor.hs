@@ -102,11 +102,11 @@ nestedApplicationsDiffToListDiff = go ΔL.Same
       (ΔT.RemoveApp δf, App _ f _) -> go (ΔL.Remove δacc) f δf
 
       -- this is just renaming the function?
-      (ΔT.Replace (Var _ _), Var _ _) -> ΔL.Replace []
+      (ΔT.Replace (Var _ _), Var _ _) -> δacc
 
       (ΔT.Replace (Var _ _), App _ f _) -> go (ΔL.Remove δacc) f δt
 
-      (ΔT.Same, Var _ _) -> ΔL.Replace []
+      (ΔT.Same, Var _ _) -> δacc
 
       _ -> error $ printf "TODO %s: (%s, %s)" this (preview δt) (preview t)
 
