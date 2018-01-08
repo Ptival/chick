@@ -54,9 +54,10 @@ inductiveP = do
       -- check τ2?
       (pis, apps')
 
+    -- TODO: is this the same as extractPis from Utils?
     peelPis (rpis, Pi α τ1 bτ2) =
       let (_, τ2) = unscopeTerm bτ2 in
-      let v = getName bτ2 in
+      let v = originalVariable bτ2 in
       peelPis ((α, v, τ1) : rpis, τ2)
     peelPis (rpis, rest) = (reverse rpis, rest)
 

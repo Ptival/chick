@@ -14,7 +14,7 @@
 {-# language RankNTypes #-}
 {-# language ScopedTypeVariables #-}
 {-# language StandaloneDeriving #-}
--- {-# language TemplateHaskell #-}
+{-# language TemplateHaskell #-}
 -- {-# language TypeFamilies #-}
 -- {-# language TypeOperators #-}
 -- {-# language UndecidableInstances #-}
@@ -22,8 +22,8 @@
 module Term.Term
   ( module Term.Binder
   , module Term.Variable
+  , ScopedTerm(..)
   , Branch(..)
-  , NameScope
   , TermX(..)
   , TypeX
   , abstractAnonymous
@@ -33,10 +33,13 @@ module Term.Term
   , annotationOf
   , annotSymbol
   , arrowSymbol
+  , scopedTerm
   , forallSymbol
   , getName
   , holeSymbol
   , lamSymbol
+  , originalBinder
+  , originalVariable
   , packBranch
   , postForallSymbol
   , postLamSymbol
@@ -62,15 +65,12 @@ import Bound.Scope
 import Control.Lens hiding ((.=))
 import Control.Monad
 import Data.Aeson
--- import Data.Bifunctor
 import Data.Functor.Classes
 import Data.List
 import Data.Maybe
 import Data.String
 import Data.Typeable
---import GHC.Exts                  (Constraint)
 import GHC.Generics
---import Text.Boomerang.TH
 import Text.Printf
 
 import Term.Binder
@@ -107,7 +107,51 @@ postForallSymbol = ","
 postLamSymbol = ","
 wildcardSymbol = "_"
 
-type NameScope  = Scope (Name Variable ())
+data ScopedTerm f a = ScopedTerm
+  { _scopedTerm :: Scope (Name Variable ()) f a
+  , _originalBinder :: Binder Variable
+  }
+  deriving
+    ( Foldable
+    , Functor
+    , Generic
+    , Traversable
+    , Typeable
+    )
+makeLenses ''ScopedTerm
+
+originalVariable :: ScopedTerm f a -> Variable
+originalVariable bt = case unBinder $ view originalBinder bt of
+  Nothing -> "_"
+  Just v -> v
+
+-- abstractAnonymous :: (Monad f) => f ν -> Scope (Name ν ()) f ν
+-- abstractAnonymous = abstractName (const Nothing)
+
+-- abstractBinder :: (Monad f) => Eq ν => Binder ν -> f ν -> Scope (Name ν ()) f ν
+-- abstractBinder b =
+--   case unBinder b of
+--     Nothing -> abstractAnonymous
+--     Just v  -> abstract1Name v
+
+-- abstractVariable :: (Monad f) => Eq ν => ν -> f ν -> Scope (Name ν ()) f ν
+-- abstractVariable = abstract1Name
+
+abstractAnonymous :: TermX α Variable -> ScopedTerm (TermX α) Variable
+abstractAnonymous = abstractBinder (Binder Nothing)
+
+abstractVariable :: Variable -> TermX α Variable -> ScopedTerm (TermX α) Variable
+abstractVariable v = abstractBinder (Binder (Just v))
+
+abstractBinder :: Binder Variable -> TermX α Variable -> ScopedTerm (TermX α) Variable
+abstractBinder b t = ScopedTerm
+  { _scopedTerm = case unBinder b of
+                 Nothing -> abstractName (const Nothing) t
+                 Just v -> abstract1Name v t
+  , _originalBinder = b
+  }
+
+--type NameScope f a = (Binder Variable, Scope (Name Variable ()) f a)
 type NamesScope = Scope (Name Variable Int)
 
 data Branch α ν =
@@ -142,10 +186,10 @@ data TermX α ν
   = Annot α (TermX α ν) (TypeX α ν)
   | App   α (TermX α ν) (TermX α ν)
   | Hole  α
-  | Lam   α             (NameScope (TermX α) ν)
-  | Let   α (TermX α ν) (NameScope (TermX α) ν)
+  | Lam   α             (ScopedTerm (TermX α) ν)
+  | Let   α (TermX α ν) (ScopedTerm (TermX α) ν)
   | Match α (TermX α ν) [Branch α ν]
-  | Pi    α (TypeX α ν) (NameScope (TypeX α) ν)
+  | Pi    α (TypeX α ν) (ScopedTerm (TypeX α) ν)
   | Type  Universe
   -- it's really annoying not to have annotations on Var when type-checking
   -- but having α makes it not an applicative (can't come up with arbitrary α)
@@ -174,10 +218,10 @@ instance Bifunctor TermX where
       Annot a t  τ   -> Annot (l a) (go t)  (go τ)
       App   a t1 t2  -> App   (l a) (go t1) (go t2)
       Hole  a        -> Hole  (l a)
-      Lam   a bt     -> Lam   (l a)         (bimapScope bt)
-      Let   a t1 bt2 -> Let   (l a) (go t1) (bimapScope bt2)
+      Lam   a bt     -> Lam   (l a)         (over scopedTerm bimapScope bt)
+      Let   a t1 bt2 -> Let   (l a) (go t1) (over scopedTerm bimapScope bt2)
       Match a d bs   -> Match (l a) (go d)  (bimap l r <$> bs)
-      Pi    a τ1 bτ2 -> Pi    (l a) (go τ1) (bimapScope bτ2)
+      Pi    a τ1 bτ2 -> Pi    (l a) (go τ1) (over scopedTerm bimapScope bτ2)
       Type  u        -> Type  u
       Var   a v      -> Var   (l <$> a) (r v)
     where
@@ -194,13 +238,15 @@ instance Eq1 (TermX α) where
       (App _ _ _, _) -> False
       (Hole _,       Hole _)         -> True
       (Hole _, _) -> False
-      (Lam _ bt,     Lam _ bt')      -> liftEq eqVar bt bt'
+      (Lam _ bt,     Lam _ bt')      -> liftEq eqVar (view scopedTerm bt) (view scopedTerm bt')
       (Lam _ _, _) -> False
-      (Let _ t1 bt2, Let _ t1' bt2') -> t1 === t1' && liftEq eqVar bt2 bt2'
+      (Let _ t1 bt2, Let _ t1' bt2') ->
+        t1 === t1' && liftEq eqVar (view scopedTerm bt2) (view scopedTerm bt2')
       (Let _ _ _, _) -> False
       (Match _ d bs, Match _ d' bs') -> d === d' && liftEq (liftEq eqVar) bs bs'
       (Match _ _ _, _) -> False
-      (Pi _ τ1 bτ2,  Pi _ τ1' bτ2')  -> τ1 === τ1' && liftEq eqVar bτ2 bτ2'
+      (Pi _ τ1 bτ2,  Pi _ τ1' bτ2')  ->
+        τ1 === τ1' && liftEq eqVar (view scopedTerm bτ2) (view scopedTerm bτ2')
       (Pi _ _ _, _) -> False
       (Type u,       Type u')        -> u == u'
       (Type _, _) -> False
@@ -211,9 +257,9 @@ instance (Eq ν) => Eq (TermX α ν) where
   Annot _ t τ    == Annot _ t' τ'    = t  == t'  && τ  == τ'
   App   _ t1 t2  == App   _ t1' t2'  = t1 == t1' && t2 == t2'
   Hole  _        == Hole  _          = True
-  Lam   _ bt     == Lam   _ bt'      = bt == bt'
-  Let   _ t1 bt2 == Let   _ t1' bt2' = t1 == t1' && bt2 == bt2'
-  Pi    _ τ1 bτ2 == Pi    _ τ1' bτ2' = τ1 == τ1' && bτ2 == bτ2'
+  Lam   _ bt     == Lam   _ bt'      = view scopedTerm bt == view scopedTerm bt'
+  Let   _ t1 bt2 == Let   _ t1' bt2' = t1 == t1' && view scopedTerm bt2 == view scopedTerm bt2'
+  Pi    _ τ1 bτ2 == Pi    _ τ1' bτ2' = τ1 == τ1' && view scopedTerm bτ2 == view scopedTerm bτ2'
   Type  u        == Type  u'         = u == u'
   Var   _ v      == Var   _ v'       = v  == v'
   _              == _ = False
@@ -230,12 +276,12 @@ instance Monad (TermX α) where
   Annot a t  τ   >>= f = Annot a (t   >>= f) (τ  >>= f)
   App   a t1 t2  >>= f = App   a (t1  >>= f) (t2 >>= f)
   Hole  a        >>= _ = Hole  a
-  Lam   a bt     >>= f = Lam   a             (bt  >>>= f)
-  Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (bt2 >>>= f)
-  Match a d  bs  >>= f = Match a (d >>= f)   (map bindBranch bs)
+  Lam   a bt     >>= f = Lam   a             (over scopedTerm (>>>= f) bt)
+  Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (over scopedTerm (>>>= f) bt2)
+  Match a d bs   >>= f = Match a (d >>= f)   (map bindBranch bs)
     where
       bindBranch (Branch ctor args sbody) = Branch ctor args (sbody >>>= f)
-  Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (bτ2 >>>= f)
+  Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (over scopedTerm (>>>= f) bτ2)
   Type  u        >>= _ = Type  u
   Var   _ v      >>= f = f v
 
@@ -261,6 +307,7 @@ instance (ToJSON α) => ToJSON (TermX α Variable) where
       object
       [ "tag"    .= ("Lam" :: String)
       , "binder" .= b
+      -- TODO: originalBinder?
       , "body"   .= t
       ]
 
@@ -394,18 +441,6 @@ simultaneousSubstitute l w =
                 Just p -> p
                 Nothing -> return b
 
-abstractAnonymous :: (Monad f) => f ν -> Scope (Name ν ()) f ν
-abstractAnonymous = abstractName (const Nothing)
-
-abstractBinder :: (Monad f) => Eq ν => Binder ν -> f ν -> Scope (Name ν ()) f ν
-abstractBinder b =
-  case unBinder b of
-    Nothing -> abstractAnonymous
-    Just v  -> abstract1Name v
-
-abstractVariable :: (Monad f) => Eq ν => ν -> f ν -> Scope (Name ν ()) f ν
-abstractVariable = abstract1Name
-
 mkVarAtIndex :: NamesScope (TermX α) Variable -> Int -> Maybe Variable
 mkVarAtIndex s ndx = name <$> find ((==) ndx . snd . view _Name) (bindings s)
 
@@ -429,16 +464,17 @@ packBranch (ctor, args, body) = Branch ctor nbArgs sbody
     sbody = abstractName (indexIn args) body
     indexIn l v = Binder (Just v) `elemIndex` l
 
-unscopeTerm :: Scope (Name Variable ()) (TermX α) Variable -> (Binder Variable, TermX α Variable)
-unscopeTerm t =
-  let n = getName t in
-  let b = if unVariable n == "_" then Nothing else Just n in
-  (Binder b, instantiate1Name (Var Nothing n) t)
+unscopeTerm :: ScopedTerm (TermX α) Variable -> (Binder Variable, TermX α Variable)
+unscopeTerm bt =
+  ( view originalBinder bt
+  , instantiate1Name (Var Nothing (originalVariable bt)) (view scopedTerm bt)
+  )
 
 instance IsString (TermX α Variable) where
   fromString s = Var Nothing (fromString s)
 
 deriving instance (Show α, Show ν) => Show (Branch α ν)
+deriving instance (Show α, Show ν) => Show (ScopedTerm (TermX α) ν)
 deriving instance (Show α, Show ν) => Show (TermX α ν)
 
 instance (Show α) => Show1 (TermX α) where
@@ -448,21 +484,23 @@ instance (Show α) => Show1 (TermX α) where
         Annot a t  τ   -> showString "Annot (" . shows a . showString ") (" . go t  . showString ") (" . go τ . showString ")"
         App   a t1 t2  -> showString "App ("   . shows a . showString ") (" . go t1 . showString ") (" . go t2 . showString ")"
         Hole  a        -> showString "Hole ("  . shows a . showString ")"
-        Lam   a bt     -> showString "Lam ("   . shows a . showString ") (" . liftShowsPrec sP sL p bt . showString ")"
-        Let   a t1 bt2 -> showString "Let ("   . shows a . showString ") (" . liftShowsPrec sP sL p t1 . showString ") (" . liftShowsPrec sP sL p bt2 . showString ")"
+        Lam   a bt     -> showString "Lam ("   . shows a . showString ") (" . liftShowsPrec sP sL p (view scopedTerm bt) . showString ")"
+        Let   a t1 bt2 -> showString "Let ("   . shows a . showString ") (" . liftShowsPrec sP sL p t1 . showString ") (" . liftShowsPrec sP sL p (view scopedTerm bt2) . showString ")"
         Match a d  _bs -> showString "Match (" . shows a . showString ") (" . go d . showString ") (FIXME)"
-        Pi    a τ1 bτ2 -> showString "Pi ("    . shows a . showString ") (" . liftShowsPrec sP sL p τ1 . showString ") (" . liftShowsPrec sP sL p bτ2 . showString ")"
+        Pi    a τ1 bτ2 -> showString "Pi ("    . shows a . showString ") (" . liftShowsPrec sP sL p τ1 . showString ") (" . liftShowsPrec sP sL p (view scopedTerm bτ2) . showString ")"
         Type  u        -> showString (show u)
         Var   a v      -> showString "Var (" . shows a . showString ") (" . sP p v . showString ")"
 
 instance (PrintfArg α, Show α) => PrintfArg (TermX α Variable) where
   formatArg t = formatString (show t)
 
-getName :: Foldable t => Scope (Name Variable ()) t a -> Variable
+getName :: (Foldable t) => Scope (Name Variable ()) t a -> Variable
 getName t =
-  case bindings t of
-    Name n () : _ -> n
-    _ -> Variable "_"
+  let uniqueBindings = nub $ bindings t in
+  case uniqueBindings of
+    [] -> Variable "_"
+    [Name n ()] -> n
+    _ -> error $ printf "getName: more than one binding for %s" (show uniqueBindings)
 
 -- prettyTermDocPrec ::
 --   forall a α. PrecedenceTable -> TermX α Variable -> (Doc a, Precedence)

@@ -1,13 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Parsing.Test
   ( main
   , unitTests
   ) where
 
+import Bound.Name
 import Data.Maybe
 import Test.Tasty
 import Test.Tasty.HUnit
 
 import Parsing
+import Term.Term
 
 group :: String
 group = "Parsing"
@@ -34,3 +38,9 @@ unitTests =
 
 main :: IO ()
 main = defaultMain unitTests
+
+testingBinders = do
+  let Just v = parseMaybeTerm "bar"
+  let bτ2 = abstractName (\ v -> if v == "foo" then Just "foo" else Nothing) v
+  -- let Just (Pi α τ1 bτ2) = parseMaybeTerm "∀ (foo : Foo), bar"
+  putStrLn $ show bτ2

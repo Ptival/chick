@@ -104,6 +104,7 @@ instance PrettyPrintable α => PrettyPrintable (Diff α) where
 patchParameter ::
   ( Member (Exc String) r
   , Member Trace r
+  , Show α
   ) =>
   Φip α Variable -> Δip α -> Eff r (Φip α Variable)
 patchParameter = D3.patch DA.patch DA.patch DT.patch
@@ -111,6 +112,7 @@ patchParameter = D3.patch DA.patch DA.patch DT.patch
 patchIndex ::
   ( Member (Exc String) r
   , Member Trace r
+  , Show α
   ) =>
   Φip α Variable -> Δip α -> Eff r (Φip α Variable)
 patchIndex = D3.patch DA.patch DA.patch DT.patch

@@ -34,6 +34,7 @@ type Δcps α = DL.Diff (Φcp α Variable) (Δcp α)
 cpPatch ::
   ( Member (Exc String) r
   , Member Trace r
+  , Show α
   ) =>
   Φcp α Variable -> Δcp α -> Eff r (Φcp α Variable)
 cpPatch = D3.patch DA.patch DA.patch DT.patch
@@ -42,6 +43,7 @@ cpsPatch ::
   ( Member (Exc String) r
   , Member Trace r
   , PrettyPrintable α -- huh
+  , Show α
   ) =>
   Φcps α Variable -> Δcps α -> Eff r (Φcps α Variable)
 cpsPatch = DL.patch cpPatch
@@ -53,6 +55,7 @@ ciPatch ::
   ( Member (Exc String) r
   , Member Trace r
   , PrettyPrintable α -- huh
+  , Show α
   ) =>
   Φci α Variable -> Δci α -> Eff r (Φci α Variable)
 ciPatch = D2.patch DA.patch DT.patch
@@ -61,6 +64,7 @@ cisPatch ::
   ( Member (Exc String) r
   , Member Trace r
   , PrettyPrintable α -- huh
+  , Show α
   ) =>
   Φcis α Variable -> Δcis α -> Eff r (Φcis α Variable)
 cisPatch = DL.patch ciPatch

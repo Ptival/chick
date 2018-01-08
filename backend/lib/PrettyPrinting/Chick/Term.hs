@@ -13,6 +13,7 @@ module PrettyPrinting.Chick.Term
   )where
 
 import Bound.Name
+import Control.Lens
 import Text.PrettyPrint.Annotated.WL
 
 import Precedence
@@ -63,14 +64,14 @@ prettyTermDocPrec precs = goTerm
       l@(Lam _ _) -> (goLams [] l, PrecLam)
 
       Let _ t1 bt2 ->
-        let n = getName bt2 in
+        let n = originalVariable bt2 in
         (fillSep
          [ text "let"
          , prettyDoc n
          , text ":="
          , go (PrecMin, TolerateEqual) t1
          , text "in"
-         , go (PrecLet, TolerateEqual) (instantiate1Name (Var Nothing n) bt2)
+         , go (PrecLet, TolerateEqual) (instantiate1Name (Var Nothing n) (view scopedTerm bt2))
          ]
         , PrecLet)
 
@@ -82,9 +83,9 @@ prettyTermDocPrec precs = goTerm
             ++ map (prettyBranchDocPrec precs) bs
             ++ [ text "end" ]
 
-
       Pi _ τ1 bτ2 ->
-        let (b, τ2) = unscopeTerm bτ2 in
+        let b = view originalBinder bτ2 in
+        let (_, τ2) = unscopeTerm bτ2 in
         case unBinder b of
           Nothing ->
             (fillSep
@@ -93,12 +94,12 @@ prettyTermDocPrec precs = goTerm
               , go (PrecArrow, TolerateEqual) τ2
               ]
             , PrecArrow)
-          Just _ ->
+          Just v ->
             (hcat
               [ text "∀"
               , space
               , parens $ fillSep
-                [ prettyDoc b
+                [ prettyDoc v
                 , char ':'
                 , go (PrecMin, TolerateEqual) τ1
                 ]
@@ -115,8 +116,8 @@ prettyTermDocPrec precs = goTerm
     goLams :: [Doc ()] -> TermX α Variable -> Doc ()
     goLams l = \case
       Lam _ bt ->
-        let n = getName bt in
-        goLams (prettyDoc n : l) (instantiate1Name (Var Nothing n) bt)
+        let n = originalVariable bt in
+        goLams (prettyDoc n : l) (instantiate1Name (Var Nothing n) (view scopedTerm bt))
       t ->
         hcat
         [ text lamSymbol

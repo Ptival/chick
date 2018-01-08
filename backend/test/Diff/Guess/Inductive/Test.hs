@@ -56,6 +56,9 @@ unitTests = testGroup "Diff.Guess.Inductive" $ []
 test :: IO ()
 test = defaultMain unitTests
 
+failing :: IO ()
+failing = defaultMain $ testGroup "Diff.Guess.Inductive" [ mkSanityCheck indBool indEq ]
+
 {-
 Inductive {inductiveName = Variable {unVariable = "eq"}, inductiveParameters = [((),Variable {unVariable = "A"},Type Type),((),Variable {unVariable = "x"},Var Nothing (Variable {unVariable = "A"}))], inductiveIndices = [((),Variable {unVariable = "_"},Var Nothing (Variable {unVariable = "A"}))], inductiveUniverse = Prop, inductiveConstructors = [Constructor _ Variable {unVariable = "eq_refl"} [] [((),Var Nothing (Variable {unVariable = "x"}))]]}
 Inductive {inductiveName = Variable {unVariable = "eq"}, inductiveParameters = [((),Variable {unVariable = "_"},Type Type),((),Variable {unVariable = "_"},Var Nothing (Variable {unVariable = "A"}))], inductiveIndices = [((),Variable {unVariable = "_"},Var Nothing (Variable {unVariable = "A"}))], inductiveUniverse = Prop, inductiveConstructors = [Constructor _ Variable {unVariable = "eq_refl"} [] [],Constructor _ Variable {unVariable = "false"} [] []]}

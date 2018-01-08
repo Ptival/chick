@@ -18,6 +18,7 @@ import           Control.Monad.Freer
 import           Control.Monad.Freer.Trace
 import           Data.Function.HT
 import           Prelude hiding (product)
+import           Text.Printf
 
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Constructor as ΔGC
@@ -25,6 +26,7 @@ import qualified Diff.Guess.Term as ΔGT
 import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
 import           Inductive.Inductive
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.Term ()
 import           Term.Term
 import qualified Term.Raw as Raw
@@ -50,7 +52,9 @@ extract the information to create the list diff.
     let uniqueVar = Var Nothing "__UNIQUE__"
 
     let ipsTerm1 = quantifyInductiveParameters ips1 uniqueVar
+    trace $ printf "ipsTerm1: %s" $ prettyStr ipsTerm1
     let ipsTerm2 = quantifyInductiveParameters ips2 uniqueVar
+    trace $ printf "ipsTerm2: %s" $ prettyStr ipsTerm2
     δipsType <- ΔGT.guess ipsTerm1 ipsTerm2
     let δips = ΔGC.telescopeDiffToListDiff ipsTerm1 δipsType
     trace "Guess for δips"

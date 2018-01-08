@@ -24,7 +24,6 @@ module Diff.Term
   , patchMaybe
   ) where
 
-import           Control.Lens (_2, over)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
@@ -40,7 +39,6 @@ import qualified Diff.Triple as D3
 import           Diff.Utils
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Binder
 import           Term.Term
 import           Utils
@@ -100,6 +98,7 @@ instance ToJSON α => ToJSON (Diff α) where
 patchBranch ::
   ( Member (Exc String) r
   , Member Trace r
+  , Show α
   ) =>
   Branch α Variable -> BranchDiff α -> Eff r (Branch α Variable)
 patchBranch b D3.Same = return b
@@ -113,6 +112,7 @@ patchBranch b (D3.Modify δctor δargs δbody) = do
 patch ::
   ( Member (Exc String) r
   , Member Trace r
+  , Show α
   ) =>
   TermX α Variable -> Diff α -> Eff r (TermX α Variable)
 patch term δterm =
@@ -179,96 +179,6 @@ patch term δterm =
     patch τ2 δ
   (_, RemovePi _) -> exc "RemovePi: not a Pi"
 
--- | `f a b c` becomes `(f, [a, b, c])`
-extractApps ::
-  Member (Exc String) r =>
-  TermX α Variable -> Eff r (TermX α Variable, [(α, TermX α Variable)])
-extractApps t = over _2 reverse <$> go t
-  where
-    go (App a t1 t2) = do
-      (f, args) <- go t1
-      return $ (f, (a, t2) : args)
-    go t1              = return (t1, [])
-
-extractSomeApps ::
-  Member (Exc String) r =>
-  Int -> TermX α Variable -> Eff r (TermX α Variable, [(α, TermX α Variable)])
-extractSomeApps 0 t = return (t, [])
-extractSomeApps n (App a t1 t2) = do
-  (f, args) <- extractSomeApps (n - 1) t1
-  return (f, args ++ [(a, t2)]) -- TODO: make this not quadratic, I'm being lazy
-extractSomeApps _ t =
-  let e :: String = printf "extractLams: not a Lam: %s" (prettyStrU t) in
-  throwExc e
-
-extractSomeLams ::
-  Member (Exc String) r =>
-  Int -> TermX α Variable -> Eff r ([(α, Binder Variable)], TermX α Variable)
-extractSomeLams 0 t = return ([], t)
-extractSomeLams n (Lam a bt) = do
-  let (b, t) = unscopeTerm bt
-  (l, rest) <- extractSomeLams (n - 1) t
-  return ((a, b) : l, rest)
-extractSomeLams _ t =
-  let e :: String = printf "extractLams: not a Lam: %s" (prettyStrU t) in
-  throwExc e
-
-extractLams ::
-  Member (Exc String) r =>
-  TermX α Variable -> Eff r ([(α, Binder Variable)], TermX α Variable)
-extractLams = \case
-  Lam a bt -> do
-    let (b, t) = unscopeTerm bt
-    (l, rest) <- extractLams t
-    return ((a, b) : l, rest)
-  t -> return ([], t)
-
-extractSomePis ::
-  Member (Exc String) r =>
-  Int -> TermX α Variable -> Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
-extractSomePis 0 t              = return ([], t)
-extractSomePis n (Pi a τ1 bτ2) = do
-  let (b, τ2) = unscopeTerm bτ2
-  (l, rest) <- extractSomePis (n - 1) τ2
-  return ((a, b, τ1) : l, rest)
-extractSomePis _ t              =
-  throwExc $ printf "extractPis: not a Pi: %s" (prettyStrU t)
-
-extractPis ::
-  ( Member (Exc String) r
-  ) =>
-  TermX α Variable ->
-  Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
-extractPis = \case
-  Pi a τ1 bτ2 -> do
-    let (b, τ2) = unscopeTerm bτ2
-    (l, rest) <- extractPis τ2
-    return ((a, b, τ1) : l, rest)
-  t -> return ([], t)
-
-extractPi ::
-  ( Member (Exc String) r
-  ) =>
-  TermX α Variable ->
-  Eff r (α, TermX α Variable, Binder Variable, TermX α Variable)
-extractPi = \case
-  Pi a τ1 bτ2 -> do
-    let (b, τ2) = unscopeTerm bτ2
-    return (a, τ1, b, τ2)
-  t -> throwExc $ printf "extractPi: not a Pi: %s" (prettyStrU t)
-
-mkApps :: TermX α Variable -> [(α, TermX α Variable)] -> TermX α Variable
-mkApps f []           = f
-mkApps f ((a, e) : t) = mkApps (App a f e) t
-
-mkLams :: [(α, Binder Variable)] -> TermX α Variable -> TermX α Variable
-mkLams []          rest = rest
-mkLams ((a, b) : t) rest = Lam a (abstractBinder b (mkLams t rest))
-
-mkPis :: [(α, Binder Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
-mkPis []               rest = rest
-mkPis ((a, b, τ1) : t) rest = Pi a τ1 (abstractBinder b (mkPis t rest))
-
 nCpyApps :: Int -> Diff α -> Diff α
 nCpyApps 0 base         = base
 nCpyApps n _    | n < 0 = error "nCpyApps: n became negative!"
@@ -290,5 +200,5 @@ nRemoveApps 0 base         = base
 nRemoveApps n _    | n < 0 = error "nRemoveApps: n became negative!"
 nRemoveApps n base         = RemoveApp $ nRemoveApps (n - 1) base
 
-patchMaybe :: TermX α Variable -> Diff α -> Maybe (TermX α Variable)
+patchMaybe :: Show α => TermX α Variable -> Diff α -> Maybe (TermX α Variable)
 patchMaybe t d = rightToMaybe @String . skipTrace . runError $ patch t d

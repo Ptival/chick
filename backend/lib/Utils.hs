@@ -1,12 +1,24 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Utils
-  ( foldlWith
+  ( extractApps
+  , extractLams
+  , extractPi
+  , extractPis
+  , extractSomeApps
+  , extractSomeLams
+  , extractSomePis
+  , foldlWith
   , foldrWith
   , isPi
   , mapWithIndex
+  , mkApps
+  , mkLams
+  , mkPis
   , orElse
   , orElse'
   , runSkipTrace
@@ -16,13 +28,16 @@ module Utils
   , withState
   ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Internal
-import Control.Monad.Freer.State
-import Control.Monad.Freer.Trace
-import Control.Monad.Error.Class
+import           Control.Lens
+import           Control.Monad.Freer
+import           Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Internal
+import           Control.Monad.Freer.State
+import           Control.Monad.Freer.Trace
+import qualified Control.Monad.Error.Class as ME
+import           Text.Printf
 
-import Term.Term
+import           Term.Term
 
 foldlWith :: Foldable t => (b -> a -> b) -> t a -> b -> b
 foldlWith f l a = foldl f a l
@@ -37,12 +52,12 @@ isPi _            = Nothing
 mapWithIndex :: (a -> Int -> b) -> [a] -> [b]
 mapWithIndex f l = map (\(e, i) -> f e i) (zip l [0..])
 
-orElse :: MonadError e m => Maybe a -> e -> m a
-orElse Nothing  e = throwError e
+orElse :: ME.MonadError e m => Maybe a -> e -> m a
+orElse Nothing  e = ME.throwError e
 orElse (Just a) _ = return a
 
-orElse' :: MonadError e m => Bool -> e -> m ()
-orElse' False e = throwError e
+orElse' :: ME.MonadError e m => Bool -> e -> m ()
+orElse' False e = ME.throwError e
 orElse' True  _ = return ()
 
 -- dumb, but has the same signature as `runTrace`, so easier to interchange
@@ -80,3 +95,99 @@ withState f e = do
   r <- e
   put s
   return r
+
+-- | `f a b c` becomes `(f, [a, b, c])`
+extractApps ::
+  TermX α Variable -> Eff r (TermX α Variable, [(α, TermX α Variable)])
+extractApps t = over _2 reverse <$> go t
+  where
+    go (App a t1 t2) = do
+      (f, args) <- go t1
+      return $ (f, (a, t2) : args)
+    go t1              = return (t1, [])
+
+extractSomeApps ::
+  ( Member (Exc String) r
+  , Show α
+  ) =>
+  Int -> TermX α Variable -> Eff r (TermX α Variable, [(α, TermX α Variable)])
+extractSomeApps 0 t = return (t, [])
+extractSomeApps n (App a t1 t2) = do
+  (f, args) <- extractSomeApps (n - 1) t1
+  return (f, args ++ [(a, t2)]) -- TODO: make this not quadratic, I'm being lazy
+extractSomeApps _ t =
+  let e :: String = printf "extractLams: not a Lam: %s" (show t) in
+  throwError e
+
+extractSomeLams ::
+  ( Member (Exc String) r
+  , Show α
+  )=>
+  Int -> TermX α Variable -> Eff r ([(α, Binder Variable)], TermX α Variable)
+extractSomeLams 0 t = return ([], t)
+extractSomeLams n (Lam a bt) = do
+  let (b, t) = unscopeTerm bt
+  (l, rest) <- extractSomeLams (n - 1) t
+  return ((a, b) : l, rest)
+extractSomeLams _ t =
+  let e :: String = printf "extractLams: not a Lam: %s" (show t) in
+  throwError e
+
+extractLams ::
+  TermX α Variable -> Eff r ([(α, Binder Variable)], TermX α Variable)
+extractLams = \case
+  Lam a bt -> do
+    let (b, t) = unscopeTerm bt
+    (l, rest) <- extractLams t
+    return ((a, b) : l, rest)
+  t -> return ([], t)
+
+extractSomePis ::
+  ( Member (Exc String) r
+  , Show α
+  ) =>
+  Int -> TermX α Variable -> Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
+extractSomePis 0 t = return ([], t)
+extractSomePis n (Pi a τ1 bτ2) = do
+  let (b, τ2) = unscopeTerm bτ2
+  (l, rest) <- extractSomePis (n - 1) τ2
+  return ((a, b, τ1) : l, rest)
+extractSomePis _ t =
+  let e :: String = printf "extractPis: not a Pi: %s" (show t) in
+  throwError e
+
+extractPis ::
+  TermX α Variable ->
+  Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
+extractPis = \case
+  Pi a τ1 bτ2 -> do
+    let (b, τ2) = unscopeTerm bτ2
+    (l, rest) <- extractPis τ2
+    return ((a, b, τ1) : l, rest)
+  t -> return ([], t)
+
+extractPi ::
+  ( Member (Exc String) r
+  , Show α
+  ) =>
+  TermX α Variable ->
+  Eff r (α, TermX α Variable, Binder Variable, TermX α Variable)
+extractPi = \case
+  Pi a τ1 bτ2 -> do
+    let (b, τ2) = unscopeTerm bτ2
+    return (a, τ1, b, τ2)
+  t ->
+    let e :: String = printf "extractPi: not a Pi: %s" (show t) in
+    throwError e
+
+mkApps :: TermX α Variable -> [(α, TermX α Variable)] -> TermX α Variable
+mkApps f []           = f
+mkApps f ((a, e) : t) = mkApps (App a f e) t
+
+mkLams :: [(α, Binder Variable)] -> TermX α Variable -> TermX α Variable
+mkLams []          rest = rest
+mkLams ((a, b) : t) rest = Lam a (abstractBinder b (mkLams t rest))
+
+mkPis :: [(α, Binder Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
+mkPis []               rest = rest
+mkPis ((a, b, τ1) : t) rest = Pi a τ1 (abstractBinder b (mkPis t rest))

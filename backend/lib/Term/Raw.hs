@@ -4,7 +4,7 @@
 module Term.Raw where
 
 import Bound.Scope
-import Data.Bifunctor
+import Control.Lens
 
 import Term.Term
 
@@ -18,9 +18,9 @@ raw = \case
   Annot _ t τ    -> Annot () (raw t) (raw τ)
   App   _ t1 t2  -> App   () (raw t1) (raw t2)
   Hole  _        -> Hole  ()
-  Lam   _ bt     -> Lam   () (hoistScope raw bt)
-  Let   _ t1 bt2 -> Let   () (raw t1) (hoistScope raw bt2)
+  Lam   _ bt     -> Lam   () (over scopedTerm (hoistScope raw) bt)
+  Let   _ t1 bt2 -> Let   () (raw t1) (over scopedTerm (hoistScope raw) bt2)
   Match _ d  bs  -> Match () (raw d)  (map (bimap (const ()) id) bs)
-  Pi    _ τ1 bτ2 -> Pi    () (raw τ1) (hoistScope raw bτ2)
+  Pi    _ τ1 bτ2 -> Pi    () (raw τ1) (over scopedTerm (hoistScope raw) bτ2)
   Type  u        -> Type  u
   Var   _ v      -> Var   Nothing v

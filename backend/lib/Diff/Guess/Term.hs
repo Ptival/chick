@@ -343,11 +343,21 @@ mkGuessδ n1 n2 m = go n1 n2
             --   return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
 
           (_, _, Pi _ _ _, τs') -> do
+
             δs' <- forM τs' (go n1)
             case viewR δs' of
               Nothing -> error "This should not happen"
               Just (δs', δ') -> do
-                return $ foldr (\ δ δs -> ΔT.InsPi () δ (Binder Nothing) δs) δ' δs'
+                -- Problem: τs' does not contain the name of the binders for each child
+                -- Solution: extract them from (node n2)
+                (πs, _) <- extractPis (node n2)
+                if length πs /= length δs'
+                  then do
+                  trace $ printf "%s" (show $ map prettyStr πs)
+                  trace $ printf "%s" (show δs')
+                  error "This is possibly odd, check if it happens"
+                  else return ()
+                return $ foldr (\ (δ, b) δs -> ΔT.InsPi () δ b δs) δ' (zip δs' (map (view _2) πs))
 
           (Pi _ _ _, _ : τ2 : _, Var _ _, _) -> do
             δ <- go τ2 n2
@@ -370,6 +380,13 @@ mkGuessδ n1 n2 m = go n1 n2
 
           _ -> do
             error $ printf "TODO: (%s, %s) (%s, %s)" (preview $ node n1) (preview $ node n2) (show $ node n1) (show $ node n2)
+
+-- δs' <- forM τs' (go n1)
+-- case viewR δs' of
+--   Nothing -> error "This should not happen"
+--   Just (δs', δ') -> do
+--     trace $ printf "### InsPi ###"
+--     return $ foldr (\ δ δs -> ΔT.InsPi () δ b δs) δ' δs'
 
 {-
 Oh boy, this is annoyingly convoluted.
@@ -437,7 +454,8 @@ LeftUnmatched e         ->   RemoveApp (e)
     foldLams (δ, (t, t')) = \case
       RightUnmatched _ -> do
         let (Lam α' bt') = t'
-        let (b, t') = unscopeTerm bt'
+        let (_, t') = unscopeTerm bt'
+        let b = view originalBinder bt'
         return $ (δ . ΔT.InsLam α' b, (t, t'))
       LeftUnmatched _ -> do
         let (Lam _ bt) = t
@@ -462,7 +480,9 @@ LeftUnmatched e         ->   RemoveApp (e)
     foldPis (δ, (t, t')) = \case
       RightUnmatched _ -> do
         let (Pi α' τ1' bτ2') = t'
-        let (b, τ2') = unscopeTerm bτ2'
+        let b = view originalBinder bτ2'
+        let (_, τ2') = unscopeTerm bτ2'
+        trace $ printf "IMMA INSERT SOME %s" (show b)
         return $ (δ . ΔT.InsPi α' (ΔT.Replace τ1') b, (t, τ2'))
       LeftUnmatched _ -> do
         let (Pi _ _ bτ2) = t

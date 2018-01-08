@@ -16,7 +16,6 @@ module Diff.Guess.Constructor
 
 import           Control.Monad
 import           Control.Monad.Freer
--- import Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
 import           Prelude hiding (product)
 import           Text.Printf
