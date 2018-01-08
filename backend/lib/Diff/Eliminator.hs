@@ -43,6 +43,7 @@ import           Utils
   , Member (Exc String) r
   , Member Trace r
   , PrettyPrintable α
+  , Show α
   ) =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
@@ -98,6 +99,7 @@ import           Utils
 δconcatMapAddRecursiveMotive ::
   ( Eq α
   , PrettyPrintable α
+  , Show α
   ) =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
@@ -122,7 +124,10 @@ import           Utils
     Right δListFold -> δListFoldRight δListFold cps δcps (Just δ)
 
 δmkCase ::
-  (Eq α, PrettyPrintable α) =>
+  ( Eq α
+  , PrettyPrintable α
+  , Show α
+  ) =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
@@ -154,7 +159,10 @@ import           Utils
   -- (Variable, [(Variable, TypeX α Variable)], [TypeX α Variable])
   -- (D2.Diff (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
 δListFoldMkPiConstructor ::
-  (Eq α, PrettyPrintable α) =>
+  ( Eq α
+  , PrettyPrintable α
+  , Show α
+  ) =>
   α ->
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
@@ -178,7 +186,10 @@ import           Utils
         return $ (δcase, DA.Same)
 
 δquantifyCases ::
-  (Eq α, PrettyPrintable α) =>
+  ( Eq α
+  , PrettyPrintable α
+  , Show α
+  ) =>
   α -> Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
@@ -201,7 +212,10 @@ import           Utils
   $ DT.CpyVar δn
 
 δmkEliminatorType' ::
-  (Eq α, PrettyPrintable α) =>
+  ( Eq α
+  , PrettyPrintable α
+  , Show α
+  ) =>
   α ->
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
@@ -223,7 +237,10 @@ import           Utils
   )
 
 δmkEliminatorType ::
-  (Eq α, PrettyPrintable α) =>
+  ( Eq α
+  , PrettyPrintable α
+  , Show α
+  ) =>
   α -> Inductive α Variable -> DI.Diff α -> Maybe (DT.Diff α)
 δmkEliminatorType α (Inductive n ips iis _u cs) δi = case δi of
   DI.Same -> Just DT.Same

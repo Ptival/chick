@@ -38,6 +38,7 @@ instance PrettyPrintable (Diff α) where
 patch ::
   ( Member (Exc String) r
   , Member Trace r
+  , Show α
   ) =>
   LocalDeclaration α Variable -> Diff α -> Eff r (LocalDeclaration α Variable)
 patch ld δ = case (ld, δ) of

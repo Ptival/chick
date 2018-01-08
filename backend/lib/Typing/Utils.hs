@@ -39,7 +39,7 @@ type Error   = E.Term Variable
 (~!) = first (const (Left Unchecked))
 
 -- | Stands for "not checked lambda"
-(~!\) :: NameScope (TermX ν) Variable -> NameScope (TermX (E.Annotation Variable)) Variable
+(~!\) :: ScopedTerm (TermX ν) Variable -> ScopedTerm (TermX (E.Annotation Variable)) Variable
 (~!\) s =
   let (b, t) = unscopeTerm s in
   abstractBinder b ((~!) t)

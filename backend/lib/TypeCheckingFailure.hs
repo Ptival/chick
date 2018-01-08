@@ -2,12 +2,9 @@
 
 module TypeCheckingFailure where
 
-import Bound.Name (Name)
-import Bound.Scope (Scope)
 import Text.Printf (printf)
 
-import Term.Term (TermX(..))
-import Term.Variable (Variable)
+import Term.Term (TermX(..), ScopedTerm)
 
 data TypeCheckingFailure t ν
   = AppArgumentFailed
@@ -42,7 +39,7 @@ displayTypeCheckingFailure = \case
     "This term was not type-checked"
 
 type Sad t r ν = TermX (Either (TypeCheckingFailure t ν) r) ν
-type SadScope t r ν = Scope (Name Variable ()) (TermX (Either (TypeCheckingFailure t ν) r)) ν
+type SadScope t r ν = ScopedTerm (TermX (Either (TypeCheckingFailure t ν) r)) ν
 
 sadAppArg :: Sad t r ν -> Sad t r ν -> Sad t r ν
 sadAppArg = App (Left AppArgumentFailed)

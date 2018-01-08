@@ -2,8 +2,6 @@
 
 module Notations where
 
---import Bound
-import           Bound.Name
 import           Data.Default
 
 import           Term.Term
@@ -26,17 +24,17 @@ hole = Hole def
 -- Lam
 (^\) :: (Default α) => [Variable] -> TermX α Variable -> TermX α Variable
 (^\) []       t = t
-(^\) (n : ns) t = Lam def (abstract1Name n ((^\) ns t))
+(^\) (n : ns) t = Lam def (abstractVariable n ((^\) ns t))
 
 -- Let
 let' :: (Default α) => [(Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
 let' []             t  = t
-let' ((n, t1) : ns) t2 = Let def t1 (abstract1Name n (let' ns t2))
+let' ((n, t1) : ns) t2 = Let def t1 (abstractVariable n (let' ns t2))
 
 -- Pi (named)
 π :: (Default α) => [(Variable, TypeX α Variable)] -> TermX α Variable -> TermX α Variable
 π []             t = t
-π ((n, τ) : nτs) t = Pi def τ (abstract1Name n (π nτs t))
+π ((n, τ) : nτs) t = Pi def τ (abstractVariable n (π nτs t))
 
 -- Pi (anonymous)
 infixr 1 ^->

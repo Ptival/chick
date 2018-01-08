@@ -27,12 +27,12 @@ data TermXFamily α :: * -> * -> * where
   Annot' :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (TypeX α Variable)             Nil))
   App'   :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (TermX α Variable)             Nil))
   Hole'  :: TermXFamily α (TermX α Variable)                                                                                            Nil
-  Lam'   :: TermXFamily α (TermX α Variable)             (Cons (NameScope (TermX α) Variable)                                           Nil)
-  Let'   :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (NameScope (TermX α) Variable) Nil))
-  Pi'    :: TermXFamily α (TermX α Variable)             (Cons (TypeX α Variable)                  (Cons (NameScope (TypeX α) Variable) Nil))
+  Lam'   :: TermXFamily α (TermX α Variable)             (Cons (ScopedTerm (TermX α) Variable)                                           Nil)
+  Let'   :: TermXFamily α (TermX α Variable)             (Cons (TermX α Variable)                  (Cons (ScopedTerm (TermX α) Variable) Nil))
+  Pi'    :: TermXFamily α (TermX α Variable)             (Cons (TypeX α Variable)                  (Cons (ScopedTerm (TypeX α) Variable) Nil))
   Type'  :: TermXFamily α (TermX α Variable)             (Cons U.Universe                                                               Nil)
   Var'   :: TermXFamily α (TermX α Variable)             (Cons Variable                                                                 Nil)
-  Scope' :: TermXFamily α (NameScope (TermX α) Variable) (Cons (Name Variable ())                  (Cons (TermX α Variable)             Nil))
+  Scope' :: TermXFamily α (ScopedTerm (TermX α) Variable) (Cons (Name Variable ())                  (Cons (TermX α Variable)             Nil))
   Name'     :: Name Variable () -> TermXFamily α (Name Variable ()) Nil
   Binder'   :: Binder Variable  -> TermXFamily α (Binder Variable)  Nil
   Variable' :: Variable         -> TermXFamily α Variable           Nil
@@ -90,7 +90,7 @@ instance
   apply    Pi' (CCons τ1 (CCons bτ2 CNil)) = Pi    def τ1 bτ2
   apply  Type' (CCons u CNil)              = Type  u
   apply   Var' (CCons v CNil)              = Var   def v
-  apply Scope' (CCons n (CCons t CNil))    = abstract1Name (name n) t
+  apply Scope' (CCons n (CCons t CNil))    = abstractVariable (name n) t
   --apply (Scope' s) (CCons t CNil) = s
   apply (Name'     n) CNil = n
   apply (Binder'   b) CNil = b
@@ -129,7 +129,7 @@ instance
   , Show α
   , Type (TermXFamily α) (Name Variable ())
   ) =>
-  Type (TermXFamily α) (NameScope (TermX α) Variable) where
+  Type (TermXFamily α) (ScopedTerm (TermX α) Variable) where
   constructors = [ Concr Scope' ]
 
 instance
