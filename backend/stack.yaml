@@ -1,4 +1,5 @@
 flags: {}
+
 extra-deps:
   - gdiff-1.1
   - GenericPretty-1.2.1
@@ -6,7 +7,9 @@ extra-deps:
   - heist-1.0.1.0
   - map-syntax-0.2.0.2
   - xmlhtml-0.2.5.1
+
 resolver: lts-9.12
+
 packages:
   - '.'
   - location:
@@ -17,6 +20,7 @@ packages:
       git: https://github.com/IxpertaSolutions/freer-effects
       commit: 39a7e62cc049d43d36ece4ac24ba19e545f0b726
     extra-dep: true
+
 nix:
   enable: true
   #packages:
