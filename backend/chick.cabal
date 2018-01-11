@@ -72,7 +72,6 @@ Library
                  utf8-string               >= 1.0   && < 1.1,
                  wl-pprint-annotated       >= 0.0   && < 0.2
   exposed-modules:
-                  --Atomic
                   DictMetaOut
                   Diff.Atom
                   Diff.Binder
@@ -120,6 +119,7 @@ Library
                   Parsing.Inductive.Test
                   Parsing.Script
                   -- Parsing.Tactic
+                  Parsing.Unsafe
                   Parsing.Utils
                   Parsing.Vernacular
                   -- Playground

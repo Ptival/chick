@@ -169,12 +169,12 @@ inductives :: [Inductive Raw.Raw Variable]
 inductives =
   [ indAnd
   , indBool
-  , indFalse
   , indEq
+  , indFalse
+  , indFin
+  , indList
   , indNat
   , indOr
-  , indList
-  , indFin
   , indUnit
   , indVec
   ]

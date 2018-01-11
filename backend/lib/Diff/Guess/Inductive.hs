@@ -81,4 +81,5 @@ extract the information to create the list diff.
           else if l1 > l2 then nest (l1 - l2) ΔL.Remove ΔL.Same
           else foldr ΔL.Insert ΔL.Same (drop l1 cs2)
     let δcs = foldr ΔL.Modify base δcsList
+    
     return $ ΔI.Modify δn δips δiis δu δcs

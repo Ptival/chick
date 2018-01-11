@@ -7,7 +7,6 @@ import qualified Diff.Term as ΔT
 import           Diff.Guess.Node
 import           Diff.Guess.Term
 import           PrettyPrinting.PrettyPrintable
---import           PrettyPrinting.Term
 import           Term.Term
 import qualified Term.Raw as Raw
 import           Repair.Benchmark
@@ -39,8 +38,8 @@ testFlippedArguments = do
     Nothing -> putStrLn "Patching failed"
     Just t2 -> putStrLn $ prettyStr t2
 
-t1 :: IO (ΔT.Diff Raw.Raw)
-t1 = testTerms
+term1 :: IO (ΔT.Diff Raw.Raw)
+term1 = testTerms
   "∀ (h : A) (t : list A), list A"
   "∀ (h : A) (t : Vec A), Vec A"
 

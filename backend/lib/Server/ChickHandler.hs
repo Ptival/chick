@@ -33,6 +33,7 @@ import           Text.Printf
 
 import qualified Diff.Guess.Script as ΔGS
 import           Parsing.Script
+import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.Benchmark
 import           Server.Chick
@@ -62,8 +63,10 @@ chickGuessHandler = do
           case (parseMaybe scriptP before, parseMaybe scriptP after) of
             (Just bef, Just aft) -> do
               liftIO $ do
-                putStrLn $ "bef: " ++ show bef
-                putStrLn $ "aft: " ++ show aft
+                putStrLn $ "BEFORE:"
+                putStrLn $ prettyStrU $ bef
+                putStrLn $ "AFTER:"
+                putStrLn $ prettyStrU $ aft
               δ <- liftIO $ runTrace $ ΔGS.guess bef aft
               liftIO $ putStrLn $ printf "GUESSED:\n%s" (show δ)
               liftIO (runSkipTrace (repairScript bef δ)) >>= \case

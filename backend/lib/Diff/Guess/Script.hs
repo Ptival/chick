@@ -21,7 +21,8 @@ guess ::
 guess (Script (v1 : s1)) (Script (v2 : s2))
   | v1 == v2  = ΔL.Keep <$> guess (Script s1) (Script s2)
   | otherwise = do
-      δv <- ΔGV.guess v1 v2
+      trace "########## v1 /= v2, making a guess"
+      δv <- ΔGV.guess v1          v2
       δs <-     guess (Script s1) (Script s2)
       return $ ΔL.Modify δv δs
 guess (Script []) (Script []) = return ΔL.Same

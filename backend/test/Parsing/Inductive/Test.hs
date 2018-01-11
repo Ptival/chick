@@ -11,17 +11,19 @@ import           Text.Printf
 
 import           Inductive.Inductive
 import           Parsing
+import           Parsing.Unsafe
 import qualified StandardLibrary as SL
 import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.Universe as U
 
--- do not use `unsafeParseRaw` anywhere else!
-unsafeParseRaw :: String -> Raw.Term Variable
-unsafeParseRaw s =
-  case parseMaybeTerm s of
-    Nothing -> error $ printf "unsafeParseRaw: could not parse %s" s
-    Just t  -> t
+indAnd :: Inductive Raw.Raw Variable
+indAnd =
+  Inductive "and" [((), "A", Type U.Prop), ((), "B", Type U.Prop)] [] U.Prop
+  [ conjAnd ]
+
+conjAnd :: Constructor Raw.Raw Variable
+conjAnd  = Constructor indAnd "conj" [((), "a", "A"), ((), "b", "B")] []
 
 indBool :: Inductive Raw.Raw Variable
 indBool =
@@ -33,6 +35,14 @@ indBool =
 trueBool, falseBool :: Constructor Raw.Raw Variable
 trueBool  = Constructor indBool "true"  [] []
 falseBool = Constructor indBool "false" [] []
+
+indEq :: Inductive Raw.Raw Variable
+indEq =
+  Inductive "eq" [((), "A", Type U.Type), ((), "x", "A")] [((), "other", "A")] U.Prop
+  [ eqReflEq ]
+
+eqReflEq :: Constructor Raw.Raw Variable
+eqReflEq  = Constructor indEq "eq_refl" [] [((), "x")]
 
 indNat :: Inductive Raw.Raw Variable
 indNat =
@@ -56,9 +66,18 @@ nilList, consList :: Constructor Raw.Raw Variable
 nilList  = Constructor indList "nil"  [] []
 consList = Constructor indList "cons"
     [ ((), "x", "A")
-    , ((), "xs", unsafeParseRaw "list A")
+    , ((), "xs", unsafeParseTerm "list A")
     ]
     []
+
+indOr :: Inductive Raw.Raw Variable
+indOr =
+  Inductive "or" [((), "A", Type U.Prop), ((), "B", Type U.Prop)] [] U.Prop
+  [ orIntroLOr, orIntroROr ]
+
+orIntroLOr, orIntroROr :: Constructor Raw.Raw Variable
+orIntroLOr  = Constructor indAnd "or_introl" [((), "a", "A")] []
+orIntroROr  = Constructor indOr  "or_intror" [((), "b", "B")] []
 
 indFin :: Inductive Raw.Raw Variable
 indFin =
@@ -71,13 +90,13 @@ zeroFin, succFin :: Constructor Raw.Raw Variable
 zeroFin =
   Constructor indFin "fzero"
   [ ((), "n", "nat") ]
-  [ ((), unsafeParseRaw "S n") ]
+  [ ((), unsafeParseTerm "S n") ]
 succFin =
   Constructor indFin "fsucc"
   [ ((), "n", "nat")
-  , ((), "i", unsafeParseRaw "Fin n")
+  , ((), "i", unsafeParseTerm "Fin n")
   ]
-  [ ((), unsafeParseRaw "S n") ]
+  [ ((), unsafeParseTerm "S n") ]
 
 indVec :: Inductive Raw.Raw Variable
 indVec =
@@ -92,9 +111,9 @@ consVec =
   Constructor indVec "vcons"
   [ ((), "h", "A")
   , ((), "n", "nat")
-  , ((), "t", unsafeParseRaw "Vec A n")
+  , ((), "t", unsafeParseTerm "Vec A n")
   ]
-  [ ((), unsafeParseRaw "S n") ]
+  [ ((), unsafeParseTerm "S n") ]
 
 indEmpty :: Inductive Raw.Raw Variable
 indEmpty =
@@ -109,11 +128,14 @@ ttUnit = Constructor indUnit "tt" [] []
 
 unitTests :: TestTree
 unitTests = testGroup "Parsing.Inductive" $ []
+  ++ [testCase "and"   $ indAnd   @?= SL.indAnd  ]
   ++ [testCase "bool"  $ indBool  @?= SL.indBool ]
+  ++ [testCase "eq"    $ indEq    @?= SL.indEq   ]
   ++ [testCase "false" $ indEmpty @?= SL.indFalse]
   ++ [testCase "fin"   $ indFin   @?= SL.indFin  ]
   ++ [testCase "list"  $ indList  @?= SL.indList ]
   ++ [testCase "nat"   $ indNat   @?= SL.indNat  ]
+  ++ [testCase "or"    $ indOr    @?= SL.indOr   ]
   ++ [testCase "unit"  $ indUnit  @?= SL.indUnit ]
   ++ [testCase "vec"   $ indVec   @?= SL.indVec  ]
 
