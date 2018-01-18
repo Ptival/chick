@@ -69,12 +69,11 @@ data Inductive α ν =
 
 deriving instance (Show α, Show ν) => Show (Inductive α ν)
 
+deriving instance (Eq α) => (Eq (Inductive α Variable))
 -- Deriving Eq does not do what I want, because it does not equate two inductives
 -- when they differ over an unused binder name.  I'd rather use α-equivalence
 -- of all the things involved
-instance Eq (Inductive α Variable) where
-  indA == indB =
-    inductiveRawType (rawInductive indA) == inductiveRawType (rawInductive indB)
+-- instance Eq (Inductive α Variable) where
 
 --type Φcp  α ν = (Binder ν, TypeX α ν)
 type Φcp  α ν = (α, ν, TypeX α ν)

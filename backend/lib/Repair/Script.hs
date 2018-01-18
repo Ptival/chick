@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -17,6 +18,8 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
+import qualified Definition as D
+import qualified DefinitionObjectKind as DOK
 import qualified Diff.Atom as ΔA
 import qualified Diff.Constructor as ΔC
 import           Diff.Eliminator
@@ -111,40 +114,45 @@ withStateFromVernacular v δv e =
 
   case (v, δv) of
 
-  (Definition _ n τ t, _) ->
-    withGlobalDef (Binder (Just n), τ, t)
-    >>> withδGlobalEnv (vernacularDiffToGlobalEnvironmentDiff δv)
-    $ do
-    sanityCheck
-    e
-
-  (Inductive ind@(I.Inductive indName ips iis _u cs)
-    , ΔV.ModifyInductive δind@(ΔI.Modify δindName δips δiis _δu δcs)) -> do
-    let τind = I.inductiveRawType ind
-    let δτind = ΔI.δinductiveRawType (length ips) δips (length iis) δiis
-    let prefix = ΔI.δinductiveRawConstructorPrefix δindName (length ips) δips
-    δeliminatorType <- case δmkEliminatorType () ind δind of
-      Nothing -> throwError "δmkEliminatorType failed"
-      Just e -> return e
-    trace (printf "PREFIX: %s" (show prefix))
-    withInductive ind
-      >>> withModifyGlobalInd δind
-      >>> withInductiveType ind
-      >>> withModifyGlobalAssum (δindName, δτind)
+    (Definition (D.Definition { D.definitionName = n
+                              , D.definitionTerm = t
+                              , D.definitionType = τ
+                              }
+                )
+      , _) ->
+      withGlobalDef (Binder (Just n), τ, t)
+      >>> withδGlobalEnv (vernacularDiffToGlobalEnvironmentDiff δv)
       $ do
-      -- DO NOT MERGE WITH PREVIOUS withState
-      -- because mkEliminatorName needs the previous things in scope
-      withGlobalAssum ( Binder (Just (mkEliminatorName indName))
-                      , mkEliminatorRawType ind)
-        >>> withModifyGlobalAssum (δeliminatorName δind, δeliminatorType)
+      sanityCheck
+      e
+
+    (Inductive ind@(I.Inductive indName ips iis _u cs)
+      , ΔV.ModifyInductive δind@(ΔI.Modify δindName δips δiis _δu δcs)) -> do
+      let τind = I.inductiveRawType ind
+      let δτind = ΔI.δinductiveRawType (length ips) δips (length iis) δiis
+      let prefix = ΔI.δinductiveRawConstructorPrefix δindName (length ips) δips
+      δeliminatorType <- case δmkEliminatorType () ind δind of
+        Nothing -> throwError "δmkEliminatorType failed"
+        Just e -> return e
+      trace (printf "PREFIX: %s" (show prefix))
+      withInductive ind
+        >>> withModifyGlobalInd δind
+        >>> withInductiveType ind
+        >>> withModifyGlobalAssum (δindName, δτind)
         $ do
-        sanityCheck
-        withStateFromConstructors prefix ips δips cs δcs e
+        -- DO NOT MERGE WITH PREVIOUS withState
+        -- because mkEliminatorName needs the previous things in scope
+        withGlobalAssum ( Binder (Just (mkEliminatorName indName))
+                        , mkEliminatorRawType ind)
+          >>> withModifyGlobalAssum (δeliminatorName δind, δeliminatorType)
+          $ do
+          sanityCheck
+          withStateFromConstructors prefix ips δips cs δcs e
+  
+    (Inductive ind, ΔV.ModifyInductive ΔI.Same) -> unchangedInductive ind
+    (Inductive ind, ΔV.Same)                    -> unchangedInductive ind
 
-  (Inductive ind, ΔV.ModifyInductive ΔI.Same) -> unchangedInductive ind
-  (Inductive ind, ΔV.Same)                    -> unchangedInductive ind
-
-  _ -> exc $ printf "TODO: %s" (show (v, δv))
+    _ -> exc $ printf "TODO: %s" (show (v, δv))
 
   where
     unchangedInductive ind@(I.Inductive indName ips _ _ cs) = do
@@ -204,19 +212,27 @@ repair script@(Script s) δs =
       case cmd of
 
         -- eventually, might want to update the name in case of collision?
-        def@(Definition b n τ t) -> do
+        def@(Definition (D.Definition { D.definitionKind = k
+                                      , D.definitionName = n
+                                      , D.definitionTerm = t
+                                      , D.definitionType = τ
+                                      }
+                        )
+            ) -> do
           trace $ printf "*** Attempting to repair %s" (prettyStr def)
           δτ <- RT.repair τ (Type U.Type) ΔT.Same
           trace $ printf "*** Repaired type, δτ: %s" (prettyStr δτ)
           τ' <- ΔT.patch τ δτ
           trace $ printf "*** Repaired type, τ': %s" (prettyStr τ')
           let scopeIfFixpoint =
-                if b
-                then withGlobalDef ((Binder (Just n)),  τ,  t)
-                     -- here we don't have δt yet since we are computing it...
-                     -- TODO: check that putting ΔT.Same does not cause problems
-                     >>> withModifyGlobalDef (ΔA.Same, δτ, ΔT.Same)
-                else id
+                case k of
+                  DOK.Fixpoint ->
+                    withGlobalDef (Binder (Just n), τ, t)
+                    -- here we don't have δt yet since we are computing it...
+                    -- TODO: check that putting ΔT.Same does not cause problems
+                    >>> withModifyGlobalDef (ΔA.Same, δτ, ΔT.Same)
+                  DOK.Definition ->
+                    id
           δt <- scopeIfFixpoint $ RT.repair t τ δτ
           trace $ printf "*** Repaired term, δt: %s" (prettyStr δt)
           t' <- ΔT.patch t δt

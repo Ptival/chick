@@ -22,13 +22,15 @@ codeBefore :: String
 codeBefore =
   commonPrefix
   <> """
+Inductive id : Type :=.
+
 Inductive tm : Type :=
   (* pure STLC *)
   | tvar : id → tm
   | tapp : tm → tm → tm
   | tabs : id → ty → tm → tm.
 """
-  -- <> commonSuffix
+  <> commonSuffix
 
 codeAfter :: String
 codeAfter =
@@ -46,18 +48,18 @@ Inductive tm : Type :=
   | tmult : tm → tm → tm
   | tif0 : tm → tm → tm → tm.
 """
-  -- <> commonSuffix
+  <> commonSuffix
 
 commonSuffix :: String
 commonSuffix =
   """
-Fixpoint subst (x:id) (s:tm) (t:tm) : tm :=
+Fixpoint subst : id → tm → tm → tm := λ x s t ,
   match t with
-  | tvar y ⇒
+  | tvar y =>
       if beq_id x y then s else t
-  | tabs y T t1 ⇒
+  | tabs y T t1 =>
       tabs y T (if beq_id x y then t1 else (subst x s t1))
-  | tapp t1 t2 ⇒
+  | tapp t1 t2 =>
       tapp (subst x s t1) (subst x s t2)
   end.
 """

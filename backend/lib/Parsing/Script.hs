@@ -5,7 +5,8 @@ module Parsing.Script
   ) where
 
 import Control.Applicative
-import Text.Megaparsec.Char
+import Text.Megaparsec
+-- import Text.Megaparsec.Char
 import Text.Megaparsec.String
 
 import Parsing.Vernacular

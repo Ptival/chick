@@ -14,6 +14,7 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
+import qualified Definition as D
 import qualified Diff.Atom as ΔA
 import qualified Diff.Inductive as ΔI
 import qualified Diff.Term as ΔT
@@ -42,18 +43,18 @@ repair v δv =
   let exc (reason :: String) = throwExc $ printf "Repair.Vernacular/repair: %s" reason in
   case (v, δv) of
 
-    (Definition _b _ τ t, ΔV.ModifyDefinition δb δn δτ ΔT.Same) -> do
+    (Definition d, ΔV.ModifyDefinition δb δn δτ ΔT.Same) -> do
       -- FIXME: need to deal with b
-      δt <- RT.repair t τ δτ
+      δt <- RT.repair (D.definitionTerm d) (D.definitionType d) δτ
       trace $ printf "Repair term: %s" (show δt)
       return $ ΔV.ModifyDefinition δb δn δτ δt
 
     -- TODO: can probably merge this with the previous one at some point
-    (Definition _ _ τ t, ΔV.ModifyDefinition δb δn δτ δt) -> do
+    (Definition d, ΔV.ModifyDefinition δb δn δτ δt) -> do
       -- FIXME: here I assume that the modification did not start refactoring
       -- otherwise, we might get in double-repair issues
-      t' <- ΔT.patch t δt
-      δt' <- RT.repair t' τ δτ
+      t' <- ΔT.patch (D.definitionTerm d) δt
+      δt' <- RT.repair t' (D.definitionType d) δτ
       return $ ΔV.ModifyDefinition δb δn δτ δt'
 
     (_, ΔV.ModifyDefinition _ _ _ _) ->
@@ -62,10 +63,10 @@ repair v δv =
     (Inductive ind, ΔV.ModifyInductive δind) -> do
       ΔV.ModifyInductive <$> RI.repair ind δind
 
-    (Definition _b _ τ t, ΔV.Same) -> do
+    (Definition d, ΔV.Same) -> do
       -- FIXME: need to deal with b
-      δτ <- RT.repair τ (Type U.Type) ΔT.Same
-      δt <- RT.repair t τ δτ
+      δτ <- RT.repair (D.definitionType d) (Type U.Type) ΔT.Same
+      δt <- RT.repair (D.definitionTerm d) (D.definitionType d) δτ
       return $ ΔV.ModifyDefinition ΔA.Same ΔA.Same δτ δt
 
     (Inductive ind, ΔV.Same) -> do

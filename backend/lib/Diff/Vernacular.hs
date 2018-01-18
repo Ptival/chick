@@ -12,6 +12,8 @@ import           Control.Monad.Freer.Trace
 import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 
+import qualified Definition as D
+import           DefinitionObjectKind (DefinitionObjectKind)
 import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
 import qualified Diff.Term as DT
@@ -23,7 +25,7 @@ import           Vernacular
 
 data Diff α
   = Same
-  | ModifyDefinition (DA.Diff Bool) (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
+  | ModifyDefinition (DA.Diff DefinitionObjectKind) (DA.Diff Variable) (DT.Diff α) (DT.Diff α)
   | ModifyInductive (DI.Diff α)
   | Replace (Vernacular α Variable)
   deriving (Show)
@@ -49,14 +51,15 @@ patch v δv =
   let exc reason = throwExc $ printf "Diff.Vernacular/patch: %s" reason in
   case δv of
     Same -> return v
-    ModifyDefinition δb δn δτ δt ->
+    ModifyDefinition δk δn δτ δt ->
       case v of
-        Definition b n τ t ->
-          Definition
-          <$> DA.patch b δb
-          <*> DA.patch n δn
-          <*> DT.patch τ δτ
-          <*> DT.patch t δt
+        Definition d -> do
+          d' <- D.Definition
+                <$> DA.patch (D.definitionKind d) δk
+                <*> DA.patch (D.definitionName d) δn
+                <*> DT.patch (D.definitionType d) δτ
+                <*> DT.patch (D.definitionTerm d) δt
+          return $ Definition d'
         _ -> exc "ModifyDefinition: not a Definition"
     ModifyInductive δind ->
       case v of

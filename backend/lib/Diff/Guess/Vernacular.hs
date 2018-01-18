@@ -7,6 +7,7 @@ module Diff.Guess.Vernacular
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Trace
 
+import qualified Definition as D
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Inductive as ΔGI
 import qualified Diff.Guess.Term as ΔGT
@@ -20,11 +21,11 @@ guess ::
   ) =>
   Vernacular Raw.Raw Variable -> Vernacular Raw.Raw Variable ->
   Eff r (ΔV.Diff Raw.Raw)
-guess (Definition f1 n1 τ1 t1) (Definition f2 n2 τ2 t2) = do
-  δf <- ΔGA.guess f1 f2
-  δn <- ΔGA.guess n1 n2
-  δτ <- ΔGT.guess τ1 τ2
-  δt <- ΔGT.guess t1 t2
-  return $ ΔV.ModifyDefinition δf δn δτ δt
+guess (Definition d1) (Definition d2) = do
+  δk <- ΔGA.guess (D.definitionKind d1) (D.definitionKind d2)
+  δn <- ΔGA.guess (D.definitionName d1) (D.definitionName d2)
+  δτ <- ΔGT.guess (D.definitionType d1) (D.definitionType d2)
+  δt <- ΔGT.guess (D.definitionTerm d1) (D.definitionTerm d2)
+  return $ ΔV.ModifyDefinition δk δn δτ δt
 guess (Inductive i1) (Inductive i2) = ΔV.ModifyInductive <$> ΔGI.guess i1 i2
 guess _ v2 = return $ ΔV.Replace v2

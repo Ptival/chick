@@ -31,7 +31,7 @@ data GlobalDeclaration α ν
     }
   | GlobalInd (Inductive α ν)
 
-deriving instance Eq (GlobalDeclaration α Variable)
+deriving instance (Eq α) => Eq (GlobalDeclaration α Variable)
 deriving instance (Show α, Show ν) => Show (GlobalDeclaration α ν)
 
 instance
