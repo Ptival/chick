@@ -161,8 +161,7 @@ data Branch α ν =
   , branchBody        :: NamesScope (TermX α) ν
   }
   deriving
-    ( Eq
-    , Foldable
+    ( Foldable
     , Functor
     , Generic
     , Traversable
@@ -172,6 +171,9 @@ data Branch α ν =
 instance Eq1 (Branch α) where
   liftEq eqVar (Branch c n b) (Branch c' n' b') =
     c == c' && n == n' && liftEq eqVar b b'
+
+instance (Eq ν) => Eq (Branch α ν) where
+  term1 == term2 = liftEq (==) term1 term2
 
 instance ToJSON α => ToJSON (Branch α Variable) where
   toJSON b =
@@ -254,15 +256,7 @@ instance Eq1 (TermX α) where
       (Var _ _, _) -> False
 
 instance (Eq ν) => Eq (TermX α ν) where
-  Annot _ t τ    == Annot _ t' τ'    = t  == t'  && τ  == τ'
-  App   _ t1 t2  == App   _ t1' t2'  = t1 == t1' && t2 == t2'
-  Hole  _        == Hole  _          = True
-  Lam   _ bt     == Lam   _ bt'      = view scopedTerm bt == view scopedTerm bt'
-  Let   _ t1 bt2 == Let   _ t1' bt2' = t1 == t1' && view scopedTerm bt2 == view scopedTerm bt2'
-  Pi    _ τ1 bτ2 == Pi    _ τ1' bτ2' = τ1 == τ1' && view scopedTerm bτ2 == view scopedTerm bτ2'
-  Type  u        == Type  u'         = u == u'
-  Var   _ v      == Var   _ v'       = v  == v'
-  _              == _ = False
+  term1 == term2 = liftEq (==) term1 term2
 
 --deriving instance (ForallX (Serial m) α, Monad m) => Serial m  (TermX α ν)
 --deriving instance  ForallX Out        α           => Out       (TermX α ν)

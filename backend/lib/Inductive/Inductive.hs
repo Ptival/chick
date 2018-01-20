@@ -157,6 +157,7 @@ constructorRawType' b n ips cps cis =
     cps' = map cpRaw cps
     cis' = map ciRaw cis
 
+{- `Bool`: whether inductive parameters should be quantified -}
 constructorRawType :: Bool -> Constructor Raw.Raw Variable -> Raw.Type Variable
 constructorRawType b (Constructor (Inductive n ips _ _ _) _ cps cis) =
   constructorRawType' b n ips cps cis
