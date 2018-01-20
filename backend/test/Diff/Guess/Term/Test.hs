@@ -1,4 +1,6 @@
-module Diff.Guess.Term.Test where
+module Diff.Guess.Term.Test
+  ( unitTests
+  ) where
 
 import           Test.Tasty
 import           Test.Tasty.HUnit

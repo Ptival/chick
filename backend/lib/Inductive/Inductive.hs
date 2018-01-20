@@ -69,7 +69,17 @@ data Inductive α ν =
 
 deriving instance (Show α, Show ν) => Show (Inductive α ν)
 
-deriving instance (Eq α) => (Eq (Inductive α Variable))
+-- need to write instance manually to avoid comparing annotations
+instance Eq (Inductive α Variable) where
+  Inductive n1 ps1 is1 u1 cs1 == Inductive n2 ps2 is2 u2 cs2 =
+    let dropAnnotParams  (_, a, b) = (a, b) in
+    let dropAnnotIndices (_, a, b) = (a, b) in
+    n1 == n2
+    && map dropAnnotParams ps1 == map dropAnnotParams ps2
+    && map dropAnnotIndices is1 == map dropAnnotIndices is2
+    && u1 == u2
+    && cs1 == cs2
+  
 -- Deriving Eq does not do what I want, because it does not equate two inductives
 -- when they differ over an unused binder name.  I'd rather use α-equivalence
 -- of all the things involved

@@ -5,23 +5,20 @@ module Diff.Motive.Test where
 
 import           Control.Monad.Freer.Exception
 
--- import qualified Diff.Inductive as DI
 import           Diff.Motive
 import qualified Diff.Term as DT
--- import           Inductive.Inductive
 import           Inductive.Motive
--- import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Term
--- import qualified Term.Raw as Raw
+import qualified Term.Universe as U
 import           Utils
 
 testListToVec :: IO Bool
 testListToVec =
-  let listMotive = mkMotiveType () indList Type in
-  let  vecMotive = mkMotiveType () indVec  Type in
-  let δlistMotive = δmkMotiveType () indList δListToVec in
+  let listMotive = mkMotiveType () indList (Type U.Type) in
+  let vecMotive  = mkMotiveType () indVec  (Type U.Type) in
+  let δlistMotive = δmkMotiveType indList δListToVec in
   do
     -- putStrLn $ prettyStr listMotive
     -- putStrLn $ prettyStr δlistMotive

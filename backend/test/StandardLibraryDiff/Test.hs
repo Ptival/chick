@@ -2,17 +2,20 @@
 
 module StandardLibraryDiff.Test where
 
-import Control.Monad.Freer.Exception
+import           Control.Monad.Freer.Exception
 
 import qualified Diff.Inductive as DI
-import Inductive.Inductive
-import StandardLibrary
-import StandardLibraryDiff
-import Term.Term
-import Utils
+import           Inductive.Inductive
+import           PrettyPrinting.PrettyPrintable
+import           StandardLibrary
+import           StandardLibraryDiff
+import           Term.Term
+import           Utils
 
 test ::
-  Show α =>
+  ( PrettyPrintable α
+  , Show α
+  ) =>
   Inductive α Variable -> DI.Diff α -> Inductive α Variable -> IO Bool
 test indFrom δind indTo = do
   case skipTrace . runError $ DI.patch indFrom δind of

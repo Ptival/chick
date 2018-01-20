@@ -42,7 +42,9 @@ import           Term.Term
   $ δonInductiveParameter   ips δips
   $ DT.CpyVar δn
 
-δmkMotiveType :: PrettyPrintable α => Inductive α Variable -> DI.Diff α -> DT.Diff α
+δmkMotiveType ::
+  PrettyPrintable α =>
+  Inductive α Variable -> DI.Diff α -> DT.Diff α
 δmkMotiveType (Inductive _ ips iis _ _) δi = case δi of
   DI.Same -> DT.Same
   DI.Modify δn δips δiis _ _ -> δmkMotiveType' δn ips δips iis δiis

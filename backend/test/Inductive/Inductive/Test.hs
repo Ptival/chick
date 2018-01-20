@@ -3,13 +3,10 @@
 module Inductive.Inductive.Test where
 
 import           Test.Tasty
-import           Test.Tasty.HUnit
-import           Text.Printf
 
-import           Inductive.Inductive
+import           Examples.Utils
 import           StandardLibrary
-import           Term.Term
-import qualified Term.Raw as Raw
+import           TestUtils
 
 equalityChecks :: [TestTree]
 equalityChecks =

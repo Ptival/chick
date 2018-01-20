@@ -109,6 +109,9 @@ Library
                   Diff.Utils
                   Diff.Variable
                   Diff.Vernacular
+                  Examples.Inductive
+                  Examples.Term
+                  Examples.Utils
                   Goal
                   Inductive.Eliminator
                   Inductive.Inductive
@@ -149,7 +152,7 @@ Library
                   Snap.Extras.JSON
                   StandardLibrary
                   StandardLibraryDiff
-                    -- Tactic
+                  -- Tactic
                   Term.AlphaEquivalence
                   Term.AlphaRenaming
                   Term.Binder
@@ -162,6 +165,7 @@ Library
                   Term.TypeErrored
                   Term.Universe
                   Term.Variable
+                  TestUtils
                   TypeCheckingFailure
                   -- Typing.Free
                   Typing.GlobalDeclaration
@@ -186,7 +190,8 @@ Test-suite Test
   build-depends: chick,
                  base                      >= 4.9   && < 4.10,
                  data-default              >= 0.7   && < 0.8,
-                 megaparsec                >= 5.0   && < 5.3,
+                 freer-effects             >= 0.3   && < 0.4, 
+                 megaparsec                >= 5.0   && < 5.4,
                  QuickCheck                >= 2.8   && < 2.10,
                  smallcheck                >= 1.1   && < 1.2,
                  tasty                     >= 0.11  && < 0.12,
@@ -194,7 +199,20 @@ Test-suite Test
                  tasty-quickcheck          >= 0.8   && < 0.9,
                  tasty-smallcheck          >= 0.8   && < 0.9
   other-modules:
+    Diff.ConcatMap.Test
+    Diff.Eliminator.Test
+    Diff.Guess.Constructor.Test
+    Diff.Guess.Term.Test
+    Diff.Guess.Inductive.Test
+    Diff.Guess.Script.Test
+    Diff.Guess.Vernacular.Test
+    Diff.Motive.Test
+    Inductive.Eliminator.Test
+    Inductive.Inductive.Test
     Parsing.Inductive.Test
+    StandardLibraryDiff.Test
+    Term.Term.Test
+    TestUtils
 
 Executable chick
   default-language: Haskell2010

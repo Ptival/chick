@@ -12,16 +12,25 @@ import Text.Printf
 
 import Notations
 import Parsing
-import qualified Parsing.Inductive.Test
 import Precedence
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Term ()
 import Term.Raw as Raw
 import Term.Term
--- import qualified TestFresh             as TF
--- import qualified TestAlphaEquivalence  as TAE
--- import qualified TestAlphaRenaming     as TAR
--- import WellFormed
+
+import qualified Diff.ConcatMap.Test
+import qualified Diff.Eliminator.Test
+import qualified Diff.Guess.Constructor.Test
+import qualified Diff.Guess.Inductive.Test
+import qualified Diff.Guess.Script.Test
+import qualified Diff.Guess.Term.Test
+import qualified Diff.Guess.Vernacular.Test
+import qualified Diff.Motive.Test
+import qualified Inductive.Eliminator.Test
+import qualified Inductive.Inductive.Test
+import qualified Parsing.Inductive.Test
+import qualified StandardLibraryDiff.Test
+import qualified Term.Term.Test
 
 main :: IO ()
 main = defaultMain tests
@@ -34,7 +43,9 @@ tests =
     -- ++ [TAE.unitTests]
     -- ++ [TAR.unitTests]
     -- ++ [TF.unitTests]
-    ++ [Parsing.Inductive.Test.unitTests]
+    ++ [ Diff.Guess.Term.Test.unitTests ]
+    ++ [ Inductive.Inductive.Test.unitTests ]
+    ++ [ Parsing.Inductive.Test.unitTests ]
 
   , localOption (SmallCheckDepth 3) $
     testGroup "(checked by SmallCheck)" $ []
