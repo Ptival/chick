@@ -22,12 +22,12 @@ import           Term.Term
 δonInductiveParameter = δListFoldLeft δListFoldMkAppVariables
 
 δonInductiveIndexInside :: Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
-δonInductiveIndexInside = δListFoldLeft δListFoldMkAppVariables
+δonInductiveIndexInside = δListFoldLeft δListFoldMkAppBinders
 
 δonInductiveIndexOutside ::
   PrettyPrintable α =>
   Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
-δonInductiveIndexOutside = δListFoldRight δListFoldMkPiVariables
+δonInductiveIndexOutside = δListFoldRight δListFoldMkPiBinders
 
 δmkMotiveType' ::
   PrettyPrintable α =>

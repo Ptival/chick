@@ -1,5 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Inductive.Utils
-  ( applyTerms
+  ( applyBinders
+  , applyTerms
   , applyVariables
   , instantiateBinders
   , quantifyBinders
@@ -18,13 +21,20 @@ instantiateBinders ::
 instantiateBinders prefix = mapWithIndex instantiate
   where
     instantiate (Binder (Just v ), τ) _ = (v,      τ)
-    instantiate (Binder Nothing,   τ) i = (Variable $ printf "%s%d" prefix i, τ)
+    instantiate (Binder Nothing,   τ) i = (mkVariable $ printf "%s%d" prefix i, τ)
 
 applyTerms :: [(α, TermX α Variable)] -> TermX α Variable -> TermX α Variable
 applyTerms = foldlWith (\ a (α, t) -> mkApp α a t)
 
 applyVariables :: [(α, Variable, b)] -> TermX α Variable -> TermX α Variable
 applyVariables l = applyTerms (map (\ (α, ν, _) -> (α, Var Nothing ν)) l)
+
+applyBinders :: [(α, Binder Variable, b)] -> TermX α Variable -> TermX α Variable
+applyBinders l = applyTerms (map (\ (α, b, _) -> (α, varForBinder b)) l)
+  where
+    varForBinder b = case unBinder b of
+      Nothing -> Hole (error "applyBinders")
+      Just v  -> Var Nothing v
 
 mkApp :: α -> TermX α ν -> TermX α ν -> TermX α ν
 mkApp α a t = App α a t

@@ -109,6 +109,7 @@ Library
                   Diff.Utils
                   Diff.Variable
                   Diff.Vernacular
+                  Examples.Diff.SoftwareFoundations
                   Examples.Inductive
                   Examples.Term
                   Examples.Utils
@@ -190,7 +191,7 @@ Test-suite Test
   build-depends: chick,
                  base                      >= 4.9   && < 4.10,
                  data-default              >= 0.7   && < 0.8,
-                 freer-effects             >= 0.3   && < 0.4, 
+                 freer-effects             >= 0.3   && < 0.4,
                  megaparsec                >= 5.0   && < 5.4,
                  QuickCheck                >= 2.8   && < 2.10,
                  smallcheck                >= 1.1   && < 1.2,

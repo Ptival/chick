@@ -69,7 +69,7 @@ chickGuessHandler = do
                 putStrLn $ prettyStrU $ aft
               δ <- liftIO $ runTrace $ ΔGS.guess bef aft
               liftIO $ putStrLn $ printf "GUESSED:\n%s" (show δ)
-              liftIO (runSkipTrace (repairScript bef δ)) >>= \case
+              liftIO (runTrace (repairScript bef δ)) >>= \case
                 Left e -> return $ Just e
                 Right patched ->
                   return $ Just $

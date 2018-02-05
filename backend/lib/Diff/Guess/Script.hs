@@ -10,6 +10,7 @@ import           Control.Monad.Freer.Trace
 import qualified Diff.Guess.Vernacular as ΔGV
 import qualified Diff.List as ΔL
 import qualified Diff.Script as ΔS
+import           PrettyPrinting.PrettyPrintable
 import           Script
 import qualified Term.Raw as Raw
 import           Term.Variable
@@ -22,8 +23,10 @@ guess (Script (v1 : s1)) (Script (v2 : s2))
   | v1 == v2  = ΔL.Keep <$> guess (Script s1) (Script s2)
   | otherwise = do
       trace "########## v1 /= v2, making a guess"
-      δv <- ΔGV.guess v1          v2
-      δs <-     guess (Script s1) (Script s2)
+      trace $ prettyStr v1
+      trace $ prettyStr v2
+      δv <- ΔGV.guess v1 v2
+      δs <- guess (Script s1) (Script s2)
       return $ ΔL.Modify δv δs
 guess (Script []) (Script []) = return ΔL.Same
 guess (Script []) (Script s2) = return $ ΔL.Replace s2

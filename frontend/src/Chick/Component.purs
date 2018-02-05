@@ -32,7 +32,7 @@ import Network.HTTP.Affjax.Request (class Requestable)
 import Network.HTTP.StatusCode (StatusCode(..))
 import Prelude (type (~>), bind, discard)
 
---import Examples.ListToVec as EX
+-- import Examples.ListToVec as EX
 import Examples.SoftwareFoundations as EX
 
 -- this seems a little dumb, but looks like we have to...

@@ -9,7 +9,7 @@ freshNames :: [String]
 freshNames = [ (c:s) | s <- ("":freshNames), c <- ['a'..'z'] ]
 
 freshVariables :: [Variable]
-freshVariables = map Variable freshNames
+freshVariables = map mkVariable freshNames
 
 freshAvoidStream :: [Variable] -> TermX ξ Variable -> [Variable]
 freshAvoidStream avoid t = freshVariables \\ (freeVars t `union` avoid)

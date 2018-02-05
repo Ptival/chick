@@ -47,14 +47,17 @@ import           Utils
   ) =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
-  Φiis α Variable -> DI.Δips α ->
+  Φiis α Variable -> DI.Δiis α ->
   TermX α Variable -> DT.Diff α ->
   -- oh gee Rick...
-  Eff r (ΔListFold (α, Variable, TypeX α Variable)
-         (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α))
-         (Maybe (DL.Diff (α, Binder Variable, TypeX α Variable)
-                 (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α))
-                )))
+  Eff r (
+    ΔListFold (α, Binder Variable, TypeX α Variable)
+    (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α))
+    (Maybe (DL.Diff (α, Binder Variable, TypeX α Variable)
+           (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α))
+           )
+    )
+  )
 δListFoldConcatMapAddRecursiveMotive n δn ips δips iis δiis motive δmotive = do
   n'      <- DA.patch                   n      δn
   ips'    <- DL.patch DI.patchParameter ips    δips
@@ -148,8 +151,8 @@ import           Utils
     Just <$>
     δquantifyBinders hyps δhyps
     . δapplyTerms
-    [(error "TODO", applyVariables cps (Var Nothing cn))]
-    (DL.Modify (D2.Modify DA.Same (δapplyVariables cps δcps (DT.CpyVar δcn))) DL.Same)
+    [(error "TODO", applyBinders cps (Var Nothing cn))]
+    (DL.Modify (D2.Modify DA.Same (δapplyBinders cps δcps (DT.CpyVar δcn))) DL.Same)
     . δapplyTerms cis δcis
 
 -- δListFoldMkPiConstructor ::
@@ -203,11 +206,11 @@ import           Utils
 δmkDiscrimineeType ::
   (Eq α, PrettyPrintable α) =>
   DA.Diff Variable ->
-  Φiis α Variable -> DI.Δiis α->
   Φips α Variable -> DI.Δips α ->
+  Φiis α Variable -> DI.Δiis α->
   DT.Diff α
 δmkDiscrimineeType δn ips δips iis δiis =
-  δapplyVariables   iis δiis
+  δapplyBinders iis δiis
   $ δapplyVariables ips δips
   $ DT.CpyVar δn
 
@@ -230,9 +233,9 @@ import           Utils
   <$> ( -- quantifyCases may fail
     δquantifyCases α n δn ips δips iis δiis motive cs δcs
     --(unpackConstructors cs) (unpackΔConstructors δcs)
-    $ δquantifyVariables iis δiis
+    $ δquantifyBinders iis δiis
     $ DT.CpyPi δdiscrimineeType DA.Same
-    $ DT.CpyApp (δapplyVariables iis δiis DT.Same)
+    $ DT.CpyApp (δapplyBinders iis δiis DT.Same)
     $ DT.Same
   )
 

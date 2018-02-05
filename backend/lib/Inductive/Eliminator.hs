@@ -60,13 +60,17 @@ addRecursiveMotive ::
   TermX α Variable ->
   Φcp α Variable ->
   [(α, Binder Variable, TypeX α Variable)]
-addRecursiveMotive n ips iis motive (α, v, τ) =
+addRecursiveMotive n ips iis motive (α, b, τ) =
+  let v = case unBinder b of
+        Nothing -> "__addRecursiveMotive__TODO__"
+        Just v -> v
+  in
   case unpackIfFullyAppliedInductive n ips iis τ of
     Just indices ->
       [ (α, Binder (Just v), τ)
       , (α, Binder Nothing, App α (applyTerms indices motive) (Var Nothing v))
       ]
-    Nothing -> [(α, Binder (Just v), τ)]
+    Nothing -> [(α, b, τ)]
 
 mkCase ::
   α ->
@@ -76,11 +80,12 @@ mkCase ::
 mkCase α n ips iis cn cps cis =
   -- quantify over constructor parameters, adding recursive hypotheses
   quantifyBinders (concatMap (addRecursiveMotive n ips iis motive) cps)
-  . applyTerms [(α, applyVariables cps (Var Nothing cn))]
+  . applyTerms [(α, applyBinders cps (Var Nothing cn))]
   . applyTerms cis
 
+-- can be used as a Variable or as a Var Term
 motive :: IsString a => a
-motive = "Motive"
+motive = "__motive__"
 
 -- forall (A : Type) (P : forall n : nat, Vec A n -> Set),
 --   P 0 (vnil A) ->
@@ -110,24 +115,24 @@ mkEliminatorType' α n ips iis _ cs =
   quantifyVariables   ips
   $ quantifyVariables [(α, motive, motiveType)]
   $ quantifyCases
-  $ quantifyVariables iis
+  $ quantifyBinders iis
   $ quantifyVariables [(α, discriminee, discrimineeType)]
   $ outputType
 
   where
 
     discriminee :: IsString a => a
-    discriminee = "instance"
+    discriminee = "__instance__"
 
     discrimineeType =
-        applyVariables iis
+        applyBinders iis
       $ applyVariables ips
       $ Var Nothing n
 
     -- for now we only make the Type-motive, it's easy to make the Set and Prop ones too
     motiveType = mkMotiveType' α n ips iis (Type U.Type)
 
-    outputType = App α (applyVariables iis motive) discriminee
+    outputType = App α (applyBinders iis motive) discriminee
 
     quantifyCases = foldrWith quantifyCase cs
 
@@ -158,4 +163,4 @@ mkEliminatorRawType :: Inductive Raw.Raw Variable -> Raw.Type Variable
 mkEliminatorRawType = mkEliminatorType ()
 
 mkEliminatorName :: Variable -> Variable
-mkEliminatorName (Variable v) = Variable (v ++ "_rect")
+mkEliminatorName v = mkVariable (unVariable v ++ "_rect")

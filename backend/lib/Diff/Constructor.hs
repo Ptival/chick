@@ -28,7 +28,7 @@ import           Term.Term
 
 type Δcn = DA.Diff Variable
 
-type Δcp α = D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)
+type Δcp α = D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)
 type Δcps α = DL.Diff (Φcp α Variable) (Δcp α)
 
 cpPatch ::

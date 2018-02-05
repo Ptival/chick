@@ -92,7 +92,7 @@ termChildren = go
       Type _ -> []
       Var _ _ -> []
     variableFromBinder (Binder b) = case b of
-      Nothing -> Var Nothing (Variable "_")
+      Nothing -> Var Nothing (mkVariable "__FIXME_Diff.Guess.Term__")
       Just v  -> Var Nothing v
 
 termHeight :: TermX α Variable -> Int

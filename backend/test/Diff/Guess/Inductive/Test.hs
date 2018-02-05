@@ -36,6 +36,7 @@ indList1 = unsafeParseInductive
 sanityCheck :: Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> Assertion
 sanityCheck i1 i2 = do
   δ <- runTrace $ guess i1 i2
+  putStrLn $ printf "δ:\n%s" (show δ)
   runTrace (runError (ΔI.patch i1 δ)) >>= \case
     Left (_ :: String) -> assertFailure "sanity check failed"
     Right i2'          -> i2' @?= i2
@@ -57,9 +58,16 @@ test :: IO ()
 test = defaultMain unitTests
 
 failing :: IO ()
-failing = defaultMain $ testGroup "Diff.Guess.Inductive" [ mkSanityCheck indBool indEq ]
+failing = defaultMain $ testGroup "Diff.Guess.Inductive" [ mkSanityCheck indFin indNat ]
 
 {-
-Inductive {inductiveName = Variable {unVariable = "eq"}, inductiveParameters = [((),Variable {unVariable = "A"},Type Type),((),Variable {unVariable = "x"},Var Nothing (Variable {unVariable = "A"}))], inductiveIndices = [((),Variable {unVariable = "_"},Var Nothing (Variable {unVariable = "A"}))], inductiveUniverse = Prop, inductiveConstructors = [Constructor _ Variable {unVariable = "eq_refl"} [] [((),Var Nothing (Variable {unVariable = "x"}))]]}
-Inductive {inductiveName = Variable {unVariable = "eq"}, inductiveParameters = [((),Variable {unVariable = "_"},Type Type),((),Variable {unVariable = "_"},Var Nothing (Variable {unVariable = "A"}))], inductiveIndices = [((),Variable {unVariable = "_"},Var Nothing (Variable {unVariable = "A"}))], inductiveUniverse = Prop, inductiveConstructors = [Constructor _ Variable {unVariable = "eq_refl"} [] [],Constructor _ Variable {unVariable = "false"} [] []]}
+Inductive {inductiveName = Variable {unVariable = "nat"},
+inductiveParameters = [], inductiveIndices = [], inductiveUniverse = Set,
+inductiveConstructors = [Constructor _ Variable {unVariable = "O"} [] [],
+Constructor _ Variable {unVariable = "S"} [((),Binder {unBinder = Nothing},Var Nothing (Variable {unVariable = "nat"}))] []]}
+Inductive {inductiveName = Variable {unVariable = "nat"},
+inductiveParameters = [], inductiveIndices = [], inductiveUniverse = Set,
+inductiveConstructors = [Constructor _ Variable {unVariable = "O"} [] [],
+Constructor _ Variable {unVariable = "S"} [((),Binder {unBinder = Just (Variable {unVariable = "n"})},Var Nothing (Variable {unVariable = "nat"}))] []]}
+
 -}

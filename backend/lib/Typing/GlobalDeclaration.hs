@@ -38,18 +38,18 @@ instance
   PrettyPrintableUnannotated (TermX α Variable) =>
   PrettyPrintableUnannotated (GlobalDeclaration α Variable) where
   prettyDocU = \case
-    GlobalAssum (Variable v) τ -> do
+    GlobalAssum v τ -> do
       τDoc <- prettyDocU τ
       return $ fillSep
-        [ text v
+        [ text (unVariable v)
         , char ':'
         , τDoc
         ]
-    GlobalDef (Variable v) τ t -> do
+    GlobalDef v τ t -> do
       τDoc <- prettyDocU τ
       tDoc <- prettyDocU t
       return $ fillSep
-        [ text v
+        [ text (unVariable v)
         , char ':'
         , τDoc
         , text ":="

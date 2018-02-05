@@ -35,7 +35,7 @@ module Term.Term
   , arrowSymbol
   , scopedTerm
   , forallSymbol
-  , getName
+  -- , getName
   , holeSymbol
   , lamSymbol
   , originalBinder
@@ -122,7 +122,7 @@ makeLenses ''ScopedTerm
 
 originalVariable :: ScopedTerm f a -> Variable
 originalVariable bt = case unBinder $ view originalBinder bt of
-  Nothing -> "_"
+  Nothing -> error "originalVariable: Nothing"
   Just v -> v
 
 -- abstractAnonymous :: (Monad f) => f ν -> Scope (Name ν ()) f ν
@@ -488,13 +488,13 @@ instance (Show α) => Show1 (TermX α) where
 instance (PrintfArg α, Show α) => PrintfArg (TermX α Variable) where
   formatArg t = formatString (show t)
 
-getName :: (Foldable t) => Scope (Name Variable ()) t a -> Variable
-getName t =
-  let uniqueBindings = nub $ bindings t in
-  case uniqueBindings of
-    [] -> Variable "_"
-    [Name n ()] -> n
-    _ -> error $ printf "getName: more than one binding for %s" (show uniqueBindings)
+-- getName :: (Foldable t) => Scope (Name Variable ()) t a -> Variable
+-- getName t =
+--   let uniqueBindings = nub $ bindings t in
+--   case uniqueBindings of
+--     [] -> error "NOOOO" -- Variable "_"
+--     [Name n ()] -> n
+--     _ -> error $ printf "getName: more than one binding for %s" (show uniqueBindings)
 
 -- prettyTermDocPrec ::
 --   forall a α. PrecedenceTable -> TermX α Variable -> (Doc a, Precedence)

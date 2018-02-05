@@ -16,14 +16,14 @@ Inductive ty : Type :=
   | TProd : ty → ty → ty
   | TSum : ty → ty → ty
   | TList : ty → ty.
+
+Inductive id : Type :=.
 """
 
 codeBefore :: String
 codeBefore =
   commonPrefix
   <> """
-Inductive id : Type :=.
-
 Inductive tm : Type :=
   (* pure STLC *)
   | tvar : id → tm

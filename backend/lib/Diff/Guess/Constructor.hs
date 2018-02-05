@@ -12,6 +12,7 @@
 module Diff.Guess.Constructor
   ( guess
   , telescopeDiffToListDiff
+  , telescopeDiffToListDiffVariable
   ) where
 
 import           Control.Monad
@@ -22,7 +23,7 @@ import           Text.Printf
 
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Term as ΔGT
--- import qualified Diff.Atom as ΔA
+import qualified Diff.Atom as ΔA
 import qualified Diff.Constructor as ΔC
 -- import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
@@ -38,20 +39,56 @@ import qualified Term.Raw as Raw
 {- This is quite specific.  It takes a diff for a telescope, and turns it into a
 list of diffs for the parts of the telescope.  It should not concern itself with
 things beyond the telescope, I think.
+
+We need the second term because our term diff does a bad job at computing binder
+diffs, because it relies on a generated telescope, where binders are droppped
+when they don't bind anything.  We fix it here by checking binders in CpyPi.  In
+practice, we should probably move away from using the bound library due to many
+such issues in different parts of the code.
 -}
 telescopeDiffToListDiff ::
   Show α =>
+  TermX α Variable -> ΔT.Diff α -> TermX α Variable ->
+  ΔL.Diff
+  (α, Binder Variable, TermX α Variable)
+  (Δ3.Diff (ΔA.Diff α) (ΔA.Diff (Binder Variable)) (ΔT.Diff α))
+telescopeDiffToListDiff = go
+  where
+    this :: String = "telescopeDiffToListDiff"
+    go t δt t' = case (δt, t, t') of
+      (ΔT.Same, _, _) -> ΔL.Same
+      (ΔT.InsPi α δ1 b δ2, _, Pi _ _ bτ2') ->
+        let τ = case ΔT.patchMaybe t δ1 of
+              Nothing -> error $ printf "patch failed in %s" this
+              Just p -> p
+        in
+        let (_, τ2') = unscopeTerm bτ2' in
+        ΔL.Insert (α, b, τ) (go t δ2 τ2')
+      (ΔT.CpyPi _ _ δ2, Pi _ _ bτ2, Pi _ _ bτ2') ->
+        let (b, τ2) = unscopeTerm bτ2 in
+        let (b', τ2') = unscopeTerm bτ2' in
+        if b == b'
+        then ΔL.Keep (go τ2 δ2 τ2')
+        else ΔL.Modify (Δ3.Modify ΔA.Same (ΔA.Replace b') ΔT.Same) (go τ2 δ2 τ2')
+      (ΔT.RemovePi δ2, Pi _ _ bτ2, _) ->
+        let (_, τ2) = unscopeTerm bτ2 in
+        ΔL.Remove (go τ2 δ2 t')
+      (ΔT.Replace (Var _ _), _, _) -> ΔL.Replace []
+      _ -> error $ printf "TODO %s: %s" this (show δt)
+
+telescopeDiffToListDiffVariable ::
+  Show α =>
   TermX α Variable -> ΔT.Diff α ->
   ΔL.Diff (α, Variable, TermX α Variable) (Δ3.Diff d e f)
-telescopeDiffToListDiff = go
+telescopeDiffToListDiffVariable = go
   where
     this :: String = "telescopeDiffToListDiff"
     go t δt = case (δt, t) of
       (ΔT.Same, _) -> ΔL.Same
       (ΔT.InsPi α δ1 b δ2, _) ->
         let v = case unBinder b of
-              Nothing -> "_"
-              Just v' -> v'
+              Nothing -> error "telescopeDiffToListDiffVariable: parameters can not be underscore"
+              Just vv -> vv
         in
         let τ = case ΔT.patchMaybe t δ1 of
               Nothing -> error $ printf "patch failed in %s" this
@@ -125,7 +162,7 @@ guess c1@(Constructor _ n1 cps1 cis1) c2@(Constructor _ n2 cps2 cis2) =
     let cpsTerm1 = quantifyConstructorParameters cps1 uniqueVar
     let cpsTerm2 = quantifyConstructorParameters cps2 uniqueVar
     δcpsType <- ΔGT.guess cpsTerm1 cpsTerm2
-    let δcps = telescopeDiffToListDiff cpsTerm1 δcpsType
+    let δcps = telescopeDiffToListDiff cpsTerm1 δcpsType cpsTerm2
     trace "Guess for δcps"
     trace $ show δcps
 

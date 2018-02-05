@@ -17,10 +17,13 @@ import Utils
 -- then callers should have a way to fully instantiate names in a given env/context
 
 onInductiveIndexInside :: TypeX α Variable -> Φii α Variable -> TermX α Variable
-onInductiveIndexInside t (α, v, _) = App α t (Var Nothing v)
+onInductiveIndexInside t (α, b, _) =
+  case unBinder b of
+  Nothing -> error "onInductiveIndexInside: Nothing"
+  Just v -> App α t (Var Nothing v)
 
 onInductiveIndexOutside :: Φii α Variable -> TypeX α Variable -> TermX α Variable
-onInductiveIndexOutside (α, v, i) t = Pi α i (abstractVariable v t)
+onInductiveIndexOutside (α, b, i) t = Pi α i (abstractBinder b t)
 
 onInductiveParameter :: TypeX α Variable -> Φip α Variable -> TermX α Variable
 onInductiveParameter t (α, b, _) = App α t (Var Nothing b)

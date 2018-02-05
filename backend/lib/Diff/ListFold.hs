@@ -7,6 +7,7 @@ module Diff.ListFold
   ( ΔListFold(..)
   , δListFoldConcatMap
   , δListFoldConcatMap'
+  , δListFoldMkAppBinders
   , δListFoldMkAppTerms
   , δListFoldMkAppVariables
   , δListFoldMkPiBinders
@@ -124,6 +125,39 @@ indicesListList l =
     onRemove        _ _  _ = error "TODO: δListFoldMkAppTerms onRemove"
     onReplace     _   _  _ = error "TODO: δListFoldMkAppTerms onReplace"
     onSame            l  b = ΔT.nCpyApps (length l) b
+
+{-
+This dictionary explains how a list gets modified when trying to build a nested
+application `f a b c d e` out of a list `[a, b, c, d, e]`, when the list gets
+modified.  Not sure why I did not build it as a diff-transformer rather than
+fully-instantiated diffs...
+-}
+δListFoldMkAppBinders ::
+  ΔListFold
+  (α, Binder Variable, TermX α Variable)
+  (Δ3.Diff (ΔA.Diff α) (ΔA.Diff (Binder Variable)) (ΔT.Diff α)) (ΔT.Diff α)
+δListFoldMkAppBinders = ΔListFold
+  { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
+  where
+    onInsert (α, b, _)   _ base =
+      case unBinder b of
+      Nothing -> error "Huh..."
+      Just v  -> ΔT.InsApp α base (ΔT.Replace (Var Nothing v))
+    onKeep _ _ b = ΔT.CpyApp b ΔT.Same
+    onModify δ _ _ base =
+      case δ of
+      Δ3.Same -> ΔT.CpyApp base ΔT.Same
+      Δ3.Modify _ δb _ ->
+        case δb of
+        ΔA.Same -> ΔT.CpyApp base ΔT.Same
+        ΔA.Replace b ->
+          case unBinder b of
+          Nothing -> error "Huh..."
+          Just v  -> ΔT.CpyApp base (ΔT.Replace (Var Nothing v))
+    onPermute _ _ _ = error "TODO: δListFoldMkAppBinders onPermute"
+    onRemove _ _ _ = ΔT.RemoveApp ΔT.Same
+    onReplace _ _ _ = error "TODO: δListFoldMkAppBinders onReplace"
+    onSame l b = ΔT.nCpyApps (length l) b
 
 {-
 This dictionary explains how a list gets modified when trying to build a nested

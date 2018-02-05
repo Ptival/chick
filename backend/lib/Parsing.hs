@@ -99,7 +99,7 @@ binOpNP s k _selfP nextP = binOpRP s k nextP nextP
 -- Individual parsers (alphabetically)
 
 variableP :: Parser Variable
-variableP = Variable <$> identifier
+variableP = mkVariable <$> identifier
 
 binderP :: Parser (Binder Variable)
 binderP = Binder <$> ((Nothing <$ symbol wildcardSymbol) <|> (Just <$> variableP))

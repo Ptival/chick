@@ -56,14 +56,14 @@ extract the information to create the list diff.
     let ipsTerm2 = quantifyInductiveParameters ips2 uniqueVar
     trace $ printf "ipsTerm2: %s" $ prettyStr ipsTerm2
     δipsType <- ΔGT.guess ipsTerm1 ipsTerm2
-    let δips = ΔGC.telescopeDiffToListDiff ipsTerm1 δipsType
+    let δips = ΔGC.telescopeDiffToListDiffVariable ipsTerm1 δipsType
     trace "Guess for δips"
     trace $ show δips
 
     let iisTerm1 = quantifyInductiveIndices iis1 uniqueVar
     let iisTerm2 = quantifyInductiveIndices iis2 uniqueVar
     δiisType <- ΔGT.guess iisTerm1 iisTerm2
-    let δiis = ΔGC.telescopeDiffToListDiff iisTerm1 δiisType
+    let δiis = ΔGC.telescopeDiffToListDiff iisTerm1 δiisType iisTerm2
     trace "Guess for δiis:"
     trace $ show δiis
 
@@ -81,5 +81,5 @@ extract the information to create the list diff.
           else if l1 > l2 then nest (l1 - l2) ΔL.Remove ΔL.Same
           else foldr ΔL.Insert ΔL.Same (drop l1 cs2)
     let δcs = foldr ΔL.Modify base δcsList
-    
+
     return $ ΔI.Modify δn δips δiis δu δcs

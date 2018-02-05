@@ -1,5 +1,6 @@
 module Diff.ListFoldUtils
-  ( δapplyTerms
+  ( δapplyBinders
+  , δapplyTerms
   , δapplyVariables
   , δquantifyBinders
   , δquantifyVariables
@@ -44,3 +45,11 @@ import           Term.Term
   (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)) ->
   DT.Diff α -> DT.Diff α
 δapplyVariables = δListFoldLeft δListFoldMkAppVariables
+
+δapplyBinders ::
+  PrettyPrintable α =>
+  [(α, Binder Variable, TermX α Variable)] ->
+  DL.Diff (α, Binder Variable, TermX α Variable)
+  (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)) ->
+  DT.Diff α -> DT.Diff α
+δapplyBinders = δListFoldLeft δListFoldMkAppBinders

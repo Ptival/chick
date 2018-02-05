@@ -49,7 +49,7 @@ type Δn = DA.Diff Variable
 type Δip  α = D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)
 type Δips α = DL.Diff (Φip α Variable) (Δip α)
 
-type Δii  α = D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)
+type Δii  α = D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)
 type Δiis α = DL.Diff (Φii α Variable) (Δii α)
 
 type Δu = DA.Diff Universe
@@ -114,7 +114,7 @@ patchIndex ::
   , Member Trace r
   , Show α
   ) =>
-  Φip α Variable -> Δip α -> Eff r (Φip α Variable)
+  Φii α Variable -> Δii α -> Eff r (Φii α Variable)
 patchIndex = D3.patch DA.patch DA.patch DT.patch
 
 patch ::
@@ -158,8 +158,7 @@ patch ind@(Inductive n ps is u cs) = \case
     processIs :: Int -> Δiis Raw.Raw -> DT.Diff Raw.Raw
     processIs n = \case
       DL.Same -> DT.nCpyPis n DT.Same
-      DL.Insert ((), b, τ) δ ->
-        DT.InsPi () (DT.Replace τ) (Binder (Just b)) $ processIs n δ
+      DL.Insert ((), b, τ) δ -> DT.InsPi () (DT.Replace τ) b $ processIs n δ
       DL.Modify _δt     _δ -> error "TODO"
       _ -> error "TODO"
 
@@ -192,7 +191,7 @@ patch ind@(Inductive n ps is u cs) = \case
   -- foldrWith mkPi $ foldrWith mkApp $ foldrWith (mkApp . fst)
 
   δquantifyVariables ips δips
-  $ δquantifyVariables cps δcps
+  $ δquantifyBinders cps δcps
   $ δapplyTerms cis δcis
   $ prefix
 

@@ -65,7 +65,7 @@ indNat :: Inductive Raw.Raw Variable
 indNat = unsafeParseInductive . unlines $
   [ "Inductive nat : Set :="
   , "| O : nat"
-  , "| S : nat → nat"
+  , "| S : ∀ (n : nat), nat"
   ]
 
 indOr :: Inductive Raw.Raw Variable

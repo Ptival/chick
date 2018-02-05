@@ -8,10 +8,11 @@
 
 module Repair.Script
   ( repair
+  , runRepair'
   ) where
 
 import           Control.Arrow
--- import           Control.Monad
+import           Control.Monad (liftM)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
@@ -27,8 +28,10 @@ import qualified Diff.GlobalDeclaration as ΔGD
 import qualified Diff.GlobalEnvironment as ΔGE
 import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
+import qualified Diff.Pair as Δ2
 import qualified Diff.Script as ΔS
 import qualified Diff.Term as ΔT
+import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import qualified Diff.Vernacular as ΔV
 import           Inductive.Eliminator
@@ -43,7 +46,9 @@ import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.Universe as U
--- import qualified Typing.LocalContext as LC
+import qualified Typing.GlobalEnvironment as GE
+import qualified Typing.LocalContext as LC
+import           Typing.GlobalDeclaration
 import           Vernacular
 
 vernacularDiffToGlobalEnvironmentDiff ::
@@ -67,28 +72,39 @@ withStateFromConstructors ::
   Eff r a -> Eff r a
 withStateFromConstructors prefix ips δips l δl e =
 
-  trace "ADΔING A CONSTRUCTOR" >>
+  trace "ADDING A CONSTRUCTOR" >>
   traceState >>
 
-  let todo (s :: String) = error $ printf "TODO: Repair.Script/wSFC %s" s in
+  let todo (s :: String) = error $ printf "TODO: Repair.Script/withStateFromConstructors %s" s in
+
   case (l, δl) of
 
     ([], ΔL.Same) -> e
 
-    ([], _) -> todo "Empty list, other cases"
+    (_, ΔL.Insert c δcs) ->
+      let τc = I.constructorRawType True c in
+      go c (ΔL.Insert (GlobalAssum (I.constructorName c) τc)) l δcs
 
-    (_c : _cs, ΔL.Insert  _  _)   -> todo "Insert"
-    (_c : _cs, ΔL.Keep    _)      -> todo "Keep"
+    ([], _) -> todo $ printf "Empty list: %s" (show δl)
 
-    ( c@(I.Constructor _ _consName cps cis) : cs,
-      ΔL.Modify (ΔC.Modify δconsName δcps δcis) δcs) ->
-      let δτc = ΔI.δconstructorRawType prefix ips δips cps δcps cis δcis in
-      go c (ΔL.Modify (ΔGD.ModifyGlobalAssum δconsName δτc)) cs δcs
+    (_c : _cs, ΔL.Keep _) -> todo "Keep"
 
-    (_c : _cs, ΔL.Modify _ _)     -> todo "Modify"
-    (_c : _cs, ΔL.Permute _  _)   -> todo "Permute"
-    (_c : _cs, ΔL.Remove  _)      -> todo "Remove"
-    (_c : _cs, ΔL.Replace _)      -> todo "Replace"
+    (c@(I.Constructor _ _consName cps cis) : cs, ΔL.Modify δc δcs) ->
+      case δc of
+        ΔC.Modify δconsName δcps δcis ->
+          let δτc = ΔI.δconstructorRawType prefix ips δips cps δcps cis δcis in
+          go c (ΔL.Modify (ΔGD.ModifyGlobalAssum δconsName δτc)) cs δcs
+        ΔC.Same ->
+          let δτc = ΔI.δconstructorRawType prefix ips δips cps ΔL.Same cis ΔL.Same in
+          go c (ΔL.Modify (ΔGD.ModifyGlobalAssum ΔA.Same δτc)) cs δcs
+        _ -> todo $ printf "Modify: %s" (show δl)
+
+    (_c : _cs, ΔL.Permute _ _) -> todo "Permute"
+
+    (_c : _cs, ΔL.Remove _) -> todo "Remove"
+
+    (_c : _cs, ΔL.Replace _) -> todo "Replace"
+
     (c : cs, ΔL.Same) -> go c ΔL.Keep cs ΔL.Same
 
     where
@@ -148,7 +164,7 @@ withStateFromVernacular v δv e =
           $ do
           sanityCheck
           withStateFromConstructors prefix ips δips cs δcs e
-  
+
     (Inductive ind, ΔV.ModifyInductive ΔI.Same) -> unchangedInductive ind
     (Inductive ind, ΔV.Same)                    -> unchangedInductive ind
 
@@ -252,3 +268,21 @@ repair script@(Script s) δs =
           return ΔL.Same
 
     --_ -> exc $ printf "TODO: %s" (show (s, δs))
+
+runRepair' ::
+  Script Raw.Raw Variable -> ΔS.Diff Raw.Raw ->
+  Eff '[Trace] (Either String (Script Raw.Raw Variable))
+runRepair' s δs = runAll repairThenPatch
+  where
+    runAll = runError
+             . liftM fst
+             . flip runState initialRepairState
+    initialRepairState = RepairState
+                         (LC.LocalContext [])
+                         ΔL.Same
+                         (GE.GlobalEnvironment [])
+                         ΔL.Same
+    repairThenPatch = do
+      δs' <- repair s δs
+      trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
+      ΔS.patch s δs'

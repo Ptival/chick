@@ -32,6 +32,7 @@ module Inductive.Inductive
   , quantifyConstructorParameters
   , quantifyInductiveIndices
   , quantifyInductiveParameters
+  , rawInductive
   ) where
 
 import           Control.Monad.Reader
@@ -54,8 +55,7 @@ import           Utils
 type Φip  α ν = (α, ν, TypeX α ν)
 type Φips α ν = [Φip α ν]
 
--- type Φii  α ν = (Binder ν, TypeX α ν)
-type Φii  α ν = (α, ν, TypeX α ν)
+type Φii  α ν = (α, Binder ν, TypeX α ν)
 type Φiis α ν = [Φii α ν]
 
 data Inductive α ν =
@@ -79,14 +79,13 @@ instance Eq (Inductive α Variable) where
     && map dropAnnotIndices is1 == map dropAnnotIndices is2
     && u1 == u2
     && cs1 == cs2
-  
+
 -- Deriving Eq does not do what I want, because it does not equate two inductives
 -- when they differ over an unused binder name.  I'd rather use α-equivalence
 -- of all the things involved
 -- instance Eq (Inductive α Variable) where
 
---type Φcp  α ν = (Binder ν, TypeX α ν)
-type Φcp  α ν = (α, ν, TypeX α ν)
+type Φcp  α ν = (α, Binder ν, TypeX α ν)
 type Φcps α ν = [Φcp α ν]
 
 type Φci  α ν = (α, TypeX α ν)
@@ -135,7 +134,7 @@ quantifyConstructorParameters ::
   Φcps α Variable -> TypeX α Variable -> TypeX α Variable
 quantifyConstructorParameters = foldrWith onParam
   where
-    onParam (α, v, p) t = Pi α p (abstractVariable v t)
+    onParam (α, b, p) t = Pi α p (abstractBinder b t)
 
 applyConstructorIndices ::
   Φcis α Variable -> TypeX α Variable -> TypeX α Variable
@@ -182,7 +181,7 @@ quantifyInductiveIndices ::
   Φiis α Variable -> TypeX α Variable -> TypeX α Variable
 quantifyInductiveIndices = foldrWith onIndex
   where
-    onIndex (α, v, i) t = Pi α i (abstractVariable v t)
+    onIndex (α, b, i) t = Pi α i (abstractBinder b t)
 
 -- | Constructs the type of the inductive type
 inductiveRawType' ::
@@ -216,7 +215,7 @@ constructorCheckedType b (Constructor (Inductive n ips _ _ _) _ cps cis) =
 
 inductiveFamilyType' :: Φiis α Variable -> Universe -> TypeX α Variable
 inductiveFamilyType' iis u = foldrWith onIndex iis (Type u)
-  where onIndex (α, v, i) t = Pi α i (abstractVariable v t)
+  where onIndex (α, b, i) t = Pi α i (abstractBinder b t)
 
 -- | Sometimes, we can't call `inductiveType` because the constructors are not
 -- | checked yet.

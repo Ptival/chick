@@ -250,7 +250,7 @@ repairBranch b c@(Constructor _ _ cps _) δi δc = do
   -- for `withState`, we only care about parameters to the constructors, as they are
   -- the only ones that may bind
   let cpArgs = drop nbIps args
-  let δcpArgs = bimap extractL extractR δcps
+  let δcpArgs = bimap extractCpL extractCpR δcps
 
   -- δargs is composed of two parts, reflecting:
   -- - the changes made to the inductive type parameters
@@ -259,7 +259,7 @@ repairBranch b c@(Constructor _ _ cps _) δi δc = do
         case δi of
         ΔI.Same                 -> ΔL.Same
         ΔI.Modify  _ δips _ _ _ -> δips
-  let δipArgs = bimap extractL extractR δips
+  let δipArgs = bimap extractIpL extractIpR δips
   let δargs = merge nbIps δipArgs δcpArgs
 
   δbody <- withStateFromConstructorArgs cpArgs δcpArgs cps δcps
@@ -268,12 +268,19 @@ repairBranch b c@(Constructor _ _ cps _) δi δc = do
 
   where
 
-    extractL :: Φcp Raw.Raw Variable -> Binder Variable
-    extractL = Binder . Just . view _2
+    extractCpL :: Φcp Raw.Raw Variable -> Binder Variable
+    extractCpL = view _2
 
-    extractR :: ΔC.Δcp Raw.Raw -> ΔA.Diff (Binder Variable)
-    extractR Δ3.Same            = ΔA.Same
-    extractR (Δ3.Modify _ δv _) = Binder . Just <$> δv
+    extractCpR :: ΔC.Δcp Raw.Raw -> ΔA.Diff (Binder Variable)
+    extractCpR Δ3.Same            = ΔA.Same
+    extractCpR (Δ3.Modify _ δv _) = δv
+
+    extractIpL :: Φip Raw.Raw Variable -> Binder Variable
+    extractIpL = Binder . Just <$> view _2
+
+    extractIpR :: ΔI.Δip Raw.Raw -> ΔA.Diff (Binder Variable)
+    extractIpR Δ3.Same            = ΔA.Same
+    extractIpR (Δ3.Modify _ δv _) = Binder . Just <$> δv
 
     merge ::
       Int ->

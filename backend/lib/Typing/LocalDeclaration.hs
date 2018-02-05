@@ -44,11 +44,11 @@ instance
         , char ':'
         , τDoc
         ]
-    LocalDef (Variable v) τ t -> do
+    LocalDef v τ t -> do
       τDoc <- prettyDocU τ
       tDoc <- prettyDocU t
       return $ fillSep
-        [ text v
+        [ text (unVariable v)
         , char ':'
         , τDoc
         , text ":="

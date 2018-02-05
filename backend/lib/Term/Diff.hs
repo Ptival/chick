@@ -73,7 +73,7 @@ instance
   fields Scope' s =
     let (b, t) = unscopeTerm s in
     let n = case unBinder b of
-          Nothing -> Variable "_"
+          Nothing -> error "fields Scope' binder" -- Variable "_"
           Just v  -> v
     in
     Just (CCons (Name n ()) (CCons t CNil))

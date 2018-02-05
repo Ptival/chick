@@ -64,23 +64,20 @@ patchProof ::
   Eff '[Trace] (Either String (Raw.Term Variable))
 patchProof t τ δτ = runAll repairThenPatch
   where
-    runAll =
-      runError
-      . liftM fst
-      . flip runState initialRepairState
-    initialRepairState =
-      RepairState
-      (LC.LocalContext [])
-      ΔL.Same
-      (GE.GlobalEnvironment [])
-      ΔL.Same
+    runAll = runError
+             . liftM fst
+             . flip runState initialRepairState
+    initialRepairState = RepairState
+                         (LC.LocalContext [])
+                         ΔL.Same
+                         (GE.GlobalEnvironment [])
+                         ΔL.Same
     repairThenPatch =
       RT.repair t τ δτ
-      >>=
-      (\ δ -> do
-          trace $ printf "REPAIR COMPLETED: %s" $ prettyStr δ
-          return δ
-      )
+      >>= (\ δ -> do
+            trace $ printf "REPAIR COMPLETED: %s" $ prettyStr δ
+            return δ
+          )
       >>= ΔT.patch t
 
 patchProofTrace ::
@@ -215,12 +212,14 @@ repairScript ::
   Eff '[Trace] (Either String (Script Raw.Raw Variable))
 repairScript s δs = runAll repairThenPatch
   where
-    runAll =
-      runError
-      . liftM fst
-      . flip runState initialRepairState
-    initialRepairState =
-      RepairState (LC.LocalContext []) ΔL.Same (GE.GlobalEnvironment []) ΔL.Same
+    runAll = runError
+             . liftM fst
+             . flip runState initialRepairState
+    initialRepairState = RepairState
+                         (LC.LocalContext [])
+                         ΔL.Same
+                         (GE.GlobalEnvironment [])
+                         ΔL.Same
     repairThenPatch = do
       δs' <- RS.repair s δs
       trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')

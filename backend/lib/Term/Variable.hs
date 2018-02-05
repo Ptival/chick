@@ -13,7 +13,9 @@
 {-# language UndecidableInstances #-}
 
 module Term.Variable
-  ( Variable(..)
+  ( Variable
+  , mkVariable
+  , unVariable
   ) where
 
 import Data.Aeson
@@ -31,16 +33,20 @@ newtype Variable
   = Variable { unVariable :: String }
   deriving (Eq, Generic, Out, Show)
 
+mkVariable :: String -> Variable
+mkVariable "_" = error "Trying to make an underscore variable"
+mkVariable s   = Variable s
+
 instance Arbitrary Variable where
   arbitrary = do
     c <- choose ('a', 'e')
-    return $ Variable [c]
+    return $ mkVariable [c]
 
 instance IsString Variable where
-  fromString s = Variable s
+  fromString s = mkVariable s
 
 instance Monad m => Serial m Variable where
-  series = Variable <$> cons2 (:)
+  series = mkVariable <$> cons2 (:)
 
 instance PrettyPrintable Variable where
   prettyDoc (Variable s) = text s

@@ -10,7 +10,7 @@
 module PrettyPrinting.Chick.Term
   ( prettyBranchDocPrec
   , prettyTermDocPrec
-  )where
+  ) where
 
 import Bound.Name
 import Control.Lens
@@ -84,8 +84,7 @@ prettyTermDocPrec precs = goTerm
             ++ [ text "end" ]
 
       Pi _ τ1 bτ2 ->
-        let b = view originalBinder bτ2 in
-        let (_, τ2) = unscopeTerm bτ2 in
+        let (b, τ2) = unscopeTerm bτ2 in
         case unBinder b of
           Nothing ->
             (fillSep
@@ -99,7 +98,7 @@ prettyTermDocPrec precs = goTerm
               [ text "∀"
               , space
               , parens $ fillSep
-                [ prettyDoc v
+                [ prettyDoc (if unVariable v == "_" then error "NOOOO" else v)
                 , char ':'
                 , go (PrecMin, TolerateEqual) τ1
                 ]
