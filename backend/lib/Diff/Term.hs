@@ -5,8 +5,13 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Diff.Term
-  ( BranchDiff
+  ( BinderDiff
+  , BindersDiff
+  , BranchDiff
+  , BranchesDiff
   , Diff(..)
+  , VariableDiff
+  , VariablesDiff
   , extractApps
   , extractLams
   , extractPi
@@ -33,9 +38,9 @@ import           GHC.Generics
 import           Text.Printf
 import           Text.PrettyPrint.Annotated.WL
 
-import qualified Diff.Atom as DA
-import qualified Diff.List as DL
-import qualified Diff.Triple as D3
+import qualified Diff.Atom as ΔA
+import qualified Diff.List as ΔL
+import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
@@ -43,20 +48,23 @@ import           Term.Binder
 import           Term.Term
 import           Utils
 
-type BranchDiff α =
-  D3.Diff
-  (DA.Diff Variable)
-  (DL.Diff (Binder Variable) (DA.Diff (Binder Variable)))
-  (Diff α)
+type VariableDiff  = ΔA.Diff Variable
+type VariablesDiff = ΔL.Diff Variable VariableDiff
+
+type BinderDiff  ν = ΔA.Diff (Binder ν)
+type BindersDiff ν = ΔL.Diff (Binder ν) (BinderDiff ν)
+
+type BranchDiff   α = Δ3.Diff VariableDiff (BindersDiff Variable) (Diff α)
+type BranchesDiff α = ΔL.Diff (Branch α Variable) (BranchDiff α)
 
 data Diff α
   = Same
   | Replace    (TermX α Variable)
   | CpyApp     (Diff α) (Diff α)
-  | CpyLam     (DA.Diff (Binder Variable)) (Diff α)
-  | CpyMatch   (Diff α) (DL.Diff (Branch α Variable) (BranchDiff α))
-  | CpyPi      (Diff α) (DA.Diff (Binder Variable)) (Diff α)
-  | CpyVar     (DA.Diff Variable)
+  | CpyLam     (BinderDiff Variable) (Diff α)
+  | CpyMatch   (Diff α) (BranchesDiff α)
+  | CpyPi      (Diff α) (BinderDiff Variable) (Diff α)
+  | CpyVar     (ΔA.Diff Variable)
   | InsApp     α (Diff α) (Diff α)
   | InsLam     α (Binder Variable) (Diff α)
   | InsPi      α (Diff α) (Binder Variable) (Diff α)
@@ -101,11 +109,11 @@ patchBranch ::
   , Show α
   ) =>
   Branch α Variable -> BranchDiff α -> Eff r (Branch α Variable)
-patchBranch b D3.Same = return b
-patchBranch b (D3.Modify δctor δargs δbody) = do
+patchBranch b Δ3.Same = return b
+patchBranch b (Δ3.Modify δctor δargs δbody) = do
   let (ctor, args, body) = unpackBranch b
-  ctor' <- DA.patch ctor δctor
-  args' <- DL.patch DA.patch args δargs
+  ctor' <- ΔA.patch ctor δctor
+  args' <- ΔL.patch ΔA.patch args δargs
   body' <- patch body δbody
   return $ packBranch (ctor', args', body')
 
@@ -132,19 +140,19 @@ patch term δterm =
 
   (Lam a bt, CpyLam db dt) ->
     let (b, t') = unscopeTerm bt in
-    Lam a <$> (abstractBinder <$> DA.patch b db <*> patch t' dt)
+    Lam a <$> (abstractBinder <$> ΔA.patch b db <*> patch t' dt)
   (_, CpyLam _ _) -> exc "CpyLam, not a Lam"
 
   (Match a d bs, CpyMatch δd δbs) ->
-    Match a <$> patch d δd <*> DL.patch patchBranch bs δbs
+    Match a <$> patch d δd <*> ΔL.patch patchBranch bs δbs
   (_, CpyMatch _ _) -> exc "CpyMatch, not a Match"
 
   (Pi a τ1 bτ2, CpyPi d1 db d2) ->
     let (b, τ2) = unscopeTerm bτ2 in
-    Pi a <$> patch τ1 d1 <*> (abstractBinder <$> DA.patch b db <*> patch τ2 d2)
+    Pi a <$> patch τ1 d1 <*> (abstractBinder <$> ΔA.patch b db <*> patch τ2 d2)
   (_, CpyPi _ _ _) -> exc "CpyPi, not a Pi"
 
-  (Var a v, CpyVar δv) -> Var a <$> DA.patch v δv
+  (Var a v, CpyVar δv) -> Var a <$> ΔA.patch v δv
   (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr term)
 
   (_, InsApp a d1 d2) -> App a <$> patch term d1 <*> patch term d2
@@ -187,7 +195,7 @@ nCpyApps n base         = CpyApp (nCpyApps (n-1) base) Same
 nCpyPis :: Int -> Diff α -> Diff α
 nCpyPis 0 base         = base
 nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
-nCpyPis n base         = CpyPi Same DA.Same $ nCpyPis (n - 1) base
+nCpyPis n base         = CpyPi Same ΔA.Same $ nCpyPis (n - 1) base
 
 nInsertApps :: Int -> (α, TermX α Variable) -> Diff α -> Diff α
 nInsertApps 0 _      base         = base

@@ -1,10 +1,10 @@
-{-# LANGUAGE PartialTypeSignatures #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
@@ -315,11 +315,12 @@ repairBranches ::
   [Branch Raw.Raw Variable] ->
   Inductive Raw.Raw Variable ->
   ΔI.Diff Raw.Raw ->
-  Eff r (ΔL.Diff t (ΔT.BranchDiff Raw.Raw))
+  Eff r (ΔT.BranchesDiff Raw.Raw)
 repairBranches _ _ ΔI.Same =
   -- FIXME: fix body of branches
   return $ ΔL.Same
-repairBranches bs (Inductive _ _ _ _ cs) δi@(ΔI.Modify _ _ _ _ δcs) = do
+repairBranches bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
+  let cs = inductiveConstructors ind
   -- the original branches are in some permutation of the original list of constructors,
   -- let's build a permutation from and back to that order
   let (pMatchToInd, pIndToMatch) =
@@ -328,15 +329,45 @@ repairBranches bs (Inductive _ _ _ _ cs) δi@(ΔI.Modify _ _ _ _ δcs) = do
         (map constructorName   cs)
   let sortedBranches = permute pMatchToInd bs
   (sortedDeltas, inserts) <- go ([], []) (sortedBranches, cs, δcs)
+  trace $ printf "sorted deltas: %s" (show $ map ($ ΔL.Same) sortedDeltas)
+  trace $ printf "inserts:       %s" (show $ map ($ ΔL.Same) inserts)
   return $ foldr (.) id (permute pIndToMatch sortedDeltas ++ inserts) ΔL.Same
+
   where
+
+    go ::
+      ( Member (Exc String) r
+      , Member Trace r
+      , Member (State RS.RepairState) r
+      ) =>
+      ( [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
+      , [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
+      ) ->
+      ( [Branch Raw.Raw Variable]
+      , [Constructor Raw.Raw Variable]
+      , ΔL.Diff (Constructor Raw.Raw Variable) (ΔC.Diff Raw.Raw)
+      ) ->
+      Eff r
+      ( [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
+      , [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
+      )
     go (δbs, δins) = \case
-      (     _,     cs, ΔL.Same) ->
-        return (δbs ++ replicate (length cs) ΔL.Keep, δins)
+      (bs, cs, ΔL.Insert c δcs) -> do
+        let b = packBranch
+                ( constructorName c
+                , replicate (length (constructorParameters c)) (Binder Nothing)
+                , Hole ()
+                )
+        trace $ "Inserting branch:"
+        trace $ preview b
+        go (δbs, δins ++ [ΔL.Insert b]) (bs, cs, δcs)
       (b : bs, c : cs, ΔL.Modify δc δcs) -> do
         δb <- repairBranch b c δi δc
         go (δbs ++ [ΔL.Modify δb], δins) (bs, cs, δcs)
-      _ -> error $ printf "FIXME NOW: %s" (prettyStr δcs)
+      (     _,     cs, ΔL.Same) ->
+        return (δbs ++ replicate (length cs) ΔL.Keep, δins)
+      (bs, cs, δcs) ->
+        error $ printf "FIXME NOW: (%s, %s, %s)" (preview bs) (preview cs) (preview δcs)
 
 guessIndMatched ::
   ( Member (Exc String) r

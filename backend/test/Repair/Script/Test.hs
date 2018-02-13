@@ -6,6 +6,7 @@ import           Control.Monad.Freer.Trace
 
 import           Diff.Guess.Script.Test (δScriptSF)
 import           Examples.Diff.SoftwareFoundations (scriptBefore)
+import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.Script (runRepair')
 import           Script
 import qualified Term.Raw as Raw
@@ -15,3 +16,8 @@ import           Term.Term
 -- to benchmarks
 foo :: IO (Either String (Script Raw.Raw Variable))
 foo = runTrace $ runRepair' scriptBefore δScriptSF
+
+bar :: IO ()
+bar = do
+  Right s <- foo
+  putStrLn $ prettyStrU s

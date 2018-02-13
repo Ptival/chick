@@ -56,11 +56,13 @@ commonSuffix = unlines
   [ "Fixpoint subst : id → tm → tm → tm := λ x s t ,           "
   , "  match t with                                            "
   , "  | tvar y =>                                             "
-  , "      if beq_id x y then s else t                         "
+  , "      s                                                   "
+  -- , "      if beq_id x y then s else t                         "
   , "  | tabs y T t1 =>                                        "
-  , "      tabs y T (if beq_id x y then t1 else (subst x s t1))"
+  -- , "      tabs y T (if beq_id x y then t1 else (subst x s t1))"
+  , "      s"
   , "  | tapp t1 t2 =>                                         "
-  , "      tapp (subst x s t1) (subst x s t2)                  "
+  , "      tapp t1 t2                  "
   , "  end.                                                    "
   ]
 
