@@ -126,6 +126,13 @@ repairArgs args τ0 δτ0 δfun =
         -- TODO: this is wrong because we need the permutations to happen from within the
         -- innermost App rather than the outermost ones
 
+        --        | TYPE       | TERM
+        -- BEFORE | A → Bs → R | acc a bs
+        -- AFTER  |     Bs → R | acc bs
+        (_ : args, ΔT.RemovePi δτ') -> do
+          (_, _, _, τ2) <- ΔT.extractPi τ
+          go (ΔT.RemoveApp acc) args τ2 δτ'
+
         (_, ΔT.Same) -> do
           -- even though it's Same, we still need to peel off ∀s from τ
           -- before returning acc
@@ -233,9 +240,9 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
         ( ΔL.Modify (ΔLD.ModifyLocalAssum δa (Δ3.extract3 ΔT.Same δp))
         , δargs', δps')
 
-      (ΔL.Same, ΔL.Same) ->
-        -- TODO: double-check this
-        (ΔL.Keep, ΔL.Same, ΔL.Same)
+      (ΔL.Remove δargs', ΔL.Remove δps') -> (ΔL.Remove, δargs', δps')
+
+      (ΔL.Same, ΔL.Same) -> (ΔL.Keep, ΔL.Same, ΔL.Same)
 
       _ -> error $ printf "TODO: %s, %s" (preview δargs) (preview δcps)
 
