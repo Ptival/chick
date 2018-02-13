@@ -10,27 +10,29 @@ module Repair.State
   -- , δenvironment
   , sanityCheck
   , traceState
+  , withδGlobalAssum
+  , withδGlobalDef
   , withδGlobalEnv
   , withδLocalContext
   , withConstructor
   , withGlobalAssum
+  , withGlobalAssumAndδ
+  , withGlobalAssumIndType
   , withGlobalDef
-  , withInductive
-  , withInductiveType
+  , withGlobalDefAndδ
+  , withGlobalInd
   , withInsertLocalAssum
   , withLocalAssum
-  , withModifyGlobalAssum
-  , withModifyGlobalDef
-  , withModifyGlobalInd
-  , withModifyLocalAssum
+  , withLocalAssumAndδ
   ) where
 
-import           Control.Lens
+import           Control.Arrow ((>>>))
+import           Control.Lens (makeLenses, over, view)
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Text.Printf (printf)
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.GlobalDeclaration as ΔGD
@@ -91,78 +93,134 @@ sanityCheck ::
 sanityCheck = do
   trace "*** SANITY CHECK ***"
   RepairState γ δγ e δe <- get
+  trace "Sanity-checking local context"
   _ <- ΔLC.patch γ δγ
+  trace "Sanity-checking global environment"
   _ <- ΔGE.patch e δe
   return ()
 
 withGlobalAssum ::
-  ( Member (State RepairState) r
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
   (Binder Variable,  Raw.Term Variable) ->
   Eff r a -> Eff r a
-withGlobalAssum (b, τ) =
-  withState (over environment (addGlobalAssum (b, τ)))
+withGlobalAssum (b, τ) e = do
+  trace $ printf "Global Assumption (%s : %s)" (preview b) (preview τ)
+  withState (over environment (addGlobalAssum (b, τ))) e
 
-withGlobalDef ::
-  ( Member (State RepairState) r
-  ) =>
-  (Binder Variable,  Raw.Term Variable, Raw.Term Variable) ->
-  Eff r a -> Eff r a
-withGlobalDef (b, τ, t) =
-  withState (over environment (addGlobalDef (b, τ, t)))
-
-withModifyGlobalAssum ::
-  ( Member (State RepairState) r
+withδGlobalAssum ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withModifyGlobalAssum (δb, δτ) =
-  withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalAssum δb δτ)))
+withδGlobalAssum (δb, δτ) e = do
+  trace $ printf "Modifying Global Assumption (%s : %s)" (preview δb) (preview δτ)
+  withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalAssum δb δτ))) e
 
-withModifyGlobalDef ::
-  ( Member (State RepairState) r
+withGlobalAssumAndδ ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
+  ) =>
+  (Binder Variable,  Raw.Term Variable) ->
+  (ΔA.Diff Variable, ΔT.Diff Raw.Raw) ->
+  Eff r a -> Eff r a
+withGlobalAssumAndδ (b, τ) (δb, δτ) e = do
+  withGlobalAssum (b, τ) >>> withδGlobalAssum (δb, δτ) $ do
+    sanityCheck
+    e
+
+withGlobalDef ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
+  ) =>
+  (Binder Variable,  Raw.Term Variable, Raw.Term Variable) ->
+  Eff r a -> Eff r a
+withGlobalDef (b, τ, t) e = do
+  trace $ printf "Global Definition (%s : %s := %s)" (preview b) (preview τ) (preview t)
+  withState (over environment (addGlobalDef (b, τ, t))) e
+
+withδGlobalDef ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw,   ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withModifyGlobalDef (δb, δτ, δt) =
-  withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalDef δb δτ δt)))
+withδGlobalDef (δb, δτ, δt) e = do
+  trace $ printf "Modifying Global Definition (%s : %s := %s)" (preview δb) (preview δτ) (preview δt)
+  withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalDef δb δτ δt))) e
 
-withLocalAssum ::
-  ( Member (State RepairState) r
+withGlobalDefAndδ ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
-  (Binder Variable,  Raw.Term Variable) ->
+  (Binder Variable,  Raw.Term Variable, Raw.Term Variable) ->
+  (ΔA.Diff Variable, ΔT.Diff Raw.Raw,   ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withLocalAssum (b, τ) = withState (over context (addLocalAssum (b, τ)))
+withGlobalDefAndδ d δd e = do
+  withGlobalDef d >>> withδGlobalDef δd $ do
+    sanityCheck
+    e
 
 withδLocalContext ::
-  ( Member (State RepairState) r
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
   (ΔLC.Diff Raw.Raw -> ΔLC.Diff Raw.Raw) ->
   Eff r a -> Eff r a
 withδLocalContext δ = withState (over δcontext δ)
 
 withδGlobalEnv ::
-  ( Member (State RepairState) r
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
   (ΔGE.Diff Raw.Raw -> ΔGE.Diff Raw.Raw) ->
   Eff r a -> Eff r a
 withδGlobalEnv δ = withState (over δenvironment δ)
 
-withModifyLocalAssum ::
-  ( Member (State RepairState) r
+withLocalAssum ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
+  ) =>
+  (Binder Variable,  Raw.Term Variable) ->
+  Eff r a -> Eff r a
+withLocalAssum (b, τ) e = do
+  trace $ printf "Local Assumption (%s : %s)" (preview b) (preview τ)
+  withState (over context (addLocalAssum (b, τ))) e
+
+withδLocalAssum ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
   (ΔA.Diff (Binder Variable), ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withModifyLocalAssum (δb, δτ) =
-  withState (over δcontext (ΔL.Modify (ΔLD.ModifyLocalAssum δb δτ)))
+withδLocalAssum (δb, δτ) e = do
+  trace $ printf "δ Local Assumption (%s : %s)" (preview δb) (preview δτ)
+  withState (over δcontext (ΔL.Modify (ΔLD.ModifyLocalAssum δb δτ))) e
 
-withModifyGlobalInd ::
-  ( Member (State RepairState) r
+withLocalAssumAndδ ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
-  ΔI.Diff Raw.Raw ->
+  (Binder Variable,  Raw.Term Variable) ->
+  (ΔA.Diff (Binder Variable), ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withModifyGlobalInd δind =
-  withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalInd δind)))
+withLocalAssumAndδ (b, τ) (δb, δτ) e = do
+  withLocalAssum (b, τ) >>> withδLocalAssum (δb, δτ) $ do
+    sanityCheck
+    e
 
 withInsertLocalAssum ::
   ( Member (State RepairState) r
@@ -179,17 +237,33 @@ withConstructor ::
   Eff r a -> Eff r a
 withConstructor c = withState (over environment (addConstructor c))
 
-withInductive ::
-  ( Member (State RepairState) r
+withGlobalInd ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
-  Inductive Raw.Raw Variable ->
+  Inductive Raw.Raw Variable -> ΔI.Diff Raw.Raw ->
   Eff r a -> Eff r a
-withInductive i = withState (over environment (addGlobalInd i))
+withGlobalInd ind δind e = do
+  trace "TODO"
+  (     withState (over environment (addGlobalInd ind))
+    >>> withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalInd δind)))
+    ) $ do
+    sanityCheck
+    e
 
-withInductiveType ::
-  ( Member (State RepairState) r
+withGlobalAssumIndType ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
   ) =>
   Inductive Raw.Raw Variable ->
+  (ΔA.Diff Variable, ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withInductiveType ind =
-  withState (over environment (addInductiveType ind))
+withGlobalAssumIndType ind (δb, δτ) e = do
+  trace "TODO"
+  (     withState (over environment (addInductiveType ind))
+    >>> withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalAssum δb δτ)))
+    ) $ do
+    sanityCheck
+    e

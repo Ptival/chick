@@ -25,16 +25,23 @@ module Inductive.Inductive
   , constructorCheckedType'
   , constructorRawType
   , constructorRawType'
+  , cpAnnotation
+  , cpBinder
+  , cpType
   , inductiveRawType
   , inductiveRawType'
   , inductiveType
   , inductiveType'
+  , ipAnnotation
+  , ipBinder
+  , ipType
   , quantifyConstructorParameters
   , quantifyInductiveIndices
   , quantifyInductiveParameters
   , rawInductive
   ) where
 
+import           Control.Lens
 import           Control.Monad.Reader
 import           Data.Default
 
@@ -54,6 +61,13 @@ import           Utils
 
 type Φip  α ν = (α, ν, TypeX α ν)
 type Φips α ν = [Φip α ν]
+
+ipAnnotation :: Lens' (Φip  α ν) α
+ipAnnotation = _1
+ipBinder     :: Lens' (Φip  α ν) ν
+ipBinder     = _2
+ipType       :: Lens' (Φip  α ν) (TypeX α ν)
+ipType       = _3
 
 type Φii  α ν = (α, Binder ν, TypeX α ν)
 type Φiis α ν = [Φii α ν]
@@ -87,6 +101,13 @@ instance Eq (Inductive α Variable) where
 
 type Φcp  α ν = (α, Binder ν, TypeX α ν)
 type Φcps α ν = [Φcp α ν]
+
+cpAnnotation :: Lens' (Φcp  α ν) α
+cpAnnotation = _1
+cpBinder     :: Lens' (Φcp  α ν) (Binder ν)
+cpBinder     = _2
+cpType       :: Lens' (Φcp  α ν) (TypeX α ν)
+cpType       = _3
 
 type Φci  α ν = (α, TypeX α ν)
 type Φcis α ν = [Φci α ν]

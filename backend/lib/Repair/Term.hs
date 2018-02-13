@@ -168,6 +168,13 @@ computePermutations l r = go l r
     lindex i = fromJust $ elemIndex i l
     rindex i = fromJust $ elemIndex i r
 
+{- This function adds the state we would expect from entering a branch in a
+match construct.  cpArgs is the list of binders passed to the branch, i.e.:
+
+  | Cons _ a _ b c => (* _, a, _, b, c *)
+
+For each of these, we want to bring in scope the variable, and its type.
+-}
 withStateFromConstructorArgs :: ∀ r a.
   ( Member (Exc String) r
   , Member Trace r
@@ -178,7 +185,7 @@ withStateFromConstructorArgs :: ∀ r a.
   Φcps Raw.Raw Variable ->
   ΔC.Δcps Raw.Raw -> Eff r a -> Eff r a
 withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
-  go cpArgs (map (view _3) cps) δcpArgs δcps
+  go cpArgs (map (view cpType) cps) δcpArgs δcps
   where
 
     go ::
@@ -203,6 +210,9 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
 
     go _ _ _ _ = error "different lengths in withStateFromConstructors"
 
+    {- nextδassum finds the next important assumption modifier we want to add to
+    the global environment.  -}
+
     nextδassum ::
       ( ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable))
       , ΔL.Diff (Φcp Raw.Raw Variable) (ΔC.Δcp Raw.Raw)
@@ -222,6 +232,10 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
       (ΔL.Modify δa δargs', ΔL.Modify δp δps') ->
         ( ΔL.Modify (ΔLD.ModifyLocalAssum δa (Δ3.extract3 ΔT.Same δp))
         , δargs', δps')
+
+      (ΔL.Same, ΔL.Same) ->
+        -- TODO: double-check this
+        (ΔL.Keep, ΔL.Same, ΔL.Same)
 
       _ -> error $ printf "TODO: %s, %s" (preview δargs) (preview δcps)
 
@@ -248,7 +262,7 @@ repairBranch b c@(Constructor _ _ cps _) δi δc = do
         ΔC.Modify δn δcps _ -> (δn, δcps)
 
   -- for `withState`, we only care about parameters to the constructors, as they are
-  -- the only ones that may bind
+  -- the only ones that may bind, so we drop the parameters to the inductive type
   let cpArgs = drop nbIps args
   let δcpArgs = bimap extractCpL extractCpR δcps
 
@@ -269,14 +283,14 @@ repairBranch b c@(Constructor _ _ cps _) δi δc = do
   where
 
     extractCpL :: Φcp Raw.Raw Variable -> Binder Variable
-    extractCpL = view _2
+    extractCpL = view cpBinder
 
     extractCpR :: ΔC.Δcp Raw.Raw -> ΔA.Diff (Binder Variable)
     extractCpR Δ3.Same            = ΔA.Same
     extractCpR (Δ3.Modify _ δv _) = δv
 
     extractIpL :: Φip Raw.Raw Variable -> Binder Variable
-    extractIpL = Binder . Just <$> view _2
+    extractIpL = Binder . Just <$> view ipBinder
 
     extractIpR :: ΔI.Δip Raw.Raw -> ΔA.Diff (Binder Variable)
     extractIpR Δ3.Same            = ΔA.Same
@@ -492,7 +506,7 @@ repair t τ δτ =
     case (t, τ) of
       (Lam _ bt, Pi _ τ1 bτ2) -> do
         let (b, _) = unscopeTerm bt
-        RS.withLocalAssum (b, τ1) >>> RS.withModifyLocalAssum (δb, δ1) $ do
+        RS.withLocalAssumAndδ (b, τ1) (δb, δ1) $ do
           ΔT.CpyLam ΔA.Same
             <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) δ2
       _ -> genericRepair t τ

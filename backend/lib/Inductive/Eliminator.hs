@@ -16,6 +16,7 @@ module Inductive.Eliminator
   , unpackConstructors
   ) where
 
+import           Data.Default
 import           Data.String
 
 import           Inductive.Inductive
@@ -73,6 +74,7 @@ addRecursiveMotive n ips iis motive (α, b, τ) =
     Nothing -> [(α, b, τ)]
 
 mkCase ::
+  Default α =>
   α ->
   Variable -> Φips α Variable -> Φiis α Variable ->
   Variable -> Φcps α Variable -> Φcis α Variable ->
@@ -103,6 +105,7 @@ motive = "__motive__"
 -- 5. quantify over one instance t of the input type (T ip1 ip2 i1 i2)
 -- 6. return P i1 i2 t
 mkEliminatorType' :: ∀ α.
+  Default α =>
   α ->
   Variable ->
   Φips α Variable ->
@@ -149,7 +152,7 @@ unpackConstructor (Constructor _ cn cps cis) = (cn, cps, cis)
 unpackConstructors :: [Constructor α ν] -> [(ν, Φcps α ν, Φcis α ν)]
 unpackConstructors = map unpackConstructor
 
-mkEliminatorType :: α -> Inductive α Variable -> TypeX α Variable
+mkEliminatorType :: Default α => α -> Inductive α Variable -> TypeX α Variable
 mkEliminatorType α (Inductive n ps is u cs) =
   mkEliminatorType' α n ps is u (unpackConstructors cs)
   -- mkEliminatorType' α n ps is (instantiateConstructors cs)

@@ -119,7 +119,7 @@ patch term δterm =
 
   let exc (s :: String) = throwExc $ printf "Diff.Term/patch: %s" s in
 
-  --trace (printf "Diff.Term/patch:(%s, %s)" (preview t) (preview δt)) >>
+  -- trace (printf "Diff.Term/patch:(%s, %s)" (preview term) (show δterm)) >>
 
   case (term, δterm) of
 

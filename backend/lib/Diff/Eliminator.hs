@@ -16,6 +16,7 @@ module Diff.Eliminator
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Data.Default
 
 import qualified Diff.Atom as DA
 import           Diff.ConcatMap
@@ -127,7 +128,8 @@ import           Utils
     Right δListFold -> δListFoldRight δListFold cps δcps (Just δ)
 
 δmkCase ::
-  ( Eq α
+  ( Default α
+  , Eq α
   , PrettyPrintable α
   , Show α
   ) =>
@@ -162,7 +164,8 @@ import           Utils
   -- (Variable, [(Variable, TypeX α Variable)], [TypeX α Variable])
   -- (D2.Diff (DA.Diff Variable) (DT.Diff α)) (DT.Diff α)
 δListFoldMkPiConstructor ::
-  ( Eq α
+  ( Default α
+  , Eq α
   , PrettyPrintable α
   , Show α
   ) =>
@@ -189,7 +192,8 @@ import           Utils
         return $ (δcase, DA.Same)
 
 δquantifyCases ::
-  ( Eq α
+  ( Default α
+  , Eq α
   , PrettyPrintable α
   , Show α
   ) =>
@@ -215,7 +219,8 @@ import           Utils
   $ DT.CpyVar δn
 
 δmkEliminatorType' ::
-  ( Eq α
+  ( Default α
+  , Eq α
   , PrettyPrintable α
   , Show α
   ) =>
@@ -240,7 +245,8 @@ import           Utils
   )
 
 δmkEliminatorType ::
-  ( Eq α
+  ( Default α
+  , Eq α
   , PrettyPrintable α
   , Show α
   ) =>

@@ -9,6 +9,7 @@ module Inductive.Utils
   , quantifyVariables
   ) where
 
+import Data.Default
 import Text.Printf
 
 import Term.Term
@@ -29,11 +30,13 @@ applyTerms = foldlWith (\ a (α, t) -> mkApp α a t)
 applyVariables :: [(α, Variable, b)] -> TermX α Variable -> TermX α Variable
 applyVariables l = applyTerms (map (\ (α, ν, _) -> (α, Var Nothing ν)) l)
 
-applyBinders :: [(α, Binder Variable, b)] -> TermX α Variable -> TermX α Variable
+applyBinders ::
+  Default α =>
+  [(α, Binder Variable, b)] -> TermX α Variable -> TermX α Variable
 applyBinders l = applyTerms (map (\ (α, b, _) -> (α, varForBinder b)) l)
   where
     varForBinder b = case unBinder b of
-      Nothing -> Hole (error "applyBinders")
+      Nothing -> Hole def
       Just v  -> Var Nothing v
 
 mkApp :: α -> TermX α ν -> TermX α ν -> TermX α ν

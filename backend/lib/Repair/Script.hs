@@ -1,10 +1,10 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Repair.Script
   ( repair
@@ -28,10 +28,10 @@ import qualified Diff.GlobalDeclaration as ΔGD
 import qualified Diff.GlobalEnvironment as ΔGE
 import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
-import qualified Diff.Pair as Δ2
+-- import qualified Diff.Pair as Δ2
 import qualified Diff.Script as ΔS
 import qualified Diff.Term as ΔT
-import qualified Diff.Triple as Δ3
+-- import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import qualified Diff.Vernacular as ΔV
 import           Inductive.Eliminator
@@ -70,34 +70,34 @@ withStateFromConstructors ::
   [I.Constructor Raw.Raw Variable] ->
   ΔL.Diff (I.Constructor Raw.Raw Variable) (ΔC.Diff Raw.Raw) ->
   Eff r a -> Eff r a
-withStateFromConstructors prefix ips δips l δl e =
+withStateFromConstructors prefix ips δips cs δcs e =
 
-  trace "ADDING A CONSTRUCTOR" >>
-  traceState >>
+  trace (printf "Adding Constructors: (%s, %s)" (preview cs) (preview δcs)) >>
+  -- traceState >>
 
   let todo (s :: String) = error $ printf "TODO: Repair.Script/withStateFromConstructors %s" s in
 
-  case (l, δl) of
+  case (cs, δcs) of
 
     ([], ΔL.Same) -> e
 
-    (_, ΔL.Insert c δcs) ->
-      let τc = I.constructorRawType True c in
-      go c (ΔL.Insert (GlobalAssum (I.constructorName c) τc)) l δcs
+    (_, ΔL.Insert c δcs') -> do
+      let τc = I.constructorRawType True c
+      trace $ printf "τc: %s" (preview τc)
+      insert (ΔL.Insert (GlobalAssum (I.constructorName c) τc)) cs δcs'
 
-    ([], _) -> todo $ printf "Empty list: %s" (show δl)
+    ([], _) -> todo $ printf "Empty list: %s" (show δcs)
 
     (_c : _cs, ΔL.Keep _) -> todo "Keep"
 
-    (c@(I.Constructor _ _consName cps cis) : cs, ΔL.Modify δc δcs) ->
+    (c@(I.Constructor _ _consName cps cis) : cs', ΔL.Modify δc δcs') ->
       case δc of
         ΔC.Modify δconsName δcps δcis ->
           let δτc = ΔI.δconstructorRawType prefix ips δips cps δcps cis δcis in
-          go c (ΔL.Modify (ΔGD.ModifyGlobalAssum δconsName δτc)) cs δcs
+          modify c (ΔL.Modify (ΔGD.ModifyGlobalAssum δconsName δτc)) cs' δcs'
         ΔC.Same ->
           let δτc = ΔI.δconstructorRawType prefix ips δips cps ΔL.Same cis ΔL.Same in
-          go c (ΔL.Modify (ΔGD.ModifyGlobalAssum ΔA.Same δτc)) cs δcs
-        _ -> todo $ printf "Modify: %s" (show δl)
+          modify c (ΔL.Modify (ΔGD.ModifyGlobalAssum ΔA.Same δτc)) cs' δcs'
 
     (_c : _cs, ΔL.Permute _ _) -> todo "Permute"
 
@@ -105,14 +105,23 @@ withStateFromConstructors prefix ips δips l δl e =
 
     (_c : _cs, ΔL.Replace _) -> todo "Replace"
 
-    (c : cs, ΔL.Same) -> go c ΔL.Keep cs ΔL.Same
+    (c : cs', ΔL.Same) -> modify c ΔL.Keep cs' ΔL.Same
 
     where
-    go c δge cs δcs =
-      withConstructor c >>> withδGlobalEnv δge $ do
-      sanityCheck
-      withStateFromConstructors prefix ips δips cs δcs $ do
-        e
+
+      modify c δge cs δcs = do
+        trace $ printf "About to add constructor modification: %s" (preview c)
+        withConstructor c >>> withδGlobalEnv δge $ do
+          sanityCheck
+          withStateFromConstructors prefix ips δips cs δcs $ do
+            e
+
+      insert δge cs δcs = do
+        trace $ printf "About to add constructor insertion"
+        withδGlobalEnv δge $ do
+          sanityCheck
+          withStateFromConstructors prefix ips δips cs δcs $ do
+            e
 
 -- | `withStateFromVernacular v δv` takes a vernacular command `v` and its (assumed repaired) diff `δv`
 -- | and modifies the global environment to accound for the effect in the vernacular command before and
@@ -151,19 +160,18 @@ withStateFromVernacular v δv e =
         Nothing -> throwError "δmkEliminatorType failed"
         Just e -> return e
       trace (printf "PREFIX: %s" (show prefix))
-      withInductive ind
-        >>> withModifyGlobalInd δind
-        >>> withInductiveType ind
-        >>> withModifyGlobalAssum (δindName, δτind)
-        $ do
-        -- DO NOT MERGE WITH PREVIOUS withState
-        -- because mkEliminatorName needs the previous things in scope
-        withGlobalAssum ( Binder (Just (mkEliminatorName indName))
-                        , mkEliminatorRawType ind)
-          >>> withModifyGlobalAssum (δeliminatorName δind, δeliminatorType)
-          $ do
-          sanityCheck
-          withStateFromConstructors prefix ips δips cs δcs e
+      withGlobalInd ind δind $ do
+        withGlobalAssumIndType ind (δindName, δτind) $ do
+            -- DO NOT MERGE WITH PREVIOUS withState
+            -- because mkEliminatorName needs the previous things in scope
+            withGlobalAssumAndδ
+              ( Binder (Just (mkEliminatorName indName))
+              , mkEliminatorRawType ind)
+              ( δeliminatorName δind
+              , δeliminatorType)
+              $ do
+              sanityCheck
+              withStateFromConstructors prefix ips δips cs δcs e
 
     (Inductive ind, ΔV.ModifyInductive ΔI.Same) -> unchangedInductive ind
     (Inductive ind, ΔV.Same)                    -> unchangedInductive ind
@@ -196,7 +204,8 @@ repair script@(Script s) δs =
   --sanityCheck >>
   traceState >>
 
-  let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
+  -- let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
+
   case (s, δs) of
 
     (_, ΔL.Replace s') -> repair (Script s') ΔL.Same
@@ -243,10 +252,11 @@ repair script@(Script s) δs =
           let scopeIfFixpoint =
                 case k of
                   DOK.Fixpoint ->
-                    withGlobalDef (Binder (Just n), τ, t)
                     -- here we don't have δt yet since we are computing it...
                     -- TODO: check that putting ΔT.Same does not cause problems
-                    >>> withModifyGlobalDef (ΔA.Same, δτ, ΔT.Same)
+                    withGlobalDefAndδ
+                    (Binder (Just n),  τ, t)
+                    (ΔA.Same,         δτ, ΔT.Same)
                   DOK.Definition ->
                     id
           δt <- scopeIfFixpoint $ RT.repair t τ δτ
@@ -254,7 +264,7 @@ repair script@(Script s) δs =
           t' <- ΔT.patch t δt
           trace $ printf "*** Repaired term, t': %s" (prettyStr t')
           withGlobalDef ((Binder (Just n)),  τ,  t)
-            >>> withModifyGlobalDef (ΔA.Same, δτ, δt)
+            >>> withδGlobalDef (ΔA.Same, δτ, δt)
             $ do
             trace "Repair.Script:180"
             sanityCheck
