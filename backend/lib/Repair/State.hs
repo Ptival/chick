@@ -2,12 +2,15 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Repair.State
-  ( RepairState (..)
+  ( RepairState
+  , δcontext
+  , δenvironment
   , boundVarsInContext
-  -- , context
-  -- , δcontext
-  -- , environment
-  -- , δenvironment
+  , context
+  , environment
+  , getContexts
+  , getEnvironments
+  , initialRepairState
   , sanityCheck
   , traceState
   , withδGlobalAssum
@@ -59,6 +62,28 @@ data RepairState = RepairState
   }
 
 makeLenses ''RepairState
+
+initialRepairState :: RepairState
+initialRepairState =
+  RepairState
+  (LocalContext      []) ΔL.Same
+  (GlobalEnvironment []) ΔL.Same
+
+getContexts ::
+  ( Member (State RepairState) r
+  ) =>
+  Eff r (LocalContext Raw.Raw Variable, ΔLC.Diff Raw.Raw)
+getContexts = do
+  s <- get
+  return (view context s, view δcontext s)
+
+getEnvironments ::
+  ( Member (State RepairState) r
+  ) =>
+  Eff r (GlobalEnvironment Raw.Raw Variable, ΔGE.Diff Raw.Raw)
+getEnvironments = do
+  s <- get
+  return (view environment s, view δenvironment s)
 
 traceState ::
   ( Member (Exc String) r

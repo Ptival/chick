@@ -17,18 +17,18 @@ import qualified Term.Raw as Raw
 
 unsafeParseTerm :: String -> Raw.Term Variable
 unsafeParseTerm s =
-  case parseMaybeTerm s of
-    Nothing -> error $ printf "unsafeParseTerm: could not parse %s" s
-    Just t  -> t
+  case parse termP "termP" s of
+    Left  e -> error $ printf "unsafeParseTerm:\n%s\n%s" (parseErrorPretty e) s
+    Right r -> r
 
 unsafeParseInductive :: String -> Inductive Raw.Raw Variable
 unsafeParseInductive s =
-  case parseMaybe inductiveP s of
-    Nothing -> error $ printf "unsafeParseInductive: could not parse\n%s" s
-    Just t  -> t
+  case parse inductiveP "inductiveP" s of
+    Left  e -> error $ printf "unsafeParseInductive:\n%s\n%s" (parseErrorPretty e) s
+    Right r -> r
 
 unsafeParseScript :: String -> Script Raw.Raw Variable
 unsafeParseScript s =
-  case parseMaybe scriptP s of
-    Nothing -> error $ printf "unsafeParseInductive: could not parse\n%s" s
-    Just t  -> t
+  case parse scriptP "scriptP" s of
+    Left  e -> error $ printf "unsafeParseScript:\n%s\n%s" (parseErrorPretty e) s
+    Right r -> r

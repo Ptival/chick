@@ -1,70 +1,105 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Examples.Diff.SoftwareFoundations
   ( scriptBefore
   , scriptAfter
   ) where
 
+import           Data.String.QQ
 import           Parsing.Unsafe
+import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Term.Raw as Raw
 import           Term.Term
 import           Script
+import qualified StandardLibrary as SL
 
 commonPrefix :: String
-commonPrefix = unlines
-  [ "Inductive ty : Type :=   "
-  , "  | TArrow : ty → ty → ty"
-  , "  | TNat : ty            "
-  , "  | TUnit : ty           "
-  , "  | TProd : ty → ty → ty "
-  , "  | TSum : ty → ty → ty  "
-  , "  | TList : ty → ty.     "
-  , "                         "
-  , "Inductive id : Type :=.  "
-  ]
+commonPrefix =
+  prettyStrU SL.indBool ++ ".\n" ++
+  prettyStrU SL.indNat  ++ ".\n" ++
+  [s|
+
+Fixpoint ifthenelse : ∀ (T : Type), bool → T → T → T := λ T i t e,
+  match i with
+  | true  => t
+  | false => e
+  end.
+
+Fixpoint beq_nat : nat → nat → bool := λ n m,
+  match n with
+  | O => match m with
+         | O   => true
+         | S _ => false
+         end
+  | S n1 => match m with
+            | O    => false
+            | S m1 => beq_nat n1 m1
+            end
+  end.
+
+Inductive id : Type :=
+| Id : ∀ (id : nat), id
+.
+
+Definition beq_id : id → id → bool := λ id1 id2,
+  match id1 with
+  | Id n1 => match id2 with
+             | Id n2 => beq_nat n1 n2
+             end
+  end.
+
+Inductive ty : Type :=
+| TArrow : ty → ty → ty
+| TNat : ty
+| TUnit : ty
+| TProd : ty → ty → ty
+| TSum : ty → ty → ty
+| TList : ty → ty.
+
+|]
 
 codeBefore :: String
 codeBefore =
-  commonPrefix
-  ++ unlines
-  [ "Inductive tm : Type :=       "
-  , "  (* pure STLC *)            "
-  , "  | tvar : id → tm           "
-  , "  | tapp : tm → tm → tm      "
-  , "  | tabs : id → ty → tm → tm."
-  ]
+  commonPrefix ++
+  [s|
+Inductive tm : Type :=
+  (* pure STLC *)
+  | tvar : id → tm
+  | tapp : tm → tm → tm
+  | tabs : id → ty → tm → tm.
+  |]
   ++ commonSuffix
 
 codeAfter :: String
 codeAfter =
   commonPrefix
-  ++ unlines
-  [ "Inductive tm : Type :=       "
-  , "  (* pure STLC *)            "
-  , "  | tvar : id → tm           "
-  , "  | tapp : tm → tm → tm      "
-  , "  | tabs : id → ty → tm → tm "
-  , "  (* numbers *)              "
-  , "  | tnat : nat → tm          "
-  , "  | tsucc : tm → tm          "
-  , "  | tpred : tm → tm          "
-  , "  | tmult : tm → tm → tm     "
-  , "  | tif0 : tm → tm → tm → tm."
-  ]
+  ++ [s|
+Inductive tm : Type :=
+  (* pure STLC *)
+  | tvar : id → tm
+  | tapp : tm → tm → tm
+  | tabs : id → ty → tm → tm
+  (* numbers *)
+  | tnat : nat → tm
+  | tsucc : tm → tm
+  | tpred : tm → tm
+  | tmult : tm → tm → tm
+  | tif0 : tm → tm → tm → tm.
+  |]
   ++ commonSuffix
 
 commonSuffix :: String
-commonSuffix = unlines
-  [ "Fixpoint subst : id → tm → tm → tm := λ x s t ,           "
-  , "  match t with                                            "
-  , "  | tvar y =>                                             "
-  , "      s                                                   "
-  -- , "      if beq_id x y then s else t                         "
-  , "  | tabs y T t1 =>                                        "
-  -- , "      tabs y T (if beq_id x y then t1 else (subst x s t1))"
-  , "      s"
-  , "  | tapp t1 t2 =>                                         "
-  , "      tapp t1 t2                  "
-  , "  end.                                                    "
-  ]
+commonSuffix = [s|
+Fixpoint subst : id → tm → tm → tm := λ x s t ,
+  match t with
+  | tvar y =>
+      ifthenelse (beq_id x y) s t
+  | tabs y T t1 =>
+      tabs y T (ifthenelse (beq_id x y) t1 (subst x s t1))
+  | tapp t1 t2 =>
+      tapp t1 t2
+  end.
+  |]
 
 scriptAfter :: Script Raw.Raw Variable
 scriptAfter = unsafeParseScript codeAfter

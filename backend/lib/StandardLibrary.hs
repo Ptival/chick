@@ -1,5 +1,6 @@
-{-# language OverloadedStrings #-}
-{-# language PartialTypeSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module StandardLibrary
   ( τId
@@ -13,6 +14,7 @@ module StandardLibrary
   , indList
   , indNat
   , indOr
+  , indProd
   , indUnit
   , indVec
   , terms
@@ -20,6 +22,7 @@ module StandardLibrary
   , tFlip
   ) where
 
+import Data.String.QQ
 import Inductive.Inductive
 import Parsing.Unsafe
 import Term.Raw                                  as Raw
@@ -43,23 +46,29 @@ terms =
   ]
 
 indAnd :: Inductive Raw.Raw Variable
-indAnd = unsafeParseInductive . unlines $
-  [ "Inductive and (A B : Prop) : Prop :="
-  , "| conj : ∀ (a : A) (b : B), and A B"
-  ]
+indAnd = unsafeParseInductive [s|
+Inductive and (A B : Prop) : Prop :=
+| conj : ∀ (a : A) (b : B), and A B
+|]
 
 indBool :: Inductive Raw.Raw Variable
-indBool = unsafeParseInductive . unlines $
-  [ "Inductive bool : Set :="
-  , "| true : bool"
-  , "| false : bool"
-  ]
+indBool = unsafeParseInductive [s|
+Inductive bool : Set :=
+| true : bool
+| false : bool
+|]
 
 indEq :: Inductive Raw.Raw Variable
 indEq = unsafeParseInductive . unlines $
   [ "Inductive eq (A : Type) (x : A) : ∀ (other : A), Prop :="
   , "| eq_refl : eq A x x"
   ]
+
+indProd :: Inductive Raw.Raw Variable
+indProd = unsafeParseInductive [s|
+Inductive prod (A : Type) (B : Type) : Type :=
+| pair : ∀ (a : A) (b : B), prod A B
+|]
 
 indNat :: Inductive Raw.Raw Variable
 indNat = unsafeParseInductive . unlines $
@@ -90,22 +99,22 @@ indFin = unsafeParseInductive . unlines $
   ]
 
 indVec :: Inductive Raw.Raw Variable
-indVec = unsafeParseInductive . unlines $
-  [ "Inductive Vec (A : Type) : ∀ (size : nat), Type :="
-  , "| vnil : Vec A O"
-  , "| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Vec A (S n)"
-  ]
+indVec = unsafeParseInductive [s|
+Inductive Vec (A : Type) : ∀ (size : nat), Type :=
+| vnil : Vec A O
+| vcons : ∀ (h : A) (n : nat) (t : Vec A n), Vec A (S n)
+|]
 
 indFalse :: Inductive Raw.Raw Variable
-indFalse = unsafeParseInductive . unlines $
-  [ "Inductive False : Prop :="
-  ]
+indFalse = unsafeParseInductive [s|
+Inductive False : Prop :=
+|]
 
 indUnit :: Inductive Raw.Raw Variable
-indUnit = unsafeParseInductive . unlines $
-  [ "Inductive unit : Set :="
-  , "| tt : unit"
-  ]
+indUnit = unsafeParseInductive [s|
+Inductive unit : Set :=
+| tt : unit
+|]
 
 inductives :: [Inductive Raw.Raw Variable]
 inductives =
@@ -117,6 +126,7 @@ inductives =
   , indList
   , indNat
   , indOr
+  , indProd
   , indUnit
   , indVec
   ]

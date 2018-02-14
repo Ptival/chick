@@ -46,8 +46,6 @@ import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.Universe as U
-import qualified Typing.GlobalEnvironment as GE
-import qualified Typing.LocalContext as LC
 import           Typing.GlobalDeclaration
 import           Vernacular
 
@@ -153,7 +151,7 @@ withStateFromVernacular v δv e =
 
     (Inductive ind@(I.Inductive indName ips iis _u cs)
       , ΔV.ModifyInductive δind@(ΔI.Modify δindName δips δiis _δu δcs)) -> do
-      let τind = I.inductiveRawType ind
+      -- let τind = I.inductiveRawType ind
       let δτind = ΔI.δinductiveRawType (length ips) δips (length iis) δiis
       let prefix = ΔI.δinductiveRawConstructorPrefix δindName (length ips) δips
       δeliminatorType <- case δmkEliminatorType () ind δind of
@@ -162,7 +160,7 @@ withStateFromVernacular v δv e =
       trace (printf "PREFIX: %s" (show prefix))
       withGlobalInd ind δind $ do
         withGlobalAssumIndType ind (δindName, δτind) $ do
-            -- DO NOT MERGE WITH PREVIOUS withState
+            -- DO NOT MERGE WITH PREVIOUS withGlobalAssumIndType
             -- because mkEliminatorName needs the previous things in scope
             withGlobalAssumAndδ
               ( Binder (Just (mkEliminatorName indName))
@@ -204,7 +202,7 @@ repair script@(Script s) δs =
   --sanityCheck >>
   traceState >>
 
-  -- let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
+  let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
 
   case (s, δs) of
 
@@ -277,7 +275,7 @@ repair script@(Script s) δs =
           -- - it might be that constructor types mention a type that has been updated
           return ΔL.Same
 
-    --_ -> exc $ printf "TODO: %s" (show (s, δs))
+    _ -> exc $ printf "TODO: %s" (show (s, δs))
 
 runRepair' ::
   Script Raw.Raw Variable -> ΔS.Diff Raw.Raw ->
@@ -287,11 +285,6 @@ runRepair' s δs = runAll repairThenPatch
     runAll = runError
              . liftM fst
              . flip runState initialRepairState
-    initialRepairState = RepairState
-                         (LC.LocalContext [])
-                         ΔL.Same
-                         (GE.GlobalEnvironment [])
-                         ΔL.Same
     repairThenPatch = do
       δs' <- repair s δs
       trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')

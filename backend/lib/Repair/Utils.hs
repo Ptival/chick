@@ -38,7 +38,8 @@ lookupType ::
   ) => Variable -> Eff r (Raw.Type Variable)
 lookupType target = do
   let exc (reason :: String) = throwExc $ printf "Repair.Utils/lookupType: %s" reason
-  RepairState γ _ e _ <- get
+  (γ, _) <- getContexts
+  (e, _) <- getEnvironments
   let res = LC.lookupType target γ <|> GE.lookupRawType target e
   case res of
     Nothing -> exc $ printf "Could not find %s in either local context or global environment" (prettyStr target)
@@ -51,7 +52,7 @@ findGlobalDeclarationDiff ::
   ) =>
   Variable -> Eff r (ΔGD.Diff Raw.Raw)
 findGlobalDeclarationDiff v = do
-  RepairState _ _ e δe <- get
+  (e, δe) <- getEnvironments
   ΔGE.findGlobalDeclarationDiff v e δe
 
 findDeclarationDiff ::
@@ -62,7 +63,8 @@ findDeclarationDiff ::
   Variable -> Eff r (Either (ΔLD.Diff Raw.Raw) (ΔGD.Diff Raw.Raw))
 findDeclarationDiff v = do
   let exc (reason :: String) = throwExc $ printf "Repair.Utils/findDeclarationDiff: %s" reason
-  RepairState γ δγ e δe <- get
+  (γ, δγ) <- getContexts
+  (e, δe) <- getEnvironments
   result <-
     (Left <$> ΔLC.findLocalDeclarationDiff  v γ δγ)
     `catchError`

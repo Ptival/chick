@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Repair.Script.Test
   (
   ) where
@@ -19,5 +21,8 @@ foo = runTrace $ runRepair' scriptBefore δScriptSF
 
 bar :: IO ()
 bar = do
-  Right s <- foo
-  putStrLn $ prettyStrU s
+  foo >>= \case
+    Right s -> do
+      putStrLn $ prettyStrU s
+    Left e -> do
+      putStrLn e

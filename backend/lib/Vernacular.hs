@@ -28,14 +28,14 @@ instance PrettyPrintable (Vernacular α Variable) where
 
 instance PrettyPrintableUnannotated (Vernacular α Variable) where
   prettyDocU = \case
-    Definition def -> do
-      defDoc <- prettyDocU def
+    Definition defn -> do
+      defDoc <- prettyDocU defn
       return $ hcat
         [ defDoc
         , text "."
         ]
 
-    d@(Inductive ind) -> do
+    Inductive ind -> do
       indDoc <- prettyDocU ind
       return $ hcat
         [ indDoc

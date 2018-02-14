@@ -33,8 +33,6 @@ import           StandardLibraryDiff
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
-import qualified Typing.GlobalEnvironment as GE
-import qualified Typing.LocalContext as LC
 import           Utils
 import           Vernacular
 
@@ -67,11 +65,6 @@ patchProof t τ δτ = runAll repairThenPatch
     runAll = runError
              . liftM fst
              . flip runState initialRepairState
-    initialRepairState = RepairState
-                         (LC.LocalContext [])
-                         ΔL.Same
-                         (GE.GlobalEnvironment [])
-                         ΔL.Same
     repairThenPatch =
       RT.repair t τ δτ
       >>= (\ δ -> do
@@ -215,11 +208,6 @@ repairScript s δs = runAll repairThenPatch
     runAll = runError
              . liftM fst
              . flip runState initialRepairState
-    initialRepairState = RepairState
-                         (LC.LocalContext [])
-                         ΔL.Same
-                         (GE.GlobalEnvironment [])
-                         ΔL.Same
     repairThenPatch = do
       δs' <- RS.repair s δs
       trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')

@@ -391,7 +391,7 @@ guessIndMatched discriminee _branches = do
       (fun, _) <- ΔT.extractApps τv
       case fun of
         Var _ indName -> do
-          RS.RepairState _ _ e _ <- get
+          (e, _) <- RS.getEnvironments
           case GE.lookupInductiveByName indName e of
             Just ind -> return ind
             Nothing -> exc $ printf "Could not find %s in global environment" (prettyStr indName)
@@ -455,7 +455,7 @@ unknownTypeRepair t = do
       -- figured out
       ind  <- guessIndMatched d bs
       trace $ printf "*** INDUCTIVE MATCHED: %s" (prettyStr ind)
-      RS.RepairState _ _ e δe <- get
+      (e, δe) <- RS.getEnvironments
       δind <- ΔGE.findGlobalIndDiff ind e δe
       trace $ printf "*** δINDUCTIVE MATCHED: %s" (prettyStr δind)
       δbs <- repairBranches bs ind δind
