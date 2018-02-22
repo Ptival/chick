@@ -28,7 +28,7 @@ import           Diff.Utils
 import           PrettyPrinting.PrettyPrintable
 import           Repair.State
 import qualified Term.Raw as Raw
-import           Term.Variable
+import           Term.Term
 import qualified Typing.GlobalEnvironment as GE
 import qualified Typing.LocalContext as LC
 

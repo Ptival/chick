@@ -18,6 +18,7 @@ module Repair.State
   , withδGlobalEnv
   , withδLocalContext
   , withConstructor
+  , withFixpointAndδ
   , withGlobalAssum
   , withGlobalAssumAndδ
   , withGlobalAssumIndType
@@ -37,6 +38,8 @@ import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
 import           Text.Printf (printf)
 
+import qualified Definition as D
+import qualified DefinitionObjectKind as DOK
 import qualified Diff.Atom as ΔA
 import qualified Diff.GlobalDeclaration as ΔGD
 import qualified Diff.GlobalEnvironment as ΔGE
@@ -271,7 +274,7 @@ withGlobalInd ::
   Eff r a -> Eff r a
 withGlobalInd ind δind e = do
   trace "TODO"
-  (     withState (over environment (addGlobalInd ind))
+  (     withState (over environment  (addGlobalInd ind))
     >>> withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalInd δind)))
     ) $ do
     sanityCheck
@@ -291,4 +294,24 @@ withGlobalAssumIndType ind (δb, δτ) e = do
     >>> withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalAssum δb δτ)))
     ) $ do
     sanityCheck
+    e
+
+withFixpointAndδ ::
+  ( Member Trace r
+  , Member (State RepairState) r
+  , Member (Exc String) r
+  ) =>
+  D.Definition Raw.Raw Variable ->
+  (ΔA.Diff Variable, ΔT.Diff Raw.Raw, ΔT.Diff Raw.Raw) ->
+  Eff r a -> Eff r a
+withFixpointAndδ d (δb, δτ, δt) e =
+  case D.definitionKind d of
+  DOK.Fixpoint ->
+    -- here we don't have δt yet since we are computing it...
+    -- TODO: check that putting ΔT.Same does not cause problems
+    withGlobalDefAndδ
+    (Binder (Just (D.definitionName d)), D.definitionType d, D.definitionTerm d)
+    (                                δb,                 δτ,                 δt)
+    e
+  DOK.Definition ->
     e

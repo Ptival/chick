@@ -121,35 +121,34 @@ withStateFromConstructors prefix ips δips cs δcs e =
           withStateFromConstructors prefix ips δips cs δcs $ do
             e
 
--- | `withStateFromVernacular v δv` takes a vernacular command `v` and its (assumed repaired) diff `δv`
--- | and modifies the global environment to accound for the effect in the vernacular command before and
--- | after changes.
+{- `withStateFromVernacular v δv` takes a vernacular command `v` and its
+(assumed repaired) diff `δv` and modifies the global environment to accound for
+the effect in the vernacular command before and after changes. -}
 withStateFromVernacular ::
   ( Member (Exc String) r
   , Member (State RepairState) r
   , Member Trace r
   ) => Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Eff r a -> Eff r a
-withStateFromVernacular v δv e =
+withStateFromVernacular v δv e = do
+
+  trace $ printf "withStateFromVernacular (%s, %s)" (preview v) (preview δv)
 
   let exc (reason :: String) =
         throwExc $ printf "Repair.Script/withStateFromVernacular: %s" reason
-  in
 
   case (v, δv) of
 
-    (Definition (D.Definition { D.definitionName = n
-                              , D.definitionTerm = t
-                              , D.definitionType = τ
-                              }
-                )
-      , _) ->
-      withGlobalDef (Binder (Just n), τ, t)
+    (Definition defn, _) ->
+      withGlobalDef ( Binder (Just (D.definitionName defn))
+                    , D.definitionType defn
+                    , D.definitionTerm defn
+                    )
       >>> withδGlobalEnv (vernacularDiffToGlobalEnvironmentDiff δv)
       $ do
       sanityCheck
       e
 
-    (Inductive ind@(I.Inductive indName ips iis _u cs)
+    (   Inductive ind@(I.Inductive indName ips iis _u cs)
       , ΔV.ModifyInductive δind@(ΔI.Modify δindName δips δiis _δu δcs)) -> do
       -- let τind = I.inductiveRawType ind
       let δτind = ΔI.δinductiveRawType (length ips) δips (length iis) δiis
@@ -159,14 +158,14 @@ withStateFromVernacular v δv e =
         Just e -> return e
       trace (printf "PREFIX: %s" (show prefix))
       withGlobalInd ind δind $ do
+        (env, _) <- getEnvironments
+        trace $ printf "Environment after ind:\n%s" (prettyStrU env)
         withGlobalAssumIndType ind (δindName, δτind) $ do
             -- DO NOT MERGE WITH PREVIOUS withGlobalAssumIndType
             -- because mkEliminatorName needs the previous things in scope
             withGlobalAssumAndδ
-              ( Binder (Just (mkEliminatorName indName))
-              , mkEliminatorRawType ind)
-              ( δeliminatorName δind
-              , δeliminatorType)
+              (Binder (Just (mkEliminatorName indName)), mkEliminatorRawType ind)
+              (δeliminatorName δind,                     δeliminatorType)
               $ do
               sanityCheck
               withStateFromConstructors prefix ips δips cs δcs e
@@ -177,16 +176,17 @@ withStateFromVernacular v δv e =
     _ -> exc $ printf "TODO: %s" (show (v, δv))
 
   where
+
     unchangedInductive ind@(I.Inductive indName ips _ _ cs) = do
-      let τind = I.inductiveRawType ind
-      withGlobalAssum (Binder . Just $ indName, τind)
-        >>> withδGlobalEnv ΔL.Keep
-        >>> withGlobalAssum ( Binder (Just (mkEliminatorName indName))
-                        , mkEliminatorRawType ind)
-        >>> withδGlobalEnv  ΔL.Keep
-        $ do
-        sanityCheck
-        withStateFromConstructors ΔT.Same ips ΔL.Same cs ΔL.Same e
+      withGlobalInd ind ΔI.Same $ do
+        withGlobalAssumIndType ind (ΔA.Same, ΔT.Same) $ do
+          trace "UNCHANGED"
+          sanityCheck
+          withGlobalAssumAndδ
+            (Binder (Just (mkEliminatorName indName)), mkEliminatorRawType ind)
+            (ΔA.Same, ΔT.Same) $ do
+            sanityCheck
+            withStateFromConstructors ΔT.Same ips ΔL.Same cs ΔL.Same e
 
 -- | `repair s δs` takes a script `s` and a script diff `δs`, and it computes a repaired script diff
 -- | `δs'`, that propagates changes down the line
@@ -231,49 +231,19 @@ repair script@(Script s) δs =
     -- global environment
     ([], ΔL.Same) -> return ΔL.Same
 
-    (cmd : cmds, ΔL.Same) ->
-      case cmd of
+    (v : s', ΔL.Same) -> do
+      -- not sure why I was not calling RV.repair here, let's comment this
+      -- and try the reasonable thing instead
 
-        -- eventually, might want to update the name in case of collision?
-        def@(Definition (D.Definition { D.definitionKind = k
-                                      , D.definitionName = n
-                                      , D.definitionTerm = t
-                                      , D.definitionType = τ
-                                      }
-                        )
-            ) -> do
-          trace $ printf "*** Attempting to repair %s" (prettyStr def)
-          δτ <- RT.repair τ (Type U.Type) ΔT.Same
-          trace $ printf "*** Repaired type, δτ: %s" (prettyStr δτ)
-          τ' <- ΔT.patch τ δτ
-          trace $ printf "*** Repaired type, τ': %s" (prettyStr τ')
-          let scopeIfFixpoint =
-                case k of
-                  DOK.Fixpoint ->
-                    -- here we don't have δt yet since we are computing it...
-                    -- TODO: check that putting ΔT.Same does not cause problems
-                    withGlobalDefAndδ
-                    (Binder (Just n),  τ, t)
-                    (ΔA.Same,         δτ, ΔT.Same)
-                  DOK.Definition ->
-                    id
-          δt <- scopeIfFixpoint $ RT.repair t τ δτ
-          trace $ printf "*** Repaired term, δt: %s" (prettyStr δt)
-          t' <- ΔT.patch t δt
-          trace $ printf "*** Repaired term, t': %s" (prettyStr t')
-          withGlobalDef ((Binder (Just n)),  τ,  t)
-            >>> withδGlobalDef (ΔA.Same, δτ, δt)
-            $ do
-            trace "Repair.Script:180"
-            sanityCheck
-            ΔL.Modify (ΔV.ModifyDefinition ΔA.Same ΔA.Same δτ δt)
-              <$> repair (Script cmds) ΔL.Same
+      δv <- RV.repair v ΔV.Same
+      withStateFromVernacular v δv $
+        ΔL.Modify δv <$> repair (Script s') ΔL.Same
 
-        Inductive _ind -> do
-          -- I guess this one is weird:
-          -- - it might be that the inductive type mentions a type that has been updated
-          -- - it might be that constructor types mention a type that has been updated
-          return ΔL.Same
+      --   Inductive _ind -> do
+      --     -- I guess this one is weird:
+      --     -- - it might be that the inductive type mentions a type that has been updated
+      --     -- - it might be that constructor types mention a type that has been updated
+      --     return ΔL.Same
 
     _ -> exc $ printf "TODO: %s" (show (s, δs))
 

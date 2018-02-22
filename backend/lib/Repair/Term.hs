@@ -392,6 +392,7 @@ guessIndMatched discriminee _branches = do
       case fun of
         Var _ indName -> do
           (e, _) <- RS.getEnvironments
+          trace $ printf "ENVIRONMENT:\n%s" (prettyStrU e)
           case GE.lookupInductiveByName indName e of
             Just ind -> return ind
             Nothing -> exc $ printf "Could not find %s in global environment" (prettyStr indName)
