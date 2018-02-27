@@ -71,11 +71,11 @@ Inductive prod (A : Type) (B : Type) : Type :=
 |]
 
 indNat :: Inductive Raw.Raw Variable
-indNat = unsafeParseInductive . unlines $
-  [ "Inductive nat : Set :="
-  , "| O : nat"
-  , "| S : ∀ (n : nat), nat"
-  ]
+indNat = unsafeParseInductive [s|
+Inductive nat : Set :=
+| O : nat
+| S : ∀ (n : nat), nat
+|]
 
 indOr :: Inductive Raw.Raw Variable
 indOr = unsafeParseInductive . unlines $

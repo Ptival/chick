@@ -141,7 +141,7 @@ fully-instantiated diffs...
   where
     onInsert (α, b, _)   _ base =
       case unBinder b of
-      Nothing -> error "Huh..."
+      Nothing -> ΔT.InsApp α base (ΔT.Replace (Var Nothing "__FRESH__"))
       Just v  -> ΔT.InsApp α base (ΔT.Replace (Var Nothing v))
     onKeep _ _ b = ΔT.CpyApp b ΔT.Same
     onModify δ _ _ base =
@@ -152,7 +152,7 @@ fully-instantiated diffs...
         ΔA.Same -> ΔT.CpyApp base ΔT.Same
         ΔA.Replace b ->
           case unBinder b of
-          Nothing -> error "Huh..."
+          Nothing -> ΔT.CpyApp base (ΔT.Replace (Var Nothing "__FRESH__"))
           Just v  -> ΔT.CpyApp base (ΔT.Replace (Var Nothing v))
     onPermute _ _ _ = error "TODO: δListFoldMkAppBinders onPermute"
     onRemove _ _ _ = ΔT.RemoveApp ΔT.Same

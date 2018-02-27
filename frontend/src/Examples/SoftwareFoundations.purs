@@ -9,15 +9,53 @@ import Data.Monoid ((<>))
 commonPrefix :: String
 commonPrefix =
   """
-Inductive ty : Type :=
-  | TArrow : ty → ty → ty
-  | TNat : ty
-  | TUnit : ty
-  | TProd : ty → ty → ty
-  | TSum : ty → ty → ty
-  | TList : ty → ty.
+Inductive bool : Set :=
+| true : bool
+| false : bool
+.
 
-Inductive id : Type :=.
+Inductive nat : Set :=
+| O : nat
+| S : ∀ (n : nat), nat
+.
+
+Fixpoint ifthenelse : ∀ (T : Type), bool → T → T → T := λ T i t e,
+  match i with
+  | true  => t
+  | false => e
+  end.
+
+Fixpoint beq_nat : nat → nat → bool := λ n m,
+  match n with
+  | O => match m with
+         | O   => true
+         | S _ => false
+         end
+  | S n1 => match m with
+            | O    => false
+            | S m1 => beq_nat n1 m1
+            end
+  end.
+
+Inductive id : Type :=
+| Id : ∀ (id : nat), id
+.
+
+Definition beq_id : id → id → bool := λ id1 id2,
+  match id1 with
+  | Id n1 => match id2 with
+             | Id n2 => beq_nat n1 n2
+             end
+  end.
+
+Inductive ty : Type :=
+| TArrow : ty → ty → ty
+| TNat : ty
+| TUnit : ty
+| TProd : ty → ty → ty
+| TSum : ty → ty → ty
+| TList : ty → ty.
+
 """
 
 codeBefore :: String
@@ -56,11 +94,11 @@ commonSuffix =
 Fixpoint subst : id → tm → tm → tm := λ x s t ,
   match t with
   | tvar y =>
-      if beq_id x y then s else t
+      ifthenelse (beq_id x y) s t
   | tabs y T t1 =>
-      tabs y T (if beq_id x y then t1 else (subst x s t1))
+      tabs y T (ifthenelse (beq_id x y) t1 (subst x s t1))
   | tapp t1 t2 =>
-      tapp (subst x s t1) (subst x s t2)
+      tapp t1 t2
   end.
 """
 

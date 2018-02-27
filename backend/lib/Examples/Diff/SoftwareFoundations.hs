@@ -66,7 +66,7 @@ Inductive tm : Type :=
   (* pure STLC *)
   | tvar : id → tm
   | tapp : tm → tm → tm
-  | tabs : id → ty → tm → tm.
+  | tabs : id → ty → ∀ (t0 : tm), tm.
   |]
   ++ commonSuffix
 
@@ -78,10 +78,10 @@ Inductive tm : Type :=
   (* pure STLC *)
   | tvar : id → tm
   | tapp : tm → tm → tm
-  | tabs : id → ty → tm → tm
+  | tabs : id → ty → ∀ (t0 : tm), tm → tm
   (* numbers *)
   | tnat : nat → tm
-  | tsucc : tm → tm
+  | tsucc : tm → tm → tm
   | tpred : tm → tm
   | tmult : tm → tm → tm
   | tif0 : tm → tm → tm → tm.

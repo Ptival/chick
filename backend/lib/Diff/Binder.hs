@@ -15,5 +15,5 @@ fromΔVariable = \case
 toΔVariable :: IsString ν => DA.Diff (Binder ν) -> DA.Diff ν
 toΔVariable = \case
   DA.Same                      -> DA.Same
-  DA.Replace (Binder Nothing)  -> DA.Replace "TODO Diff.Binder/toΔVariable"
+  DA.Replace (Binder Nothing)  -> DA.Replace "__?__"
   DA.Replace (Binder (Just v)) -> DA.Replace v

@@ -72,11 +72,10 @@ chickGuessHandler = do
               liftIO (runTrace (repairScript bef δ)) >>= \case
                 Left e -> return $ Just e
                 Right patched ->
-                  return $ Just $
-                  prettyStrU patched
-                  ++ "\n(*"
-                  ++ show δ
-                  ++ "*)"
+                  return $ Just $ prettyStrU patched
+                  -- ++ "\n(*"
+                  -- ++ show δ
+                  -- ++ "*)"
             (Nothing, Just _)  ->
               return $ Just $ "Parsing before failed"
             (Just _,  Nothing) ->
