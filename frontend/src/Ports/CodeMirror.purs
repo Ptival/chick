@@ -76,6 +76,16 @@ foreign import _scrollIntoView :: ∀ e. EU.EffFn1 e CodeMirror Unit
 scrollIntoView :: ∀ e. CodeMirror -> Eff e Unit
 scrollIntoView = EU.runEffFn1 _scrollIntoView
 
+foreign import _scrollIntoViewPosition :: ∀ e. EU.EffFn2 e CodeMirror Position Unit
+scrollIntoViewPosition :: ∀ e. CodeMirror -> Position -> Eff e Unit
+scrollIntoViewPosition = EU.runEffFn2 _scrollIntoViewPosition
+
+scrollIntoViewLastLine :: ∀ e. CodeMirror -> Eff e Unit
+scrollIntoViewLastLine cm = do
+  d <- getDoc cm
+  c <- lineCount d
+  scrollIntoViewPosition cm { line : c - 1, ch : 0 }
+
 foreign import _setCursor :: ∀ e. EU.EffFn3 e Doc Position (Nullable SSO.RawSetSelectionOptions) Unit
 setCursor :: ∀ e. Doc -> Position -> Maybe SSO.SetSelectionOptions -> Eff e Unit
 setCursor d p m = EU.runEffFn3 _setCursor d p (toNullable $ SSO.toRaw <$> m)

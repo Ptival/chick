@@ -493,8 +493,9 @@ genericRepair t τ = do
 
     _ -> unknownTypeRepair t
 
--- | `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff describing
--- | how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt` has type `patch τ δτ`.
+{-| `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff
+describing how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt`
+has type `patch τ δτ`. |-}
 repair ::
   ( Member (Exc String) r
   , Member Trace r

@@ -20,7 +20,7 @@ import           Control.Monad.Freer.Trace
 import           Text.Printf
 
 import qualified Definition as D
-import qualified DefinitionObjectKind as DOK
+-- import qualified DefinitionObjectKind as DOK
 import qualified Diff.Atom as ΔA
 import qualified Diff.Constructor as ΔC
 import           Diff.Eliminator
@@ -39,13 +39,13 @@ import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.State
-import qualified Repair.Term as RT
+-- import qualified Repair.Term as RT
 import qualified Repair.Vernacular as RV
 import           Script
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
-import qualified Term.Universe as U
+-- import qualified Term.Universe as U
 import           Typing.GlobalDeclaration
 import           Vernacular
 
@@ -53,9 +53,10 @@ vernacularDiffToGlobalEnvironmentDiff ::
   ΔV.Diff Raw.Raw -> ΔGE.Diff Raw.Raw -> ΔGE.Diff Raw.Raw
 vernacularDiffToGlobalEnvironmentDiff = \case
   ΔV.ModifyDefinition _ δn δτ δt -> ΔL.Modify (ΔGD.ModifyGlobalDef δn δτ δt)
-  ΔV.ModifyInductive (ΔI.Modify δn _δps _δis _δu _δcs) ->
-    let δτ = ΔT.Same in
-    ΔL.Modify (ΔGD.ModifyGlobalAssum δn δτ)
+  -- FIXME: this was definitely wrong, do I rely on it?
+  -- ΔV.ModifyInductive (ΔI.Modify δn _δps _δis _δu _δcs) ->
+  --   let δτ = ΔT.Same in
+  --   ΔL.Modify (ΔGD.ModifyGlobalAssum δn δτ)
   _ -> error "TODO: vernacularDiffToGlobalEnvironmentDiff"
 
 withStateFromConstructors ::
@@ -212,18 +213,18 @@ repair script@(Script s) δs =
     (v : s', ΔL.Keep δs') -> do
       δv' <- RV.repair v ΔV.Same
       -- trace $ printf "Repair.Script/repair > δv' %s" (prettyStr δv')
-      v' <- ΔV.patch v δv'
-      trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
-      trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
+      -- v' <- ΔV.patch v δv'
+      -- trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
+      -- trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
       withStateFromVernacular v δv' $
         ΔL.Modify δv' <$> repair (Script s') δs'
 
     (v : s', ΔL.Modify δv δs') -> do
       δv' <- RV.repair v δv
       -- trace $ printf "Repair.Script/repair > δv' %s" (prettyStr δv')
-      v' <- ΔV.patch v δv'
-      trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
-      trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
+      -- v' <- ΔV.patch v δv'
+      -- trace $ printf "VERNAC BEFORE REPAIR: %s" (prettyStr v)
+      -- trace $ printf "VERNAC  AFTER REPAIR: %s" (prettyStr v')
       withStateFromVernacular v δv' $
         ΔL.Modify δv' <$> repair (Script s') δs'
 
@@ -235,6 +236,7 @@ repair script@(Script s) δs =
       -- not sure why I was not calling RV.repair here, let's comment this
       -- and try the reasonable thing instead
 
+      -- Note: this can be simplified to a repair (Mod Same Same)
       δv <- RV.repair v ΔV.Same
       withStateFromVernacular v δv $
         ΔL.Modify δv <$> repair (Script s') ΔL.Same
@@ -245,7 +247,15 @@ repair script@(Script s) δs =
       --     -- - it might be that constructor types mention a type that has been updated
       --     return ΔL.Same
 
-    _ -> exc $ printf "TODO: %s" (show (s, δs))
+    (_, ΔL.Insert _v _δs') -> exc $ printf "TODO/Insert: %s" (show (s, δs))
+
+    ([], ΔL.Modify _δv _δs') -> exc $ printf "TODO/Modify: %s" (show (s, δs))
+
+    (_, ΔL.Permute _p _δs') -> exc $ printf "TODO/Permute: %s" (show (s, δs))
+
+    (_, ΔL.Remove _δs') -> exc $ printf "TODO/Remove: %s" (show (s, δs))
+
+    ([], ΔL.Keep _) -> exc $ printf "Keep on empty program"
 
 runRepair' ::
   Script Raw.Raw Variable -> ΔS.Diff Raw.Raw ->

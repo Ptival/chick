@@ -11,13 +11,11 @@ commonPrefix =
   """
 Inductive bool : Set :=
 | true : bool
-| false : bool
-.
+| false : bool.
 
 Inductive nat : Set :=
 | O : nat
-| S : ∀ (n : nat), nat
-.
+| S : ∀ (n : nat), nat.
 
 Fixpoint ifthenelse : ∀ (T : Type), bool → T → T → T := λ T i t e,
   match i with
@@ -38,8 +36,7 @@ Fixpoint beq_nat : nat → nat → bool := λ n m,
   end.
 
 Inductive id : Type :=
-| Id : ∀ (id : nat), id
-.
+| Id : ∀ (id : nat), id.
 
 Definition beq_id : id → id → bool := λ id1 id2,
   match id1 with

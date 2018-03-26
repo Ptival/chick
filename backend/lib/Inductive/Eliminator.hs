@@ -52,8 +52,9 @@ unpackIfFullyAppliedInductive ::
 unpackIfFullyAppliedInductive n ips iis t =
   unpackIfFullyAppliedInductive' n ips iis t []
 
--- if the term is `inductiveName` fully-applied, replace it with
--- an instantiation of the motive
+{- if the term is `inductiveName` fully-applied, replace it with an
+instantiation of the motive
+-}
 addRecursiveMotive ::
   Variable ->
   Φips α Variable ->
@@ -63,7 +64,7 @@ addRecursiveMotive ::
   [(α, Binder Variable, TypeX α Variable)]
 addRecursiveMotive n ips iis motive (α, b, τ) =
   let v = case unBinder b of
-        Nothing -> "__addRecursiveMotive__TODO__"
+        Nothing -> "__rec__"
         Just v -> v
   in
   case unpackIfFullyAppliedInductive n ips iis τ of

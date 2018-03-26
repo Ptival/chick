@@ -77,6 +77,10 @@ type CodeMirrorEffects e =
   , console :: CONSOLE
   | e)
 
+getCodeMirror ::
+  ∀ e m. MonadAff (CodeMirrorEffects e) m => DSL m (Maybe PCM.CodeMirror)
+getCodeMirror = gets _.codeMirror
+
 getDoc :: ∀ e m. MonadAff (CodeMirrorEffects e) m => DSL m (Maybe PCM.Doc)
 getDoc = gets _.codeMirror >>= traverse \ cm -> H.liftEff $ PCM.getDoc cm
 
@@ -114,8 +118,10 @@ eval = case _ of
     pure next
 
   SetValue value next -> do
-    getDoc >>= traverse_ \ doc -> H.liftEff do
-      PCM.setValue doc value
+    getCodeMirror >>= traverse_ \ cm ->
+      getDoc >>= traverse_ \ doc -> H.liftEff do
+        PCM.setValue doc value
+        PCM.scrollIntoViewLastLine cm
     pure next
 
   where

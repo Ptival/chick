@@ -167,7 +167,7 @@ withGlobalDef ::
   , Member Trace r
   , Member (State RepairState) r
   ) =>
-  (Binder Variable,  Raw.Term Variable, Raw.Term Variable) ->
+  (Binder Variable,  Raw.Type Variable, Raw.Term Variable) ->
   Eff r a -> Eff r a
 withGlobalDef (b, τ, t) e = do
   trace $ printf "Global Definition (%s : %s := %s)" (preview b) (preview τ) (preview t)
