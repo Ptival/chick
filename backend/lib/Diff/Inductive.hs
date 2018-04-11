@@ -144,6 +144,7 @@ patch ind@(Inductive n ps is u cs) = \case
 -- δis will tell us how to update the i-telescope
 -- Problem: if δps is Same, we can't return Same because maybe Raw.Rawis
 
+-- FIXME: need to add δu and change the universe
 δinductiveRawType ::
   Int ->
   Δips Raw.Raw ->
