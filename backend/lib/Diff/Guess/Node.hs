@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Diff.Guess.Node
   ( Node(..)
   , dice
@@ -14,6 +17,7 @@ import           Text.Printf
 import           Util (count)
 
 import qualified Data.List as List
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.Term ()
 import           Term.Term
@@ -52,7 +56,7 @@ instance Eq Node where
   (==) n1 n2 = identifier n1 == identifier n2
 
 instance Show Node where
-  show n = printf "(%s : %s)" (show . identifier $ n) (preview . node $ n)
+  show n = printf "(%s : %s)" (show . identifier $ n) (preview @'Chick . node $ n)
 
 nodeDescendants :: Node -> [Node]
 nodeDescendants t = c ++ concatMap nodeDescendants c
