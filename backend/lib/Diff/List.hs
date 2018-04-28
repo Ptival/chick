@@ -1,7 +1,13 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.List
   ( Diff(..)
@@ -44,17 +50,17 @@ instance (Show t, Show δt) => Show (Diff t δt) where
     Replace l   -> printf "Replace (%s)"     (show l)
     Same        -> "Same"
 
-instance (PrettyPrintable t, PrettyPrintable δt) => PrettyPrintable (Diff t δt) where
+instance (PrettyPrintable l t, PrettyPrintable l δt) => PrettyPrintable l (Diff t δt) where
   prettyDoc = \case
     Insert t  δ -> fillSep [ text "Insert",  go t,          go δ ]
     Keep      δ -> fillSep [ text "Keep",                   go δ ]
     Modify δt δ -> fillSep [ text "Modify",  go δt,         go δ ]
     Permute p δ -> fillSep [ text "Permute", text (show p), go δ ]
     Remove    δ -> fillSep [ text "Remove",                 go δ ]
-    Replace l   -> fillSep [ text "Replace", encloseSep lbracket rbracket comma (map prettyDoc l) ]
+    Replace l   -> fillSep [ text "Replace", encloseSep lbracket rbracket comma (map (prettyDoc @l) l) ]
     Same        -> text "Same"
     where
-      go x = fillSep [ lparen, prettyDoc x, rparen ]
+      go x = fillSep [ lparen, prettyDoc @l x, rparen ]
 
 instance Bifunctor Diff where
   bimap fa fb = \case
@@ -69,8 +75,8 @@ instance Bifunctor Diff where
 patch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable a
-  , PrettyPrintable δa
+  , PrettyPrintable l a
+  , PrettyPrintable l δa
   ) =>
   (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
 patch patchElem la δa =

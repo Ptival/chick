@@ -1,9 +1,13 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Repair.Utils
-  ( lookupType
+  ( RepairEff
+  , RepairTermType
+  , lookupType
   , findDeclarationDiff
   , findGlobalDeclarationDiff
   , unpackDeclarationDiff
@@ -31,6 +35,14 @@ import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Typing.GlobalEnvironment as GE
 import qualified Typing.LocalContext as LC
+
+type RepairEff r =
+  ( Member (Exc String) r
+  , Member Trace r
+  , Member (State RepairState) r
+  )
+
+type RepairTermType r = (RepairEff r) => Raw.Term Variable -> Eff r (ΔT.Diff Raw.Raw)
 
 lookupType ::
   ( Member (Exc String) r

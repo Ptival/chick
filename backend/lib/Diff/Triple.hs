@@ -1,7 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Triple
   ( Diff(..)
@@ -37,14 +42,15 @@ extract3 :: δ3 -> Diff δ1 δ2 δ3 -> δ3
 extract3 same Same           = same
 extract3 _    (Modify _ _ δ) = δ
 
-instance (PrettyPrintable δ1, PrettyPrintable δ2, PrettyPrintable δ3) =>
-         PrettyPrintable (Diff δ1 δ2 δ3) where
+instance
+  (PrettyPrintable l δ1, PrettyPrintable l δ2, PrettyPrintable l δ3) =>
+  PrettyPrintable l (Diff δ1 δ2 δ3) where
   prettyDoc Same              = text "Same"
   prettyDoc (Modify δ1 δ2 δ3) =
     encloseSep lparen rparen comma
-    [ prettyDoc δ1
-    , prettyDoc δ2
-    , prettyDoc δ3
+    [ prettyDoc @l δ1
+    , prettyDoc @l δ2
+    , prettyDoc @l δ3
     ]
 
 patch ::

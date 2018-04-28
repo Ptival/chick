@@ -1,6 +1,11 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Atom
   ( Diff(..)
@@ -20,9 +25,9 @@ data Diff a
   | Replace a
   deriving (Eq, Functor, Generic, Show)
 
-instance PrettyPrintable a => PrettyPrintable (Diff a) where
+instance PrettyPrintable l a => PrettyPrintable l (Diff a) where
   prettyDoc Same        = text "Same"
-  prettyDoc (Replace r) = fillSep [ text "Replace", prettyDoc r ]
+  prettyDoc (Replace r) = fillSep [ text "Replace", prettyDoc @l r ]
 
 instance ToJSON a => ToJSON (Diff a) where
 

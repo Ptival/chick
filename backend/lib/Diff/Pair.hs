@@ -1,6 +1,11 @@
-{-# language DeriveFoldable #-}
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Pair
   ( Diff(..)
@@ -21,9 +26,10 @@ data Diff δl δr
   | Modify δl δr
   deriving (Eq, Show)
 
-instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (Diff l r) where
+instance (PrettyPrintable l a, PrettyPrintable l b) => PrettyPrintable l (Diff a b) where
   prettyDoc Same         = text "Same"
-  prettyDoc (Modify l r) = fillSep [ lparen, prettyDoc l, comma, prettyDoc r, rparen ]
+  prettyDoc (Modify a b) =
+    fillSep [ lparen, prettyDoc @l a, comma, prettyDoc @l b, rparen ]
 
 patch ::
   Monad m =>

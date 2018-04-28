@@ -7,7 +7,7 @@
     "output"
   ],
   "dependencies": {
-    "purescript-prelude": "^3.0.0",
+    "purescript-prelude": "^3.3.0",
     "purescript-console": "^3.0.0",
     "purescript-math": "^2.0.0",
     "purescript-globals": "^3.0.0",
@@ -30,7 +30,8 @@
     "purescript-monad-loops": "^0.4.0",
     "purescript-quickcheck": "^4.3.0",
     "purescript-rxps": "^1.4.3",
-    "purescript-foreign-generic": "^5.0.0"
+    "purescript-foreign-generic": "^5.0.0",
+    "purescript-d3": "^0.9.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",
@@ -38,5 +39,8 @@
     "purescript-options": "^3.0.0",
     "purescript-integers": "^3.0.0",
     "purescript-string-parsers": "^3.0.1"
+  },
+  "resolutions": {
+    "purescript-js-date": "^5.1.0"
   }
 }

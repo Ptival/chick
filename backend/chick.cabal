@@ -119,6 +119,7 @@ Library
                   Inductive.Inductive
                   Inductive.Motive
                   Inductive.Utils
+                  Language
                   Notations
                   Parsing
                   -- Parsing.Atomic
@@ -132,6 +133,12 @@ Library
                   -- Playground
                   Precedence
                   PrettyPrinting.Chick.Term
+                  PrettyPrinting.OCaml.Binder
+                  PrettyPrinting.OCaml.Declaration
+                  PrettyPrinting.OCaml.Variable
+                  PrettyPrinting.Coq.Binder
+                  PrettyPrinting.Coq.Declaration
+                  PrettyPrinting.Coq.Variable
                   PrettyPrinting.Term
                   PrettyPrinting.PrettyPrintable
                   PrettyPrinting.PrettyPrintableAnnotated

@@ -24,10 +24,7 @@ import GHC.Generics
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 import Test.SmallCheck.Series
-import Text.PrettyPrint.Annotated.WL
 import Text.PrettyPrint.GenericPretty (Out)
-
-import PrettyPrinting.PrettyPrintable
 
 newtype Variable
   = Variable { unVariable :: String }
@@ -47,8 +44,5 @@ instance IsString Variable where
 
 instance Monad m => Serial m Variable where
   series = mkVariable <$> cons2 (:)
-
-instance PrettyPrintable Variable where
-  prettyDoc (Variable s) = text s
 
 instance ToJSON Variable where

@@ -1,4 +1,10 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module PrettyPrinting.PrettyPrintable
   ( PrettyPrintable(..)
@@ -6,35 +12,37 @@ module PrettyPrinting.PrettyPrintable
 
 import Text.PrettyPrint.Annotated.WL
 
-class PrettyPrintable t where
+import Language (Language)
+
+class PrettyPrintable (l :: Language) t where
   prettyDoc :: t -> Doc ()
   prettyStr :: t -> String
-  prettyStr = display . renderPretty 1.0 72 . prettyDoc
+  prettyStr = display . renderPretty 1.0 72 . prettyDoc @l
   preview :: t -> String
   preview t =
-    let s = prettyStr t in
+    let s = prettyStr @l t in
     let previewLength = 20 in
       if length s <= previewLength
       then s
       else (++ "...") . take 20 $ s
 
-instance PrettyPrintable () where
-  prettyDoc () = text "()"
+-- instance PrettyPrintable () where
+--   prettyDoc () = text "()"
 
-instance PrettyPrintable Bool where
-  prettyDoc False = text "False"
-  prettyDoc True  = text "True"
+-- instance PrettyPrintable Bool where
+--   prettyDoc False = text "False"
+--   prettyDoc True  = text "True"
 
-instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (l, r) where
-  prettyDoc (l, r) = encloseSep lparen rparen comma [prettyDoc l, prettyDoc r]
+-- instance (PrettyPrintable l, PrettyPrintable r) => PrettyPrintable (l, r) where
+--   prettyDoc (l, r) = encloseSep lparen rparen comma [prettyDoc l, prettyDoc r]
 
-instance (PrettyPrintable a, PrettyPrintable b, PrettyPrintable c) =>
-         PrettyPrintable (a, b, c) where
-  prettyDoc (a, b, c) = encloseSep lparen rparen comma
-    [prettyDoc a, prettyDoc b, prettyDoc c]
+-- instance (PrettyPrintable a, PrettyPrintable b, PrettyPrintable c) =>
+--          PrettyPrintable (a, b, c) where
+--   prettyDoc (a, b, c) = encloseSep lparen rparen comma
+--     [prettyDoc a, prettyDoc b, prettyDoc c]
 
-instance (PrettyPrintable a) => PrettyPrintable [a] where
-  prettyDoc l = encloseSep lbracket rbracket comma (map prettyDoc l)
+-- instance (PrettyPrintable a) => PrettyPrintable [a] where
+--   prettyDoc l = encloseSep lbracket rbracket comma (map prettyDoc l)
 
-instance PrettyPrintable Int where
-  prettyDoc i = text (show i)
+-- instance PrettyPrintable Int where
+--   prettyDoc i = text (show i)

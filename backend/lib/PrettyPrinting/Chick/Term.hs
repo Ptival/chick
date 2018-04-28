@@ -1,11 +1,14 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-# language FlexibleInstances #-}
-{-# language LambdaCase #-}
-{-# language RankNTypes #-}
-{-# language ScopedTypeVariables #-}
-{-# language StandaloneDeriving #-}
-{-# language UnicodeSyntax #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module PrettyPrinting.Chick.Term
   ( prettyBranchDocPrec
@@ -14,21 +17,45 @@ module PrettyPrinting.Chick.Term
 
 import Bound.Name
 import Control.Lens
+import Control.Monad.Reader
+import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
+import Language (Language(Chick))
 import Precedence
+import PrettyPrinting.Chick.Binder ()
+import PrettyPrinting.Chick.Variable ()
 import PrettyPrinting.PrettyPrintable
+import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Utils
 import Term.Binder
 import Term.Term
+
+instance PrettyPrintableUnannotated 'Chick (Branch α Variable) where
+  prettyDocU b = do
+    precs <- ask
+    return $ prettyBranchDocPrec precs b
+
+instance PrettyPrintable 'Chick (Branch α Variable) where
+  prettyDoc t = runReader (prettyDocU @'Chick t) def
+  prettyStr = prettyStrU @'Chick
+
+instance PrettyPrintableUnannotated 'Chick (TermX α Variable) where
+  prettyDocU t = do
+    precs <- ask
+    return $ par precs (PrecMin, TolerateEqual) . prettyTermDocPrec precs $ t
+
+instance PrettyPrintable 'Chick (TermX α Variable) where
+  prettyDoc t = runReader (prettyDocU @'Chick t) def
+  prettyStr = prettyStrU @'Chick
 
 prettyBranchDocPrec :: PrecedenceTable -> Branch α Variable -> Doc ()
 prettyBranchDocPrec precs b =
   let (ctor, args, body) = unpackBranch b in
   fillSep $
   [ text "|"
-  , prettyDoc ctor
-  , fillSep $ map prettyDoc args
+  , prettyDoc @'Chick ctor
+  , fillSep $ map (prettyDoc @'Chick) args
   , text "=>"
   , fst $ prettyTermDocPrec precs body
   ]
@@ -67,7 +94,7 @@ prettyTermDocPrec precs = goTerm
         let n = originalVariable bt2 in
         (fillSep
          [ text "let"
-         , prettyDoc n
+         , prettyDoc @'Chick n
          , text ":="
          , go (PrecMin, TolerateEqual) t1
          , text "in"
@@ -98,7 +125,7 @@ prettyTermDocPrec precs = goTerm
               [ text "∀"
               , space
               , parens $ fillSep
-                [ prettyDoc (if unVariable v == "_" then error "NOOOO" else v)
+                [ prettyDoc @'Chick (if unVariable v == "_" then error "NOOOO" else v)
                 , char ':'
                 , go (PrecMin, TolerateEqual) τ1
                 ]
@@ -110,13 +137,13 @@ prettyTermDocPrec precs = goTerm
 
       Type u -> (text (show u), PrecAtom)
 
-      Var _ v -> (prettyDoc v, PrecAtom)
+      Var _ v -> (prettyDoc @'Chick v, PrecAtom)
 
     goLams :: [Doc ()] -> TermX α Variable -> Doc ()
     goLams l = \case
       Lam _ bt ->
         let n = originalVariable bt in
-        goLams (prettyDoc n : l) (instantiate1Name (Var Nothing n) (view scopedTerm bt))
+        goLams (prettyDoc @'Chick n : l) (instantiate1Name (Var Nothing n) (view scopedTerm bt))
       t ->
         hcat
         [ text lamSymbol
