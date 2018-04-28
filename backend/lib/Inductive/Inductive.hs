@@ -28,6 +28,7 @@ module Inductive.Inductive
   , cpAnnotation
   , cpBinder
   , cpType
+  , inductiveFamilyType'
   , inductiveRawType
   , inductiveRawType'
   , inductiveType
@@ -43,19 +44,14 @@ module Inductive.Inductive
 
 import           Control.Lens
 import           Control.Monad.Reader
-import           Data.Default
 
 import           Inductive.Utils
-import           Precedence
 import           PrettyPrinting.Term ()
-import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Binder
 import qualified Term.Raw as Raw
 import           Term.Term
 import qualified Term.TypeChecked as C
 import           Term.Universe (Universe)
-import           Text.PrettyPrint.Annotated.WL
 import           Text.Printf
 import           Utils
 
@@ -251,61 +247,3 @@ inductiveType (Inductive _ ps is u _) = inductiveType' ps is u
 
 -- arrows :: [Doc a] -> Doc a
 -- arrows = encloseSep mempty mempty (text " →")
-
-_boundTermDocBinder ::
-  MonadReader PrecedenceTable m =>
-  (α, Binder Variable, TermX α Variable) -> m (Doc ())
-_boundTermDocBinder (α, Binder b, t) =
-  case b of
-    Nothing -> prettyDocU t
-    Just v -> boundTermDocVariable (α, v, t)
-
-boundTermDocVariable ::
-  MonadReader PrecedenceTable m =>
-  (α, Variable, TermX α Variable) -> m (Doc ())
-boundTermDocVariable (_, v, t) = do
-  tDoc <- prettyDocU t
-  return $ parens . fillSep $ [ prettyDoc v, text ":", tDoc ]
-
-instance PrettyPrintableUnannotated (Inductive α Variable) where
-  prettyDocU (Inductive n ips iis u cs) = do
-    psDoc <- mapM boundTermDocVariable ips
-    csDoc <- mapM prettyDocU cs
-    isDoc <- prettyDocU (inductiveFamilyType' iis u)
-    -- isDoc <- mapM boundTermDocBinder is
-    -- isDoc <- mapM boundTermDocVariable is
-    return $ vsep $
-      [ fillSep $
-        [ text "Inductive"
-        , prettyDoc n
-        ]
-        ++
-        (
-          -- mempty creates an unwanted space, so have to use []
-          if length ips == 0
-          then []
-          else [encloseSep mempty mempty mempty psDoc]
-        )
-        ++
-        [ text ":"
-        -- , arrows (isDoc ++ [text "Type"])
-        , isDoc
-        , text ":="
-        ]
-      ]
-      ++ (map (\ x -> fillSep [ text "|", x]) csDoc)
-
-instance PrettyPrintableUnannotated (Constructor α Variable) where
-  prettyDocU (Constructor (Inductive n ips _ _ _) cName cParams cIndices) = do
-    cDoc <- prettyDocU (constructorRawType' False n ips cParams cIndices)
-    return $ fillSep
-      [ prettyDoc cName
-      , text ":"
-      , cDoc
-      ]
-
-instance PrettyPrintable (Constructor α Variable) where
-  prettyDoc c = runReader (prettyDocU c) def
-
-instance PrettyPrintable (Inductive α Variable) where
-  prettyDoc i = runReader (prettyDocU i) def

@@ -1,7 +1,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
@@ -11,8 +14,8 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
 module PrettyPrinting.Chick.Term
-  ( prettyBranchDocPrec
-  , prettyTermDocPrec
+  ( boundTermDocBinder
+  , boundTermDocVariable
   ) where
 
 import Bound.Name
@@ -153,3 +156,24 @@ prettyTermDocPrec precs = goTerm
         , softline
         , go (PrecMin, TolerateEqual) t
         ]
+
+boundTermDocBinder :: ∀ l m α.
+  ( MonadReader PrecedenceTable m
+  , PrettyPrintable l Variable
+  , PrettyPrintableUnannotated l (TermX α Variable)
+  ) =>
+  (α, Binder Variable, TermX α Variable) -> m (Doc ())
+boundTermDocBinder (α, Binder b, t) =
+  case b of
+    Nothing -> prettyDocU @l t
+    Just v -> boundTermDocVariable @l (α, v, t)
+
+boundTermDocVariable :: ∀ l m α.
+  ( MonadReader PrecedenceTable m
+  , PrettyPrintable l Variable
+  , PrettyPrintableUnannotated l (TermX α Variable)
+  ) =>
+  (α, Variable, TermX α Variable) -> m (Doc ())
+boundTermDocVariable (_, v, t) = do
+  tDoc <- prettyDocU @l t
+  return $ parens . fillSep $ [ prettyDoc @l v, text ":", tDoc ]

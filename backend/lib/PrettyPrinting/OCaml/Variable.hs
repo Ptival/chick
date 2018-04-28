@@ -17,4 +17,4 @@ import PrettyPrinting.PrettyPrintable
 import Term.Variable
 
 instance PrettyPrintable 'OCaml Variable where
-  prettyDoc  = text . unVariable
+  prettyDoc = text . unVariable

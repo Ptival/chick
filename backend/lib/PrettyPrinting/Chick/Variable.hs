@@ -17,4 +17,4 @@ import PrettyPrinting.PrettyPrintable
 import Term.Variable
 
 instance PrettyPrintable 'Chick Variable where
-  prettyDoc  = text . unVariable
+  prettyDoc = text . unVariable
