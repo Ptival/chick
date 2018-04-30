@@ -1,8 +1,12 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Diff.Term
   ( BinderDiff
@@ -29,24 +33,25 @@ module Diff.Term
   , patchMaybe
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Aeson
-import           Data.Either.Combinators
-import           GHC.Generics
-import           Text.Printf
-import           Text.PrettyPrint.Annotated.WL
+import Control.Monad.Freer
+import Control.Monad.Freer.Exception
+import Control.Monad.Freer.Trace
+import Data.Aeson
+import Data.Either.Combinators
+import GHC.Generics
+import Text.Printf
+import Text.PrettyPrint.Annotated.WL
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.List as ΔL
 import qualified Diff.Triple as Δ3
-import           Diff.Utils
-import           PrettyPrinting.Term ()
-import           PrettyPrinting.PrettyPrintable
-import           Term.Binder
-import           Term.Term
-import           Utils
+import Diff.Utils
+import Language (Language(Chick))
+import PrettyPrinting.Term ()
+import PrettyPrinting.PrettyPrintable
+import Term.Binder
+import Term.Term
+import Utils
 
 type VariableDiff  = ΔA.Diff Variable
 type VariablesDiff = ΔL.Diff Variable VariableDiff
@@ -78,7 +83,12 @@ data Diff α
   | RemovePi   (Diff α) -- removes the left term and binder
   deriving (Eq, Generic, Show)
 
-instance PrettyPrintable (Diff α) where
+instance
+  ( PrettyPrintable l (Binder Variable)
+  , PrettyPrintable l (Branch α Variable)
+  , PrettyPrintable l (TermX α Variable)
+  , PrettyPrintable l Variable
+  ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
     Same              -> text "Same"
     Replace t         -> fillSep [ text "Replace",    go t ]
@@ -98,8 +108,8 @@ instance PrettyPrintable (Diff α) where
     RemovePi δ1       -> fillSep [ text "RemovePi",   go δ1 ]
 
     where
-      go :: PrettyPrintable a => a -> Doc ()
-      go = parens . prettyDoc
+      go :: PrettyPrintable l a => a -> Doc ()
+      go = parens . (prettyDoc @l)
 
 instance ToJSON α => ToJSON (Diff α) where
 
@@ -153,7 +163,7 @@ patch term δterm =
   (_, CpyPi _ _ _) -> exc "CpyPi, not a Pi"
 
   (Var a v, CpyVar δv) -> Var a <$> ΔA.patch v δv
-  (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr term)
+  (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr @'Chick term)
 
   (_, InsApp a d1 d2) -> App a <$> patch term d1 <*> patch term d2
 

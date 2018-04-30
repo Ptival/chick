@@ -18,33 +18,17 @@ import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
 import Language (Language(Chick))
+import PrettyPrinting.Chick.GlobalDeclaration ()
 import PrettyPrinting.Chick.Inductive ()
 import PrettyPrinting.Chick.Term ()
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
-import Typing.GlobalDeclaration
+import Typing.GlobalEnvironment
 
-instance PrettyPrintableUnannotated 'Chick (GlobalDeclaration α Variable) where
-  prettyDocU = \case
-    GlobalAssum v τ -> do
-      τDoc <- prettyDocU @'Chick τ
-      return $ fillSep
-        [ text (unVariable v)
-        , char ':'
-        , τDoc
-        ]
-    GlobalDef v τ t -> do
-      τDoc <- prettyDocU @'Chick τ
-      tDoc <- prettyDocU @'Chick t
-      return $ fillSep
-        [ text (unVariable v)
-        , char ':'
-        , τDoc
-        , text ":="
-        , tDoc
-        ]
-    GlobalInd i -> prettyDocU @'Chick i
+instance PrettyPrintableUnannotated 'Chick (GlobalEnvironment ξ Variable) where
+  prettyDocU (GlobalEnvironment γ) =
+    encloseSep lbracket rbracket comma <$> mapM (prettyDocU @'Chick) (reverse γ)
 
-instance PrettyPrintable 'Chick (GlobalDeclaration α Variable) where
-  prettyDoc d = runReader (prettyDocU @'Chick d) def
+instance PrettyPrintable 'Chick (GlobalEnvironment ξ Variable) where
+  prettyDoc γ = runReader (prettyDocU @'Chick γ) def

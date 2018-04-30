@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -42,6 +43,7 @@ import           Diff.Guess.TopDown
 import           Diff.Guess.Node
 import qualified Diff.Term as ΔT
 import           Diff.Utils
+import           Language (Language(Chick))
 import           PrettyPrinting.Term ()
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
@@ -286,7 +288,7 @@ mkGuessδ n1 n2 m = go n1 n2
 
     go n1 n2 = do
 
-      trace $ printf "Guessing δ for (%s, %s)" (preview (node n1)) (preview (node n2))
+      trace $ printf "Guessing δ for (%s, %s)" (preview @'Chick (node n1)) (preview @'Chick (node n2))
 
       if (n1, n2) `elem` m
         then do
@@ -322,7 +324,7 @@ mkGuessδ n1 n2 m = go n1 n2
               (δ, _) <- foldM foldPis (id, (node n1, node n2)) pairs
               return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
 
-            (_, _) -> error $ printf "TODO not isomorphic: (%s, %s)" (preview (node n1)) (preview (node n2))
+            (_, _) -> error $ printf "TODO not isomorphic: (%s, %s)" (preview @'Chick (node n1)) (preview @'Chick (node n2))
         else do
         trace "Unmatched"
         case (node n1, children n1, node n2, children n2) of
@@ -353,7 +355,7 @@ mkGuessδ n1 n2 m = go n1 n2
                 (πs, _) <- extractPis (node n2)
                 if length πs /= length δs'
                   then do
-                  trace $ printf "%s" (show $ map prettyStr πs)
+                  trace $ printf "%s" (show $ map (prettyStr @'Chick) πs)
                   trace $ printf "%s" (show δs')
                   error "This is possibly odd, check if it happens"
                   else return ()

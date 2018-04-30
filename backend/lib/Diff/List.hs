@@ -75,8 +75,8 @@ instance Bifunctor Diff where
 patch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable l a
-  , PrettyPrintable l δa
+  -- , PrettyPrintable l a
+  -- , PrettyPrintable l δa
   ) =>
   (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
 patch patchElem la δa =

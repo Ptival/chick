@@ -1,11 +1,13 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Guess.BottomUp
@@ -28,6 +30,7 @@ import Text.Printf
 import Util ((<&&>))
 
 import Diff.Guess.Mapping
+import Language (Language(Chick))
 import Diff.Guess.Node
 import PrettyPrinting.PrettyPrintable
 
@@ -90,7 +93,7 @@ candidate t1 = do
   candidates root2 t1 >>= \case
     [] -> return Nothing
     cs -> do
-      trace $ printf "Candidates for %s" (preview . node $ t1)
+      trace $ printf "Candidates for %s" (preview @'Chick . node $ t1)
       trace $ printf "%s" (show cs)
       m <- getM
       return $ Just (maximumBy (comparing (dice m t1)) cs)

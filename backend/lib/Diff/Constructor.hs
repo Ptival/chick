@@ -1,6 +1,11 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Diff.Constructor
   ( Δcn
@@ -42,7 +47,7 @@ cpPatch = D3.patch DA.patch DA.patch DT.patch
 cpsPatch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α -- huh
+  -- , PrettyPrintable α -- huh
   , Show α
   ) =>
   Φcps α Variable -> Δcps α -> Eff r (Φcps α Variable)
@@ -54,7 +59,7 @@ type Δcis α = DL.Diff (Φci α Variable) (Δci α)
 ciPatch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α -- huh
+  -- , PrettyPrintable α -- huh
   , Show α
   ) =>
   Φci α Variable -> Δci α -> Eff r (Φci α Variable)
@@ -63,7 +68,7 @@ ciPatch = D2.patch DA.patch DT.patch
 cisPatch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α -- huh
+  -- , PrettyPrintable α -- huh
   , Show α
   ) =>
   Φcis α Variable -> Δcis α -> Eff r (Φcis α Variable)
@@ -78,17 +83,25 @@ data Diff α
     }
   deriving (Show)
 
-instance PrettyPrintable α => PrettyPrintable (Diff α) where
+instance
+  ( PrettyPrintable l α
+  , PrettyPrintable l (Binder Variable)
+  , PrettyPrintable l (Branch α Variable)
+  , PrettyPrintable l (α, Binder Variable, TypeX α Variable)
+  , PrettyPrintable l (α, TypeX α Variable)
+  , PrettyPrintable l (TermX α Variable)
+  , PrettyPrintable l Variable
+  ) => PrettyPrintable l (Diff α) where
   prettyDoc Same              = text "Same"
   prettyDoc (Modify δ1 δ2 δ3) =
-    fillSep [ text "Modify", prettyDoc δ1, prettyDoc δ2, prettyDoc δ3 ]
+    fillSep [ text "Modify", prettyDoc @l δ1, prettyDoc @l δ2, prettyDoc @l δ3 ]
 
 -- | Note: `patch` does not replace the reference to `Inductive` in the constructor.
 -- | The caller must finish tying the knot!
 patch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   Constructor α Variable ->

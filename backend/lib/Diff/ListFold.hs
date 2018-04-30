@@ -23,7 +23,7 @@ import qualified Diff.Pair as Δ2
 import qualified Diff.Term as ΔT
 import qualified Diff.Triple as Δ3
 import           Diff.Utils
-import           PrettyPrinting.PrettyPrintable
+-- import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import           Utils
 
@@ -187,7 +187,7 @@ fully-instantiated diffs...
     onSame l b = ΔT.nCpyApps (length l) b
 
 δListFoldMkPiGeneric ::
-  PrettyPrintable τ =>
+  -- PrettyPrintable τ =>
   (τ -> (α, ΔT.Diff α, Binder Variable)) ->
   (τ -> δτ -> (ΔT.Diff α, ΔA.Diff (Binder Variable))) ->
   ΔListFold τ δτ (ΔT.Diff α)
@@ -224,7 +224,7 @@ fully-instantiated diffs...
     onSame     l  δ = ΔT.nCpyPis (length l) <$> δ
 
 δListFoldMkPiBinders ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   ΔListFold
   (α, Binder Variable, TermX α Variable)
   (Δ3.Diff (ΔA.Diff α) (ΔA.Diff (Binder Variable)) (ΔT.Diff α)) (ΔT.Diff α)
@@ -236,7 +236,7 @@ fully-instantiated diffs...
       Δ3.Modify _ δb δi -> (δi, δb)
 
 δListFoldMkPiVariables ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   ΔListFold
   (α, Variable, TermX α Variable)
   (Δ3.Diff (ΔA.Diff α) (ΔA.Diff Variable) (ΔT.Diff α)) (ΔT.Diff α)

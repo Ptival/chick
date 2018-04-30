@@ -1,5 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# language FlexibleContexts #-}
 {-# language LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Diff.LocalDeclaration
   ( Diff(..)
@@ -15,8 +20,7 @@ import qualified Diff.Atom as DA
 import qualified Diff.Term as DT
 import           PrettyPrinting.PrettyPrintable
 import           Term.Binder
-import           Term.Variable
---import           Typing.LocalContext
+import           Term.Term
 import           Typing.LocalDeclaration
 import           Diff.Utils
 
@@ -27,13 +31,19 @@ data Diff α
   | ModifyLocalDef (DA.Diff Variable) (DT.Diff α)
   deriving (Show)
 
-instance PrettyPrintable (Diff α) where
+instance
+  ( PrettyPrintable l (Binder Variable)
+  , PrettyPrintable l (Branch α Variable)
+  , PrettyPrintable l (TermX α Variable)
+  , PrettyPrintable l Variable
+  ) => PrettyPrintable l (Diff α)
+  where
   prettyDoc = \case
     Same -> text "Same"
     ModifyLocalAssum δ1 δ2 ->
-      fillSep [ text "ModifyLocalAssum", prettyDoc δ1, prettyDoc δ2 ]
+      fillSep [ text "ModifyLocalAssum", prettyDoc @l δ1, prettyDoc @l δ2 ]
     ModifyLocalDef δ1 δ2 ->
-      fillSep [ text "ModifyLocalDef", prettyDoc δ1, prettyDoc δ2 ]
+      fillSep [ text "ModifyLocalDef", prettyDoc @l δ1, prettyDoc @l δ2 ]
 
 patch ::
   ( Member (Exc String) r
