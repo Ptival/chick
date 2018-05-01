@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -20,6 +21,8 @@ import qualified Diff.Inductive as ΔI
 import qualified Diff.Term as ΔT
 import           Diff.Utils
 import qualified Diff.Vernacular as ΔV
+import           Language (Language(Chick))
+import           PrettyPrinting.Chick ()
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.Inductive as RI
@@ -40,7 +43,7 @@ repair ::
   Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Eff r (ΔV.Diff Raw.Raw)
 repair v δv =
   trace (printf "Repair.Vernacular/repair:\nv: %s\nδv: %s\n"
-         (prettyStrU v) (prettyStr δv)) >>
+         (prettyStrU @'Chick v) (prettyStr @'Chick δv)) >>
   let exc (reason :: String) =
         throwExc $ printf "Repair.Vernacular/repair: %s" reason in
   case (v, δv) of
@@ -50,7 +53,7 @@ repair v δv =
       -- otherwise, we might get in double-repair issues
       trace $ printf "Definition: %s" (show d)
       trace $ printf "ModifyDefinition: %s" (show (δb, δn, δτ, δt))
-      exc "This happens"
+      _ <- exc "This happens"
       -- FIXME: not sure what I want to do here...
       -- δτ <- RT.repair (D.definitionType d)
       -- t' <- ΔT.patch (D.definitionTerm d) δt

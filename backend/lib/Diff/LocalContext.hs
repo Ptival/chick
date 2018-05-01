@@ -1,6 +1,8 @@
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Diff.LocalContext
   ( Diff
@@ -16,6 +18,8 @@ import           Text.Printf
 import qualified Diff.List as DL
 import qualified Diff.LocalDeclaration as DLD
 import           Diff.Utils
+import           Language (Language(Chick))
+import           PrettyPrinting.Chick ()
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Variable
@@ -43,7 +47,7 @@ findLocalDeclarationDiff v γ δγ =
   trace (
   printf
     "Diff.LocalContext/findLocalDeclarationDiff: Searching %s in %s"
-    (prettyStr v) (prettyStrU γ)
+    (prettyStr @'Chick v) (prettyStrU @'Chick γ)
   ) >>
   let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason in
   case δγ of

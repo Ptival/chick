@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -31,6 +32,7 @@ import qualified Diff.Pair as Δ2
 import qualified Diff.Term as ΔT
 import qualified Diff.Triple as Δ3
 import           Inductive.Inductive
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.Term ()
 import           Term.Term
@@ -144,7 +146,7 @@ nestedApplicationsDiffToListDiff = go ΔL.Same
 
       (ΔT.Same, Var _ _) -> δacc
 
-      _ -> error $ printf "TODO %s: (%s, %s)" this (preview δt) (preview t)
+      _ -> error $ printf "TODO %s: (%s, %s)" this (preview @'Chick δt) (preview @'Chick t)
 
 guess ::
   ( Member Trace r

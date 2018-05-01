@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
@@ -26,6 +27,7 @@ import qualified Diff.Guess.Term as ΔGT
 import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
 import           Inductive.Inductive
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.Term ()
 import           Term.Term
@@ -52,9 +54,9 @@ extract the information to create the list diff.
     let uniqueVar = Var Nothing "__UNIQUE__"
 
     let ipsTerm1 = quantifyInductiveParameters ips1 uniqueVar
-    trace $ printf "ipsTerm1: %s" $ prettyStr ipsTerm1
+    trace $ printf "ipsTerm1: %s" $ prettyStr @'Chick ipsTerm1
     let ipsTerm2 = quantifyInductiveParameters ips2 uniqueVar
-    trace $ printf "ipsTerm2: %s" $ prettyStr ipsTerm2
+    trace $ printf "ipsTerm2: %s" $ prettyStr @'Chick ipsTerm2
     δipsType <- ΔGT.guess ipsTerm1 ipsTerm2
     let δips = ΔGC.telescopeDiffToListDiffVariable ipsTerm1 δipsType
     trace "Guess for δips"

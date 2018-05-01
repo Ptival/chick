@@ -15,7 +15,7 @@ import           Diff.ListFoldLeft
 import           Diff.ListFoldRight
 import qualified Diff.Term as DT
 import           Inductive.Inductive
-import           PrettyPrinting.PrettyPrintable
+-- import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 
 δonInductiveParameter :: Φips α Variable -> DI.Δips α -> DT.Diff α -> DT.Diff α
@@ -25,12 +25,12 @@ import           Term.Term
 δonInductiveIndexInside = δListFoldLeft δListFoldMkAppBinders
 
 δonInductiveIndexOutside ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   Φiis α Variable -> DI.Δiis α -> DT.Diff α -> DT.Diff α
 δonInductiveIndexOutside = δListFoldRight δListFoldMkPiBinders
 
 δmkMotiveType' ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
@@ -43,7 +43,7 @@ import           Term.Term
   $ DT.CpyVar δn
 
 δmkMotiveType ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   Inductive α Variable -> DI.Diff α -> DT.Diff α
 δmkMotiveType (Inductive _ ips iis _ _) δi = case δi of
   DI.Same -> DT.Same

@@ -133,12 +133,12 @@ Library
                   -- Playground
                   Precedence
                   PrettyPrinting.Chick.Term
-                  PrettyPrinting.OCaml.Binder
-                  PrettyPrinting.OCaml.Declaration
-                  PrettyPrinting.OCaml.Variable
-                  PrettyPrinting.Coq.Binder
-                  PrettyPrinting.Coq.Declaration
-                  PrettyPrinting.Coq.Variable
+                  -- PrettyPrinting.OCaml.Binder
+                  -- PrettyPrinting.OCaml.Declaration
+                  -- PrettyPrinting.OCaml.Variable
+                  -- PrettyPrinting.Coq.Binder
+                  -- PrettyPrinting.Coq.Declaration
+                  -- PrettyPrinting.Coq.Variable
                   PrettyPrinting.Term
                   PrettyPrinting.PrettyPrintable
                   PrettyPrinting.PrettyPrintableAnnotated

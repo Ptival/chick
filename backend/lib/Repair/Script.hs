@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE DataKinds #-}
@@ -36,6 +37,7 @@ import           Diff.Utils
 import qualified Diff.Vernacular as ΔV
 import           Inductive.Eliminator
 import qualified Inductive.Inductive as I
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.State
@@ -71,7 +73,7 @@ withStateFromConstructors ::
   Eff r a -> Eff r a
 withStateFromConstructors prefix ips δips cs δcs e =
 
-  trace (printf "Adding Constructors: (%s, %s)" (preview cs) (preview δcs)) >>
+  trace (printf "Adding Constructors: (%s, %s)" (preview @'Chick cs) (preview @'Chick δcs)) >>
   -- traceState >>
 
   let todo (s :: String) = error $ printf "TODO: Repair.Script/withStateFromConstructors %s" s in
@@ -82,7 +84,7 @@ withStateFromConstructors prefix ips δips cs δcs e =
 
     (_, ΔL.Insert c δcs') -> do
       let τc = I.constructorRawType True c
-      trace $ printf "τc: %s" (preview τc)
+      trace $ printf "τc: %s" (preview @'Chick τc)
       insert (ΔL.Insert (GlobalAssum (I.constructorName c) τc)) cs δcs'
 
     ([], _) -> todo $ printf "Empty list: %s" (show δcs)
@@ -109,7 +111,7 @@ withStateFromConstructors prefix ips δips cs δcs e =
     where
 
       modify c δge cs δcs = do
-        trace $ printf "About to add constructor modification: %s" (preview c)
+        trace $ printf "About to add constructor modification: %s" (preview @'Chick c)
         withConstructor c >>> withδGlobalEnv δge $ do
           sanityCheck
           withStateFromConstructors prefix ips δips cs δcs $ do
@@ -132,7 +134,7 @@ withStateFromVernacular ::
   ) => Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Eff r a -> Eff r a
 withStateFromVernacular v δv e = do
 
-  trace $ printf "withStateFromVernacular (%s, %s)" (preview v) (preview δv)
+  trace $ printf "withStateFromVernacular (%s, %s)" (preview @'Chick v) (preview @'Chick δv)
 
   let exc (reason :: String) =
         throwExc $ printf "Repair.Script/withStateFromVernacular: %s" reason
@@ -149,7 +151,7 @@ withStateFromVernacular v δv e = do
       sanityCheck
       e
 
-    (   Inductive ind@(I.Inductive indName ips iis _u cs)
+    ( Inductive ind@(I.Inductive indName ips iis _u cs)
       , ΔV.ModifyInductive δind@(ΔI.Modify δindName δips δiis _δu δcs)) -> do
       -- let τind = I.inductiveRawType ind
       let δτind = ΔI.δinductiveRawType (length ips) δips (length iis) δiis
@@ -160,7 +162,7 @@ withStateFromVernacular v δv e = do
       trace (printf "PREFIX: %s" (show prefix))
       withGlobalInd ind δind $ do
         (env, _) <- getEnvironments
-        trace $ printf "Environment after ind:\n%s" (prettyStrU env)
+        trace $ printf "Environment after ind:\n%s" (prettyStrU @'Chick env)
         withGlobalAssumIndType ind (δindName, δτind) $ do
             -- DO NOT MERGE WITH PREVIOUS withGlobalAssumIndType
             -- because mkEliminatorName needs the previous things in scope
@@ -199,7 +201,7 @@ repair ::
   Script Raw.Raw Variable -> ΔS.Diff Raw.Raw -> Eff r (ΔS.Diff Raw.Raw)
 repair script@(Script s) δs =
 
-  trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU script) (prettyStr δs)) >>
+  trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU @'Chick script) (prettyStr @'Chick δs)) >>
   --sanityCheck >>
   traceState >>
 

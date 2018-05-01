@@ -1,5 +1,10 @@
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Diff.GlobalDeclaration
   ( Diff(..)
@@ -16,8 +21,10 @@ import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
 import qualified Diff.Term as DT
 import           Diff.Utils
+import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
-import           Term.Variable
+import           Term.Term
+import           Term.Universe
 import           Typing.GlobalDeclaration
 
 data Diff α
@@ -32,20 +39,31 @@ instance Show α => Show (Diff α) where
   show (ModifyGlobalDef   δn δτ δt) = printf "ModifyGlobalDef %s %s %s" (show δn) (show δτ) (show δt)
   show (ModifyGlobalInd   δind)     = printf "ModifyGlobalInd %s"       (show δind)
 
-instance PrettyPrintable α => PrettyPrintable (Diff α) where
+instance
+  ( PrettyPrintable l α
+  , PrettyPrintable l (α, Binder Variable, TermX α Variable)
+  , PrettyPrintable l (α, TypeX α Variable)
+  , PrettyPrintable l (α, Variable, TermX α Variable)
+  , PrettyPrintable l (Binder Variable)
+  , PrettyPrintable l (Branch α Variable)
+  , PrettyPrintable l (Constructor α Variable)
+  , PrettyPrintable l (TermX α Variable)
+  , PrettyPrintable l Universe
+  , PrettyPrintable l Variable
+  ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
     Same -> text "Same"
     ModifyGlobalAssum δ1 δ2    -> fillSep [ text "ModifyGlobalAssum", go δ1, go δ2 ]
     ModifyGlobalDef   δ1 δ2 δ3 -> fillSep [ text "ModifyGlobalDef",   go δ1, go δ2, go δ3 ]
     ModifyGlobalInd   δ1       -> fillSep [ text "ModifyGlobalInd",   go δ1 ]
     where
-      go :: PrettyPrintable a => a -> Doc ()
-      go = parens . prettyDoc
+      go :: PrettyPrintable l a => a -> Doc ()
+      go = parens . prettyDoc @l
 
 patch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α
+  -- , PrettyPrintable l α
   , Show α
   ) => GlobalDeclaration α Variable -> Diff α -> Eff r (GlobalDeclaration α Variable)
 patch gd δgd =

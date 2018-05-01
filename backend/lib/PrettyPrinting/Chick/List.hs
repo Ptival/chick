@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module PrettyPrinting.Chick.Pair where
+module PrettyPrinting.Chick.List where
 
 import Text.PrettyPrint.Annotated.WL
 
@@ -24,19 +24,16 @@ import PrettyPrinting.PrettyPrintableUnannotated
 
 instance
   ( PrettyPrintableUnannotated 'Chick a
-  , PrettyPrintableUnannotated 'Chick b
-  ) => PrettyPrintableUnannotated 'Chick (a, b)
+  ) => PrettyPrintableUnannotated 'Chick [a]
   where
-  prettyDocU (a, b) = do
-    aDoc <- prettyDocU @'Chick a
-    bDoc <- prettyDocU @'Chick b
-    return $ encloseSep lbracket rbracket comma [aDoc, bDoc]
+    prettyDocU l = do
+      lDoc <- mapM (prettyDocU @'Chick) l
+      return $ encloseSep lbracket rbracket comma lDoc
 
 instance
   ( PrettyPrintable 'Chick a
-  , PrettyPrintable 'Chick b
-  ) => PrettyPrintable 'Chick (a, b) where
-  prettyDoc (a, b) =
-    let aDoc = prettyDoc @'Chick a in
-    let bDoc = prettyDoc @'Chick b in
-    encloseSep lbracket rbracket comma [aDoc, bDoc]
+  ) => PrettyPrintable 'Chick [a]
+  where
+    prettyDoc l =
+      let lDoc = map (prettyDoc @'Chick) l in
+      encloseSep lbracket rbracket comma lDoc

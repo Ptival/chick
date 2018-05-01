@@ -32,7 +32,7 @@ import qualified Diff.Triple as D3
 import           Inductive.Eliminator
 import           Inductive.Inductive
 import           Inductive.Utils
-import           PrettyPrinting.PrettyPrintable
+-- import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import           Utils
 
@@ -43,7 +43,7 @@ import           Utils
   ( Eq α
   , Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   Variable -> DA.Diff Variable ->
@@ -102,7 +102,7 @@ import           Utils
 
 δconcatMapAddRecursiveMotive ::
   ( Eq α
-  , PrettyPrintable α
+  --, PrettyPrintable α
   , Show α
   ) =>
   Variable -> DA.Diff Variable ->
@@ -130,7 +130,7 @@ import           Utils
 δmkCase ::
   ( Default α
   , Eq α
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   Variable -> DA.Diff Variable ->
@@ -166,7 +166,7 @@ import           Utils
 δListFoldMkPiConstructor ::
   ( Default α
   , Eq α
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   α ->
@@ -194,7 +194,7 @@ import           Utils
 δquantifyCases ::
   ( Default α
   , Eq α
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   α -> Variable -> DA.Diff Variable ->
@@ -208,7 +208,9 @@ import           Utils
   δListFoldRight (δListFoldMkPiConstructor α n δn ips δips iis δiis motive) cs δcs (Just δ)
 
 δmkDiscrimineeType ::
-  (Eq α, PrettyPrintable α) =>
+  ( Eq α
+  -- , PrettyPrintable α
+  ) =>
   DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α->
@@ -221,7 +223,7 @@ import           Utils
 δmkEliminatorType' ::
   ( Default α
   , Eq α
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   α ->
@@ -247,7 +249,7 @@ import           Utils
 δmkEliminatorType ::
   ( Default α
   , Eq α
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   α -> Inductive α Variable -> DI.Diff α -> Maybe (DT.Diff α)

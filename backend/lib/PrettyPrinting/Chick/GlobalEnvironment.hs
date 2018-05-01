@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module PrettyPrinting.Chick.GlobalDeclaration where
+module PrettyPrinting.Chick.GlobalEnvironment where
 
 import Control.Monad.Reader
 import Data.Default

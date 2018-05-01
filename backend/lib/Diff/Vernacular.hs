@@ -1,5 +1,10 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Diff.Vernacular
   ( Diff(..)
@@ -18,9 +23,11 @@ import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
 import qualified Diff.Term as DT
 import           Diff.Utils
+import qualified Inductive.Inductive as I
 import           PrettyPrinting.PrettyPrintable
 import qualified Term.Raw as Raw
-import           Term.Variable
+import           Term.Term
+import           Term.Universe
 import           Vernacular
 
 data Diff α
@@ -30,17 +37,30 @@ data Diff α
   | Replace (Vernacular α Variable)
   deriving (Show)
 
-instance PrettyPrintable α => PrettyPrintable (Diff α) where
+instance
+  ( PrettyPrintable l α
+  , PrettyPrintable l (α, Binder Variable, TermX α Variable)
+  , PrettyPrintable l (α, TypeX α Variable)
+  , PrettyPrintable l (α, Variable, TermX α Variable)
+  , PrettyPrintable l (Binder Variable)
+  , PrettyPrintable l (Branch α Variable)
+  , PrettyPrintable l DefinitionObjectKind
+  , PrettyPrintable l (I.Constructor α Variable)
+  , PrettyPrintable l (TermX α Variable)
+  , PrettyPrintable l Universe
+  , PrettyPrintable l Variable
+  , PrettyPrintable l (Vernacular α Variable)
+  ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
     Same -> text "Same"
     ModifyDefinition δ1 δ2 δ3 δ4 ->
       fillSep [ text "ModifyDefinition", go δ1, go δ2, go δ3, go δ4 ]
-    ModifyInductive δ1 -> fillSep [ text "ModifyInductive",  go δ1 ]
+    ModifyInductive δ1 -> fillSep [ text "ModifyInductive", go δ1 ]
     Replace r -> fillSep [ text "Replace", go r ]
 
     where
-      go :: PrettyPrintable a => a -> Doc ()
-      go = parens . prettyDoc
+      go :: PrettyPrintable l a => a -> Doc ()
+      go = parens . prettyDoc @l
 
 patch ::
   ( Member (Exc String) r

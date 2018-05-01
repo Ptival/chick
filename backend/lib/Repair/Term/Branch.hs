@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE ConstraintKinds #-}
@@ -10,7 +11,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module Repair.Branches
+module Repair.Term.Branch
   ( repairBranches
   ) where
 
@@ -37,6 +38,7 @@ import qualified Diff.Term as ΔT
 import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import           Inductive.Inductive
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 --import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.State as RS
@@ -51,15 +53,15 @@ import qualified Term.Raw as Raw
 repairBranch ::
   ( RepairEff r
   ) =>
-  RepairTermType r ->
+  RepairTermType'' r ->
   Branch Raw.Raw Variable -> Constructor Raw.Raw Variable ->
   ΔI.Diff Raw.Raw -> ΔC.Diff Raw.Raw ->
   Eff r (ΔT.BranchDiff Raw.Raw)
 repairBranch repairTerm b c@(Constructor _ _ cps _) δi δc = do
 
   trace ">>> repairBranch"
-  trace $ printf "> %s" (preview b)
-  trace $ printf "> %s" (preview c)
+  trace $ printf "> %s" (preview @'Chick b)
+  trace $ printf "> %s" (preview @'Chick c)
 
   let (_, args, body) = unpackBranch b
   let nbIps = length . inductiveParameters . constructorInductive $ c
@@ -110,10 +112,10 @@ repairBranch repairTerm b c@(Constructor _ _ cps _) δi δc = do
       ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable)) ->
       ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable))
     merge 0     ΔL.Same         δcpsAs = δcpsAs
-    merge 0     δipsAs          _      = error $ printf "TODO %s" (preview δipsAs)
+    merge 0     δipsAs          _      = error $ printf "TODO %s" (preview @'Chick δipsAs)
     merge nbIps (ΔL.Keep δipAs) δcpAs = ΔL.Keep $ merge (nbIps - 1) δipAs   δcpAs
     merge nbIps ΔL.Same         δcpAs = ΔL.Keep $ merge (nbIps - 1) ΔL.Same δcpAs
-    merge as δipAs δcpAs = error $ printf "merge %s %s %s" (preview as) (preview δipAs) (preview δcpAs)
+    merge as δipAs δcpAs = error $ printf "merge %s %s %s" (show as) (preview @'Chick δipAs) (preview @'Chick δcpAs)
 
 {- This function adds the state we would expect from entering a branch in a
 match construct.  cpArgs is the list of binders passed to the branch, i.e.:
@@ -145,9 +147,9 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
       let (δassum, δargs', δcps') = nextδassum (δargs, δcps)
 
       trace "*** Adding local assumption:"
-      trace $ printf "(%s, %s)" (preview a) (preview cp)
+      trace $ printf "(%s, %s)" (preview @'Chick a) (preview @'Chick cp)
       trace "*** Adding delta local assumption:"
-      trace $ printf "%s" (prettyStr $ δassum ΔL.Same)
+      trace $ printf "%s" (prettyStr @'Chick $ δassum ΔL.Same)
 
       RS.withLocalAssum (a, cp) >>> RS.withδLocalContext δassum $ do
         RS.sanityCheck
@@ -182,12 +184,12 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
 
       (ΔL.Same, ΔL.Same) -> (ΔL.Keep, ΔL.Same, ΔL.Same)
 
-      _ -> error $ printf "TODO: %s, %s" (preview δargs) (preview δcps)
+      _ -> error $ printf "TODO: %s, %s" (preview @'Chick δargs) (preview @'Chick δcps)
 
 repairBranches :: ∀ r.
   ( RepairEff r
   ) =>
-  RepairTermType r ->
+  RepairTermType'' r ->
   [Branch Raw.Raw Variable] ->
   Inductive Raw.Raw Variable ->
   ΔI.Diff Raw.Raw ->
@@ -236,7 +238,7 @@ repairBranches repairTerm bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
                 , Hole ()
                 )
         trace $ "Inserting branch:"
-        trace $ preview b
+        trace $ preview @'Chick b
         go (δbs, δins ++ [ΔL.Insert b]) (bs, cs, δcs)
       (b : bs, c : cs, ΔL.Modify δc δcs) -> do
         δb <- repairBranch repairTerm b c δi δc
@@ -244,7 +246,7 @@ repairBranches repairTerm bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
       (     _,     cs, ΔL.Same) ->
         return (δbs ++ replicate (length cs) ΔL.Keep, δins)
       (bs, cs, δcs) ->
-        error $ printf "FIXME NOW: (%s, %s, %s)" (preview bs) (preview cs) (preview δcs)
+        error $ printf "FIXME NOW: (%s, %s, %s)" (preview @'Chick bs) (preview @'Chick cs) (preview @'Chick δcs)
 
 -- permutations l r returns a pair (plr, prl) s.t.
 -- permute plr l = r

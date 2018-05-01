@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -49,6 +51,8 @@ import qualified Diff.LocalDeclaration as ΔLD
 import qualified Diff.LocalContext as ΔLC
 import qualified Diff.Term as ΔT
 import           Inductive.Inductive
+import           Language (Language(Chick))
+import           PrettyPrinting.Chick ()
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import qualified Term.Raw as Raw
@@ -97,14 +101,14 @@ traceState ::
 traceState = do
   RepairState γ δγ e δe <- get
   trace $ printf "RepairState:"
-  trace $ printf "> γ: %s" (prettyStr γ)
+  trace $ printf "> γ: %s" (prettyStr @'Chick γ)
   --trace $ printf "> δγ: %s" (prettyStr δγ)
   γ' <- ΔLC.patch γ δγ
-  trace $ printf "> γ': %s" (prettyStr γ')
-  trace $ printf "> e: %s" (prettyStr e)
+  trace $ printf "> γ': %s" (prettyStr @'Chick γ')
+  trace $ printf "> e: %s" (prettyStr @'Chick e)
   --trace $ printf "> δe: %s" (prettyStr δe)
   e' <- ΔGE.patch e δe
-  trace $ printf "> e': %s" (prettyStr e')
+  trace $ printf "> e': %s" (prettyStr @'Chick e')
 
 boundVarsInContext ::
   ( Member (State RepairState) r
@@ -135,7 +139,7 @@ withGlobalAssum ::
   (Binder Variable,  Raw.Term Variable) ->
   Eff r a -> Eff r a
 withGlobalAssum (b, τ) e = do
-  trace $ printf "Global Assumption (%s : %s)" (preview b) (preview τ)
+  trace $ printf "Global Assumption (%s : %s)" (preview @'Chick b) (preview @'Chick τ)
   withState (over environment (addGlobalAssum (b, τ))) e
 
 withδGlobalAssum ::
@@ -146,7 +150,7 @@ withδGlobalAssum ::
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
 withδGlobalAssum (δb, δτ) e = do
-  trace $ printf "Modifying Global Assumption (%s : %s)" (preview δb) (preview δτ)
+  trace $ printf "Modifying Global Assumption (%s : %s)" (preview @'Chick δb) (preview @'Chick δτ)
   withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalAssum δb δτ))) e
 
 withGlobalAssumAndδ ::
@@ -170,7 +174,7 @@ withGlobalDef ::
   (Binder Variable,  Raw.Type Variable, Raw.Term Variable) ->
   Eff r a -> Eff r a
 withGlobalDef (b, τ, t) e = do
-  trace $ printf "Global Definition (%s : %s := %s)" (preview b) (preview τ) (preview t)
+  trace $ printf "Global Definition (%s : %s := %s)" (preview @'Chick b) (preview @'Chick τ) (preview @'Chick t)
   withState (over environment (addGlobalDef (b, τ, t))) e
 
 withδGlobalDef ::
@@ -181,7 +185,7 @@ withδGlobalDef ::
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw,   ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
 withδGlobalDef (δb, δτ, δt) e = do
-  trace $ printf "Modifying Global Definition (%s : %s := %s)" (preview δb) (preview δτ) (preview δt)
+  trace $ printf "Modifying Global Definition (%s : %s := %s)" (preview @'Chick δb) (preview @'Chick δτ) (preview @'Chick δt)
   withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalDef δb δτ δt))) e
 
 withGlobalDefAndδ ::
@@ -223,7 +227,7 @@ withLocalAssum ::
   (Binder Variable,  Raw.Term Variable) ->
   Eff r a -> Eff r a
 withLocalAssum (b, τ) e = do
-  trace $ printf "Local Assumption (%s : %s)" (preview b) (preview τ)
+  trace $ printf "Local Assumption (%s : %s)" (preview @'Chick b) (preview @'Chick τ)
   withState (over context (addLocalAssum (b, τ))) e
 
 withδLocalAssum ::
@@ -234,7 +238,7 @@ withδLocalAssum ::
   (ΔA.Diff (Binder Variable), ΔT.Diff Raw.Raw) ->
   Eff r a -> Eff r a
 withδLocalAssum (δb, δτ) e = do
-  trace $ printf "δ Local Assumption (%s : %s)" (preview δb) (preview δτ)
+  trace $ printf "δ Local Assumption (%s : %s)" (preview @'Chick δb) (preview @'Chick δτ)
   withState (over δcontext (ΔL.Modify (ΔLD.ModifyLocalAssum δb δτ))) e
 
 withLocalAssumAndδ ::

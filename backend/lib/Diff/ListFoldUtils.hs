@@ -13,11 +13,11 @@ import           Diff.ListFoldRight
 import qualified Diff.Pair as D2
 import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
-import           PrettyPrinting.PrettyPrintable
+-- import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 
 δquantifyVariables ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   [(α, Variable, TermX α Variable)] ->
   DL.Diff (α, Variable, TermX α Variable)
   (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)) ->
@@ -25,7 +25,7 @@ import           Term.Term
 δquantifyVariables = δListFoldRight δListFoldMkPiVariables
 
 δquantifyBinders ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   [(α, Binder Variable, TermX α Variable)] ->
   DL.Diff (α, Binder Variable, TermX α Variable)
   (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)) ->
@@ -39,7 +39,7 @@ import           Term.Term
 δapplyTerms = δListFoldLeft δListFoldMkAppTerms
 
 δapplyVariables ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   [(α, Variable, TermX α Variable)] ->
   DL.Diff (α, Variable, TermX α Variable)
   (D3.Diff (DA.Diff α) (DA.Diff Variable) (DT.Diff α)) ->
@@ -47,7 +47,7 @@ import           Term.Term
 δapplyVariables = δListFoldLeft δListFoldMkAppVariables
 
 δapplyBinders ::
-  PrettyPrintable α =>
+  -- PrettyPrintable α =>
   [(α, Binder Variable, TermX α Variable)] ->
   DL.Diff (α, Binder Variable, TermX α Variable)
   (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)) ->

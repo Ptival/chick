@@ -7,36 +7,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Repair.Term where
 
 import           Control.Arrow
-import           Control.Lens hiding (preview)
 --import           Control.Monad
 import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
-import           Data.Maybe
-import           Data.List
 import           Text.Printf
 
 import qualified Diff.Atom as ΔA
-import qualified Diff.Constructor as ΔC
 --import qualified Diff.GlobalDeclaration as ΔGD
 import qualified Diff.GlobalEnvironment as ΔGE
-import qualified Diff.Inductive as ΔI
-import qualified Diff.LocalContext as ΔLC
-import qualified Diff.LocalDeclaration as ΔLD
 import qualified Diff.List as ΔL
 import qualified Diff.Term as ΔT
-import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import           Inductive.Inductive
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Repair.State as RS
+import           Repair.Term.Argument
+import           Repair.Term.Branch
 import           Repair.Utils
 import           Term.Binder
 import           Term.Term
@@ -59,10 +53,10 @@ guessIndMatched discriminee _branches = do
       case fun of
         Var _ indName -> do
           (e, _) <- RS.getEnvironments
-          trace $ printf "ENVIRONMENT:\n%s" (prettyStrU e)
+          trace $ printf "ENVIRONMENT:\n%s" (prettyStrU @'Chick e)
           case GE.lookupInductiveByName indName e of
             Just ind -> return ind
-            Nothing -> exc $ printf "Could not find %s in global environment" (prettyStr indName)
+            Nothing -> exc $ printf "Could not find %s in global environment" (prettyStr @'Chick indName)
         _ -> exc "Could not guess the inductive being matched because the type of the discriminee did not look like a variable applied"
     _ -> exc "Could not guess the inductive being matched because the term being matched is not a variable (TODO)"
 
@@ -76,7 +70,7 @@ unknownTypeRepair t = do
   let exc (reason :: String) =
         throwExc $ printf "Repair.Term/unknownTypeRepair: %s" reason
 
-  trace $ printf "Repair.Term/unknownTypeRepair(t: %s)" (prettyStrU t)
+  trace $ printf "Repair.Term/unknownTypeRepair(t: %s)" (prettyStrU @'Chick t)
 
   case t of
 
@@ -85,7 +79,7 @@ unknownTypeRepair t = do
     Var _ v -> do
       τv <- lookupType v
       (δv, δτv) <- unpackDeclarationDiff <$> findDeclarationDiff v
-      repairArgs [] τv δτv (ΔT.CpyVar δv)
+      repairArgs repair [] τv δτv (ΔT.CpyVar δv)
 
     App _ _ _ -> do
       -- (f, [x, y, z])
@@ -98,12 +92,12 @@ unknownTypeRepair t = do
           -- let δγ = view RS.δcontext s
           -- γ' <- ΔLC.patch γ δγ
           τv <- lookupType v
-          trace $ printf "Trying to repair an application of %s" (prettyStr v)
-          trace $ printf "Looked up type: %s" (prettyStr τv)
+          trace $ printf "Trying to repair an application of %s" (prettyStr @'Chick v)
+          trace $ printf "Looked up type: %s" (prettyStr @'Chick τv)
           (δv, δτv) <- unpackDeclarationDiff <$> findDeclarationDiff v
-          trace $ printf "τv: %s" (prettyStr τv)
-          trace $ printf "δτv: %s" (prettyStr δτv)
-          repairArgs (map snd args) τv δτv (ΔT.CpyVar δv)
+          trace $ printf "τv: %s" (prettyStr @'Chick τv)
+          trace $ printf "δτv: %s" (prettyStr @'Chick δτv)
+          repairArgs repair (map snd args) τv δτv (ΔT.CpyVar δv)
 
         _ -> exc "repair, Same, App, Not Var"
 
@@ -120,12 +114,12 @@ unknownTypeRepair t = do
       -- eventually, it'd be nice to have the type at which the match is done already
       -- figured out
       ind  <- guessIndMatched d bs
-      trace $ printf "*** INDUCTIVE MATCHED: %s" (prettyStr ind)
+      trace $ printf "*** INDUCTIVE MATCHED: %s" (prettyStr @'Chick ind)
       (e, δe) <- RS.getEnvironments
       δind <- ΔGE.findGlobalIndDiff ind e δe
-      trace $ printf "*** δINDUCTIVE MATCHED: %s" (prettyStr δind)
-      δbs <- repairBranches bs ind δind
-      trace $ printf "*** PROPOSED: %s" (prettyStr δbs)
+      trace $ printf "*** δINDUCTIVE MATCHED: %s" (prettyStr @'Chick δind)
+      δbs <- repairBranches unknownTypeRepair bs ind δind
+      trace $ printf "*** PROPOSED: %s" (prettyStr @'Chick δbs)
       return $ ΔT.CpyMatch δd δbs
 
     Annot _ _ _ -> exc "utr: Annot"
@@ -145,7 +139,7 @@ genericRepair t τ = do
   --       throwExc $ printf "Repair.Term/genericRepair: %s" reason
 
   trace $ printf "Repair.Term/genericRepair(t: %s, τ: %s)"
-    (prettyStrU t) (prettyStrU τ)
+    (prettyStrU @'Chick t) (prettyStrU @'Chick τ)
 
   case t of
 
@@ -166,7 +160,7 @@ repair ::
   ) =>
   Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw -> Eff r (ΔT.Diff Raw.Raw)
 repair t τ δτ =
-  trace (printf "Repair.Term/repair(t: %s, τ: %s, δτ: %s)" (prettyStrU t) (prettyStrU τ) (show δτ)) >>
+  trace (printf "Repair.Term/repair(t: %s, τ: %s, δτ: %s)" (prettyStrU @'Chick t) (prettyStrU @'Chick τ) (show δτ)) >>
   RS.traceState >>
   let exc (reason :: String) = throwExc $ printf "Repair.Term/repair: %s" reason in
 
@@ -195,7 +189,7 @@ repair t τ δτ =
   ΔT.CpyVar ΔA.Same -> genericRepair t τ -- OK
 
   ΔT.CpyVar (ΔA.Replace δv) -> do
-    trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview δv) (preview t)
+    trace $ printf "AT THIS POINT δv IS: %s, t IS: %s" (preview @'Chick δv) (preview @'Chick t)
     _ <- exc "YO FIXME"
     return $ ΔT.Replace "TODO" -- TODO: confirm this is always good
 
@@ -221,8 +215,8 @@ repair t τ δτ =
     -- - recursively diff by substituting b' for b
     let varsFreeInTerm = foldr (\ v -> (v :)) [] t
     boundVarsInContext <- RS.boundVarsInContext
-    trace $ printf "Variables free  in the term:    %s" (show . map prettyStr $ varsFreeInTerm)
-    trace $ printf "Variables bound in the context: %s" (show . map prettyStr $ boundVarsInContext)
+    trace $ printf "Variables free  in the term:    %s" (show . map (prettyStr @'Chick) $ varsFreeInTerm)
+    trace $ printf "Variables bound in the context: %s" (show . map (prettyStr @'Chick) $ boundVarsInContext)
     let v :: Variable = "TODO"
     let b = Binder (Just v)
     τ1' <- ΔT.patch τ d1

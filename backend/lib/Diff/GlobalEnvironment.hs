@@ -1,6 +1,8 @@
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Diff.GlobalEnvironment
   ( Diff
@@ -19,6 +21,7 @@ import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
 import           Diff.Utils
 import           Inductive.Inductive
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import qualified Term.Raw as Raw
 import           Term.Variable
@@ -30,7 +33,7 @@ type Diff α = ΔL.Diff (GlobalDeclaration α Variable) (ΔGD.Diff α)
 patch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   GlobalEnvironment α Variable -> Diff α -> Eff r (GlobalEnvironment α Variable)
@@ -103,9 +106,9 @@ findGlobalDeclarationDiff v e δe = do
 -- Assumption: the ind existed before, and we're just trying to find how it was
 -- modified
 findGlobalIndDiff ::
-  ( PrettyPrintable α
+  ( Eq ν
   , Member (Exc String) r
-  , Eq ν
+  , PrettyPrintable 'Chick α
   ) =>
   Inductive α ν -> GlobalEnvironment ξ ν -> Diff α ->
   Eff r (ΔI.Diff α)
@@ -126,4 +129,4 @@ findGlobalIndDiff ind e δe = do
       else findGlobalIndDiff ind (GlobalEnvironment e') δ
     (ΔL.Modify _ δ, _ : e') ->
       findGlobalIndDiff ind (GlobalEnvironment e') δ
-    _ -> exc $ prettyStr δe
+    _ -> exc $ prettyStr @'Chick δe

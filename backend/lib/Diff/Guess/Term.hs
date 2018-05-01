@@ -44,7 +44,7 @@ import           Diff.Guess.Node
 import qualified Diff.Term as ΔT
 import           Diff.Utils
 import           Language (Language(Chick))
-import           PrettyPrinting.Term ()
+import           PrettyPrinting.Chick ()
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import qualified Term.Raw as Raw
@@ -381,7 +381,7 @@ mkGuessδ n1 n2 m = go n1 n2
           (Var _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
 
           _ -> do
-            error $ printf "TODO: (%s, %s) (%s, %s)" (preview $ node n1) (preview $ node n2) (show $ node n1) (show $ node n2)
+            error $ printf "TODO: (%s, %s) (%s, %s)" (preview @'Chick $ node n1) (preview @'Chick $ node n2) (show $ node n1) (show $ node n2)
 
 -- δs' <- forM τs' (go n1)
 -- case viewR δs' of

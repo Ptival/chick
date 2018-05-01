@@ -6,14 +6,8 @@ module Vernacular
   ( Vernacular(..)
   ) where
 
-import           Control.Monad.Reader
-import           Data.Default
-import           Text.PrettyPrint.Annotated.WL
-
 import qualified Definition as D
 import qualified Inductive.Inductive as I
-import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
 
 data Vernacular α ν

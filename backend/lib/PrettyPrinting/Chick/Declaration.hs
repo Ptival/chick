@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -5,32 +7,33 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeApplications #-}
 
-module PrettyPrinting.Coq.Declaration
+module PrettyPrinting.Chick.Declaration
   (
   ) where
 
+import           Control.Monad.Reader
+import           Data.Default
 import           Text.PrettyPrint.Annotated.WL
 
-import qualified Inductive.Inductive as I
-import           Language (Language(Coq))
-import           PrettyPrinting.Coq.Definition ()
-import           PrettyPrinting.Coq.Inductive ()
+import           Language (Language(Chick))
+import           PrettyPrinting.Chick.Definition ()
+import           PrettyPrinting.Chick.Inductive ()
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
 import           Vernacular
 
-instance PrettyPrintableUnannotated 'Coq (Vernacular α Variable) where
+instance PrettyPrintableUnannotated 'Chick (Vernacular α Variable) where
   prettyDocU = \case
     Definition defn -> do
-      defDoc <- prettyDocU @'Coq defn
+      defDoc <- prettyDocU @'Chick defn
       return $ hcat
         [ defDoc
         , text "."
         ]
 
     Inductive ind -> do
-      indDoc <- prettyDocU @'Coq ind
+      indDoc <- prettyDocU @'Chick ind
       return $ hcat
         [ indDoc
         , text "."
@@ -39,5 +42,5 @@ instance PrettyPrintableUnannotated 'Coq (Vernacular α Variable) where
     Unsupported s -> do
       return $ text s
 
-instance PrettyPrintable 'Coq (Vernacular α Variable) where
-  prettyDoc v = runReader (prettyDocU v) def
+instance PrettyPrintable 'Chick (Vernacular α Variable) where
+  prettyDoc v = runReader (prettyDocU @'Chick v) def

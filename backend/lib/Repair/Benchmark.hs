@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -20,6 +21,7 @@ import qualified Diff.List as ΔL
 import qualified Diff.Script as ΔS
 import qualified Diff.Term as ΔT
 import qualified Diff.Vernacular as ΔV
+import           Language (Language(Chick))
 import           Parsing
 import           Parsing.Vernacular
 import           PrettyPrinting.PrettyPrintable
@@ -68,7 +70,7 @@ patchProof t τ δτ = runAll repairThenPatch
     repairThenPatch =
       RT.repair t τ δτ
       >>= (\ δ -> do
-            trace $ printf "REPAIR COMPLETED: %s" $ prettyStr δ
+            trace $ printf "REPAIR COMPLETED: %s" $ prettyStr @'Chick δ
             return δ
           )
       >>= ΔT.patch t
@@ -177,7 +179,7 @@ repairTermBenchmark = do
     (RepairTermBenchmark fromTerm fromType toType diff expected) -> do
     putStrLn $
       printf "Attempting to patch `%s` assumed to have type `%s` to type `%s`"
-      (prettyStrU fromTerm) (prettyStrU fromType) (prettyStrU toType)
+      (prettyStrU @'Chick fromTerm) (prettyStrU @'Chick fromType) (prettyStrU @'Chick toType)
     diffed <- runSkipTrace . runError $ ΔT.patch fromType diff
     if diffed == (Right toType :: Either String (Raw.Type Variable))
       then
@@ -186,19 +188,19 @@ repairTermBenchmark = do
       Left  e -> putStrLn $ printf "Patching failed: %s" e
       Right r ->
         if r == expected
-        then putStrLn $ printf "Patching succeeded: %s" (prettyStrU r)
+        then putStrLn $ printf "Patching succeeded: %s" (prettyStrU @'Chick r)
         else do
           putStrLn $ printf "Patching succeeded, but did not match expectations"
-          putStrLn $ printf "Expected: %s" (prettyStrU expected)
-          putStrLn $ printf "Obtained: %s" (prettyStrU r)
+          putStrLn $ printf "Expected: %s" (prettyStrU @'Chick expected)
+          putStrLn $ printf "Obtained: %s" (prettyStrU @'Chick r)
       else do
         putStrLn $ printf "Sanity-checking diff %s failed" (show diff)
         case diffed of
           Left  e -> do
             putStrLn $ printf "Diffing failed: %s" e
           Right d -> do
-            putStrLn $ printf "Original type: %s" (prettyStrU toType)
-            putStrLn $ printf "Diffed   type: %s" (prettyStrU d)
+            putStrLn $ printf "Original type: %s" (prettyStrU @'Chick toType)
+            putStrLn $ printf "Diffed   type: %s" (prettyStrU @'Chick d)
 
 repairScript ::
   Script Raw.Raw Variable -> ΔS.Diff Raw.Raw ->
@@ -353,4 +355,4 @@ repairScriptBenchmark = do
             putStrLn $ show s''
   where
     printScript :: Script α Variable -> IO ()
-    printScript = putStrLn . prettyStrU
+    printScript = putStrLn . prettyStrU @'Chick

@@ -1,8 +1,10 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Server.ChickHandler where
 
@@ -32,13 +34,12 @@ import           Text.Megaparsec (parseMaybe)
 import           Text.Printf
 
 import qualified Diff.Guess.Script as ΔGS
+import qualified Language (Language(Chick))
 import           Parsing.Script
-import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.Benchmark
 import           Server.Chick
 import           Server.Session
-import           Utils
 
 type ChickHandler a = Handler Chick Chick a
 
@@ -64,15 +65,15 @@ chickGuessHandler = do
             (Just bef, Just aft) -> do
               liftIO $ do
                 putStrLn $ "BEFORE:"
-                putStrLn $ prettyStrU $ bef
+                putStrLn $ prettyStrU @'Language.Chick bef
                 putStrLn $ "AFTER:"
-                putStrLn $ prettyStrU $ aft
+                putStrLn $ prettyStrU @'Language.Chick aft
               δ <- liftIO $ runTrace $ ΔGS.guess bef aft
               liftIO $ putStrLn $ printf "GUESSED:\n%s" (show δ)
               liftIO (runTrace (repairScript bef δ)) >>= \case
                 Left e -> return $ Just e
                 Right patched ->
-                  return $ Just $ prettyStrU patched
+                  return $ Just $ prettyStrU @'Language.Chick patched
                   -- ++ "\n(*"
                   -- ++ show δ
                   -- ++ "*)"

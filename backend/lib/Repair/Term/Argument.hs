@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE ConstraintKinds #-}
@@ -6,44 +7,26 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module Repair.Arguments where
+module Repair.Term.Argument
+  ( repairArgs
+  ) where
 
-import           Control.Arrow
-import           Control.Lens hiding (preview)
---import           Control.Monad
 import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
 import           Control.Monad.Freer.Trace
-import           Data.Maybe
-import           Data.List
 import           Text.Printf
 
-import qualified Diff.Atom as ΔA
-import qualified Diff.Constructor as ΔC
---import qualified Diff.GlobalDeclaration as ΔGD
-import qualified Diff.GlobalEnvironment as ΔGE
-import qualified Diff.Inductive as ΔI
-import qualified Diff.LocalContext as ΔLC
-import qualified Diff.LocalDeclaration as ΔLD
-import qualified Diff.List as ΔL
 import qualified Diff.Term as ΔT
-import qualified Diff.Triple as Δ3
 import           Diff.Utils
-import           Inductive.Inductive
+import           Language (Language(Chick))
+import           PrettyPrinting.Chick ()
 import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.PrettyPrintableUnannotated
-import qualified Repair.State as RS
 import           Repair.Utils
-import           Term.Binder
 import           Term.Term
--- import qualified Term.TypeChecked as C
 import qualified Term.Raw as Raw
-import qualified Term.Universe as U
-import qualified Typing.GlobalEnvironment as GE
 
 -- | For example:
 -- | τ  = A → C → D                             t  = (f a) c
@@ -61,17 +44,18 @@ import qualified Typing.GlobalEnvironment as GE
 repairArgs ::
   ( RepairEff r
   ) =>
+  RepairTermType r ->
   [Raw.Term Variable] ->
   Raw.Type Variable ->
   ΔT.Diff Raw.Raw ->
   ΔT.Diff Raw.Raw ->
   Eff r (ΔT.Diff Raw.Raw)
-repairArgs args τ0 δτ0 δfun =
+repairArgs repair args τ0 δτ0 δfun =
   trace "Repair.Term/repairArgs with:" >>
-  trace (printf "> args: %s" (prettyStr args)) >>
-  trace (printf "> τ0:   %s" (prettyStr   τ0)) >>
-  trace (printf "> δτ0:  %s" (prettyStr  δτ0)) >>
-  trace (printf "> δfun: %s" (prettyStr δfun)) >>
+  trace (printf "> args: %s" (prettyStr @'Chick args)) >>
+  trace (printf "> τ0:   %s" (prettyStr @'Chick   τ0)) >>
+  trace (printf "> δτ0:  %s" (prettyStr @'Chick  δτ0)) >>
+  trace (printf "> δfun: %s" (prettyStr @'Chick δfun)) >>
   go δfun args τ0 δτ0
   where
 
@@ -82,11 +66,11 @@ repairArgs args τ0 δτ0 δfun =
 
       (do
         trace $ "Repair.Term/repairArgs/go:"
-        trace $ printf "> args: %s" (prettyStr args)
-        trace $ printf "> τ:    %s" (prettyStr τ)
-        trace $ printf "> δτ:   %s" (prettyStr δτ)
+        trace $ printf "> args: %s" (prettyStr @'Chick args)
+        trace $ printf "> τ:    %s" (prettyStr @'Chick τ)
+        trace $ printf "> δτ:   %s" (prettyStr @'Chick δτ)
         τ' <- ΔT.patch τ δτ
-        trace $ printf "> τ':   %s" (prettyStr τ')
+        trace $ printf "> τ':   %s" (prettyStr @'Chick τ')
       )
       >>
 
@@ -135,7 +119,7 @@ repairArgs args τ0 δτ0 δfun =
         (_, ΔT.Same) -> do
           -- even though it's Same, we still need to peel off ∀s from τ
           -- before returning acc
-          trace $ printf "τ: %s" (prettyStr τ)
+          trace $ printf "τ: %s" (prettyStr @'Chick τ)
           case (args, τ) of
             (_ : args, Pi _ _ bτ') ->
               let (_, τ') = unscopeTerm bτ' in

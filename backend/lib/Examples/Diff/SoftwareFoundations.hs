@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Examples.Diff.SoftwareFoundations
   ( scriptBefore
@@ -6,7 +8,9 @@ module Examples.Diff.SoftwareFoundations
   ) where
 
 import           Data.String.QQ
+import           Language (Language(Chick))
 import           Parsing.Unsafe
+import           PrettyPrinting.Chick ()
 import           PrettyPrinting.PrettyPrintableUnannotated
 import qualified Term.Raw as Raw
 import           Term.Term
@@ -15,8 +19,8 @@ import qualified StandardLibrary as SL
 
 commonPrefix :: String
 commonPrefix =
-  prettyStrU SL.indBool ++ ".\n" ++
-  prettyStrU SL.indNat  ++ ".\n" ++
+  prettyStrU @'Chick SL.indBool ++ ".\n" ++
+  prettyStrU @'Chick SL.indNat  ++ ".\n" ++
   [s|
 
 Fixpoint ifthenelse : ∀ (T : Type), bool → T → T → T := λ T i t e,

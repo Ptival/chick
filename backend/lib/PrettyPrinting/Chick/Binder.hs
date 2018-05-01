@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-# LANGUAGE DataKinds #-}
@@ -13,9 +14,15 @@ module PrettyPrinting.Chick.Binder
 import Text.PrettyPrint.Annotated.WL
 
 import Language (Language(Chick))
+import PrettyPrinting.Chick.Variable ()
 import PrettyPrinting.PrettyPrintable
 import Term.Binder
+import Term.Variable
+import PrettyPrinting.PrettyPrintableUnannotated
 
 instance PrettyPrintable 'Chick ν => PrettyPrintable 'Chick (Binder ν) where
   prettyDoc (Binder Nothing)  = text "_"
   prettyDoc (Binder (Just v)) = prettyDoc @'Chick v
+
+instance PrettyPrintableUnannotated 'Chick (Binder Variable) where
+  prettyDocU d = return $ prettyDoc @'Chick d

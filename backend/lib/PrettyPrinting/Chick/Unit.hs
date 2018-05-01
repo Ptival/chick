@@ -11,7 +11,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module PrettyPrinting.Chick.Pair where
+module PrettyPrinting.Chick.Unit where
 
 import Text.PrettyPrint.Annotated.WL
 
@@ -22,21 +22,8 @@ import PrettyPrinting.Chick.Term ()
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 
-instance
-  ( PrettyPrintableUnannotated 'Chick a
-  , PrettyPrintableUnannotated 'Chick b
-  ) => PrettyPrintableUnannotated 'Chick (a, b)
-  where
-  prettyDocU (a, b) = do
-    aDoc <- prettyDocU @'Chick a
-    bDoc <- prettyDocU @'Chick b
-    return $ encloseSep lbracket rbracket comma [aDoc, bDoc]
+instance PrettyPrintableUnannotated 'Chick () where
+  prettyDocU = return . prettyDoc @'Chick
 
-instance
-  ( PrettyPrintable 'Chick a
-  , PrettyPrintable 'Chick b
-  ) => PrettyPrintable 'Chick (a, b) where
-  prettyDoc (a, b) =
-    let aDoc = prettyDoc @'Chick a in
-    let bDoc = prettyDoc @'Chick b in
-    encloseSep lbracket rbracket comma [aDoc, bDoc]
+instance PrettyPrintable 'Chick () where
+  prettyDoc () = text "()"

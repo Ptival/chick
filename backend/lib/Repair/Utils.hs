@@ -1,12 +1,15 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Repair.Utils
   ( RepairEff
   , RepairTermType
+  , RepairTermType''
   , lookupType
   , findDeclarationDiff
   , findGlobalDeclarationDiff
@@ -29,6 +32,7 @@ import qualified Diff.LocalDeclaration as ΔLD
 import qualified Diff.Term as ΔT
 -- import qualified Diff.Term as ΔT
 import           Diff.Utils
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           Repair.State
 import qualified Term.Raw as Raw
@@ -42,7 +46,19 @@ type RepairEff r =
   , Member (State RepairState) r
   )
 
-type RepairTermType r = (RepairEff r) => Raw.Term Variable -> Eff r (ΔT.Diff Raw.Raw)
+type RepairTermType r =
+  (RepairEff r
+  ) =>
+  Raw.Term Variable ->
+  Raw.Type Variable ->
+  ΔT.Diff Raw.Raw ->
+  Eff r (ΔT.Diff Raw.Raw)
+
+type RepairTermType'' r =
+  (RepairEff r
+  ) =>
+  Raw.Term Variable ->
+  Eff r (ΔT.Diff Raw.Raw)
 
 lookupType ::
   ( Member (Exc String) r
@@ -54,7 +70,7 @@ lookupType target = do
   (e, _) <- getEnvironments
   let res = LC.lookupType target γ <|> GE.lookupRawType target e
   case res of
-    Nothing -> exc $ printf "Could not find %s in either local context or global environment" (prettyStr target)
+    Nothing -> exc $ printf "Could not find %s in either local context or global environment" (prettyStr @'Chick target)
     Just τ  -> return τ
 
 findGlobalDeclarationDiff ::
@@ -85,7 +101,7 @@ findDeclarationDiff v = do
         `catchError`
         (\ (globalError :: String) -> exc $ printf
           "Could not find %s in either local context or global environment:\n  > %s\n  > %s"
-          (prettyStr v) localError globalError
+          (prettyStr @'Chick v) localError globalError
         )
     )
   return result

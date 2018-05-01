@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Diff.Guess.Script
   ( guess
@@ -10,6 +12,7 @@ import           Control.Monad.Freer.Trace
 import qualified Diff.Guess.Vernacular as ΔGV
 import qualified Diff.List as ΔL
 import qualified Diff.Script as ΔS
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           Script
 import qualified Term.Raw as Raw
@@ -23,8 +26,8 @@ guess (Script (v1 : s1)) (Script (v2 : s2))
   | v1 == v2  = ΔL.Keep <$> guess (Script s1) (Script s2)
   | otherwise = do
       trace "########## v1 /= v2, making a guess"
-      trace $ prettyStr v1
-      trace $ prettyStr v2
+      trace $ prettyStr @'Chick v1
+      trace $ prettyStr @'Chick v2
       δv <- ΔGV.guess v1 v2
       δs <- guess (Script s1) (Script s2)
       return $ ΔL.Modify δv δs

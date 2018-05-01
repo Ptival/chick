@@ -1,7 +1,12 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Diff.Inductive
   ( Δc
@@ -33,6 +38,7 @@ import           Diff.ListFoldUtils
 import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
 import           Inductive.Inductive
+import           PrettyPrinting.Chick ()
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.Universe ()
 import           Term.Binder
@@ -92,14 +98,26 @@ data Diff α
     }
   deriving (Show)
 
-instance PrettyPrintable α => PrettyPrintable (Diff α) where
+instance
+  ( PrettyPrintable l α
+  , PrettyPrintable l (α, Binder Variable, TermX α Variable)
+  , PrettyPrintable l (α, TypeX α Variable)
+  , PrettyPrintable l (α, Variable, TermX α Variable)
+  , PrettyPrintable l (Binder Variable)
+  , PrettyPrintable l (Branch α Variable)
+  , PrettyPrintable l (Constructor α Variable)
+  , PrettyPrintable l (TermX α Variable)
+  , PrettyPrintable l Universe
+  , PrettyPrintable l Variable
+  ) => PrettyPrintable l (Diff α)
+  where
   prettyDoc = \case
-    Same               -> text "Same"
+    Same                  -> text "Same"
     Modify δ1 δ2 δ3 δ4 δ5 -> fillSep [ text "Modify", go δ1 , go δ2, go δ3, go δ4, go δ5 ]
 
     where
-      go :: PrettyPrintable a => a -> Doc ()
-      go = parens . prettyDoc
+      go :: PrettyPrintable l a => a -> Doc ()
+      go = parens . prettyDoc @l
 
 patchParameter ::
   ( Member (Exc String) r
@@ -120,7 +138,7 @@ patchIndex = D3.patch DA.patch DA.patch DT.patch
 patch ::
   ( Member (Exc String) r
   , Member Trace r
-  , PrettyPrintable α
+  -- , PrettyPrintable α
   , Show α
   ) =>
   Inductive α Variable -> Diff α -> Eff r (Inductive α Variable)
