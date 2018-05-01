@@ -132,13 +132,63 @@ Library
                   Parsing.Vernacular
                   -- Playground
                   Precedence
+                  PrettyPrinting.Chick
+                  PrettyPrinting.Chick.Binder
+                  PrettyPrinting.Chick.Constructor
+                  PrettyPrinting.Chick.Declaration
+                  PrettyPrinting.Chick.Definition
+                  PrettyPrinting.Chick.DefinitionObjectKind
+                  PrettyPrinting.Chick.LocalContext
+                  PrettyPrinting.Chick.LocalDeclaration
+                  PrettyPrinting.Chick.GlobalEnvironment
+                  PrettyPrinting.Chick.GlobalDeclaration
+                  PrettyPrinting.Chick.Inductive
+                  PrettyPrinting.Chick.List
+                  PrettyPrinting.Chick.Pair
+                  PrettyPrinting.Chick.Script
                   PrettyPrinting.Chick.Term
-                  -- PrettyPrinting.OCaml.Binder
-                  -- PrettyPrinting.OCaml.Declaration
-                  -- PrettyPrinting.OCaml.Variable
+                  PrettyPrinting.Chick.Triple
+                  PrettyPrinting.Chick.Unit
+                  PrettyPrinting.Chick.Universe
+                  PrettyPrinting.Chick.Variable
+                  --PrettyPrinting.Coq
                   -- PrettyPrinting.Coq.Binder
+                  -- PrettyPrinting.Coq.Constructor
                   -- PrettyPrinting.Coq.Declaration
+                  -- PrettyPrinting.Coq.Definition
+                  -- PrettyPrinting.Coq.DefinitionObjectKind
+                  -- PrettyPrinting.Coq.LocalContext
+                  -- PrettyPrinting.Coq.LocalDeclaration
+                  -- PrettyPrinting.Coq.GlobalEnvironment
+                  -- PrettyPrinting.Coq.GlobalDeclaration
+                  -- PrettyPrinting.Coq.Inductive
+                  -- PrettyPrinting.Coq.List
+                  -- PrettyPrinting.Coq.Pair
+                  -- PrettyPrinting.Coq.Script
+                  -- PrettyPrinting.Coq.Term
+                  -- PrettyPrinting.Coq.Triple
+                  -- PrettyPrinting.Coq.Unit
+                  -- PrettyPrinting.Coq.Universe
                   -- PrettyPrinting.Coq.Variable
+                  -- PrettyPrinting.OCaml
+                  -- PrettyPrinting.OCaml.Binder
+                  -- PrettyPrinting.OCaml.Constructor
+                  -- PrettyPrinting.OCaml.Declaration
+                  -- PrettyPrinting.OCaml.Definition
+                  -- PrettyPrinting.OCaml.DefinitionObjectKind
+                  -- PrettyPrinting.OCaml.LocalContext
+                  -- PrettyPrinting.OCaml.LocalDeclaration
+                  -- PrettyPrinting.OCaml.GlobalEnvironment
+                  -- PrettyPrinting.OCaml.GlobalDeclaration
+                  -- PrettyPrinting.OCaml.Inductive
+                  -- PrettyPrinting.OCaml.List
+                  -- PrettyPrinting.OCaml.Pair
+                  -- PrettyPrinting.OCaml.Script
+                  -- PrettyPrinting.OCaml.Term
+                  -- PrettyPrinting.OCaml.Triple
+                  -- PrettyPrinting.OCaml.Unit
+                  -- PrettyPrinting.OCaml.Universe
+                  -- PrettyPrinting.OCaml.Variable
                   PrettyPrinting.Term
                   PrettyPrinting.PrettyPrintable
                   PrettyPrinting.PrettyPrintableAnnotated
@@ -151,6 +201,8 @@ Library
                   Repair.Script
                   Repair.State
                   Repair.Term
+                  Repair.Term.Argument
+                  Repair.Term.Branch
                   Repair.Utils
                   Repair.Vernacular
                   Script
