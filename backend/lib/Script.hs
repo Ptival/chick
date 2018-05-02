@@ -1,11 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Script where
+module Script
+  ( Script(..)
+  ) where
 
-import Text.PrettyPrint.Annotated.WL
-
-import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Variable
 import Vernacular
 

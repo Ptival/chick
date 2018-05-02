@@ -1,4 +1,6 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Repair.Script.Test
   (
@@ -8,6 +10,7 @@ import           Control.Monad.Freer.Trace
 
 import           Diff.Guess.Script.Test (δScriptSF)
 import           Examples.Diff.SoftwareFoundations (scriptBefore)
+import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.Script (runRepair')
 import           Script
@@ -23,6 +26,6 @@ bar :: IO ()
 bar = do
   foo >>= \case
     Right s -> do
-      putStrLn $ prettyStrU s
+      putStrLn $ prettyStrU @'Chick s
     Left e -> do
       putStrLn e
