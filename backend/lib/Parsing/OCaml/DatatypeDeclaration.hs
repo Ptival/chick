@@ -1,8 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 module Parsing.OCaml.DatatypeDeclaration
-  ( core_type_list_P
+  ( constructor_declaration_P
+  , constructor_declarations_P
+  , core_type_list_P
   , simple_core_type2_P
   , type_declaration_P
+  , type_kind_P
   ) where
 
 import Text.Megaparsec
@@ -27,21 +30,83 @@ type_declaration_P = do
 type_kind_P :: Parser (Type_kind, Private_flag, Maybe Core_type)
 type_kind_P = choice
   [ do
-    equal_T
-    t <- core_type_P
+    t <- try $ do
+      equal_T
+      core_type_P
     return (Ptype_abstract, Public, Just t)
   , do
-    equal_T
-    cs <- constructor_declarations_P
+    cs <- try $ do
+      equal_T
+      constructor_declarations_P
     return (Ptype_variant (reverse cs), Private, Nothing)
+  , do
+    priv <- try $ do
+      equal_T
+      priv <- private_flag_P
+      l_brace_T
+      return priv
+    labels <- label_declarations_P
+    r_brace_T
+    return (Ptype_record labels, priv, Nothing)
   , return (Ptype_abstract, Public, Nothing)
+  ]
+
+label_declarations_P :: Parser [Label_declaration]
+label_declarations_P = choice
+  [ do
+    h <- label_declaration_semi_P
+    t <- label_declarations_P
+    return $ h : t
+  , (: []) <$> label_declaration_semi_P
+  , (: []) <$> label_declaration_P
+  ]
+
+label_declaration_P :: Parser Label_declaration
+label_declaration_P = try $ do
+  mut <- mutable_flag_P
+  label <- label_P
+  colon_T
+  t <- poly_type_no_attr_P
+  -- TODO: attributes
+  return $ field mut (mkRHS label 2) t
+
+label_declaration_semi_P :: Parser Label_declaration
+label_declaration_semi_P = try $ do
+  mut <- mutable_flag_P
+  label <- label_P
+  colon_T
+  t <- poly_type_no_attr_P
+  -- TODO: attributes
+  semi_T
+  -- TODO: attributes
+  return $ field mut (mkRHS label 2) t
+
+poly_type_no_attr_P = choice
+  [ core_type_no_attr_P
+  -- TODO
+  ]
+
+label_P :: Parser String
+label_P = l_ident_T
+
+mutable_flag_P :: Parser Mutable_flag
+mutable_flag_P = choice
+  [ mutable_T *> return Mutable
+  , return Immutable
+  ]
+
+private_flag_P :: Parser Private_flag
+private_flag_P = choice
+  [ private_T *> return Private
+  , return Public
   ]
 
 constructor_declarations_P :: Parser [Constructor_declaration]
 constructor_declarations_P = choice
-  [ bar_T *> return []
-  , (: []) <$> (bar_T *> constructor_declaration_P)
-  , constructor_declaration_P `sepBy1` bar_T
+  [ constructor_declaration_P `sepBy1` bar_T
+  , try (bar_T *> constructor_declaration_P `sepBy1` bar_T)
+  , (: []) <$> (try $ bar_T *> constructor_declaration_P)
+  , bar_T *> return []
   ]
 
 constructor_declaration_P :: Parser Constructor_declaration
@@ -94,20 +159,6 @@ mkType {- loc attrs docs text -} params cstrs kind priv manifest name =
   , ptype_manifest = manifest
   --, ptype_attributes :: attributes
   --, ptype_loc :: Location.t
-  }
-
-constructor ::
-  Constructor_arguments ->
-  Maybe Core_type ->
-  Loc String ->
-  Constructor_declaration
-constructor {- loc attrs info -} args res name =
-  Constructor_declaration
-  { pcd_name = name
-  , pcd_args = args
-  , pcd_res  = res
-  --, pcd_loc :: Location.t
-  --, pcd_attributes :: attributes
   }
 
 mkLoc :: a -> Location -> Loc a

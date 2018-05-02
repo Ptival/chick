@@ -3,13 +3,17 @@ module OCaml
   , Constructor_declaration(..)
   , Core_type(..)
   , Core_type_desc(..)
+  , Label_declaration(..)
   , Loc(..)
   , Location
   , Longident(..)
+  , Mutable_flag(..)
   , Private_flag(..)
   , Type_declaration(..)
   , Type_kind(..)
   , Variance(..)
+  , constructor
+  , field
   ) where
 
 data Core_type = Core_type
@@ -105,3 +109,31 @@ data Longident
   | Ldot Longident String
   | Lapply Longident Longident
   deriving (Show)
+
+constructor ::
+  Constructor_arguments ->
+  Maybe Core_type ->
+  Loc String ->
+  Constructor_declaration
+constructor {- loc attrs info -} args res name =
+  Constructor_declaration
+  { pcd_name = name
+  , pcd_args = args
+  , pcd_res  = res
+  --, pcd_loc :: Location.t
+  --, pcd_attributes :: attributes
+  }
+
+field ::
+  Mutable_flag ->
+  Loc String ->
+  Core_type ->
+  Label_declaration
+field {- loc attrs info -} mut name typ =
+  Label_declaration
+  { pld_name    = name
+  , pld_mutable = mut
+  , pld_type    = typ
+  --, pld_loc :: Location.t
+  --, pld_attributes :: attributes
+  }

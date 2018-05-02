@@ -1,12 +1,18 @@
 module Parsing.OCaml.Tokens
   ( bar_T
+  , colon_T
   , equal_T
   , false_T
+  , l_brace_T
   , l_bracket_T
   , l_ident_T
+  , mutable_T
   , of_T
+  , private_T
   , quote_T
+  , r_brace_T
   , r_bracket_T
+  , semi_T
   , star_T
   , true_T
   , type_T
@@ -20,6 +26,9 @@ import Text.Megaparsec.String
 
 bar_T :: Parser ()
 bar_T = symbol "|"
+
+colon_T :: Parser ()
+colon_T = symbol ":"
 
 equal_T :: Parser ()
 equal_T = symbol "="
@@ -36,8 +45,11 @@ ident_char_T = choice
   , digitChar
   ]
 
-l_bracket_T :: Parser Char
-l_bracket_T = char '['
+l_brace_T :: Parser ()
+l_brace_T = symbol "{"
+
+l_bracket_T :: Parser ()
+l_bracket_T = symbol "["
 
 l_ident_T :: Parser String
 l_ident_T = lexeme . try $ do
@@ -45,14 +57,26 @@ l_ident_T = lexeme . try $ do
   cs <- many ident_char_T
   return $ c : cs
 
+mutable_T :: Parser ()
+mutable_T = rword "mutable"
+
 of_T :: Parser ()
 of_T = rword "of"
+
+private_T :: Parser ()
+private_T = rword "private"
 
 quote_T :: Parser ()
 quote_T = symbol "'"
 
-r_bracket_T :: Parser Char
-r_bracket_T = char ']'
+r_brace_T :: Parser ()
+r_brace_T = symbol "}"
+
+r_bracket_T :: Parser ()
+r_bracket_T = symbol "]"
+
+semi_T :: Parser ()
+semi_T = symbol ";"
 
 star_T :: Parser ()
 star_T = symbol "*"

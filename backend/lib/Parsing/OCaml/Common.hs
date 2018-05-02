@@ -7,9 +7,10 @@ import Text.Megaparsec
 import Text.Megaparsec.String
 
 import Parsing.OCaml.Tokens
+import Parsing.Utils
 
 constr_ident_P :: Parser String
-constr_ident_P = choice
+constr_ident_P = lexeme $ choice
   [ u_ident_T
   , l_bracket_T *> r_bracket_T *> return "[]"
   -- TODO: other ones
@@ -18,4 +19,4 @@ constr_ident_P = choice
   ]
 
 ident_P :: Parser String
-ident_P = choice [ u_ident_T, l_ident_T ]
+ident_P = lexeme $ choice [ u_ident_T, l_ident_T ]
