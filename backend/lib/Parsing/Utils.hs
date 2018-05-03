@@ -1,4 +1,11 @@
-module Parsing.Utils where
+module Parsing.Utils
+  ( chainl1
+  , identifier
+  , lexeme
+  , parens
+  , rword
+  , symbol
+  ) where
 
 import           Control.Applicative
 import           Data.Functor
@@ -13,6 +20,14 @@ chainl1 p op = do
   rest x
   where
     rest x = do { f <- op ; y <- p ; rest (f x y) } <|> return x
+
+-- chainl1' :: Parser a -> Parser (b -> a -> b) -> (a -> b) -> Parser b
+-- chainl1' parser op baseConstructor = parser >>= (rest . baseConstructor)
+--     where rest context = do
+--             f <- op
+--             y <- parser
+--             rest $ f context y
+--               <|> return context
 
 sc :: Parser ()
 sc = L.space (void spaceChar) lineCmnt blockCmnt

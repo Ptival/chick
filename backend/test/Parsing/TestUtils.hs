@@ -1,5 +1,6 @@
 module Parsing.TestUtils
   ( mkParsingTest
+  , parse
   ) where
 
 import Data.Maybe

@@ -1,6 +1,7 @@
 module Parsing.OCaml.Tokens
   ( bar_T
   , colon_T
+  , dot_T
   , equal_T
   , false_T
   , l_brace_T
@@ -29,6 +30,9 @@ bar_T = symbol "|"
 
 colon_T :: Parser ()
 colon_T = symbol ":"
+
+dot_T :: Parser ()
+dot_T = symbol "."
 
 equal_T :: Parser ()
 equal_T = symbol "="
