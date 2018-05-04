@@ -7,7 +7,7 @@ module Parsing.OCaml.ModExtLongident
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Tokens
 
 mod_ext_longident_P :: Parser Longident

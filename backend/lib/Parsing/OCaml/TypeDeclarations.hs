@@ -9,10 +9,19 @@ import Text.Megaparsec
 import Text.Megaparsec.String
 
 import OCaml
-import Parsing.OCaml.Common
-import Parsing.OCaml.Tokens
-import Parsing.OCaml.TypeKind
+import Parsing.OCaml.AndTypeDeclaration
+import Parsing.OCaml.TypeDeclaration
 
-type_declarations_P :: Parser [Type_declaration]
+type_declarations_P :: Parser (Rec_flag, [Type_declaration])
 type_declarations_P = do
-  TODO
+    (nonrec_flag, ty) <- type_declaration_P
+    r <- rest
+    return . r $ (nonrec_flag, [ty])
+  where
+    rest = choice
+      [ do
+        ty <- and_type_declaration_P
+        r <- rest
+        return $ \ (nonrec_flag, tys) -> r $ (nonrec_flag, ty : tys)
+      , return id
+      ]

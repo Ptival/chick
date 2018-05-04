@@ -6,14 +6,17 @@ module Parsing.OCaml.Tokens
   , false_T
   , l_brace_T
   , l_bracket_T
+  , l_bracket_at_at_T
   , l_ident_T
   , mutable_T
+  , nonrec_T
   , of_T
   , private_T
   , quote_T
   , r_brace_T
   , r_bracket_T
   , semi_T
+  , semi_semi_T
   , star_T
   , true_T
   , type_T
@@ -55,11 +58,17 @@ l_brace_T = symbol "{"
 l_bracket_T :: Parser ()
 l_bracket_T = symbol "["
 
+l_bracket_at_at_T :: Parser ()
+l_bracket_at_at_T = symbol "[@@"
+
 l_ident_T :: Parser String
 l_ident_T = lexeme . try $ do
   c <- lowerChar
   cs <- many ident_char_T
   return $ c : cs
+
+nonrec_T :: Parser ()
+nonrec_T = rword "nonrec"
 
 mutable_T :: Parser ()
 mutable_T = rword "mutable"
@@ -81,6 +90,9 @@ r_bracket_T = symbol "]"
 
 semi_T :: Parser ()
 semi_T = symbol ";"
+
+semi_semi_T :: Parser ()
+semi_semi_T = symbol ";;"
 
 star_T :: Parser ()
 star_T = symbol "*"
