@@ -1,5 +1,6 @@
 module Parsing.TestUtils
   ( mkParsingTest
+  , mkParsingTestFromFile
   , parse
   ) where
 
@@ -15,3 +16,12 @@ mkParsingTest name parser input =
   testCase name
   $ isJust (parseMaybe parser input)
   @? "Failed to parse:\n" ++ prefix ++ if length input > 20 then "..." else ""
+
+mkParsingTestFromFile :: TestName -> Parser a -> FilePath -> TestTree
+mkParsingTestFromFile name parser fileName =
+  testCase name
+    $ (do
+        input <- readFile fileName
+        return $ isJust (parseMaybe parser input)
+      )
+    @? "Failed to parse " ++ fileName

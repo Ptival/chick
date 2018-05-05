@@ -14,7 +14,7 @@ import Parsing.OCaml.PostItemAttributes
 import Parsing.OCaml.SeqExpr
 import Parsing.OCaml.StructureItem
 import Parsing.OCaml.Tokens
-import Parsing.Utils
+import Parsing.OCaml.Utils
 
 structure_P :: Parser Structure
 structure_P = choice

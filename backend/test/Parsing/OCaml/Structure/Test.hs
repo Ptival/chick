@@ -34,9 +34,23 @@ type a = | A | B | C
 |]
   ]
 
+prefix :: FilePath
+prefix = "test/Parsing/OCaml/Structure/"
+
+files :: [FilePath]
+files = map (prefix ++)
+  [ "infer_00.ml"
+  , "infer_01.ml"
+  , "infer_02.ml"
+  , "infer_03.ml"
+  , "infer_04.ml"
+  , "infer_05.ml"
+  ]
+
 unitTests :: TestTree
 unitTests = testGroup "Parsing.OCaml.DatatypeDeclaration" $ []
-  ++ map (mkParsingTest "structure_item_P" structure_P) structure_tests
+  ++ map (mkParsingTest "structure_P" structure_P) structure_tests
+  ++ map (mkParsingTestFromFile "structure_P" structure_P) files
 
 test :: IO ()
 test = defaultMain unitTests
