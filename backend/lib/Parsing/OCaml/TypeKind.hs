@@ -7,8 +7,7 @@ module Parsing.OCaml.TypeKind
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
-import Parsing.OCaml.Common
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.ConstructorDeclarations
 import Parsing.OCaml.CoreType
 import Parsing.OCaml.LabelDeclarations

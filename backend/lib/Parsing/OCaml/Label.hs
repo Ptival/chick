@@ -4,11 +4,8 @@ module Parsing.OCaml.Label
   ( label_P
   ) where
 
-import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
-import Parsing.OCaml.MutableFlag
 import Parsing.OCaml.Tokens
 
 label_P :: Parser String

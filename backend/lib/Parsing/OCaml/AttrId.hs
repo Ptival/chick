@@ -5,7 +5,7 @@ module Parsing.OCaml.AttrId
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
 import Parsing.OCaml.SingleAttrId
 import Parsing.OCaml.Tokens

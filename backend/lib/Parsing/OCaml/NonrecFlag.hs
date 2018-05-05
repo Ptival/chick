@@ -7,7 +7,7 @@ module Parsing.OCaml.NonrecFlag
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Tokens
 
 nonrec_flag_P :: Parser Rec_flag

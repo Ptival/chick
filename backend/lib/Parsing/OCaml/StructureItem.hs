@@ -7,14 +7,13 @@ module Parsing.OCaml.StructureItem
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
-import Parsing.OCaml.ConstructorArguments
-import Parsing.OCaml.Tokens
 import Parsing.OCaml.TypeDeclarations
 
-structure_item_P = choice
+structure_item_P :: Parser Structure -> Parser Structure_item
+structure_item_P structure_P = choice
   [ do
-    (nr, l) <- type_declarations_P
+    (nr, l) <- type_declarations_P structure_P
     return $ mkstr_ext (Pstr_type nr (reverse l)) Nothing -- FIXME: not Nothing
   ]

@@ -1,5 +1,6 @@
 module Parsing.OCaml.Tokens
-  ( bar_T
+  ( and_T
+  , bar_T
   , colon_T
   , dot_T
   , equal_T
@@ -24,9 +25,12 @@ module Parsing.OCaml.Tokens
   , underscore_T
   ) where
 
-import Parsing.Utils
+import Parsing.OCaml.Utils
 import Text.Megaparsec
 import Text.Megaparsec.String
+
+and_T :: Parser ()
+and_T = rword "and"
 
 bar_T :: Parser ()
 bar_T = symbol "|"

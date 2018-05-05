@@ -7,7 +7,7 @@ module Parsing.OCaml.SimpleCoreType
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.SimpleCoreType2
 
 simple_core_type_P :: Parser Core_type

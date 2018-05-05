@@ -7,7 +7,7 @@ module Parsing.OCaml.ConstructorDeclarations
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.ConstructorDeclaration
 import Parsing.OCaml.Tokens
 

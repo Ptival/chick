@@ -7,7 +7,7 @@ module Parsing.OCaml.ConstructorDeclaration
 
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
 import Parsing.OCaml.GeneralizedConstructorArguments
 

@@ -15,6 +15,7 @@ import           Control.Monad.Fix
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
+import           Parsing.Chick.Utils
 import           Parsing.Utils
 import           Term.Binder
 import           Term.Raw as Raw

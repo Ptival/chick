@@ -7,7 +7,7 @@ module Parsing.OCaml.MutableFlag
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Tokens
 
 mutable_flag_P :: Parser Mutable_flag

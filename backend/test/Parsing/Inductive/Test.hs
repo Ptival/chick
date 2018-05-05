@@ -7,10 +7,8 @@ module Parsing.Inductive.Test
 
 import           Test.Tasty
 import           Test.Tasty.HUnit
-import           Text.Printf
 
 import           Inductive.Inductive
-import           Parsing
 import           Parsing.Unsafe
 import qualified StandardLibrary as SL
 import qualified Term.Raw as Raw

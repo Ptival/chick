@@ -7,7 +7,7 @@ module Parsing.OCaml.CoreTypeList
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.SimpleCoreType
 import Parsing.OCaml.Tokens
 

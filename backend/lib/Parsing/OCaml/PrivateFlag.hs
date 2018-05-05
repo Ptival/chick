@@ -7,7 +7,7 @@ module Parsing.OCaml.PrivateFlag
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Tokens
 
 private_flag_P :: Parser Private_flag

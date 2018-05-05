@@ -7,7 +7,7 @@ module Parsing.OCaml.SeqExpr
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
 import Parsing.OCaml.Expr
 import Parsing.OCaml.Tokens

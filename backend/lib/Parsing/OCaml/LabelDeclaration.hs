@@ -8,7 +8,7 @@ module Parsing.OCaml.LabelDeclaration
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
 import Parsing.OCaml.Label
 import Parsing.OCaml.MutableFlag

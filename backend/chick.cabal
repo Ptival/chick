@@ -122,9 +122,41 @@ Library
                   Inductive.Utils
                   Language
                   Notations
+                  OCaml.Parsing.ASTTypes
+                  OCaml.Parsing.Docstrings
+                  OCaml.Parsing.Location
+                  OCaml.Parsing.ParseTree
+                  OCaml.StdLib.Lexing
+                  OCaml.StdLib.Parsing
                   Parsing
                   -- Parsing.Atomic
+                  Parsing.Chick.Utils
+                  Parsing.OCaml.Common
+                  Parsing.OCaml.ConstructorArguments
+                  Parsing.OCaml.ConstructorDeclaration
+                  Parsing.OCaml.ConstructorDeclarations
+                  Parsing.OCaml.CoreType
+                  Parsing.OCaml.CoreType2
+                  Parsing.OCaml.CoreTypeList
+                  Parsing.OCaml.CoreTypeNoAttr
+                  Parsing.OCaml.GeneralizedConstructorArguments
+                  Parsing.OCaml.Label
+                  Parsing.OCaml.LabelDeclaration
+                  Parsing.OCaml.LabelDeclarationSemi
+                  Parsing.OCaml.LabelDeclarations
+                  Parsing.OCaml.ModExtLongident
+                  Parsing.OCaml.MutableFlag
+                  Parsing.OCaml.NonrecFlag
+                  Parsing.OCaml.PolyTypeNoAttr
+                  Parsing.OCaml.PrivateFlag
+                  Parsing.OCaml.SimpleCoreType
+                  Parsing.OCaml.SimpleCoreType2
+                  Parsing.OCaml.SimpleCoreTypeOrTuple
+                  Parsing.OCaml.Tokens
+                  Parsing.OCaml.TypeKind
+                  Parsing.OCaml.TypeLongident
                   Parsing.OCaml.TypeDeclaration
+                  Parsing.OCaml.Utils
                   Parsing.Inductive
                   Parsing.Inductive.Test
                   Parsing.Script
@@ -272,6 +304,7 @@ Test-suite Test
     Diff.Motive.Test
     Inductive.Eliminator.Test
     Inductive.Inductive.Test
+    Parsing.OCaml.StructureItem.Test
     Parsing.Inductive.Test
     StandardLibraryDiff.Test
     Term.Term.Test

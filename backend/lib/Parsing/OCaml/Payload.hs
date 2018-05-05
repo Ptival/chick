@@ -5,10 +5,9 @@ module Parsing.OCaml.Payload
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
-import Parsing.OCaml.Structure
+import OCaml.Parsing.ParseTree
 
-payload_P :: Parser Payload
-payload_P = choice
+payload_P :: Parser Structure -> Parser Payload
+payload_P structure_P = choice
   [ PStr <$> structure_P
   ]

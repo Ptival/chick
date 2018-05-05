@@ -7,11 +7,8 @@ module Parsing.OCaml.PostItemAttributes
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
-import Parsing.OCaml.Common
-import Parsing.OCaml.ConstructorArguments
-import Parsing.OCaml.Tokens
-import Parsing.OCaml.TypeDeclarations
+import OCaml.Parsing.ParseTree
+import Parsing.OCaml.PostItemAttribute
 
-post_item_attributes_P :: Parser [a]
-post_item_attributes_P = many post_item_attribute_P
+post_item_attributes_P :: Parser Structure -> Parser [(Loc String, Payload)]
+post_item_attributes_P structure_P = many (post_item_attribute_P structure_P)

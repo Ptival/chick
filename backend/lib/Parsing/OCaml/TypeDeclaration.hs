@@ -8,7 +8,7 @@ module Parsing.OCaml.TypeDeclaration
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
 import Parsing.OCaml.NonrecFlag
 import Parsing.OCaml.Tokens

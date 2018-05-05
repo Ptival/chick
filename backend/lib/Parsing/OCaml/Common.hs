@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
 module Parsing.OCaml.Common
   ( constr_ident_P
   , ident_P
@@ -8,17 +10,18 @@ module Parsing.OCaml.Common
   , mkstrexp
   , mkTyp
   , mkType
+  , text_str
   ) where
 
 import Data.Maybe
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml.Parsing.ASTTypes
+import OCaml.Parsing.Docstrings
 import OCaml.Parsing.Location
 import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Tokens
-import Parsing.Utils
+import Parsing.OCaml.Utils
 
 default_loc :: Location
 default_loc = none
@@ -105,9 +108,11 @@ rhsLoc _ = none -- FIXME
 mkRHS :: a -> t -> Loc a
 mkRHS rhs pos = mkLoc rhs (rhsLoc pos)
 
+text_str :: a -> [Structure_item]
 text_str pos = textStr (rhs_text pos)
 
+attributeStr :: Maybe Location -> Attribute -> Structure_item
 attributeStr mloc a = mkStr mloc (Pstr_attribute a)
 
-textStr :: [()] -> [Structure_item]
-textStr txt = map (\ ds -> attributeStr Nothing (text_attr ds)) txt
+textStr :: [Docstring] -> [Structure_item]
+textStr text = map (\ ds -> attributeStr Nothing (text_attr ds)) text

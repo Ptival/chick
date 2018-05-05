@@ -7,10 +7,9 @@ module Parsing.OCaml.LabelDeclarations
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.LabelDeclaration
 import Parsing.OCaml.LabelDeclarationSemi
-import Parsing.OCaml.Tokens
 
 label_declarations_P :: Parser [Label_declaration]
 label_declarations_P = choice

@@ -7,7 +7,7 @@ module Parsing.OCaml.GeneralizedConstructorArguments
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.ConstructorArguments
 import Parsing.OCaml.Tokens
 

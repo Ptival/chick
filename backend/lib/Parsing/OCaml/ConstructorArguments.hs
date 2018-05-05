@@ -7,7 +7,7 @@ module Parsing.OCaml.ConstructorArguments
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.CoreTypeList
 
 constructor_arguments_P :: Parser Constructor_arguments

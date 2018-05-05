@@ -7,7 +7,7 @@ module Parsing.OCaml.SimpleCoreTypeOrTuple
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.SimpleCoreType
 
 simple_core_type_or_tuple_P :: Parser Core_type

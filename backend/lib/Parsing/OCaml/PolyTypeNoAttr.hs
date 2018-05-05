@@ -7,7 +7,7 @@ module Parsing.OCaml.PolyTypeNoAttr
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.CoreTypeNoAttr
 
 poly_type_no_attr_P :: Parser Core_type

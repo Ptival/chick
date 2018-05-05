@@ -11,7 +11,7 @@ import Text.Megaparsec.String
 
 import Inductive.Inductive
 import Parsing
-import Parsing.Utils
+import Parsing.Chick.Utils
 import Term.Raw as Raw
 import Term.Term
 

@@ -11,8 +11,8 @@ import           Text.Megaparsec.String
 import qualified Definition as D
 import qualified DefinitionObjectKind as DOK
 import           Parsing
+import           Parsing.Chick.Utils
 import           Parsing.Inductive
-import           Parsing.Utils
 import           Term.Raw as Raw
 import           Term.Term
 import           Vernacular
