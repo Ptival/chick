@@ -17,7 +17,7 @@ import Parsing.OCaml.Tokens
 import Parsing.OCaml.Utils
 
 structure_P :: Parser Structure
-structure_P = choice
+structure_P = ocamlSpace *> choice
   [ do
     e <- seq_expr_P
     a <- post_item_attributes_P structure_P

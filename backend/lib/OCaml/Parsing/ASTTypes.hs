@@ -1,6 +1,10 @@
 module OCaml.Parsing.ASTTypes
   ( Constant(..)
+  , Loc(..)
+  , Override_flag(..)
   ) where
+
+import OCaml.Parsing.Location
 
 data Constant
    = Const_int Int
@@ -10,3 +14,14 @@ data Constant
    -- | Const_int32 Int32
    -- | Const_int64 Int64
    -- | Const_nativeint Nativeint
+
+data Loc a = Loc
+  { txt :: a
+  , loc :: Location
+  }
+  deriving (Show)
+
+data Override_flag
+  = Override
+  | Fresh
+  deriving (Show)

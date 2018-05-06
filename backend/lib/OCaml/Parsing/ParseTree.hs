@@ -10,13 +10,16 @@ module OCaml.Parsing.ParseTree
   , Expression_desc(..)
   , Extension
   , Label_declaration(..)
-  , Loc(..)
   , Longident(..)
   , Mutable_flag(..)
-  , Pattern
+  , Open_description(..)
+  , Pattern(..)
   , Payload(..)
   , Private_flag(..)
   , Rec_flag(..)
+  , Signature
+  , Signature_item(..)
+  , Signature_item_desc(..)
   , Structure
   , Structure_item(..)
   , Structure_item_desc(..)
@@ -37,8 +40,8 @@ data Constant
   | Pconst_string String (Maybe String)
   | Pconst_float String (Maybe Char)
 
-type Attribute = (Loc String, Payload)
-type Extension = (Loc String, Payload)
+type Attribute = (ASTTypes.Loc String, Payload)
+type Extension = (ASTTypes.Loc String, Payload)
 type Attributes = [Attribute]
 
 data Payload
@@ -59,7 +62,7 @@ data Core_type_desc
   | Ptyp_var String
   -- | Ptyp_arrow of Asttypes.arg_label * core_type * core_type
   | Ptyp_tuple [Core_type]
-  | Ptyp_constr (Loc Longident) [Core_type]
+  | Ptyp_constr (ASTTypes.Loc Longident) [Core_type]
   -- | Ptyp_object of object_field list * Asttypes.closed_flag
   -- | Ptyp_class of Longident.t Asttypes.loc * core_type list
   -- | Ptyp_alias of core_type * string
@@ -79,14 +82,8 @@ data Private_flag
   | Public
   deriving (Show)
 
-data Loc a = Loc
-  { txt :: a
-  , loc :: Location
-  }
-  deriving (Show)
-
 data Type_declaration = Type_declaration
-  { ptype_name :: Loc String
+  { ptype_name :: ASTTypes.Loc String
   , ptype_params :: [(Core_type, Variance)]
   , ptype_cstrs :: [(Core_type, Core_type, Location)]
   , ptype_kind :: Type_kind
@@ -105,7 +102,7 @@ data Type_kind
   deriving (Show)
 
 data Label_declaration = Label_declaration
-  { pld_name :: Loc String
+  { pld_name :: ASTTypes.Loc String
   , pld_mutable :: Mutable_flag
   , pld_type :: Core_type
   -- , pld_loc :: Location.t
@@ -114,7 +111,7 @@ data Label_declaration = Label_declaration
   deriving (Show)
 
 data Constructor_declaration = Constructor_declaration
-  { pcd_name :: Loc String
+  { pcd_name :: ASTTypes.Loc String
   , pcd_args :: Constructor_arguments
   , pcd_res :: Maybe Core_type
   -- , pcd_loc :: Location
@@ -147,7 +144,7 @@ data Longident
 constructor ::
   Constructor_arguments ->
   Maybe Core_type ->
-  Loc String ->
+  ASTTypes.Loc String ->
   Constructor_declaration
 constructor {- loc attrs info -} args res name =
   Constructor_declaration
@@ -160,7 +157,7 @@ constructor {- loc attrs info -} args res name =
 
 field ::
   Mutable_flag ->
-  Loc String ->
+  ASTTypes.Loc String ->
   Core_type ->
   Label_declaration
 field {- loc attrs info -} mut name typ =
@@ -181,18 +178,18 @@ data Structure_item = Structure_item
 
 data Structure_item_desc
   = Pstr_eval Expression Attributes
-  -- | Pstr_value  Asttypes.rec_flag * value_binding list
-  -- | Pstr_primitive  value_description
+  -- | Pstr_value Asttypes.rec_flag * value_binding list
+  -- | Pstr_primitive value_description
   | Pstr_type Rec_flag [Type_declaration]
-  -- | Pstr_typext  type_extension
-  -- | Pstr_exception  extension_constructor
-  -- | Pstr_module  module_binding
-  -- | Pstr_recmodule  module_binding list
-  -- | Pstr_modtype  module_type_declaration
-  -- | Pstr_open  open_description
-  -- | Pstr_class  class_declaration list
-  -- | Pstr_class_type  class_type_declaration list
-  -- | Pstr_include  include_declaration
+  -- | Pstr_typext type_extension
+  -- | Pstr_exception extension_constructor
+  -- | Pstr_module module_binding
+  -- | Pstr_recmodule module_binding list
+  -- | Pstr_modtype module_type_declaration
+  | Pstr_open Open_description
+  -- | Pstr_class class_declaration list
+  -- | Pstr_class_type class_type_declaration list
+  -- | Pstr_include include_declaration
   | Pstr_attribute Attribute
   | Pstr_extension Extension Attributes
 
@@ -204,7 +201,7 @@ data Expression = Expression
 
 data Expression_desc
   = Pexp_ident Longident Location
-  | Pexp_constant ASTTypes.Constant
+  | Pexp_constant Constant
   -- | Pexp_let Asttypes.rec_flag * value_binding list * expression
   -- | Pexp_function case list
   -- | Pexp_fun Asttypes.arg_label * expression option * pattern * expression
@@ -263,7 +260,7 @@ data Signature_item_desc
   -- | Psig_extension extension * attributes
 
 data Value_description = Value_description
-  { pval_name       :: Loc String
+  { pval_name       :: ASTTypes.Loc String
   , pval_type       :: Core_type
   , pval_prim       :: [String]
   , pval_attributes :: Attributes
@@ -278,7 +275,7 @@ data Pattern = Pattern
 
 data Pattern_desc
   = Ppat_any
-  | Ppat_var (Loc String)
+  | Ppat_var (ASTTypes.Loc String)
   -- | Ppat_alias pattern * string Asttypes.loc
   -- | Ppat_constant constant
   -- | Ppat_interval constant * constant
@@ -295,3 +292,10 @@ data Pattern_desc
   -- | Ppat_exception pattern
   -- | Ppat_extension extension
   -- | Ppat_open Longident.t Asttypes.loc * pattern
+
+data Open_description = Open_description
+  { popen_lid        :: ASTTypes.Loc Longident
+  , popen_override   :: ASTTypes.Override_flag
+  , popen_loc        :: Location
+  , popen_attributes :: Attributes
+  }

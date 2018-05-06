@@ -1,5 +1,6 @@
 module Parsing.OCaml.Tokens
   ( and_T
+  , bang_T
   , bar_T
   , colon_T
   , dot_T
@@ -12,6 +13,7 @@ module Parsing.OCaml.Tokens
   , mutable_T
   , nonrec_T
   , of_T
+  , open_T
   , private_T
   , quote_T
   , r_brace_T
@@ -31,6 +33,9 @@ import Text.Megaparsec.String
 
 and_T :: Parser ()
 and_T = rword "and"
+
+bang_T :: Parser ()
+bang_T = symbol "!"
 
 bar_T :: Parser ()
 bar_T = symbol "|"
@@ -79,6 +84,9 @@ mutable_T = rword "mutable"
 
 of_T :: Parser ()
 of_T = rword "of"
+
+open_T :: Parser ()
+open_T = rword "open"
 
 private_T :: Parser ()
 private_T = rword "private"

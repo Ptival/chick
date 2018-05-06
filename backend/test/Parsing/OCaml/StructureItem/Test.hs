@@ -58,6 +58,11 @@ type stats_type =
   | Reporting
   | Driver
   |]
+  , "open A"
+  , "open !A"
+  -- , "(* A *) open !A"
+  , "open !A (* A *)"
+  -- , "(* A *) open !A (* A *)"
   ]
 
 unitTests :: TestTree

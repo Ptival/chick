@@ -5,6 +5,7 @@ module Parsing.OCaml.Common
   , ident_P
   , mkExp
   , mkLoc
+  , mkOpn
   , mkRHS
   , mkstr_ext
   , mkstrexp
@@ -13,15 +14,16 @@ module Parsing.OCaml.Common
   , text_str
   ) where
 
-import Data.Maybe
-import Text.Megaparsec
-import Text.Megaparsec.String
+import           Data.Maybe
+import           Text.Megaparsec
+import           Text.Megaparsec.String
 
-import OCaml.Parsing.Docstrings
-import OCaml.Parsing.Location
-import OCaml.Parsing.ParseTree
-import Parsing.OCaml.Tokens
-import Parsing.OCaml.Utils
+import qualified OCaml.Parsing.ASTTypes as ASTTypes
+import           OCaml.Parsing.Docstrings
+import           OCaml.Parsing.Location
+import           OCaml.Parsing.ParseTree
+import           Parsing.OCaml.Tokens
+import           Parsing.OCaml.Utils
 
 default_loc :: Location
 default_loc = none
@@ -51,12 +53,12 @@ mkstr d = mkStr Nothing d -- FIXME: symbol_rloc
 ghstr :: Structure_item_desc -> Structure_item
 ghstr d = mkStr Nothing d -- FIXME: symbol_gloc
 
-wrap_str_ext :: Structure_item -> Maybe (Loc String) -> Structure_item
+wrap_str_ext :: Structure_item -> Maybe (ASTTypes.Loc String) -> Structure_item
 wrap_str_ext body ext = case ext of
   Nothing -> body
   Just id -> ghstr $ Pstr_extension (id, PStr [body]) []
 
-mkstr_ext :: Structure_item_desc -> Maybe (Loc String) -> Structure_item
+mkstr_ext :: Structure_item_desc -> Maybe (ASTTypes.Loc String) -> Structure_item
 mkstr_ext d ext = wrap_str_ext (mkstr d) ext
 
 mkTyp :: Core_type_desc -> Core_type
@@ -76,7 +78,7 @@ mkType ::
   Type_kind ->
   Private_flag ->
   Maybe Core_type ->
-  Loc String ->
+  ASTTypes.Loc String ->
   Type_declaration
 mkType {- loc attrs docs text -} params cstrs kind priv manifest name =
   Type_declaration
@@ -90,22 +92,34 @@ mkType {- loc attrs docs text -} params cstrs kind priv manifest name =
   --, ptype_loc :: Location.t
   }
 
+mkOpn ::
+  Maybe Location -> Maybe [(ASTTypes.Loc String, Payload)] -> Maybe Docs ->
+  Maybe ASTTypes.Override_flag -> ASTTypes.Loc Longident ->
+  Open_description
+mkOpn loc attrs docs override lid =
+  Open_description
+  { popen_lid        = lid
+  , popen_override   = fromMaybe ASTTypes.Fresh override
+  , popen_loc        = fromMaybe default_loc loc
+  , popen_attributes = add_docs_attrs (fromMaybe empty_docs docs) (fromMaybe [] attrs)
+  }
+
 mkstrexp :: Expression -> Attributes -> Structure_item
 mkstrexp e attrs = Structure_item
   { pstr_desc = Pstr_eval e attrs
   , pstr_loc = pexp_loc e
   }
 
-mkLoc :: a -> Location -> Loc a
-mkLoc t l = Loc
-  { txt = t
-  , loc = l
+mkLoc :: a -> Location -> ASTTypes.Loc a
+mkLoc t l = ASTTypes.Loc
+  { ASTTypes.txt = t
+  , ASTTypes.loc = l
   }
 
 rhsLoc :: t -> Location
 rhsLoc _ = none -- FIXME
 
-mkRHS :: a -> t -> Loc a
+mkRHS :: a -> t -> ASTTypes.Loc a
 mkRHS rhs pos = mkLoc rhs (rhsLoc pos)
 
 text_str :: a -> [Structure_item]
