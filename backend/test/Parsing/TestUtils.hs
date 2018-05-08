@@ -17,9 +17,9 @@ mkParsingTest name parser input =
   $ isJust (parseMaybe parser input)
   @? "Failed to parse:\n" ++ prefix ++ if length input > 20 then "..." else ""
 
-mkParsingTestFromFile :: TestName -> Parser a -> FilePath -> TestTree
-mkParsingTestFromFile name parser fileName =
-  testCase name
+mkParsingTestFromFile :: Parser a -> FilePath -> TestTree
+mkParsingTestFromFile parser fileName =
+  testCase fileName
     $ (do
         input <- readFile fileName
         return $ isJust (parseMaybe parser input)

@@ -5,16 +5,17 @@ module Parsing.OCaml.TypeDeclaration
   ( type_declaration_P
   ) where
 
-import Text.Megaparsec
-import Text.Megaparsec.String
+import           Text.Megaparsec
+import           Text.Megaparsec.String
 
-import OCaml.Parsing.ParseTree
-import Parsing.OCaml.Common
-import Parsing.OCaml.NonrecFlag
-import Parsing.OCaml.Tokens
-import Parsing.OCaml.TypeKind
+import qualified OCaml.Parsing.ASTTypes as ASTTypes
+import           OCaml.Parsing.ParseTree
+import           Parsing.OCaml.Common
+import           Parsing.OCaml.NonrecFlag
+import           Parsing.OCaml.Tokens
+import           Parsing.OCaml.TypeKind
 
-type_declaration_P :: Parser (Rec_flag, Type_declaration)
+type_declaration_P :: Parser (ASTTypes.Rec_flag, Type_declaration)
 type_declaration_P = do
   try $ type_T
   -- TODO: ext_attributes

@@ -1,6 +1,7 @@
 module OCaml.Parsing.ParseTree
   ( Attribute
   , Attributes
+  , Case(..)
   , Constant(..)
   , Constructor_arguments(..)
   , Constructor_declaration(..)
@@ -11,12 +12,15 @@ module OCaml.Parsing.ParseTree
   , Extension
   , Label_declaration(..)
   , Longident(..)
+  , Module_binding(..)
+  , Module_expr(..)
+  , Module_expr_desc(..)
   , Mutable_flag(..)
   , Open_description(..)
   , Pattern(..)
+  , Pattern_desc(..)
   , Payload(..)
   , Private_flag(..)
-  , Rec_flag(..)
   , Signature
   , Signature_item(..)
   , Signature_item_desc(..)
@@ -25,6 +29,8 @@ module OCaml.Parsing.ParseTree
   , Structure_item_desc(..)
   , Type_declaration(..)
   , Type_kind(..)
+  , Value_binding(..)
+  , Value_description(..)
   , Variance(..)
   , constructor
   , field
@@ -39,6 +45,7 @@ data Constant
   | Pconst_char Char
   | Pconst_string String (Maybe String)
   | Pconst_float String (Maybe Char)
+  deriving (Show)
 
 type Attribute = (ASTTypes.Loc String, Payload)
 type Extension = (ASTTypes.Loc String, Payload)
@@ -49,6 +56,7 @@ data Payload
   | PSig Signature
   | PTyp Core_type
   | PPat Pattern (Maybe Expression)
+  deriving (Show)
 
 data Core_type = Core_type
   { ptyp_desc       :: Core_type_desc
@@ -124,11 +132,6 @@ data Mutable_flag
   | Mutable
   deriving (Show)
 
-data Rec_flag
-  = Nonrecursive
-  | Recursive
-  deriving (Show)
-
 data Variance
   = Covariant
   | Contravariant
@@ -175,15 +178,16 @@ data Structure_item = Structure_item
   { pstr_desc :: Structure_item_desc
   , pstr_loc  :: Location
   }
+  deriving (Show)
 
 data Structure_item_desc
   = Pstr_eval Expression Attributes
-  -- | Pstr_value Asttypes.rec_flag * value_binding list
+  | Pstr_value ASTTypes.Rec_flag [Value_binding]
   -- | Pstr_primitive value_description
-  | Pstr_type Rec_flag [Type_declaration]
+  | Pstr_type ASTTypes.Rec_flag [Type_declaration]
   -- | Pstr_typext type_extension
   -- | Pstr_exception extension_constructor
-  -- | Pstr_module module_binding
+  | Pstr_module Module_binding
   -- | Pstr_recmodule module_binding list
   -- | Pstr_modtype module_type_declaration
   | Pstr_open Open_description
@@ -192,18 +196,20 @@ data Structure_item_desc
   -- | Pstr_include include_declaration
   | Pstr_attribute Attribute
   | Pstr_extension Extension Attributes
+  deriving (Show)
 
 data Expression = Expression
   { pexp_desc       :: Expression_desc
   , pexp_loc        :: Location
   , pexp_attributes :: Attributes
   }
+  deriving (Show)
 
 data Expression_desc
   = Pexp_ident Longident Location
   | Pexp_constant Constant
   -- | Pexp_let Asttypes.rec_flag * value_binding list * expression
-  -- | Pexp_function case list
+  | Pexp_function [Case]
   -- | Pexp_fun Asttypes.arg_label * expression option * pattern * expression
   -- | Pexp_apply expression * (Asttypes.arg_label * expression) list
   -- | Pexp_match expression * case list
@@ -234,8 +240,9 @@ data Expression_desc
   -- | Pexp_newtype string Asttypes.loc * expression
   -- | Pexp_pack module_expr
   -- | Pexp_open Asttypes.override_flag * Longident.t Asttypes.loc * expression
-  -- | Pexp_extension extension
+  | Pexp_extension Extension
   -- | Pexp_unreachable
+  deriving (Show)
 
 type Signature = [Signature_item]
 
@@ -243,6 +250,7 @@ data Signature_item = Signature_item
   { psig_desc :: Signature_item_desc
   , psig_loc  :: Location
   }
+  deriving (Show)
 
 data Signature_item_desc
   = Psig_value Value_description
@@ -258,6 +266,7 @@ data Signature_item_desc
   -- | Psig_class_type class_type_declaration list
   -- | Psig_attribute attribute
   -- | Psig_extension extension * attributes
+  deriving (Show)
 
 data Value_description = Value_description
   { pval_name       :: ASTTypes.Loc String
@@ -266,25 +275,27 @@ data Value_description = Value_description
   , pval_attributes :: Attributes
   , pval_loc        :: Location
   }
+  deriving (Show)
 
 data Pattern = Pattern
   { ppat_desc       :: Pattern_desc
   , ppat_loc        :: Location
   , ppat_attributes :: Attributes
   }
+  deriving (Show)
 
 data Pattern_desc
   = Ppat_any
   | Ppat_var (ASTTypes.Loc String)
-  -- | Ppat_alias pattern * string Asttypes.loc
+  | Ppat_alias Pattern (ASTTypes.Loc String)
   -- | Ppat_constant constant
   -- | Ppat_interval constant * constant
-  -- | Ppat_tuple pattern list
+  | Ppat_tuple [Pattern]
   -- | Ppat_construct Longident.t Asttypes.loc * pattern option
   -- | Ppat_variant Asttypes.label * pattern option
   -- | Ppat_record (Longident.t Asttypes.loc * pattern) list * Asttypes.closed_flag
   -- | Ppat_array pattern list
-  -- | Ppat_or pattern * pattern
+  | Ppat_or Pattern Pattern
   -- | Ppat_constraint pattern * core_type
   -- | Ppat_type Longident.t Asttypes.loc
   -- | Ppat_lazy pattern
@@ -292,6 +303,7 @@ data Pattern_desc
   -- | Ppat_exception pattern
   -- | Ppat_extension extension
   -- | Ppat_open Longident.t Asttypes.loc * pattern
+  deriving (Show)
 
 data Open_description = Open_description
   { popen_lid        :: ASTTypes.Loc Longident
@@ -299,3 +311,44 @@ data Open_description = Open_description
   , popen_loc        :: Location
   , popen_attributes :: Attributes
   }
+  deriving (Show)
+
+data Module_expr = Module_expr
+  { pmod_desc       :: Module_expr_desc
+  , pmod_loc        :: Location
+  , pmod_attributes :: Attributes
+  }
+  deriving (Show)
+
+data Module_expr_desc
+  = Pmod_ident (ASTTypes.Loc Longident)
+  -- | Pmod_structure of structure
+  -- | Pmod_functor of string Asttypes.loc * module_type option * module_expr
+  -- | Pmod_apply of module_expr * module_expr
+  -- | Pmod_constraint of module_expr * module_type
+  -- | Pmod_unpack of expression
+  -- | Pmod_extension of extension
+  deriving (Show)
+
+data Module_binding = Module_binding
+  { pmb_name       :: ASTTypes.Loc String
+  , pmb_expr       :: Module_expr
+  , pmb_attributes :: Attributes
+  , pmb_loc        :: Location
+  }
+  deriving (Show)
+
+data Value_binding = Value_binding
+  { pvb_pat        :: Pattern
+  , pvb_expr       :: Expression
+  , pvb_attributes :: Attributes
+  , pvb_loc        :: Location
+  }
+  deriving (Show)
+
+data Case = Case
+  { pc_lhs   :: Pattern
+  , pc_guard :: Maybe Expression
+  , pc_rhs   :: Expression
+  }
+  deriving (Show)

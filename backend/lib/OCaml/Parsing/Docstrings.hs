@@ -3,7 +3,9 @@
 module OCaml.Parsing.Docstrings
   ( Docs
   , Docstring(..)
+  , Text
   , add_docs_attrs
+  , add_text_attrs
   , docs_attr
   , empty_docs
   , rhs_text
@@ -34,6 +36,8 @@ data Docstring = Docstring
   , ds_associated :: Ds_associated
   }
 
+type Text = [Docstring]
+
 text_loc :: Loc String
 text_loc = Loc
   { txt = "ocaml.text"
@@ -56,6 +60,9 @@ text_attr ds =
         }
   in
   (text_loc, PStr [item])
+
+add_text_attrs :: [Docstring] -> [Attribute] -> [Attribute]
+add_text_attrs dsl attrs = (map text_attr dsl) ++ attrs
 
 rhs_text :: a -> [b]
 rhs_text pos = get_text (rhs_start_pos pos)

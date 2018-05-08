@@ -7,13 +7,18 @@ module Parsing.OCaml.Expr
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-import OCaml
+import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
-import Parsing.OCaml.ConstructorArguments
+import Parsing.OCaml.MatchCases
+import Parsing.OCaml.OptBar
 import Parsing.OCaml.Tokens
-import Parsing.OCaml.TypeDeclarations
 
-expr_P :: Parser a
-expr_P = choice
-  [
+expr_P :: Parser Expression -> Parser Expression
+expr_P seq_expr_P = choice
+  [ do
+    try $ function_T
+    -- TODO: ext_attributes
+    opt_bar_P
+    l <- match_cases_P seq_expr_P
+    return $ mkexp_attrs (Pexp_function (reverse l)) (error "TODO")
   ]

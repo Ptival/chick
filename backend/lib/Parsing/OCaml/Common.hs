@@ -1,17 +1,32 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 module Parsing.OCaml.Common
-  ( constr_ident_P
+  ( Let_binding(..)
+  , Let_bindings(..)
+  , addlb
+  , caseExp
+  , constr_ident_P
   , ident_P
   , mkExp
+  , mkexp
+  , mkexp_attrs
   , mkLoc
+  , mklb
+  , mklbs
+  , mkMb
+  , mkMod
+  , mkmod
   , mkOpn
+  , mkPat
+  , mkpat
+  , mkpatvar
   , mkRHS
   , mkstr_ext
   , mkstrexp
   , mkTyp
   , mkType
   , text_str
+  , val_of_let_bindings
   ) where
 
 import           Data.Maybe
@@ -72,6 +87,13 @@ mkExp loc attrs desc =
   , pexp_attributes = fromMaybe []          attrs
   }
 
+caseExp :: Pattern -> Maybe Expression -> Expression -> Case
+caseExp lhs guard rhs = Case
+  { pc_lhs   = lhs
+  , pc_guard = guard
+  , pc_rhs   = rhs
+  }
+
 mkType ::
   [(Core_type, Variance)] ->
   [(Core_type, Core_type, Location)] ->
@@ -130,3 +152,126 @@ attributeStr mloc a = mkStr mloc (Pstr_attribute a)
 
 textStr :: [Docstring] -> [Structure_item]
 textStr text = map (\ ds -> attributeStr Nothing (text_attr ds)) text
+
+mkmod :: Maybe [Attribute] -> Module_expr_desc -> Module_expr
+mkmod attrs d = mkMod Nothing attrs d -- FIXME: Nothing
+
+mkMod :: Maybe Location -> Maybe [Attribute] -> Module_expr_desc -> Module_expr
+mkMod loc attrs d = Module_expr
+  { pmod_desc       = d
+  , pmod_loc        = fromMaybe default_loc loc
+  , pmod_attributes = fromMaybe []          attrs
+  }
+
+mkMb ::
+  Maybe Location -> Maybe [(ASTTypes.Loc String, Payload)] -> Maybe Docs ->
+  Maybe [Docstring] -> ASTTypes.Loc String -> Module_expr ->
+  Module_binding
+mkMb loc attrs docs text name expr = Module_binding
+  { pmb_name       = name
+  , pmb_expr       = expr
+  , pmb_attributes = add_text_attrs (fromMaybe [] text)
+                     . add_docs_attrs (fromMaybe empty_docs docs)
+                     $ fromMaybe [] attrs
+  , pmb_loc        = fromMaybe default_loc loc
+  }
+
+mkPat ::
+  Maybe Location -> Maybe [(ASTTypes.Loc String, Payload)] -> Pattern_desc ->
+  Pattern
+mkPat loc attrs d = Pattern
+  { ppat_desc       = d
+  , ppat_loc        = fromMaybe default_loc loc
+  , ppat_attributes = fromMaybe [] attrs
+  }
+
+mkpat :: Pattern_desc -> Pattern
+mkpat d = mkPat Nothing Nothing d -- FIXME
+
+mkpatvar :: String -> t -> Pattern
+mkpatvar name pos = mkPat (Just (rhsLoc pos)) Nothing (Ppat_var (mkRHS name pos))
+
+data Let_binding = Let_binding
+  { lb_pattern    :: Pattern
+  , lb_expression :: Expression
+  , lb_attributes :: Attributes
+  , lb_docs       :: Docs
+  , lb_text       :: Text
+  , lb_loc        :: Location
+  }
+
+data Let_bindings = Let_bindings
+  { lbs_bindings  :: [Let_binding]
+  , lbs_rec       :: ASTTypes.Rec_flag
+  , lbs_extension :: Maybe (ASTTypes.Loc String)
+  , lbs_loc       :: Location
+  }
+
+mklb :: t -> (Pattern, Expression) -> Attributes -> Let_binding
+mklb _first (p, e) attrs = Let_binding
+  { lb_pattern    = p
+  , lb_expression = e
+  , lb_attributes = attrs
+  , lb_docs       = empty_docs -- symbol_docs_lazy ()
+  , lb_text       = [] --if first then empty_text_lazy
+                    --else symbol_text_lazy ()
+  , lb_loc        = none -- symbol_rloc ()
+  }
+
+mklbs :: Maybe (ASTTypes.Loc String) -> ASTTypes.Rec_flag -> Let_binding -> Let_bindings
+mklbs ext rf lb = Let_bindings
+  { lbs_bindings  = [lb]
+  , lbs_rec       = rf
+  , lbs_extension = ext
+  , lbs_loc       = none -- symbol_rloc ()
+  }
+
+addlb :: Let_bindings -> Let_binding -> Let_bindings
+addlb lbs lb =
+  lbs { lbs_bindings = lb : lbs_bindings lbs }
+
+mkVb :: Maybe Location -> Maybe [(ASTTypes.Loc String, Payload)] -> Maybe Docs ->
+  Maybe Text -> Pattern -> Expression -> Value_binding
+mkVb loc attrs docs text pat expr = Value_binding
+  { pvb_pat        = pat
+  , pvb_expr       = expr
+  , pvb_attributes = add_text_attrs (fromMaybe [] text)
+                     . add_docs_attrs (fromMaybe empty_docs docs)
+                     $ fromMaybe [] attrs
+  , pvb_loc        = fromMaybe default_loc loc
+  }
+
+val_of_let_bindings :: Let_bindings -> Structure_item
+val_of_let_bindings lbs =
+  let bindings =
+        map
+        (\ lb -> mkVb
+                    (Just $ lb_loc lb)
+                    (Just $ lb_attributes lb)
+                    (Just $ lb_docs lb)
+                    (Just $ lb_text lb)
+                    (lb_pattern lb)
+                    (lb_expression lb)
+        )
+        (lbs_bindings lbs)
+  in
+  let str = mkstr $ Pstr_value (lbs_rec lbs) (reverse bindings) in
+  case lbs_extension lbs of
+    Nothing -> str
+    Just id -> ghstr $ Pstr_extension (id, PStr [str]) []
+
+wrap_exp_attrs :: Expression -> (Maybe (ASTTypes.Loc String), [Attribute]) -> Expression
+wrap_exp_attrs body (ext, attrs) =
+  let body1 = body { pexp_attributes = attrs ++ pexp_attributes body } in
+  case ext of
+    Nothing -> body1
+    Just id -> ghexp $ Pexp_extension (id, (PStr [mkstrexp body1 []]))
+
+mkexp_attrs :: Expression_desc -> (Maybe (ASTTypes.Loc String), [Attribute]) -> Expression
+mkexp_attrs d attrs = wrap_exp_attrs (mkexp d) attrs
+
+mkexp :: Expression_desc -> Expression
+mkexp d = mkExp Nothing Nothing d -- FIXME
+
+ghexp :: Expression_desc -> Expression
+ghexp d = mkExp Nothing Nothing d -- FIXME

@@ -19,11 +19,12 @@ files = map (prefix ++)
   , "infer_03.ml"
   , "infer_04.ml"
   , "infer_05.ml"
+  , "infer_06.ml"
   ]
 
 unitTests :: TestTree
 unitTests = testGroup "Parsing.OCaml.Implementation" $ []
-  ++ map (mkParsingTestFromFile "implementation_P" implementation_P) files
+  ++ map (mkParsingTestFromFile implementation_P) files
 
 test :: IO ()
 test = defaultMain unitTests

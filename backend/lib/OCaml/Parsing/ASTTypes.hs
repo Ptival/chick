@@ -2,6 +2,7 @@ module OCaml.Parsing.ASTTypes
   ( Constant(..)
   , Loc(..)
   , Override_flag(..)
+  , Rec_flag(..)
   ) where
 
 import OCaml.Parsing.Location
@@ -24,4 +25,9 @@ data Loc a = Loc
 data Override_flag
   = Override
   | Fresh
+  deriving (Show)
+
+data Rec_flag
+  = Nonrecursive
+  | Recursive
   deriving (Show)
