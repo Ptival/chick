@@ -9,19 +9,15 @@ import Text.Megaparsec.String
 
 import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Tokens
+import Parsing.Utils
 
 mod_ext_longident_P :: Parser Longident
-mod_ext_longident_P = try $ do
-  a <- Lident <$> u_ident_T
-  b <- rest
-  return $ b a
-  where
-    rest = choice
-      [ try $ do
-        dot_T
-        i <- u_ident_T
-        r <- rest
-        return $ \ x -> r $ Ldot x i
-      -- TODO: parens
-      , return id
-      ]
+mod_ext_longident_P = leftRecursive
+  [ Lident <$> u_ident_T
+  ]
+  [ try $ do
+    dot_T
+    i <- u_ident_T
+    return $ \ x -> Ldot x i
+    -- TODO: parens
+  ]

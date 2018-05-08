@@ -15,16 +15,15 @@ chainl1' p op bc = p >>= rest . bc
 chainl1 :: (Alternative m, Monad m) => m a -> m (a -> a -> a) -> m a
 chainl1 p op = chainl1' p op id
 
-leftRecursive :: (Alternative m, Monad m) => m b -> m (b -> b) -> m b
-leftRecursive prefixP suffixP = do
-  p <- prefixP
-  r <- rest
-  return $ r p
+leftRecursive :: (Monad m, Alternative m) => [m a] -> [m (a -> a)] -> m a
+leftRecursive prefixes suffixes = choice $ map patchPrefix prefixes
   where
-    rest = choice
-      [ do
-        s <- suffixP
-        r <- rest
-        return $ r . s
-      , return id
-      ]
+    patchPrefix prefixP = do
+      p <- prefixP
+      r <- rest
+      return $ r p
+    patchSuffix suffixP = do
+      s <- suffixP
+      r <- rest
+      return $ r . s
+    rest = choice $ map patchSuffix suffixes ++ [ return id ]

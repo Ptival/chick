@@ -15,20 +15,16 @@ import Parsing.OCaml.LetBinding
 import Parsing.OCaml.LetBindingBody
 import Parsing.OCaml.PostItemAttributes
 import Parsing.OCaml.Tokens
+import Parsing.Utils
 
 let_bindings_P :: Parser Structure -> Parser Let_bindings
-let_bindings_P structure_P = do
-  b <- let_binding_P structure_P
-  r <- rest
-  return $ r b
-  where
-    rest = choice
-      [ do
-        try $ and_T
-        -- a <- attributes_P
-        b <- let_binding_body_P
-        p <- post_item_attributes_P structure_P
-        r <- rest
-        return $ \ x -> r $ addlb x (mklb False b []) -- FIXME
-      , return id
-      ]
+let_bindings_P structure_P = leftRecursive
+  [ let_binding_P structure_P
+  ]
+  [ do
+    try $ and_T
+    -- a <- attributes_P
+    b <- let_binding_body_P
+    p <- post_item_attributes_P structure_P
+    return $ \ x -> addlb x (mklb False b []) -- FIXME
+  ]
