@@ -50,7 +50,7 @@ files = map (prefix ++)
   ]
 
 unitTests :: TestTree
-unitTests = testGroup "Parsing.OCaml.DatatypeDeclaration" $ []
+unitTests = testGroup "Parsing.OCaml.Structure" $ []
   -- ++ map (mkParsingTest "structure_P" structure_P) structure_tests
   ++ map (mkParsingTestFromFile "structure_P" structure_P) files
 

@@ -44,7 +44,7 @@ ident_tests =
   ]
 
 unitTests :: TestTree
-unitTests = testGroup "Parsing.OCaml.DatatypeDeclaration" $ []
+unitTests = testGroup "Parsing.OCaml.Common" $ []
   ++ map (mkParsingTest "constr_ident_P" constr_ident_P) constr_ident_tests
   ++ map (mkParsingTest "ident_P" ident_P) ident_tests
 

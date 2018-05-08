@@ -32,7 +32,7 @@ star_results :: [Maybe ()]
 star_results = fmap (parseMaybe star_T) star_tests
 
 unitTests :: TestTree
-unitTests = testGroup "Parsing.OCaml.DatatypeDeclaration" $ []
+unitTests = testGroup "Parsing.OCaml.Tokens" $ []
   -- ++ [testCase "and"   $ indAnd   @?= SL.indAnd  ]
 
 test :: IO ()

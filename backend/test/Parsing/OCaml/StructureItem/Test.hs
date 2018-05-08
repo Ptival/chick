@@ -66,7 +66,7 @@ type stats_type =
   ]
 
 unitTests :: TestTree
-unitTests = testGroup "Parsing.OCaml.DatatypeDeclaration" $ []
+unitTests = testGroup "Parsing.OCaml.StructureItem" $ []
   ++ map (mkParsingTest "structure_item_P" (structure_item_P structure_P)) structure_item_tests
 
 test :: IO ()

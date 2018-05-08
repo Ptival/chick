@@ -17,7 +17,7 @@ expr_tests =
   ]
 
 unitTests :: TestTree
-unitTests = testGroup "Parsing.OCaml.DatatypeDeclaration" $ []
+unitTests = testGroup "Parsing.OCaml.Expr" $ []
   ++ map (mkParsingTest "expr_P" (expr_P seq_expr_P)) expr_tests
 
 test :: IO ()
