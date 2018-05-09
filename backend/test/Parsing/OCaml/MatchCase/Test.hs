@@ -14,6 +14,7 @@ import Parsing.TestUtils
 match_case_tests :: [String]
 match_case_tests =
   [ "a -> b"
+  , "a -> B.c_d"
   ]
 
 unitTests :: TestTree

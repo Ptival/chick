@@ -19,10 +19,8 @@ type e_f = G of A.b * C.d_f | H | I
 
 let a = b
 
-(*
 let some_function = function
   | Constructor _ ->
       Module.some_other_function
   | OtherConstructore _ ->
       OtherModule.other_function
- *)

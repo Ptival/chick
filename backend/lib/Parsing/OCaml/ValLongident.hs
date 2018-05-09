@@ -16,8 +16,10 @@ val_longident_P :: Parser Longident
 val_longident_P = choice
   [ Lident <$> val_ident_P
   , do
-    l <- mod_longident_P
-    dot_T
+    l <- try $ do
+      l <- mod_longident_P
+      dot_T
+      return l
     i <- val_ident_P
     return $ Ldot l i
   ]

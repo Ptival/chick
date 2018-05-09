@@ -4,6 +4,7 @@ module Parsing.OCaml.Tokens
   , bang_T
   , bar_T
   , colon_T
+  , colon_colon_T
   , comma_T
   , dot_T
   , equal_T
@@ -58,6 +59,9 @@ bar_T = symbol "|"
 
 colon_T :: Parser ()
 colon_T = symbol ":"
+
+colon_colon_T :: Parser ()
+colon_colon_T = symbol "::"
 
 comma_T :: Parser ()
 comma_T = symbol ","

@@ -208,20 +208,20 @@ data Expression = Expression
 data Expression_desc
   = Pexp_ident (ASTTypes.Loc Longident)
   | Pexp_constant Constant
-  -- | Pexp_let Asttypes.rec_flag * value_binding list * expression
+  | Pexp_let ASTTypes.Rec_flag [Value_binding] Expression
   | Pexp_function [Case]
   -- | Pexp_fun Asttypes.arg_label * expression option * pattern * expression
   -- | Pexp_apply expression * (Asttypes.arg_label * expression) list
-  -- | Pexp_match expression * case list
+  | Pexp_match Expression [Case]
   -- | Pexp_try expression * case list
-  -- | Pexp_tuple expression list
-  -- | Pexp_construct Longident.t Asttypes.loc * expression option
+  | Pexp_tuple [Expression]
+  | Pexp_construct (ASTTypes.Loc Longident) (Maybe Expression)
   -- | Pexp_variant Asttypes.label * expression option
   -- | Pexp_record (Longident.t Asttypes.loc * expression) list * expression option
-  -- | Pexp_field expression * Longident.t Asttypes.loc
+  | Pexp_field Expression (ASTTypes.Loc Longident)
   -- | Pexp_setfield expression * Longident.t Asttypes.loc * expression
   -- | Pexp_array expression list
-  -- | Pexp_ifthenelse expression * expression * expression option
+  | Pexp_ifthenelse Expression Expression (Maybe Expression)
   | Pexp_sequence Expression Expression
   -- | Pexp_while expression * expression
   -- | Pexp_for pattern * expression * expression * Asttypes.direction_flag * expression

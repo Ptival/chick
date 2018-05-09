@@ -13,7 +13,10 @@ import Parsing.TestUtils
 
 expr_tests :: [String]
 expr_tests =
-  [ "function a -> b"
+  [ "Foo.Bar"
+  , "function a -> b"
+  , "function a -> Foo.bar_baz"
+  -- , "function Foo _ -> b"       -- LOOPS
   ]
 
 unitTests :: TestTree
