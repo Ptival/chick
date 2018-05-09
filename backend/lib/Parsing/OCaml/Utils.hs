@@ -1,4 +1,5 @@
 module Parsing.OCaml.Utils
+  -- , checkIdentifier
   ( identifier
   , lexeme
   , ocamlSpace
@@ -7,21 +8,25 @@ module Parsing.OCaml.Utils
   , symbol
   ) where
 
-import           Control.Applicative
 import           Data.Functor
 import           Text.Megaparsec
 import qualified Text.Megaparsec.Lexer as L
 import           Text.Megaparsec.String
 import           Text.Printf
 
-identifier :: Parser String
-identifier = (lexeme . try) (p >>= check)
-  where
-    p       = (:) <$> letterChar <*> many (alphaNumChar <|> char '_')
-    check x =
-      if x `elem` reservedWords
-      then fail $ printf "keyword %s cannot be an identifier" (show x)
-      else return x
+checkIdentifier :: String -> Parser String
+checkIdentifier c =
+      if c `elem` reservedWords
+      then fail $ printf "keyword %s cannot be an identifier" (show c)
+      else return c
+
+identifier :: Parser String -> Parser String
+identifier p = (lexeme . try) (p >>= checkIdentifier)
+
+-- identifier :: Parser String
+-- identifier = (lexeme . try) (p >>= checkIdentifier)
+--   where
+--     p       = (:) <$> letterChar <*> many (alphaNumChar <|> char '_')
 
 ocamlSpace :: Parser ()
 ocamlSpace = L.space (void spaceChar) lineCmnt blockCmnt

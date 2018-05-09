@@ -206,7 +206,7 @@ data Expression = Expression
   deriving (Show)
 
 data Expression_desc
-  = Pexp_ident Longident Location
+  = Pexp_ident (ASTTypes.Loc Longident)
   | Pexp_constant Constant
   -- | Pexp_let Asttypes.rec_flag * value_binding list * expression
   | Pexp_function [Case]

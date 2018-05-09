@@ -9,6 +9,7 @@ module Parsing.OCaml.Tokens
   , equal_T
   , false_T
   , function_T
+  , int_T
   , l_brace_T
   , l_bracket_T
   , l_bracket_at_at_T
@@ -36,9 +37,12 @@ module Parsing.OCaml.Tokens
   , underscore_T
   ) where
 
-import Parsing.OCaml.Utils
+import Data.Char
 import Text.Megaparsec
 import Text.Megaparsec.String
+
+import Parsing.OCaml.Utils
+
 
 and_T :: Parser ()
 and_T = rword "and"
@@ -70,6 +74,67 @@ false_T = rword "false"
 function_T :: Parser ()
 function_T = rword "function"
 
+binDigitChar :: Parser Char
+binDigitChar = char '0' <|> char '1'
+
+bin_literal_P :: Parser String
+bin_literal_P = do
+  _ <- char '0'
+  _ <- char 'b' <|> char 'B'
+  h <- binDigitChar
+  t <- many (binDigitChar <|> char '_')
+  return $ h : t
+
+decimal_literal_P :: Parser String
+decimal_literal_P = do
+  h <- digitChar
+  t <- many (digitChar <|> char '_')
+  return $ h : t
+
+hex_literal_P :: Parser String
+hex_literal_P = do
+  _ <- char '0'
+  _ <- char 'x' <|> char 'X'
+  h <- hexDigitChar
+  t <- many (hexDigitChar <|> char '_')
+  return $ h : t
+
+oct_literal_P :: Parser String
+oct_literal_P = do
+  _ <- char '0'
+  _ <- char 'o' <|> char 'O'
+  h <- octDigitChar
+  t <- many (octDigitChar <|> char '_')
+  return $ h : t
+
+int_literal_P :: Parser String
+int_literal_P = choice
+  [ decimal_literal_P
+  , hex_literal_P
+  , oct_literal_P
+  , bin_literal_P
+  ]
+
+int_T :: Parser (String, Maybe Char)
+int_T = do
+  l <- int_literal_P
+  m <- literal_modifier_P
+  return $ (l, Just m)
+
+isBetween :: Char -> Char -> Char -> Bool
+isBetween cmin c cmax = (vmin <= v && v <= vmax)
+  where
+    vmin = conv cmin
+    v    = conv c
+    vmax = conv cmax
+    conv = ord
+
+isModifier :: Char -> Bool
+isModifier c = isBetween 'G' c 'Z' || isBetween 'g' c 'z'
+
+literal_modifier_P :: Parser Char
+literal_modifier_P = satisfy isModifier
+
 ident_char_T :: Parser Char
 ident_char_T = choice
   [ upperChar
@@ -89,7 +154,7 @@ l_bracket_at_at_T :: Parser ()
 l_bracket_at_at_T = symbol "[@@"
 
 l_ident_T :: Parser String
-l_ident_T = lexeme . try $ do
+l_ident_T = identifier $ do
   c <- lowerChar
   cs <- many ident_char_T
   return $ c : cs
@@ -152,7 +217,7 @@ type_T :: Parser ()
 type_T = rword "type"
 
 u_ident_T :: Parser String
-u_ident_T = lexeme . try $ do
+u_ident_T = identifier $ do
   c <- upperChar
   cs <- many ident_char_T
   return $ c : cs

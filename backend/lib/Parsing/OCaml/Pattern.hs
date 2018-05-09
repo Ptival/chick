@@ -11,13 +11,15 @@ import Text.Megaparsec.String
 import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
 import Parsing.OCaml.PatternCommaList
+import Parsing.OCaml.PatternGen
 import Parsing.OCaml.Tokens
 import Parsing.OCaml.ValIdent
 import Parsing.Utils
 
 pattern_P :: Parser Pattern
 pattern_P = leftRecursive
-  [ do
+  [ pattern_gen_P
+  , do
     l <- pattern_comma_list_P pattern_P
     return $ mkpat $ Ppat_tuple (reverse l)
   ]
