@@ -20,6 +20,8 @@ files = map (prefix ++)
   , "infer_04.ml"
   , "infer_05.ml"
   , "infer_06.ml"
+  , "infer_07.ml"
+  , "infer_08.ml"
   ]
 
 unitTests :: TestTree
