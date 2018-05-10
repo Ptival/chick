@@ -1,28 +1,26 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parsing.OCaml.Pattern.Test
+module Parsing.OCaml.SimplePattern.Test
   ( test
   , unitTests
   ) where
 
 import Test.Tasty
 
-import Parsing.OCaml.Pattern
+import Parsing.OCaml.SimplePattern
 import Parsing.TestUtils
 
-pattern_tests :: [String]
-pattern_tests =
+simple_pattern_tests :: [String]
+simple_pattern_tests =
   [ "_"
   , "a"
   , "A"
-  , "A a"
-  , "A B"
-  , "A _"
+  , "A.B"
   ]
 
 unitTests :: TestTree
 unitTests = testGroup "Parsing.OCaml.Pattern" $ []
-  ++ map (mkParsingTest "pattern_P" pattern_P) pattern_tests
+  ++ map (mkParsingTest "simple_pattern_P" simple_pattern_P) simple_pattern_tests
 
 test :: IO ()
 test = defaultMain unitTests

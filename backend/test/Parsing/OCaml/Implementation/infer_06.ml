@@ -22,5 +22,5 @@ let a = b
 let some_function = function
   | Constructor _ ->
       Module.some_other_function
-  | OtherConstructore _ ->
+  | OtherConstructor _ ->
       OtherModule.other_function

@@ -18,12 +18,13 @@ import Parsing.Utils
 
 pattern_P :: Parser Pattern
 pattern_P = leftRecursive
-  [ pattern_gen_P
-  , do
-    l <- pattern_comma_list_P pattern_P
-    return $ mkpat $ Ppat_tuple (reverse l)
+  [ pattern_gen_P pattern_P
+  -- , do
+  --   l <- pattern_comma_list_P pattern_P
+  --   return $ mkpat $ Ppat_tuple (reverse l)
   ]
-  [ do
+  [
+    do
     try $ as_T
     i <- val_ident_P
     return $ \ x -> mkpat $ Ppat_alias x (mkRHS i 3)

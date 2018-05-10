@@ -17,8 +17,8 @@ val_ident_tests =
   ]
 
 unitTests :: TestTree
-unitTests = testGroup "Parsing.OCaml.Valident" $ []
-  ++ map (mkParsingTest "val__ident_P" val_ident_P) val_ident_tests
+unitTests = testGroup "Parsing.OCaml.ValIdent" $ []
+  ++ map (mkParsingTest "val_ident_P" val_ident_P) val_ident_tests
 
 test :: IO ()
 test = defaultMain unitTests

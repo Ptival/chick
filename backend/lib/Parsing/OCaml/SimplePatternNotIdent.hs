@@ -10,6 +10,7 @@ import Text.Megaparsec.String
 
 import OCaml.Parsing.ParseTree
 import Parsing.OCaml.Common
+import Parsing.OCaml.ConstrLongident
 import Parsing.OCaml.Tokens
 
 simple_pattern_not_ident_P :: Parser Pattern
@@ -18,7 +19,7 @@ simple_pattern_not_ident_P = choice
     underscore_T
     return $ mkpat $ Ppat_any
   -- TODO: signed constants
-  -- , do
-  --   constr_longident
-  --   return $ mkpat $ Ppat_construct _ _
+  , do
+    i <- constr_longident_P
+    return $ mkpat $ Ppat_construct (mkRHS i 1) Nothing
   ]

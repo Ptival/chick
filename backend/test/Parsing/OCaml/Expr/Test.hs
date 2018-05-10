@@ -16,7 +16,7 @@ expr_tests =
   [ "Foo.Bar"
   , "function a -> b"
   , "function a -> Foo.bar_baz"
-  -- , "function Foo _ -> b"       -- LOOPS
+  , "function Foo _ -> b"
   ]
 
 unitTests :: TestTree

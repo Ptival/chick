@@ -288,10 +288,10 @@ data Pattern_desc
   = Ppat_any
   | Ppat_var (ASTTypes.Loc String)
   | Ppat_alias Pattern (ASTTypes.Loc String)
-  -- | Ppat_constant constant
+  | Ppat_constant Constant
   -- | Ppat_interval constant * constant
   | Ppat_tuple [Pattern]
-  -- | Ppat_construct Longident.t Asttypes.loc * pattern option
+  | Ppat_construct (ASTTypes.Loc Longident) (Maybe Pattern)
   -- | Ppat_variant Asttypes.label * pattern option
   -- | Ppat_record (Longident.t Asttypes.loc * pattern) list * Asttypes.closed_flag
   -- | Ppat_array pattern list

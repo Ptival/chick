@@ -1,5 +1,6 @@
 module Parsing.TestUtils
-  ( mkParsingTest
+  ( debugParsing
+  , mkParsingTest
   , mkParsingTestFromFile
   , parse
   ) where
@@ -25,3 +26,7 @@ mkParsingTestFromFile parser fileName =
         return $ isJust (parseMaybe parser input)
       )
     @? "Failed to parse " ++ fileName
+
+debugParsing :: Parser a -> String -> Either (ParseError (Token String) Dec) a
+debugParsing parser input =
+  parse (parser <* eof) "DEBUG" input
