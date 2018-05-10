@@ -21,6 +21,11 @@ packages:
       git: https://github.com/IxpertaSolutions/freer-effects
       commit: 39a7e62cc049d43d36ece4ac24ba19e545f0b726
     extra-dep: true
+  - location:
+      git: https://github.com/Ptival/language-ocaml
+      commit: d82403d727e93127c885e15ab7e8bb53ca876d4f
+    extra-dep: true
+
 
 nix:
   enable: true

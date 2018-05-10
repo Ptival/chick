@@ -42,6 +42,7 @@ Library
                  -- hashable                  >= 1.2   && < 1.3,
                  hslogger                  >= 1.2   && < 1.3,
                  -- invertible-syntax         >= 0.2   && < 0.3,
+                 language-ocaml            >= 0.0   && < 2.0,
                  lens                      >= 4.14  && < 4.16,
                  megaparsec                >= 5.0   && < 5.4,
                  MissingH                  >= 1.4   && < 1.5,
@@ -122,41 +123,9 @@ Library
                   Inductive.Utils
                   Language
                   Notations
-                  OCaml.Parsing.ASTTypes
-                  OCaml.Parsing.Docstrings
-                  OCaml.Parsing.Location
-                  OCaml.Parsing.ParseTree
-                  OCaml.StdLib.Lexing
-                  OCaml.StdLib.Parsing
                   Parsing
                   -- Parsing.Atomic
                   Parsing.Chick.Utils
-                  Parsing.OCaml.Common
-                  Parsing.OCaml.ConstructorArguments
-                  Parsing.OCaml.ConstructorDeclaration
-                  Parsing.OCaml.ConstructorDeclarations
-                  Parsing.OCaml.CoreType
-                  Parsing.OCaml.CoreType2
-                  Parsing.OCaml.CoreTypeList
-                  Parsing.OCaml.CoreTypeNoAttr
-                  Parsing.OCaml.GeneralizedConstructorArguments
-                  Parsing.OCaml.Label
-                  Parsing.OCaml.LabelDeclaration
-                  Parsing.OCaml.LabelDeclarationSemi
-                  Parsing.OCaml.LabelDeclarations
-                  Parsing.OCaml.ModExtLongident
-                  Parsing.OCaml.MutableFlag
-                  Parsing.OCaml.NonrecFlag
-                  Parsing.OCaml.PolyTypeNoAttr
-                  Parsing.OCaml.PrivateFlag
-                  Parsing.OCaml.SimpleCoreType
-                  Parsing.OCaml.SimpleCoreType2
-                  Parsing.OCaml.SimpleCoreTypeOrTuple
-                  Parsing.OCaml.Tokens
-                  Parsing.OCaml.TypeKind
-                  Parsing.OCaml.TypeLongident
-                  Parsing.OCaml.TypeDeclaration
-                  Parsing.OCaml.Utils
                   Parsing.Inductive
                   Parsing.Inductive.Test
                   Parsing.Script
