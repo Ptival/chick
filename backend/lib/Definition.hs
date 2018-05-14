@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -6,9 +7,11 @@ module Definition
   ( Definition(..)
   ) where
 
-import           DefinitionObjectKind (DefinitionObjectKind)
-import           PrettyPrinting.Term ()
-import           Term.Term
+import GHC.Generics
+
+import DefinitionObjectKind (DefinitionObjectKind)
+import PrettyPrinting.Term ()
+import Term.Term
 
 data Definition α ν = Definition
   { definitionKind :: DefinitionObjectKind
@@ -16,6 +19,6 @@ data Definition α ν = Definition
   , definitionType :: TypeX α ν
   , definitionTerm :: TermX α ν
   }
-  deriving (Show)
+  deriving (Generic, Show)
 
 deriving instance (Eq α) => Eq (Definition α Variable)

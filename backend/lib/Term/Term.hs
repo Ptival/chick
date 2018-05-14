@@ -71,6 +71,7 @@ import Data.Maybe
 import Data.String
 import Data.Typeable
 import GHC.Generics
+import Language.OCaml.Definitions.Parsing.ParseTree
 import Text.Printf
 
 import Term.Binder
@@ -197,6 +198,7 @@ data TermX α ν
   -- but having α makes it not an applicative (can't come up with arbitrary α)
   -- so (Maybe α) lets us put stuff there when handy, but not always
   | Var   (Maybe α) ν
+  | UnsupportedOCaml Expression
   deriving
     ( Foldable
     , Functor
@@ -226,6 +228,7 @@ instance Bifunctor TermX where
       Pi    a τ1 bτ2 -> Pi    (l a) (go τ1) (over scopedTerm bimapScope bτ2)
       Type  u        -> Type  u
       Var   a v      -> Var   (l <$> a) (r v)
+      UnsupportedOCaml o -> UnsupportedOCaml o
     where
       go = bimap l r
       bimapScope s = hoistScope (bimap l id) (r <$> s)
@@ -254,6 +257,8 @@ instance Eq1 (TermX α) where
       (Type _, _) -> False
       (Var _ v,      Var _ v')       -> eqVar v v'
       (Var _ _, _) -> False
+      (UnsupportedOCaml o, UnsupportedOCaml o') -> o == o'
+      (UnsupportedOCaml o, _) -> False
 
 instance (Eq ν) => Eq (TermX α ν) where
   term1 == term2 = liftEq (==) term1 term2
@@ -267,17 +272,18 @@ instance Applicative (TermX α) where
 
 instance Monad (TermX α) where
   return = Var Nothing
-  Annot a t  τ   >>= f = Annot a (t   >>= f) (τ  >>= f)
-  App   a t1 t2  >>= f = App   a (t1  >>= f) (t2 >>= f)
-  Hole  a        >>= _ = Hole  a
-  Lam   a bt     >>= f = Lam   a             (over scopedTerm (>>>= f) bt)
-  Let   a t1 bt2 >>= f = Let   a (t1  >>= f) (over scopedTerm (>>>= f) bt2)
-  Match a d bs   >>= f = Match a (d >>= f)   (map bindBranch bs)
+  Annot a t  τ       >>= f = Annot a (t   >>= f) (τ  >>= f)
+  App   a t1 t2      >>= f = App   a (t1  >>= f) (t2 >>= f)
+  Hole  a            >>= _ = Hole  a
+  Lam   a bt         >>= f = Lam   a             (over scopedTerm (>>>= f) bt)
+  Let   a t1 bt2     >>= f = Let   a (t1  >>= f) (over scopedTerm (>>>= f) bt2)
+  Match a d bs       >>= f = Match a (d >>= f)   (map bindBranch bs)
     where
       bindBranch (Branch ctor args sbody) = Branch ctor args (sbody >>>= f)
-  Pi    a τ1 bτ2 >>= f = Pi    a (τ1  >>= f) (over scopedTerm (>>>= f) bτ2)
-  Type  u        >>= _ = Type  u
-  Var   _ v      >>= f = f v
+  Pi    a τ1 bτ2     >>= f = Pi    a (τ1  >>= f) (over scopedTerm (>>>= f) bτ2)
+  Type  u            >>= _ = Type  u
+  Var   _ v          >>= f = f v
+  UnsupportedOCaml o >>= _ = UnsupportedOCaml o
 
 instance (ToJSON α) => ToJSON (TermX α Variable) where
   toJSON = \case

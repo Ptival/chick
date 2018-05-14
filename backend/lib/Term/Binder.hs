@@ -3,6 +3,7 @@
 
 module Term.Binder
   ( Binder(..)
+  , mkBinder
   ) where
 
 import Data.Aeson
@@ -12,6 +13,8 @@ import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
 import Test.SmallCheck.Series
 import Text.PrettyPrint.GenericPretty (Out)
+
+import Term.Variable
 
 newtype Binder ν
   = Binder { unBinder :: Maybe ν }
@@ -31,3 +34,6 @@ instance IsString ν => IsString (Binder ν) where
   fromString s = Binder (Just (fromString s))
 
 instance ToJSON ν => ToJSON (Binder ν) where
+
+mkBinder :: String -> Binder Variable
+mkBinder = Binder . Just . mkVariable

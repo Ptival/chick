@@ -5,6 +5,7 @@ extra-deps:
   - GenericPretty-1.2.1
   - heist-1.0.1.0
   - map-syntax-0.2.0.2
+  - prettyprinter-1.2.0.1
   - snap-1.0.0.2
   - text-1.2.2.2
   - xmlhtml-0.2.5.1
@@ -23,9 +24,8 @@ packages:
     extra-dep: true
   - location:
       git: https://github.com/Ptival/language-ocaml
-      commit: d82403d727e93127c885e15ab7e8bb53ca876d4f
+      commit: d17214695944bf150fe750227d9b3890554b04f7
     extra-dep: true
-
 
 nix:
   enable: true

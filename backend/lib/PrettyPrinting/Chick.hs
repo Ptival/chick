@@ -2,7 +2,7 @@ module PrettyPrinting.Chick () where
 
 import PrettyPrinting.Chick.Binder ()
 import PrettyPrinting.Chick.Constructor ()
-import PrettyPrinting.Chick.Declaration ()
+--import PrettyPrinting.Chick.Declaration ()
 import PrettyPrinting.Chick.Definition ()
 import PrettyPrinting.Chick.DefinitionObjectKind ()
 import PrettyPrinting.Chick.LocalContext ()
@@ -17,3 +17,4 @@ import PrettyPrinting.Chick.Term ()
 import PrettyPrinting.Chick.Triple ()
 import PrettyPrinting.Chick.Unit ()
 import PrettyPrinting.Chick.Variable ()
+import PrettyPrinting.Chick.Vernacular ()

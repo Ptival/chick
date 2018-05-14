@@ -2,10 +2,11 @@
 
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeApplications #-}
 
-module PrettyPrinting.Chick.Definition
+module PrettyPrinting.Chick.Vernacular
   (
   ) where
 
@@ -13,32 +14,24 @@ import Control.Monad.Reader
 import Data.Default
 import Text.PrettyPrint.Annotated.WL
 
-import Definition
 import Language (Language(Chick))
-import PrettyPrinting.Chick.DefinitionObjectKind ()
-import PrettyPrinting.Chick.Variable ()
+import PrettyPrinting.Chick.Definition ()
+import PrettyPrinting.Chick.Inductive ()
 import PrettyPrinting.Term ()
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import Term.Term
+import Vernacular
 
-instance PrettyPrintableUnannotated 'Chick (Definition α Variable) where
-  prettyDocU d = do
-    τDoc <- prettyDocU @'Chick $ definitionType d
-    tDoc <- prettyDocU @'Chick $ definitionTerm d
-    return $ hcat
-      [ prettyDoc @'Chick (definitionKind d)
-      , space
-      , prettyDoc @'Chick (definitionName d)
-      , softline
-      , text ":"
-      , space
-      , τDoc
-      , softline
-      , text ":="
-      , softline
-      , tDoc
-      ]
+instance PrettyPrintableUnannotated 'Chick (Vernacular α Variable) where
+  prettyDocU = \case
+    Definition d -> prettyDocU @'Chick d
+    Inductive i -> prettyDocU @'Chick i
+    Vernacular.UnsupportedOCaml o ->
+      return $ fillSep [ text "(*"
+                       , text " TODO: prettyprint OCaml"
+                       , text" *)"
+                       ]
 
-instance PrettyPrintable 'Chick (Definition α Variable) where
+instance PrettyPrintable 'Chick (Vernacular α Variable) where
   prettyDoc v = runReader (prettyDocU @'Chick v) def
