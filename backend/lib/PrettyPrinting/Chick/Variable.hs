@@ -10,11 +10,11 @@ module PrettyPrinting.Chick.Variable
   (
   ) where
 
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
 import PrettyPrinting.PrettyPrintable
 import Term.Variable
 
 instance PrettyPrintable 'Chick Variable where
-  prettyDoc = text . unVariable
+  prettyDoc = pretty . unVariable

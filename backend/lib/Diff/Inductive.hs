@@ -29,7 +29,7 @@ import           Control.Monad.Fix
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Text.PrettyPrint.Annotated.WL
+import           Data.Text.Prettyprint.Doc
 
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
@@ -112,8 +112,8 @@ instance
   ) => PrettyPrintable l (Diff α)
   where
   prettyDoc = \case
-    Same                  -> text "Same"
-    Modify δ1 δ2 δ3 δ4 δ5 -> fillSep [ text "Modify", go δ1 , go δ2, go δ3, go δ4, go δ5 ]
+    Same                  -> "Same"
+    Modify δ1 δ2 δ3 δ4 δ5 -> fillSep [ "Modify", go δ1 , go δ2, go δ3, go δ4, go δ5 ]
 
     where
       go :: PrettyPrintable l a => a -> Doc ()

@@ -2,6 +2,7 @@
 {-# language FlexibleContexts #-}
 {-# language LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -14,7 +15,7 @@ module Diff.LocalDeclaration
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Text.PrettyPrint.Annotated.WL
+import           Data.Text.Prettyprint.Doc
 
 import qualified Diff.Atom as DA
 import qualified Diff.Term as DT
@@ -39,11 +40,11 @@ instance
   ) => PrettyPrintable l (Diff α)
   where
   prettyDoc = \case
-    Same -> text "Same"
+    Same -> "Same"
     ModifyLocalAssum δ1 δ2 ->
-      fillSep [ text "ModifyLocalAssum", prettyDoc @l δ1, prettyDoc @l δ2 ]
+      fillSep [ "ModifyLocalAssum", prettyDoc @l δ1, prettyDoc @l δ2 ]
     ModifyLocalDef δ1 δ2 ->
-      fillSep [ text "ModifyLocalDef", prettyDoc @l δ1, prettyDoc @l δ2 ]
+      fillSep [ "ModifyLocalDef", prettyDoc @l δ1, prettyDoc @l δ2 ]
 
 patch ::
   ( Member (Exc String) r

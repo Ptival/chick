@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -14,7 +15,7 @@ module Diff.Vernacular
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Text.PrettyPrint.Annotated.WL
+import           Data.Text.Prettyprint.Doc
 import           Text.Printf
 
 import qualified Definition as D
@@ -52,11 +53,11 @@ instance
   , PrettyPrintable l (Vernacular α Variable)
   ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
-    Same -> text "Same"
+    Same -> "Same"
     ModifyDefinition δ1 δ2 δ3 δ4 ->
-      fillSep [ text "ModifyDefinition", go δ1, go δ2, go δ3, go δ4 ]
-    ModifyInductive δ1 -> fillSep [ text "ModifyInductive", go δ1 ]
-    Replace r -> fillSep [ text "Replace", go r ]
+      fillSep [ "ModifyDefinition", go δ1, go δ2, go δ3, go δ4 ]
+    ModifyInductive δ1 -> fillSep [ "ModifyInductive", go δ1 ]
+    Replace r -> fillSep [ "Replace", go r ]
 
     where
       go :: PrettyPrintable l a => a -> Doc ()
@@ -68,7 +69,7 @@ patch ::
   ) =>
   Vernacular Raw.Raw Variable -> Diff Raw.Raw -> Eff r (Vernacular Raw.Raw Variable)
 patch v δv =
-  let exc reason = throwExc $ printf "Diff.Vernacular/patch: %s" reason in
+  let exc (reason :: String) = throwExc $ printf "Diff.Vernacular/patch: %s" reason in
   case δv of
     Same -> return v
     ModifyDefinition δk δn δτ δt ->

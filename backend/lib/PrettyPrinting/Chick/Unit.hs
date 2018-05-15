@@ -6,6 +6,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -13,7 +14,7 @@
 
 module PrettyPrinting.Chick.Unit where
 
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc ()
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.GlobalDeclaration ()
@@ -26,4 +27,4 @@ instance PrettyPrintableUnannotated 'Chick () where
   prettyDocU = return . prettyDoc @'Chick
 
 instance PrettyPrintable 'Chick () where
-  prettyDoc () = text "()"
+  prettyDoc () = "()"

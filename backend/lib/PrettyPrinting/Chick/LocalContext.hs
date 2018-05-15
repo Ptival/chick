@@ -22,7 +22,7 @@ module PrettyPrinting.Chick.LocalContext
 
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
 import Typing.LocalContext

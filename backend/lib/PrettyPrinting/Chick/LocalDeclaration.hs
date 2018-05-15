@@ -6,6 +6,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -15,7 +16,7 @@ module PrettyPrinting.Chick.LocalDeclaration where
 
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.Term ()
@@ -33,16 +34,16 @@ instance PrettyPrintableUnannotated 'Chick (LocalDeclaration α Variable) where
       τDoc <- prettyDocU @'Chick τ
       return $ fillSep
         [ prettyDoc @'Chick b
-        , char ':'
+        , pretty ':'
         , τDoc
         ]
     LocalDef v τ t -> do
       τDoc <- prettyDocU @'Chick τ
       tDoc <- prettyDocU @'Chick t
       return $ fillSep
-        [ text (unVariable v)
-        , char ':'
+        [ pretty $ unVariable v
+        , pretty ':'
         , τDoc
-        , text ":="
+        , ":="
         , tDoc
         ]

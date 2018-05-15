@@ -15,7 +15,7 @@ module PrettyPrinting.Chick.GlobalEnvironment where
 
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.GlobalDeclaration ()

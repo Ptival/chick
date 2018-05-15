@@ -7,6 +7,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -22,7 +23,7 @@ import Bound.Name
 import Control.Lens
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
 import Precedence
@@ -56,10 +57,10 @@ prettyBranchDocPrec :: PrecedenceTable -> Branch α Variable -> Doc ()
 prettyBranchDocPrec precs b =
   let (ctor, args, body) = unpackBranch b in
   fillSep $
-  [ text "|"
+  [ "|"
   , prettyDoc @'Chick ctor
   , fillSep $ map (prettyDoc @'Chick) args
-  , text "=>"
+  , "=>"
   , fst $ prettyTermDocPrec precs body
   ]
 
@@ -77,7 +78,7 @@ prettyTermDocPrec precs = goTerm
       Annot _ t τ ->
         (fillSep
          [ go (PrecAnnot, TolerateHigher) t
-         , text annotSymbol
+         , pretty annotSymbol
          , go (PrecAnnot, TolerateHigher) τ
          ]
         , PrecAnnot)
@@ -89,18 +90,18 @@ prettyTermDocPrec precs = goTerm
          ]
         , PrecApp)
 
-      Hole _ -> (text holeSymbol, PrecAtom)
+      Hole _ -> (pretty holeSymbol, PrecAtom)
 
       l@(Lam _ _) -> (goLams [] l, PrecLam)
 
       Let _ t1 bt2 ->
         let n = originalVariable bt2 in
         (fillSep
-         [ text "let"
+         [ "let"
          , prettyDoc @'Chick n
-         , text ":="
+         , ":="
          , go (PrecMin, TolerateEqual) t1
-         , text "in"
+         , "in"
          , go (PrecLet, TolerateEqual) (instantiate1Name (Var Nothing n) (view scopedTerm bt2))
          ]
         , PrecLet)
@@ -109,9 +110,9 @@ prettyTermDocPrec precs = goTerm
         (line <> (indent 2 . align . vsep $ matchDoc), PrecMatch)
         where
           matchDoc = []
-            ++ [ fillSep [ text "match", go (PrecMin, TolerateEqual) d, text "with" ] ]
+            ++ [ fillSep [ "match", go (PrecMin, TolerateEqual) d, "with" ] ]
             ++ map (prettyBranchDocPrec precs) bs
-            ++ [ text "end" ]
+            ++ [ "end" ]
 
       Pi _ τ1 bτ2 ->
         let (b, τ2) = unscopeTerm bτ2 in
@@ -119,17 +120,17 @@ prettyTermDocPrec precs = goTerm
           Nothing ->
             (fillSep
               [ go (PrecArrow, TolerateHigher) τ1
-              , text arrowSymbol
+              , pretty arrowSymbol
               , go (PrecArrow, TolerateEqual) τ2
               ]
             , PrecArrow)
           Just v ->
             (hcat
-              [ text "∀"
+              [ "∀"
               , space
               , parens $ fillSep
                 [ prettyDoc @'Chick (if unVariable v == "_" then error "NOOOO" else v)
-                , char ':'
+                , pretty ':'
                 , go (PrecMin, TolerateEqual) τ1
                 ]
               , comma
@@ -138,7 +139,7 @@ prettyTermDocPrec precs = goTerm
               ]
             , PrecArrow)
 
-      Type u -> (text (show u), PrecAtom)
+      Type u -> (pretty $ show u, PrecAtom)
 
       Var _ v -> (prettyDoc @'Chick v, PrecAtom)
 
@@ -149,10 +150,10 @@ prettyTermDocPrec precs = goTerm
         goLams (prettyDoc @'Chick n : l) (instantiate1Name (Var Nothing n) (view scopedTerm bt))
       t ->
         hcat
-        [ text lamSymbol
+        [ pretty lamSymbol
         , space
         , fillSep . reverse $ l
-        , text postLamSymbol
+        , pretty postLamSymbol
         , softline
         , go (PrecMin, TolerateEqual) t
         ]
@@ -176,4 +177,4 @@ boundTermDocVariable :: ∀ l m α.
   (α, Variable, TermX α Variable) -> m (Doc ())
 boundTermDocVariable (_, v, t) = do
   tDoc <- prettyDocU @l t
-  return $ parens . fillSep $ [ prettyDoc @l v, text ":", tDoc ]
+  return $ parens . fillSep $ [ prettyDoc @l v, ":", tDoc ]

@@ -24,14 +24,14 @@ import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
-import           Text.PrettyPrint.Annotated.WL
+import           Data.Text.Prettyprint.Doc
 
 instance PrettyPrintableUnannotated 'Chick (Constructor α Variable) where
   prettyDocU (Constructor (Inductive n ips _ _ _) cName cParams cIndices) = do
     cDoc <- prettyDocU @'Chick (constructorRawType' False n ips cParams cIndices)
     return $ fillSep
       [ prettyDoc @'Chick cName
-      , text ":"
+      , ":"
       , cDoc
       ]
 

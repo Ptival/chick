@@ -9,10 +9,10 @@ module PrettyPrinting.Chick.Script
   (
   ) where
 
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
-import PrettyPrinting.Chick.Declaration ()
+import PrettyPrinting.Chick.Vernacular ()
 import PrettyPrinting.PrettyPrintableUnannotated
 import Script
 import Term.Term

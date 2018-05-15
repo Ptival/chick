@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -19,7 +20,7 @@ module Diff.Triple
 
 import Data.Aeson
 import GHC.Generics
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import PrettyPrinting.PrettyPrintable
 
@@ -45,7 +46,7 @@ extract3 _    (Modify _ _ δ) = δ
 instance
   (PrettyPrintable l δ1, PrettyPrintable l δ2, PrettyPrintable l δ3) =>
   PrettyPrintable l (Diff δ1 δ2 δ3) where
-  prettyDoc Same              = text "Same"
+  prettyDoc Same              = "Same"
   prettyDoc (Modify δ1 δ2 δ3) =
     encloseSep lparen rparen comma
     [ prettyDoc @l δ1

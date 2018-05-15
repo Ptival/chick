@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -15,8 +16,8 @@ module Diff.Atom
 
 import Control.Monad.Freer
 import Data.Aeson
+import Data.Text.Prettyprint.Doc
 import GHC.Generics
-import Text.PrettyPrint.Annotated.WL
 
 import PrettyPrinting.PrettyPrintable
 
@@ -26,8 +27,8 @@ data Diff a
   deriving (Eq, Functor, Generic, Show)
 
 instance PrettyPrintable l a => PrettyPrintable l (Diff a) where
-  prettyDoc Same        = text "Same"
-  prettyDoc (Replace r) = fillSep [ text "Replace", prettyDoc @l r ]
+  prettyDoc Same        = "Same"
+  prettyDoc (Replace r) = fillSep [ "Replace", prettyDoc @l r ]
 
 instance ToJSON a => ToJSON (Diff a) where
 

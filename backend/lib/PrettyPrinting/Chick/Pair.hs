@@ -13,7 +13,7 @@
 
 module PrettyPrinting.Chick.Pair where
 
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.GlobalDeclaration ()

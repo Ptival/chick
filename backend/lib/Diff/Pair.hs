@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -15,9 +16,7 @@ module Diff.Pair
   , patchMaybe
   ) where
 
--- import Control.Monad.Freer
--- import Control.Monad.Freer.Exception
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import PrettyPrinting.PrettyPrintable
 
@@ -27,7 +26,7 @@ data Diff δl δr
   deriving (Eq, Show)
 
 instance (PrettyPrintable l a, PrettyPrintable l b) => PrettyPrintable l (Diff a b) where
-  prettyDoc Same         = text "Same"
+  prettyDoc Same         = "Same"
   prettyDoc (Modify a b) =
     fillSep [ lparen, prettyDoc @l a, comma, prettyDoc @l b, rparen ]
 

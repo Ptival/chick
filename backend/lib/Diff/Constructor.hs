@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -20,7 +21,7 @@ module Diff.Constructor
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Text.PrettyPrint.Annotated.WL
+import           Data.Text.Prettyprint.Doc
 
 import qualified Diff.Atom as DA
 import qualified Diff.List as DL
@@ -92,9 +93,9 @@ instance
   , PrettyPrintable l (TermX α Variable)
   , PrettyPrintable l Variable
   ) => PrettyPrintable l (Diff α) where
-  prettyDoc Same              = text "Same"
+  prettyDoc Same              = "Same"
   prettyDoc (Modify δ1 δ2 δ3) =
-    fillSep [ text "Modify", prettyDoc @l δ1, prettyDoc @l δ2, prettyDoc @l δ3 ]
+    fillSep [ "Modify", prettyDoc @l δ1, prettyDoc @l δ2, prettyDoc @l δ3 ]
 
 -- | Note: `patch` does not replace the reference to `Inductive` in the constructor.
 -- | The caller must finish tying the knot!

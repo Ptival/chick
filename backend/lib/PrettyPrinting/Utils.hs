@@ -1,11 +1,12 @@
 module PrettyPrinting.Utils where
 
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.String
 
 import Precedence
 
 doc2String :: Doc a -> String
-doc2String = display . renderPretty 1.0 80
+doc2String = renderString . layoutPretty defaultLayoutOptions
 
 par :: PrecedenceTable -> (Precedence, Tolerance) -> (Doc a, Precedence) -> Doc a
 par precs (pOut, t) (d, pIn) =

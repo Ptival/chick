@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -14,7 +15,7 @@ module Diff.GlobalDeclaration
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Text.PrettyPrint.Annotated.WL
+import           Data.Text.Prettyprint.Doc
 import           Text.Printf
 
 import qualified Diff.Atom as DA
@@ -52,10 +53,10 @@ instance
   , PrettyPrintable l Variable
   ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
-    Same -> text "Same"
-    ModifyGlobalAssum δ1 δ2    -> fillSep [ text "ModifyGlobalAssum", go δ1, go δ2 ]
-    ModifyGlobalDef   δ1 δ2 δ3 -> fillSep [ text "ModifyGlobalDef",   go δ1, go δ2, go δ3 ]
-    ModifyGlobalInd   δ1       -> fillSep [ text "ModifyGlobalInd",   go δ1 ]
+    Same -> "Same"
+    ModifyGlobalAssum δ1 δ2    -> fillSep [ "ModifyGlobalAssum", go δ1, go δ2 ]
+    ModifyGlobalDef   δ1 δ2 δ3 -> fillSep [ "ModifyGlobalDef",   go δ1, go δ2, go δ3 ]
+    ModifyGlobalInd   δ1       -> fillSep [ "ModifyGlobalInd",   go δ1 ]
     where
       go :: PrettyPrintable l a => a -> Doc ()
       go = parens . prettyDoc @l
@@ -67,7 +68,7 @@ patch ::
   , Show α
   ) => GlobalDeclaration α Variable -> Diff α -> Eff r (GlobalDeclaration α Variable)
 patch gd δgd =
-  let exc reason = throwExc $ printf "Diff.GlobalDeclaration/patch: %s" reason in
+  let exc (reason :: String) = throwExc $ printf "Diff.GlobalDeclaration/patch: %s" reason in
   case δgd of
 
     Same -> return gd

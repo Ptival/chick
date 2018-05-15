@@ -6,6 +6,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -15,7 +16,7 @@ module PrettyPrinting.Chick.GlobalDeclaration where
 
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.Inductive ()
@@ -30,18 +31,18 @@ instance PrettyPrintableUnannotated 'Chick (GlobalDeclaration α Variable) where
     GlobalAssum v τ -> do
       τDoc <- prettyDocU @'Chick τ
       return $ fillSep
-        [ text (unVariable v)
-        , char ':'
+        [ pretty $ unVariable v
+        , pretty ':'
         , τDoc
         ]
     GlobalDef v τ t -> do
       τDoc <- prettyDocU @'Chick τ
       tDoc <- prettyDocU @'Chick t
       return $ fillSep
-        [ text (unVariable v)
-        , char ':'
+        [ pretty $ unVariable v
+        , pretty ':'
         , τDoc
-        , text ":="
+        , ":="
         , tDoc
         ]
     GlobalInd i -> prettyDocU @'Chick i

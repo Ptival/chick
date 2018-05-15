@@ -16,7 +16,8 @@ module PrettyPrinting.PrettyPrintableUnannotated
 
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.String
 
 import Precedence
 import Language
@@ -25,4 +26,4 @@ class PrettyPrintableUnannotated (l :: Language) t where
   prettyDocU :: (MonadReader PrecedenceTable m) => t -> m (Doc ())
   prettyStrU :: t -> String
   prettyStrU t =
-    display . renderPretty 1.0 80 . runReader (prettyDocU @l t) $ def
+    renderString . layoutPretty defaultLayoutOptions . runReader (prettyDocU @l t) $ def

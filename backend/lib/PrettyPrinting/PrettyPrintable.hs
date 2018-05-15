@@ -10,14 +10,15 @@ module PrettyPrinting.PrettyPrintable
   ( PrettyPrintable(..)
   ) where
 
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.String
 
 import Language (Language)
 
 class PrettyPrintable (l :: Language) t where
   prettyDoc :: t -> Doc ()
   prettyStr :: t -> String
-  prettyStr = display . renderPretty 1.0 72 . prettyDoc @l
+  prettyStr = renderString . layoutPretty defaultLayoutOptions . prettyDoc @l
   preview :: t -> String
   preview t =
     let s = prettyStr @l t in

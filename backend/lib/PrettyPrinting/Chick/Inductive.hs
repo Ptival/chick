@@ -18,6 +18,7 @@ module PrettyPrinting.Chick.Inductive
 
 import           Control.Monad.Reader
 import           Data.Default
+import           Data.Text.Prettyprint.Doc
 
 import           Inductive.Inductive
 import           Language (Language(Chick))
@@ -26,7 +27,6 @@ import           PrettyPrinting.Chick.Term
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
-import           Text.PrettyPrint.Annotated.WL
 
 instance PrettyPrintableUnannotated 'Chick (Inductive α Variable) where
   prettyDocU (Inductive n ips iis u cs) = do
@@ -37,7 +37,7 @@ instance PrettyPrintableUnannotated 'Chick (Inductive α Variable) where
     -- isDoc <- mapM boundTermDocVariable is
     return $ vsep $
       [ fillSep $
-        [ text "Inductive"
+        [ "Inductive"
         , prettyDoc @'Chick n
         ]
         ++
@@ -48,13 +48,13 @@ instance PrettyPrintableUnannotated 'Chick (Inductive α Variable) where
           else [encloseSep mempty mempty mempty psDoc]
         )
         ++
-        [ text ":"
-        -- , arrows (isDoc ++ [text "Type"])
+        [ ":"
+        -- , arrows (isDoc ++ ["Type"])
         , isDoc
-        , text ":="
+        , ":="
         ]
       ]
-      ++ (map (\ x -> fillSep [ text "|", x]) csDoc)
+      ++ (map (\ x -> fillSep [ "|", x]) csDoc)
 
 instance PrettyPrintable 'Chick (Inductive α Variable) where
   prettyDoc i = runReader (prettyDocU @'Chick i) def

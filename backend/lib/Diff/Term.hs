@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -40,7 +41,7 @@ import Data.Aeson
 import Data.Either.Combinators
 import GHC.Generics
 import Text.Printf
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.List as ΔL
@@ -90,22 +91,22 @@ instance
   , PrettyPrintable l Variable
   ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
-    Same              -> text "Same"
-    Replace t         -> fillSep [ text "Replace",    go t ]
-    CpyApp δ1 δ2      -> fillSep [ text "CpyApp",     go δ1, go δ2 ]
-    CpyLam δ1 δ2      -> fillSep [ text "CpyLam",     go δ1, go δ2 ]
-    CpyMatch δ1 δ2    -> fillSep [ text "CpyMatch",   go δ1, go δ2 ]
-    CpyPi  δ1 δ2 δ3   -> fillSep [ text "CpyPi",      go δ1, go δ2, go δ3 ]
-    CpyVar δ1         -> fillSep [ text "CpyVar",     go δ1 ]
-    InsApp _ δ1 δ2    -> fillSep [ text "InsApp",     go δ1, go δ2 ]
-    InsLam _ δ1 δ2    -> fillSep [ text "InsLam",     go δ1, go δ2 ]
-    InsPi  _ δ1 δ2 δ3 -> fillSep [ text "InsPi",      go δ1, go δ2, go δ3 ]
-    PermutApps p δ1   -> fillSep [ text "PermutApp",  (text $ show p), go δ1 ]
-    PermutLams p δ1   -> fillSep [ text "PermutLam",  (text $ show p), go δ1 ]
-    PermutPis  p δ1   -> fillSep [ text "PermutPi",   (text $ show p), go δ1 ]
-    RemoveApp δ1      -> fillSep [ text "RemoveApp",  go δ1 ]
-    RemoveLam δ1      -> fillSep [ text "RemoveApp",  go δ1 ]
-    RemovePi δ1       -> fillSep [ text "RemovePi",   go δ1 ]
+    Same              -> "Same"
+    Replace t         -> fillSep [ "Replace",    go t ]
+    CpyApp δ1 δ2      -> fillSep [ "CpyApp",     go δ1, go δ2 ]
+    CpyLam δ1 δ2      -> fillSep [ "CpyLam",     go δ1, go δ2 ]
+    CpyMatch δ1 δ2    -> fillSep [ "CpyMatch",   go δ1, go δ2 ]
+    CpyPi  δ1 δ2 δ3   -> fillSep [ "CpyPi",      go δ1, go δ2, go δ3 ]
+    CpyVar δ1         -> fillSep [ "CpyVar",     go δ1 ]
+    InsApp _ δ1 δ2    -> fillSep [ "InsApp",     go δ1, go δ2 ]
+    InsLam _ δ1 δ2    -> fillSep [ "InsLam",     go δ1, go δ2 ]
+    InsPi  _ δ1 δ2 δ3 -> fillSep [ "InsPi",      go δ1, go δ2, go δ3 ]
+    PermutApps p δ1   -> fillSep [ "PermutApp",  (pretty $ show p), go δ1 ]
+    PermutLams p δ1   -> fillSep [ "PermutLam",  (pretty $ show p), go δ1 ]
+    PermutPis  p δ1   -> fillSep [ "PermutPi",   (pretty $ show p), go δ1 ]
+    RemoveApp δ1      -> fillSep [ "RemoveApp",  go δ1 ]
+    RemoveLam δ1      -> fillSep [ "RemoveApp",  go δ1 ]
+    RemovePi δ1       -> fillSep [ "RemovePi",   go δ1 ]
 
     where
       go :: PrettyPrintable l a => a -> Doc ()

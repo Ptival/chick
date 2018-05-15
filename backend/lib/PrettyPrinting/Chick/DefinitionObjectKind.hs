@@ -5,6 +5,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module PrettyPrinting.Chick.DefinitionObjectKind
@@ -13,7 +14,7 @@ module PrettyPrinting.Chick.DefinitionObjectKind
 
 import Control.Monad.Reader (runReader)
 import Data.Default (def)
-import Text.PrettyPrint.Annotated.WL (text)
+import Data.Text.Prettyprint.Doc ()
 
 import DefinitionObjectKind
 import Language (Language(Chick))
@@ -25,5 +26,5 @@ instance PrettyPrintable 'Chick DefinitionObjectKind where
 
 instance PrettyPrintableUnannotated 'Chick DefinitionObjectKind where
   prettyDocU = \case
-    Definition -> return $ text "Definition"
-    Fixpoint   -> return $ text "Fixpoint"
+    Definition -> return $ "Definition"
+    Fixpoint   -> return $ "Fixpoint"

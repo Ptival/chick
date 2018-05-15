@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnicodeSyntax #-}
@@ -23,7 +24,7 @@ import Data.Aeson
 import Data.Bifunctor
 import GHC.Generics
 import Text.Printf
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Diff.Utils
 import PrettyPrinting.PrettyPrintable
@@ -52,13 +53,13 @@ instance (Show t, Show δt) => Show (Diff t δt) where
 
 instance (PrettyPrintable l t, PrettyPrintable l δt) => PrettyPrintable l (Diff t δt) where
   prettyDoc = \case
-    Insert t  δ -> fillSep [ text "Insert",  go t,          go δ ]
-    Keep      δ -> fillSep [ text "Keep",                   go δ ]
-    Modify δt δ -> fillSep [ text "Modify",  go δt,         go δ ]
-    Permute p δ -> fillSep [ text "Permute", text (show p), go δ ]
-    Remove    δ -> fillSep [ text "Remove",                 go δ ]
-    Replace l   -> fillSep [ text "Replace", encloseSep lbracket rbracket comma (map (prettyDoc @l) l) ]
-    Same        -> text "Same"
+    Insert t  δ -> fillSep [ "Insert",  go t,              go δ ]
+    Keep      δ -> fillSep [ "Keep",                       go δ ]
+    Modify δt δ -> fillSep [ "Modify",  go δt,             go δ ]
+    Permute p δ -> fillSep [ "Permute", (pretty $ show p), go δ ]
+    Remove    δ -> fillSep [ "Remove",                     go δ ]
+    Replace l   -> fillSep [ "Replace", encloseSep lbracket rbracket comma (map (prettyDoc @l) l) ]
+    Same        -> "Same"
     where
       go x = fillSep [ lparen, prettyDoc @l x, rparen ]
 
@@ -86,7 +87,7 @@ patch patchElem la δa =
   --       ) >>
   go la δa
   where
-    failWith = throwExc . printf "[Diff.List.patch] %s"
+    failWith (s :: String) = throwExc $ printf "[Diff.List.patch] %s" s
     go l = \case
 
       Same -> return l

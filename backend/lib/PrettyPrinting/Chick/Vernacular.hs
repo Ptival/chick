@@ -12,7 +12,8 @@ module PrettyPrinting.Chick.Vernacular
 
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
+import Language.OCaml.PrettyPrinter
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.Definition ()
@@ -28,10 +29,7 @@ instance PrettyPrintableUnannotated 'Chick (Vernacular α Variable) where
     Definition d -> prettyDocU @'Chick d
     Inductive i -> prettyDocU @'Chick i
     Vernacular.UnsupportedOCaml o ->
-      return $ fillSep [ text "(*"
-                       , text " TODO: prettyprint OCaml"
-                       , text" *)"
-                       ]
+      return $ Language.OCaml.PrettyPrinter.pretty o
 
 instance PrettyPrintable 'Chick (Vernacular α Variable) where
   prettyDoc v = runReader (prettyDocU @'Chick v) def

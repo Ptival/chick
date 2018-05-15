@@ -3,6 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 module PrettyPrinting.Chick.Definition
@@ -11,7 +12,7 @@ module PrettyPrinting.Chick.Definition
 
 import Control.Monad.Reader
 import Data.Default
-import Text.PrettyPrint.Annotated.WL
+import Data.Text.Prettyprint.Doc
 
 import Definition
 import Language (Language(Chick))
@@ -31,11 +32,11 @@ instance PrettyPrintableUnannotated 'Chick (Definition α Variable) where
       , space
       , prettyDoc @'Chick (definitionName d)
       , softline
-      , text ":"
+      , ":"
       , space
       , τDoc
       , softline
-      , text ":="
+      , ":="
       , softline
       , tDoc
       ]
