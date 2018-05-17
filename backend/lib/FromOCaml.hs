@@ -85,12 +85,12 @@ open Lexing
 open Ast
 open Env
 
-(*
 type tconstantc_module = TCModule of tfdec list
 [@@deriving show, eq]
 
 and tfdec' = { t_name:string; t_params:param list; t_rty:ctype; t_rlbl:label; t_body:tblock }
 [@@deriving show, eq]
+
 and tfdec = tfdec' pos_ast [@@deriving show, eq]
 
 and tstm' =
@@ -101,8 +101,8 @@ and tstm' =
   | TFor of string * ctype * texpr * texpr * tblock
   | TReturn of texpr
 [@@deriving show, eq]
+
 and tstm = tstm' pos_ast [@@deriving show, eq]
-*)
 |]
 
 test :: Maybe [Vernacular () Variable]
