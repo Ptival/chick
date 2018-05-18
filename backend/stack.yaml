@@ -24,7 +24,7 @@ packages:
     extra-dep: true
   - location:
       git: https://github.com/Ptival/language-ocaml
-      commit: edaa566912c4663f437b1ca1b64af8a312d611bc
+      commit: 8021f89b2c5105c8e267543a52cdd5051d0cfc63
     extra-dep: true
 
 nix:
