@@ -76,28 +76,67 @@ instance ToOCaml (Binder Variable) Pattern where
 
 testProgram :: String
 testProgram = [s|
-open Lexing
-open Ast
-open Env
+(*
+ * Copyright (c) 2016 - present Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *)
 
-type tconstantc_module = TCModule of tfdec list
-[@@deriving show, eq]
+(** Performance Statistics gathering and reporting *)
 
-and tfdec' = { t_name:string; t_params:param list; t_rty:ctype; t_rlbl:label; t_body:tblock }
-[@@deriving show, eq]
+open! IStd
+module F = Format
+module L = Logging
 
-and tfdec = tfdec' pos_ast [@@deriving show, eq]
+type mem_perf =
+  { minor_gb: float
+  ; promoted_gb: float
+  ; major_gb: float
+  ; allocated_gb: float
+  ; minor_collections: int
+  ; major_collections: int
+  ; compactions: int
+  ; top_heap_gb: float
+  ; stack_kb: float
+  ; minor_heap_kb: float }
 
-and tstm' =
-  | TVarDec of string * labeled_type * texpr
-  | TAssign of string * texpr
-  | TArrAssign of string * texpr * texpr
-  | TIf of texpr * tblock * tblock
-  | TFor of string * ctype * texpr * texpr * tblock
-  | TReturn of texpr
-[@@deriving show, eq]
+type time_perf = {rtime: float; utime: float; stime: float; cutime: float; cstime: float}
 
-and tstm = tstm' pos_ast [@@deriving show, eq]
+type perf_stats = {mem: mem_perf option; time: time_perf option}
+
+type stats_kind = Time of Mtime_clock.counter * Unix.process_times | Memory | TimeAndMemory
+
+type stats_type =
+  | ClangLinters
+  | ClangFrontend
+  | ClangFrontendLinters
+  | JavaFrontend
+  | PythonFrontend
+  | Backend
+  | Reporting
+  | Driver
+
+let dirname_of_stats_type = function
+  | ClangLinters ->
+      Config.frontend_stats_dir_name
+  | ClangFrontend ->
+      Config.frontend_stats_dir_name
+  | ClangFrontendLinters ->
+      Config.frontend_stats_dir_name
+  | JavaFrontend ->
+      Config.frontend_stats_dir_name
+  | PythonFrontend ->
+      Config.frontend_stats_dir_name
+  | Backend ->
+      Config.backend_stats_dir_name
+  | Reporting ->
+      Config.reporting_stats_dir_name
+  | Driver ->
+      Config.driver_stats_dir_name
+
 |]
 
 test :: Maybe [Structure_item]

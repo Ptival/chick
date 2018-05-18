@@ -66,6 +66,7 @@ import Control.Lens hiding ((.=))
 import Control.Monad
 import Data.Aeson
 import Data.Functor.Classes
+import Data.Functor.Product
 import Data.List
 import Data.Maybe
 import Data.String
@@ -155,11 +156,40 @@ abstractBinder b t = ScopedTerm
 --type NameScope f a = (Binder Variable, Scope (Name Variable ()) f a)
 type NamesScope = Scope (Name Variable Int)
 
-data Branch α ν =
-  Branch
-  { branchConstructor :: Variable
-  , branchNbArguments :: Int
-  , branchBody        :: NamesScope (TermX α) ν
+-- data GuardAndBody α ν = GuardAndBody
+--   { branchGuard :: Maybe (TermX α ν)
+--   , branchBody  :: TermX α ν
+--   }
+--   deriving
+--     ( Foldable
+--     , Functor
+--     , Generic
+--     , Traversable
+--     , Typeable
+--     )
+
+-- instance Eq1 (GuardAndBody α) where
+--   liftEq eqVar (GuardAndBody g b) (GuardAndBody g' b') =
+--     liftEq _ <$> g <*> g' &&
+--     liftEq eqVar b b'
+
+-- instance (Eq ν) => Eq (GuardAndBody α ν) where
+--   gb == gb' = liftEq (==) gb gb'
+
+-- instance ToJSON α => ToJSON (GuardAndBody α Variable) where
+--   toJSON b =
+--     let (constructor, parameters, body) = unpackBranch b in
+--     object
+--     [ "branchConstructor" .= constructor
+--     , "branchParameters"  .= parameters
+--     , "branchBody"        .= body
+--     ]
+
+data Branch α ν = Branch
+  { branchConstructor  :: Variable
+  , branchNbArguments  :: Int
+  , branchGuardAndBody :: NamesScope (TermX α) ν
+  -- , branchGuardAndBody :: NamesScope (GuardAndBody α) ν
   }
   deriving
     ( Foldable

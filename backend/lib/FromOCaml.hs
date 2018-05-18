@@ -4,7 +4,9 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module FromOCaml
   ( FromOCaml(..)
@@ -64,6 +66,13 @@ instance FromOCaml Expression_desc (Expression -> TermX () Variable) where
     Pexp_apply f as ->
       const $ mkApps (fromOCaml f) (map ((const ()) *** fromOCaml) as)
 
+    Pexp_function l ->
+      let arg :: Variable = "__arg__" in
+      const
+      $ Lam () $ abstractVariable arg
+      $ Match () (Var Nothing arg)
+      $ map fromOCaml l
+
     Pexp_ident i -> case fromOCaml $ txt i of
       Nothing -> Term.Term.UnsupportedOCaml
       Just v -> const $ Var Nothing v
@@ -78,6 +87,10 @@ instance FromOCaml Expression_desc (Expression -> TermX () Variable) where
       _ -> Term.Term.UnsupportedOCaml
 
     _ -> error $ show ocaml
+
+-- instance FromOCaml Case (Branch () Variable) where
+--   fromOCaml ocaml = case pc_guard ocaml of
+--     Just _ ->
 
 testProgram :: String
 testProgram = [s|
