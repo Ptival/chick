@@ -1,23 +1,18 @@
--- {-# language ConstraintKinds #-}
-{-# language DeriveAnyClass #-}
-{-# language DeriveFoldable #-}
-{-# language DeriveFunctor #-}
-{-# language DeriveGeneric #-}
-{-# language DeriveTraversable #-}
--- {-# language FlexibleContexts #-}
-{-# language FlexibleInstances #-}
--- {-# language GADTs #-}
-{-# language KindSignatures #-}
-{-# language LambdaCase #-}
--- {-# language MultiParamTypeClasses #-}
-{-# language OverloadedStrings #-}
-{-# language RankNTypes #-}
-{-# language ScopedTypeVariables #-}
-{-# language StandaloneDeriving #-}
-{-# language TemplateHaskell #-}
--- {-# language TypeFamilies #-}
--- {-# language TypeOperators #-}
--- {-# language UndecidableInstances #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Term.Term
   ( module Term.Binder
@@ -74,6 +69,7 @@ import Data.Typeable
 import GHC.Generics
 import Language.OCaml.Definitions.Parsing.ParseTree
 import Text.Printf
+import Util (eqMaybeBy)
 
 import Term.Binder
 import Term.Variable
@@ -153,43 +149,52 @@ abstractBinder b t = ScopedTerm
   , _originalBinder = b
   }
 
---type NameScope f a = (Binder Variable, Scope (Name Variable ()) f a)
 type NamesScope = Scope (Name Variable Int)
 
--- data GuardAndBody α ν = GuardAndBody
---   { branchGuard :: Maybe (TermX α ν)
---   , branchBody  :: TermX α ν
---   }
---   deriving
---     ( Foldable
---     , Functor
---     , Generic
---     , Traversable
---     , Typeable
---     )
+type NameScope f a = (Binder Variable, Scope (Name Variable ()) f a)
 
--- instance Eq1 (GuardAndBody α) where
---   liftEq eqVar (GuardAndBody g b) (GuardAndBody g' b') =
---     liftEq _ <$> g <*> g' &&
---     liftEq eqVar b b'
+data GuardAndBody α ν = GuardAndBody
+  { branchGuard :: Maybe (TermX α ν)
+  , branchBody  :: TermX α ν
+  }
+  deriving
+    ( Foldable
+    , Functor
+    , Generic
+    , Traversable
+    , Typeable
+    )
 
--- instance (Eq ν) => Eq (GuardAndBody α ν) where
---   gb == gb' = liftEq (==) gb gb'
+instance Applicative (GuardAndBody α) where
+  pure v = GuardAndBody Nothing (pure v) -- does this even make sense?
 
--- instance ToJSON α => ToJSON (GuardAndBody α Variable) where
---   toJSON b =
---     let (constructor, parameters, body) = unpackBranch b in
---     object
---     [ "branchConstructor" .= constructor
---     , "branchParameters"  .= parameters
---     , "branchBody"        .= body
---     ]
+instance Monad (GuardAndBody α) where
+  return = pure
+
+instance Bifunctor GuardAndBody where
+  bimap f g gb = GuardAndBody
+    { branchGuard = bimap f g <$> branchGuard gb
+    , branchBody  = bimap f g $ branchBody gb
+    }
+
+instance Eq1 (GuardAndBody α) where
+  liftEq eqVar (GuardAndBody g b) (GuardAndBody g' b') =
+    liftEq (liftEq eqVar) g g' && liftEq eqVar b b'
+
+instance (Eq ν) => Eq (GuardAndBody α ν) where
+  gb == gb' = liftEq (==) gb gb'
+
+instance ToJSON α => ToJSON (GuardAndBody α Variable) where
+  toJSON gb =
+    object
+    [ "branchBody"  .= branchBody gb
+    , "branchGuard" .= branchGuard gb
+    ]
 
 data Branch α ν = Branch
-  { branchConstructor  :: Variable
+  { branchConstructor  :: ν
   , branchNbArguments  :: Int
-  , branchGuardAndBody :: NamesScope (TermX α) ν
-  -- , branchGuardAndBody :: NamesScope (GuardAndBody α) ν
+  , branchGuardAndBody :: NamesScope (GuardAndBody α) ν
   }
   deriving
     ( Foldable
@@ -201,7 +206,7 @@ data Branch α ν = Branch
 
 instance Eq1 (Branch α) where
   liftEq eqVar (Branch c n b) (Branch c' n' b') =
-    c == c' && n == n' && liftEq eqVar b b'
+    eqVar c c' && n == n' && liftEq eqVar b b'
 
 instance (Eq ν) => Eq (Branch α ν) where
   term1 == term2 = liftEq (==) term1 term2
@@ -242,7 +247,7 @@ type TypeX = TermX
 -- $(makeBoomerangs ''TermX)
 
 instance Bifunctor Branch where
-  bimap l r (Branch a b c) = Branch a b (bimapScope c)
+  bimap l r (Branch a b c) = Branch (r a) b (bimapScope c)
     where
       bimapScope s = hoistScope (bimap l id) (r <$> s)
 
@@ -300,6 +305,12 @@ instance Applicative (TermX α) where
   pure = Var Nothing
   (<*>) = ap
 
+bindGuardAndBody :: (TermX α a -> TermX α b) -> GuardAndBody α a -> GuardAndBody α b
+bindGuardAndBody f gb = GuardAndBody
+  { branchBody  = f  $  branchBody  gb
+  , branchGuard = f <$> branchGuard gb
+  }
+
 instance Monad (TermX α) where
   return = Var Nothing
   Annot a t  τ       >>= f = Annot a (t   >>= f) (τ  >>= f)
@@ -309,7 +320,15 @@ instance Monad (TermX α) where
   Let   a t1 bt2     >>= f = Let   a (t1  >>= f) (over scopedTerm (>>>= f) bt2)
   Match a d bs       >>= f = Match a (d >>= f)   (map bindBranch bs)
     where
-      bindBranch (Branch ctor args sbody) = Branch ctor args (sbody >>>= f)
+      bindBranch b = Branch
+        { branchConstructor  = branchConstructor b
+        , branchNbArguments  = branchNbArguments b
+        , branchGuardAndBody = _
+        }
+      bindGuardAndBody gb = GuardAndBody
+        { branchGuard = (>>= f) <$> branchGuard gb
+        , branchBody  = branchBody  gb >>= f
+        }
   Pi    a τ1 bτ2     >>= f = Pi    a (τ1  >>= f) (over scopedTerm (>>>= f) bτ2)
   Type  u            >>= _ = Type  u
   Var   _ v          >>= f = f v
@@ -471,23 +490,23 @@ simultaneousSubstitute l w =
                 Just p -> p
                 Nothing -> return b
 
-mkVarAtIndex :: NamesScope (TermX α) Variable -> Int -> Maybe Variable
+mkVarAtIndex :: (Foldable f) => NamesScope f Variable -> Int -> Maybe Variable
 mkVarAtIndex s ndx = name <$> find ((==) ndx . snd . view _Name) (bindings s)
 
-unscopeNames ::
-  Scope (Name Variable Int) (TermX α) Variable ->
-  (Int -> Binder Variable, TermX α Variable)
+unscopeNames :: (Foldable f, Monad f) =>
+  Scope (Name Variable Int) f Variable ->
+  (Int -> Binder Variable, f Variable)
 unscopeNames s =
   let varAtIndex = mkVarAtIndex s in
-  (Binder <$> varAtIndex, instantiateName (Var Nothing <$> fromJust <$> varAtIndex) s)
+  (Binder <$> varAtIndex, instantiateName (pure <$> fromJust <$> varAtIndex) s)
 
-unpackBranch :: Branch α Variable -> (Variable, [Binder Variable], TermX α Variable)
-unpackBranch (Branch ctor nbArgs sbody) = (ctor, args, body)
+unpackBranch :: Branch α Variable -> (Variable, [Binder Variable], GuardAndBody α Variable)
+unpackBranch (Branch ctor nbArgs sguardbody) = (ctor, args, guardbody)
   where
-    (binderAtIndex, body) = unscopeNames sbody
+    (binderAtIndex, guardbody) = unscopeNames sguardbody
     args = map binderAtIndex [0..nbArgs-1]
 
-packBranch :: (Variable, [Binder Variable], TermX α Variable) -> Branch α Variable
+packBranch :: (Variable, [Binder Variable], GuardAndBody α Variable) -> Branch α Variable
 packBranch (ctor, args, body) = Branch ctor nbArgs sbody
   where
     nbArgs = length args
@@ -503,9 +522,11 @@ unscopeTerm bt =
 instance IsString (TermX α Variable) where
   fromString s = Var Nothing (fromString s)
 
-deriving instance (Show α, Show ν) => Show (Branch α ν)
-deriving instance (Show α, Show ν) => Show (ScopedTerm (TermX α) ν)
-deriving instance (Show α, Show ν) => Show (TermX α ν)
+instance (Show α, Show1 (TermX α)) => Show1 (GuardAndBody α) where
+  liftShowsPrec sP sL p gb =
+    let guard = branchGuard gb in
+    let body  = branchBody gb in
+    showString "GuardAndBody (" . liftShowsPrec _ sL p guard . showString ") (" . _ body . showString ")"
 
 instance (Show α) => Show1 (TermX α) where
   liftShowsPrec sP sL p = go
@@ -520,6 +541,11 @@ instance (Show α) => Show1 (TermX α) where
         Pi    a τ1 bτ2 -> showString "Pi ("    . shows a . showString ") (" . liftShowsPrec sP sL p τ1 . showString ") (" . liftShowsPrec sP sL p (view scopedTerm bτ2) . showString ")"
         Type  u        -> showString (show u)
         Var   a v      -> showString "Var (" . shows a . showString ") (" . sP p v . showString ")"
+
+deriving instance (Show α, Show ν) => Show (GuardAndBody α ν)
+deriving instance (Show α, Show ν) => Show (Branch α ν)
+deriving instance (Show α, Show ν) => Show (ScopedTerm (TermX α) ν)
+deriving instance (Show α, Show ν) => Show (TermX α ν)
 
 instance (PrintfArg α, Show α) => PrintfArg (TermX α Variable) where
   formatArg t = formatString (show t)
