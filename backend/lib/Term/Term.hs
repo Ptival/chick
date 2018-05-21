@@ -305,12 +305,6 @@ instance Applicative (TermX α) where
   pure = Var Nothing
   (<*>) = ap
 
-bindGuardAndBody :: (TermX α a -> TermX α b) -> GuardAndBody α a -> GuardAndBody α b
-bindGuardAndBody f gb = GuardAndBody
-  { branchBody  = f  $  branchBody  gb
-  , branchGuard = f <$> branchGuard gb
-  }
-
 instance Monad (TermX α) where
   return = Var Nothing
   Annot a t  τ       >>= f = Annot a (t   >>= f) (τ  >>= f)
