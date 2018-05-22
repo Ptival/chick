@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -13,6 +14,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UnicodeSyntax #-}
 
 module Term.Term
   ( module Term.Binder
@@ -149,7 +151,11 @@ abstractBinder b t = ScopedTerm
   , _originalBinder = b
   }
 
+type MkNamesScope ν = Scope (Name ν Int)
+
 type NamesScope = Scope (Name Variable Int)
+
+type MkNameScope ν f a = (Binder ν, Scope (Name ν ()) f a)
 
 type NameScope f a = (Binder Variable, Scope (Name Variable ()) f a)
 
@@ -192,7 +198,8 @@ instance ToJSON α => ToJSON (GuardAndBody α Variable) where
     ]
 
 data Branch α ν = Branch
-  { branchConstructor  :: ν
+  { branchConstructor  :: Variable -- do not put ν here
+  -- as this field cannot be term-substituted
   , branchNbArguments  :: Int
   , branchGuardAndBody :: NamesScope (GuardAndBody α) ν
   }
@@ -206,7 +213,7 @@ data Branch α ν = Branch
 
 instance Eq1 (Branch α) where
   liftEq eqVar (Branch c n b) (Branch c' n' b') =
-    eqVar c c' && n == n' && liftEq eqVar b b'
+    c == c' && n == n' && liftEq eqVar b b'
 
 instance (Eq ν) => Eq (Branch α ν) where
   term1 == term2 = liftEq (==) term1 term2
@@ -247,7 +254,7 @@ type TypeX = TermX
 -- $(makeBoomerangs ''TermX)
 
 instance Bifunctor Branch where
-  bimap l r (Branch a b c) = Branch (r a) b (bimapScope c)
+  bimap l r (Branch a b c) = Branch a b (bimapScope c)
     where
       bimapScope s = hoistScope (bimap l id) (r <$> s)
 
@@ -307,24 +314,31 @@ instance Applicative (TermX α) where
 
 instance Monad (TermX α) where
   return = Var Nothing
-  Annot a t  τ       >>= f = Annot a (t   >>= f) (τ  >>= f)
-  App   a t1 t2      >>= f = App   a (t1  >>= f) (t2 >>= f)
+  (>>=) :: ∀ α a b. TermX α a -> (a -> TermX α b) -> TermX α b
+  Annot a t  τ       >>= f = Annot a (t  >>= f) (τ  >>= f)
+  App   a t1 t2      >>= f = App   a (t1 >>= f) (t2 >>= f)
   Hole  a            >>= _ = Hole  a
-  Lam   a bt         >>= f = Lam   a             (over scopedTerm (>>>= f) bt)
-  Let   a t1 bt2     >>= f = Let   a (t1  >>= f) (over scopedTerm (>>>= f) bt2)
-  Match a d bs       >>= f = Match a (d >>= f)   (map bindBranch bs)
+  Lam   a bt         >>= f = Lam   a            (over scopedTerm (>>>= f) bt)
+  Let   a t1 bt2     >>= f = Let   a (t1 >>= f) (over scopedTerm (>>>= f) bt2)
+  Match a d bs       >>= f = Match a (d  >>= f) (map bindBranch bs)
     where
+      bindBranch :: Branch α a -> Branch α b
       bindBranch b = Branch
         { branchConstructor  = branchConstructor b
         , branchNbArguments  = branchNbArguments b
-        , branchGuardAndBody = _
+        , branchGuardAndBody = _ $ branchGuardAndBody b
+          -- let a = _ $ branchGuardAndBody b in
+          -- _
         }
+      mystery :: NamesScope (GuardAndBody α) a -> NamesScope (GuardAndBody α) b
+      mystery = _
+      bindGuardAndBody :: GuardAndBody α a -> GuardAndBody α b
       bindGuardAndBody gb = GuardAndBody
         { branchGuard = (>>= f) <$> branchGuard gb
         , branchBody  = branchBody  gb >>= f
         }
-  Pi    a τ1 bτ2     >>= f = Pi    a (τ1  >>= f) (over scopedTerm (>>>= f) bτ2)
-  Type  u            >>= _ = Type  u
+  Pi    a τ1 bτ2     >>= f = Pi a (τ1 >>= f) (over scopedTerm (>>>= f) bτ2)
+  Type  u            >>= _ = Type u
   Var   _ v          >>= f = f v
   UnsupportedOCaml o >>= _ = UnsupportedOCaml o
 
@@ -484,12 +498,12 @@ simultaneousSubstitute l w =
                 Just p -> p
                 Nothing -> return b
 
-mkVarAtIndex :: (Foldable f) => NamesScope f Variable -> Int -> Maybe Variable
+mkVarAtIndex :: (Foldable f) => MkNamesScope ν f ν -> Int -> Maybe ν
 mkVarAtIndex s ndx = name <$> find ((==) ndx . snd . view _Name) (bindings s)
 
 unscopeNames :: (Foldable f, Monad f) =>
-  Scope (Name Variable Int) f Variable ->
-  (Int -> Binder Variable, f Variable)
+  Scope (Name ν Int) f ν ->
+  (Int -> Binder ν, f ν)
 unscopeNames s =
   let varAtIndex = mkVarAtIndex s in
   (Binder <$> varAtIndex, instantiateName (pure <$> fromJust <$> varAtIndex) s)
