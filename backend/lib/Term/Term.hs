@@ -57,6 +57,7 @@ module Term.Term
   ) where
 
 import Bound ((>>>=))
+import Bound.Class
 import Bound.Name
 import Bound.Scope
 import Control.Lens hiding ((.=))
@@ -171,11 +172,18 @@ data GuardAndBody f ν = GuardAndBody
     , Typeable
     )
 
--- instance Applicative (GuardAndBody α) where
---   pure v = GuardAndBody Nothing (pure v) -- does this even make sense?
+instance Bound GuardAndBody where
+  gb >>>= f = GuardAndBody
+    { branchGuard = (>>= f) <$> branchGuard gb
+    , branchBody  = branchBody gb >>= f
+    }
 
--- instance Monad (GuardAndBody α) where
+instance Applicative f => Applicative (GuardAndBody f) where
+  pure v = GuardAndBody Nothing (pure v) -- does this even make sense?
+
+-- instance Monad f => Monad (GuardAndBody f) where
 --   return = pure
+--   (>>=) = _
 
 -- instance Bifunctor GuardAndBody where
 --   bimap f g gb = GuardAndBody
@@ -336,7 +344,7 @@ instance Monad (TermX α) where
           let a = unscopeNamesBindWith _ $ branchGuardAndBody b in
           _
         }
-      mystery :: NamesScope (GuardAndBody α) a -> NamesScope (GuardAndBody α) b
+      mystery :: NamesScope (GuardAndBody (TermX α)) a -> NamesScope (GuardAndBody (TermX α)) b
       mystery s = s >>>= _
   Pi    a τ1 bτ2     >>= f = Pi a (τ1 >>= f) (over scopedTerm (>>>= f) bτ2)
   Type  u            >>= _ = Type u
@@ -523,13 +531,13 @@ unscopeNames :: (Foldable f, Monad f) =>
   (Int -> Binder ν, f ν)
 unscopeNames = unscopeNamesBindWith pure
 
-unpackBranch :: Branch α Variable -> (Variable, [Binder Variable], GuardAndBody α Variable)
+unpackBranch :: Branch α Variable -> (Variable, [Binder Variable], GuardAndBody (TermX α) Variable)
 unpackBranch (Branch ctor nbArgs sguardbody) = (ctor, args, guardbody)
   where
     (binderAtIndex, guardbody) = unscopeNames sguardbody
     args = map binderAtIndex [0..nbArgs-1]
 
-packBranch :: (Variable, [Binder Variable], GuardAndBody α Variable) -> Branch α Variable
+packBranch :: (Variable, [Binder Variable], GuardAndBody (TermX α) Variable) -> Branch α Variable
 packBranch (ctor, args, body) = Branch ctor nbArgs sbody
   where
     nbArgs = length args
@@ -565,7 +573,7 @@ instance (Show α) => Show1 (TermX α) where
         Type  u        -> showString (show u)
         Var   a v      -> showString "Var (" . shows a . showString ") (" . sP p v . showString ")"
 
-I--deriving instance (Show α, Show ν) => Show (GuardAndBody α ν)
+--deriving instance (Show α, Show ν) => Show (GuardAndBody α ν)
 deriving instance (Show α, Show ν) => Show (Branch α ν)
 deriving instance (Show α, Show ν) => Show (ScopedTerm (TermX α) ν)
 deriving instance (Show α, Show ν) => Show (TermX α ν)
