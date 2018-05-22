@@ -326,9 +326,9 @@ instance Monad (TermX α) where
       bindBranch b = Branch
         { branchConstructor  = branchConstructor b
         , branchNbArguments  = branchNbArguments b
-        , branchGuardAndBody = _ $ branchGuardAndBody b
-          -- let a = _ $ branchGuardAndBody b in
-          -- _
+        , branchGuardAndBody = -- _ $ branchGuardAndBody b
+          let a = unscopeNamesBindWith _ $ branchGuardAndBody b in
+          _
         }
       mystery :: NamesScope (GuardAndBody α) a -> NamesScope (GuardAndBody α) b
       mystery = _
@@ -498,15 +498,21 @@ simultaneousSubstitute l w =
                 Just p -> p
                 Nothing -> return b
 
-mkVarAtIndex :: (Foldable f) => MkNamesScope ν f ν -> Int -> Maybe ν
+mkVarAtIndex :: (Foldable f) => MkNamesScope b f a -> Int -> Maybe b
 mkVarAtIndex s ndx = name <$> find ((==) ndx . snd . view _Name) (bindings s)
+
+unscopeNamesBindWith :: (Foldable f, Monad f) =>
+  (ν1 -> f ν2) ->
+  Scope (Name ν1 Int) f ν2 ->
+  (Int -> Binder ν1, f ν2)
+unscopeNamesBindWith f s =
+  let varAtIndex = mkVarAtIndex s in
+  (Binder <$> varAtIndex, instantiateName (f <$> fromJust <$> varAtIndex) s)
 
 unscopeNames :: (Foldable f, Monad f) =>
   Scope (Name ν Int) f ν ->
   (Int -> Binder ν, f ν)
-unscopeNames s =
-  let varAtIndex = mkVarAtIndex s in
-  (Binder <$> varAtIndex, instantiateName (pure <$> fromJust <$> varAtIndex) s)
+unscopeNames = unscopeNamesBindWith pure
 
 unpackBranch :: Branch α Variable -> (Variable, [Binder Variable], GuardAndBody α Variable)
 unpackBranch (Branch ctor nbArgs sguardbody) = (ctor, args, guardbody)
