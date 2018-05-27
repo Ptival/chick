@@ -53,15 +53,23 @@ instance PrettyPrintable 'Chick (TermX α Variable) where
   prettyDoc t = runReader (prettyDocU @'Chick t) def
   prettyStr = prettyStrU @'Chick
 
+prettyGuardAndBodyDocPrec :: PrecedenceTable -> GuardAndBody (TermX α) Variable -> Doc ()
+prettyGuardAndBodyDocPrec precs gb = fillCat [ guard, "=", space, body ]
+  where
+    guard = case branchGuard gb of
+      Nothing -> ""
+      Just g  -> fillCat [ fst $ prettyTermDocPrec precs g, space ]
+    body = fst $ prettyTermDocPrec precs $ branchBody gb
+
 prettyBranchDocPrec :: PrecedenceTable -> Branch α Variable -> Doc ()
 prettyBranchDocPrec precs b =
-  let (ctor, args, body) = unpackBranch b in
+  let (ctor, args, guardbody) = unpackBranch b in
   fillSep $
   [ "|"
   , prettyDoc @'Chick ctor
   , fillSep $ map (prettyDoc @'Chick) args
   , "=>"
-  , fst $ prettyTermDocPrec precs body
+  , prettyGuardAndBodyDocPrec precs guardbody
   ]
 
 prettyTermDocPrec :: ∀ α. PrecedenceTable -> TermX α Variable -> (Doc (), Precedence)

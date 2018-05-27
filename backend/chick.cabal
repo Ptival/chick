@@ -25,6 +25,7 @@ Library
                  base                      >= 4.0    && < 4.10,
                  bound                     >= 1.0    && < 2.0,
                  bytestring                >= 0.10   && < 0.11,
+                 comonad                   >= 5.0    && < 5.1,
                  containers                >= 0.5    && < 0.6,
                  convertible               >= 1.1    && < 1.2,
                  data-default              >= 0.7    && < 0.8,
@@ -63,180 +64,180 @@ Library
                  utility-ht                >= 0.0    && < 0.1,
                  unordered-containers      >= 0.2    && < 0.3,
                  utf8-string               >= 1.0    && < 1.1
-  exposed-modules:
-                  Definition
-                  DefinitionObjectKind
-                  DictMetaOut
-                  Diff.Atom
-                  Diff.Binder
-                  Diff.ConcatMap
-                  Diff.Constructor
-                  Diff.Eliminator
-                  Diff.Guess.Atom
-                  Diff.Guess.BottomUp
-                  Diff.Guess.Constructor
-                  Diff.Guess.HIList
-                  Diff.Guess.Inductive
-                  Diff.Guess.Mapping
-                  Diff.Guess.Node
-                  Diff.Guess.Script
-                  Diff.Guess.Term
-                  Diff.Guess.TopDown
-                  Diff.Guess.Vernacular
-                  Diff.GlobalDeclaration
-                  Diff.GlobalEnvironment
-                  Diff.Inductive
-                  Diff.List
-                  Diff.ListFold
-                  Diff.ListFoldLeft
-                  Diff.ListFoldRight
-                  Diff.ListFoldUtils
-                  Diff.LocalContext
-                  Diff.LocalDeclaration
-                  Diff.Motive
-                  Diff.Pair
-                  Diff.Script
-                  Diff.Term
-                  Diff.Triple
-                  Diff.Utils
-                  Diff.Variable
-                  Diff.Vernacular
-                  Examples.Diff.SoftwareFoundations
-                  Examples.Inductive
-                  Examples.Term
-                  Examples.Utils
-                  FromOCaml
-                  Goal
-                  Inductive.Eliminator
-                  Inductive.Inductive
-                  Inductive.Motive
-                  Inductive.Utils
-                  Language
-                  Notations
-                  Parsing
-                  -- Parsing.Atomic
-                  Parsing.Chick.Utils
-                  Parsing.Inductive
-                  Parsing.Inductive.Test
-                  Parsing.Script
-                  -- Parsing.Tactic
-                  Parsing.Unsafe
-                  Parsing.Utils
-                  Parsing.Vernacular
-                  -- Playground
-                  Precedence
-                  PrettyPrinting.Chick
-                  PrettyPrinting.Chick.Binder
-                  PrettyPrinting.Chick.Constructor
-                  PrettyPrinting.Chick.Declaration
-                  PrettyPrinting.Chick.Definition
-                  PrettyPrinting.Chick.DefinitionObjectKind
-                  PrettyPrinting.Chick.LocalContext
-                  PrettyPrinting.Chick.LocalDeclaration
-                  PrettyPrinting.Chick.GlobalEnvironment
-                  PrettyPrinting.Chick.GlobalDeclaration
-                  PrettyPrinting.Chick.Inductive
-                  PrettyPrinting.Chick.List
-                  PrettyPrinting.Chick.Pair
-                  PrettyPrinting.Chick.Script
-                  PrettyPrinting.Chick.Term
-                  PrettyPrinting.Chick.Triple
-                  PrettyPrinting.Chick.Unit
-                  PrettyPrinting.Chick.Universe
-                  PrettyPrinting.Chick.Variable
-                  PrettyPrinting.Chick.Vernacular
-                  --PrettyPrinting.Coq
-                  -- PrettyPrinting.Coq.Binder
-                  -- PrettyPrinting.Coq.Constructor
-                  -- PrettyPrinting.Coq.Declaration
-                  -- PrettyPrinting.Coq.Definition
-                  -- PrettyPrinting.Coq.DefinitionObjectKind
-                  -- PrettyPrinting.Coq.LocalContext
-                  -- PrettyPrinting.Coq.LocalDeclaration
-                  -- PrettyPrinting.Coq.GlobalEnvironment
-                  -- PrettyPrinting.Coq.GlobalDeclaration
-                  -- PrettyPrinting.Coq.Inductive
-                  -- PrettyPrinting.Coq.List
-                  -- PrettyPrinting.Coq.Pair
-                  -- PrettyPrinting.Coq.Script
-                  -- PrettyPrinting.Coq.Term
-                  -- PrettyPrinting.Coq.Triple
-                  -- PrettyPrinting.Coq.Unit
-                  -- PrettyPrinting.Coq.Universe
-                  -- PrettyPrinting.Coq.Variable
-                  -- PrettyPrinting.OCaml
-                  -- PrettyPrinting.OCaml.Binder
-                  -- PrettyPrinting.OCaml.Constructor
-                  -- PrettyPrinting.OCaml.Declaration
-                  -- PrettyPrinting.OCaml.Definition
-                  -- PrettyPrinting.OCaml.DefinitionObjectKind
-                  -- PrettyPrinting.OCaml.LocalContext
-                  -- PrettyPrinting.OCaml.LocalDeclaration
-                  -- PrettyPrinting.OCaml.GlobalEnvironment
-                  -- PrettyPrinting.OCaml.GlobalDeclaration
-                  -- PrettyPrinting.OCaml.Inductive
-                  -- PrettyPrinting.OCaml.List
-                  -- PrettyPrinting.OCaml.Pair
-                  -- PrettyPrinting.OCaml.Script
-                  -- PrettyPrinting.OCaml.Term
-                  -- PrettyPrinting.OCaml.Triple
-                  -- PrettyPrinting.OCaml.Unit
-                  -- PrettyPrinting.OCaml.Universe
-                  -- PrettyPrinting.OCaml.Variable
-                  PrettyPrinting.Term
-                  PrettyPrinting.PrettyPrintable
-                  PrettyPrinting.PrettyPrintableAnnotated
-                  PrettyPrinting.PrettyPrintableUnannotated
-                  -- PrettyPrinting.Tactic
-                  PrettyPrinting.Universe
-                  PrettyPrinting.Utils
-                  Repair.Benchmark
-                  Repair.Inductive
-                  Repair.Script
-                  Repair.State
-                  Repair.Term
-                  Repair.Term.Argument
-                  Repair.Term.Branch
-                  Repair.Utils
-                  Repair.Vernacular
-                  Script
-                  Server.Chick
-                  Server.ChickHandler
-                  Server.Server
-                  Server.Session
-                  Snap.Extras.JSON
-                  StandardLibrary
-                  StandardLibraryDiff
-                  -- Tactic
-                  Term.AlphaEquivalence
-                  Term.AlphaRenaming
-                  Term.Binder
-                  Term.Diff
-                  Term.Free
-                  Term.Fresh
-                  Term.Raw
-                  Term.Term
-                  Term.TypeChecked
-                  Term.TypeErrored
-                  Term.Universe
-                  Term.Variable
-                  TestUtils
-                  ToOCaml
-                  TypeCheckingFailure
-                  -- Typing.Free
-                  Typing.GlobalDeclaration
-                  Typing.GlobalEnvironment
-                  -- Typing.Inductive
-                  Typing.LocalContext
-                  --Typing.LocalContextOps
-                  Typing.LocalDeclaration
-                  -- Typing.TypeCheckOps
-                  -- Typing.TypeChecker
-                  Typing.Utils
-                  Utils
-                  Vernacular
-                  WellFormed
-                  -- Work
+  exposed-modules: Bound.ScopeT
+                   Definition
+                   DefinitionObjectKind
+                   DictMetaOut
+                   Diff.Atom
+                   Diff.Binder
+                   Diff.ConcatMap
+                   Diff.Constructor
+                   Diff.Eliminator
+                   Diff.Guess.Atom
+                   Diff.Guess.BottomUp
+                   Diff.Guess.Constructor
+                   Diff.Guess.HIList
+                   Diff.Guess.Inductive
+                   Diff.Guess.Mapping
+                   Diff.Guess.Node
+                   Diff.Guess.Script
+                   Diff.Guess.Term
+                   Diff.Guess.TopDown
+                   Diff.Guess.Vernacular
+                   Diff.GlobalDeclaration
+                   Diff.GlobalEnvironment
+                   Diff.Inductive
+                   Diff.List
+                   Diff.ListFold
+                   Diff.ListFoldLeft
+                   Diff.ListFoldRight
+                   Diff.ListFoldUtils
+                   Diff.LocalContext
+                   Diff.LocalDeclaration
+                   Diff.Motive
+                   Diff.Pair
+                   Diff.Script
+                   Diff.Term
+                   Diff.Triple
+                   Diff.Utils
+                   Diff.Variable
+                   Diff.Vernacular
+                   Examples.Diff.SoftwareFoundations
+                   Examples.Inductive
+                   Examples.Term
+                   Examples.Utils
+                   FromOCaml
+                   Goal
+                   Inductive.Eliminator
+                   Inductive.Inductive
+                   Inductive.Motive
+                   Inductive.Utils
+                   Language
+                   Notations
+                   Parsing
+                   -- Parsing.Atomic
+                   Parsing.Chick.Utils
+                   Parsing.Inductive
+                   Parsing.Inductive.Test
+                   Parsing.Script
+                   -- Parsing.Tactic
+                   Parsing.Unsafe
+                   Parsing.Utils
+                   Parsing.Vernacular
+                   -- Playground
+                   Precedence
+                   PrettyPrinting.Chick
+                   PrettyPrinting.Chick.Binder
+                   PrettyPrinting.Chick.Constructor
+                   PrettyPrinting.Chick.Declaration
+                   PrettyPrinting.Chick.Definition
+                   PrettyPrinting.Chick.DefinitionObjectKind
+                   PrettyPrinting.Chick.LocalContext
+                   PrettyPrinting.Chick.LocalDeclaration
+                   PrettyPrinting.Chick.GlobalEnvironment
+                   PrettyPrinting.Chick.GlobalDeclaration
+                   PrettyPrinting.Chick.Inductive
+                   PrettyPrinting.Chick.List
+                   PrettyPrinting.Chick.Pair
+                   PrettyPrinting.Chick.Script
+                   PrettyPrinting.Chick.Term
+                   PrettyPrinting.Chick.Triple
+                   PrettyPrinting.Chick.Unit
+                   PrettyPrinting.Chick.Universe
+                   PrettyPrinting.Chick.Variable
+                   PrettyPrinting.Chick.Vernacular
+                   --PrettyPrinting.Coq
+                   -- PrettyPrinting.Coq.Binder
+                   -- PrettyPrinting.Coq.Constructor
+                   -- PrettyPrinting.Coq.Declaration
+                   -- PrettyPrinting.Coq.Definition
+                   -- PrettyPrinting.Coq.DefinitionObjectKind
+                   -- PrettyPrinting.Coq.LocalContext
+                   -- PrettyPrinting.Coq.LocalDeclaration
+                   -- PrettyPrinting.Coq.GlobalEnvironment
+                   -- PrettyPrinting.Coq.GlobalDeclaration
+                   -- PrettyPrinting.Coq.Inductive
+                   -- PrettyPrinting.Coq.List
+                   -- PrettyPrinting.Coq.Pair
+                   -- PrettyPrinting.Coq.Script
+                   -- PrettyPrinting.Coq.Term
+                   -- PrettyPrinting.Coq.Triple
+                   -- PrettyPrinting.Coq.Unit
+                   -- PrettyPrinting.Coq.Universe
+                   -- PrettyPrinting.Coq.Variable
+                   -- PrettyPrinting.OCaml
+                   -- PrettyPrinting.OCaml.Binder
+                   -- PrettyPrinting.OCaml.Constructor
+                   -- PrettyPrinting.OCaml.Declaration
+                   -- PrettyPrinting.OCaml.Definition
+                   -- PrettyPrinting.OCaml.DefinitionObjectKind
+                   -- PrettyPrinting.OCaml.LocalContext
+                   -- PrettyPrinting.OCaml.LocalDeclaration
+                   -- PrettyPrinting.OCaml.GlobalEnvironment
+                   -- PrettyPrinting.OCaml.GlobalDeclaration
+                   -- PrettyPrinting.OCaml.Inductive
+                   -- PrettyPrinting.OCaml.List
+                   -- PrettyPrinting.OCaml.Pair
+                   -- PrettyPrinting.OCaml.Script
+                   -- PrettyPrinting.OCaml.Term
+                   -- PrettyPrinting.OCaml.Triple
+                   -- PrettyPrinting.OCaml.Unit
+                   -- PrettyPrinting.OCaml.Universe
+                   -- PrettyPrinting.OCaml.Variable
+                   PrettyPrinting.Term
+                   PrettyPrinting.PrettyPrintable
+                   PrettyPrinting.PrettyPrintableAnnotated
+                   PrettyPrinting.PrettyPrintableUnannotated
+                   -- PrettyPrinting.Tactic
+                   PrettyPrinting.Universe
+                   PrettyPrinting.Utils
+                   Repair.Benchmark
+                   Repair.Inductive
+                   Repair.Script
+                   Repair.State
+                   Repair.Term
+                   Repair.Term.Argument
+                   Repair.Term.Branch
+                   Repair.Utils
+                   Repair.Vernacular
+                   Script
+                   Server.Chick
+                   Server.ChickHandler
+                   Server.Server
+                   Server.Session
+                   Snap.Extras.JSON
+                   StandardLibrary
+                   StandardLibraryDiff
+                   -- Tactic
+                   Term.AlphaEquivalence
+                   Term.AlphaRenaming
+                   Term.Binder
+                   Term.Diff
+                   Term.Free
+                   Term.Fresh
+                   Term.Raw
+                   Term.Term
+                   Term.TypeChecked
+                   Term.TypeErrored
+                   Term.Universe
+                   Term.Variable
+                   TestUtils
+                   ToOCaml
+                   TypeCheckingFailure
+                   -- Typing.Free
+                   Typing.GlobalDeclaration
+                   Typing.GlobalEnvironment
+                   -- Typing.Inductive
+                   Typing.LocalContext
+                   --Typing.LocalContextOps
+                   Typing.LocalDeclaration
+                   -- Typing.TypeCheckOps
+                   -- Typing.TypeChecker
+                   Typing.Utils
+                   Utils
+                   Vernacular
+                   WellFormed
+                   -- Work
 
 Test-suite Test
   default-language: Haskell2010
