@@ -50,8 +50,9 @@ import           Term.Term
 import qualified Term.Raw as Raw
 import           Utils
 
+-- FIXME: should I put guards in there too?
 branchChild :: Branch α Variable -> TermX α Variable
-branchChild = view _3 . unpackBranch
+branchChild = branchBody . view _3 . unpackBranch
 
 -- Turns out we need to help the GumTree algorithm when we don't have any unique
 -- matches
