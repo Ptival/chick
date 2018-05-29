@@ -148,6 +148,9 @@ letP topP selfP _nextP = do
   return $ Let () b t1 t2
 -}
 
+guardP :: Parser (Maybe (Raw.Term Variable))
+guardP = return Nothing -- FIXME: parse guards
+
 matchP :: Parser3 (Raw.Term Variable)
 matchP topP _selfP _nextP = do
   try $ rword "match"
@@ -158,9 +161,10 @@ matchP topP _selfP _nextP = do
     ctor <- variableP
     args <- many binderP
     -- TODO: check for unicity of bound names
+    guard <- guardP
     symbol "=>"
     body <- topP
-    return $ packBranch (ctor, args, body)
+    return $ packBranch (ctor, args, GuardAndBody guard body)
   rword "end"
   return $ Match () discriminee branches
 

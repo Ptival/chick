@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -16,14 +17,18 @@ module Diff.Pair
   , patchMaybe
   ) where
 
+import Data.Aeson
 import Data.Text.Prettyprint.Doc
+import GHC.Generics
 
 import PrettyPrinting.PrettyPrintable
 
 data Diff δl δr
   = Same
   | Modify δl δr
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance (ToJSON δ1, ToJSON δ2) => ToJSON (Diff δ1 δ2) where
 
 instance (PrettyPrintable l a, PrettyPrintable l b) => PrettyPrintable l (Diff a b) where
   prettyDoc Same         = "Same"

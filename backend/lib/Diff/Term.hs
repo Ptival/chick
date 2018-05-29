@@ -45,6 +45,8 @@ import Data.Text.Prettyprint.Doc
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.List as ΔL
+import qualified Diff.Maybe as ΔM
+import qualified Diff.Pair as Δ2
 import qualified Diff.Triple as Δ3
 import Diff.Utils
 import Language (Language(Chick))
@@ -60,7 +62,9 @@ type VariablesDiff = ΔL.Diff Variable VariableDiff
 type BinderDiff  ν = ΔA.Diff (Binder ν)
 type BindersDiff ν = ΔL.Diff (Binder ν) (BinderDiff ν)
 
-type BranchDiff   α = Δ3.Diff VariableDiff (BindersDiff Variable) (Diff α)
+type GuardAndBodyDiff α = Δ2.Diff (ΔM.Diff (TermX α Variable) (Diff α)) (Diff α)
+
+type BranchDiff   α = Δ3.Diff VariableDiff (BindersDiff Variable) (GuardAndBodyDiff α)
 type BranchesDiff α = ΔL.Diff (Branch α Variable) (BranchDiff α)
 
 data Diff α
@@ -114,6 +118,19 @@ instance
 
 instance ToJSON α => ToJSON (Diff α) where
 
+patchGuardAndBody ::
+  ( Member (Exc String) r
+  , Member Trace r
+  , Show α
+  ) =>
+  GuardAndBody (TermX α) Variable -> GuardAndBodyDiff α ->
+  Eff r (GuardAndBody (TermX α) Variable)
+patchGuardAndBody gb Δ2.Same = return gb
+patchGuardAndBody gb (Δ2.Modify δguard δbody) = do
+  guard' <- ΔM.patch patch (branchGuard gb) δguard
+  body'  <- patch          (branchBody  gb)  δbody
+  return $ GuardAndBody guard' body'
+
 patchBranch ::
   ( Member (Exc String) r
   , Member Trace r
@@ -121,12 +138,12 @@ patchBranch ::
   ) =>
   Branch α Variable -> BranchDiff α -> Eff r (Branch α Variable)
 patchBranch b Δ3.Same = return b
-patchBranch b (Δ3.Modify δctor δargs δbody) = do
-  let (ctor, args, body) = unpackBranch b
+patchBranch b (Δ3.Modify δctor δargs δguardbody) = do
+  let (ctor, args, guardbody) = unpackBranch b
   ctor' <- ΔA.patch ctor δctor
   args' <- ΔL.patch ΔA.patch args δargs
-  body' <- patch body δbody
-  return $ packBranch (ctor', args', body')
+  guardbody' <- patchGuardAndBody guardbody δguardbody
+  return $ packBranch (ctor', args', guardbody')
 
 patch ::
   ( Member (Exc String) r
