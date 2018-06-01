@@ -21,7 +21,7 @@ Library
   hs-source-dirs:   lib, test
   pkgconfig-depends: zlib
   build-depends: adjunctions               >= 4.4    && < 4.5,
-                 aeson                     >= 1.1    && < 1.3,
+                 aeson                     >= 1.3    && < 1.4,
                  base                      >= 4.0    && < 4.11,
                  bound                     >= 1.0    && < 2.0,
                  bytestring                >= 0.10   && < 0.11,
@@ -51,7 +51,7 @@ Library
                  QuickCheck                >= 2.10   && < 2.11,
                  random                    >= 1.1    && < 1.2,
                  smallcheck                >= 1.1    && < 1.2,
-                 snap                      >= 1.0    && < 1.1,
+                 snap                      >= 1.0    && < 1.2,
                  snap-core                 >= 1.0    && < 1.1,
                  snap-server               >= 1.0    && < 1.1,
                  string-qq                 >= 0.0    && < 0.1,
