@@ -1,5 +1,7 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Diff.Guess.Inductive.Test where
 
@@ -13,6 +15,7 @@ import           Text.Printf
 import           Diff.Guess.Inductive
 import qualified Diff.Inductive as ΔI
 import           Inductive.Inductive
+import           Language
 import           Parsing.Inductive
 import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
@@ -44,7 +47,7 @@ sanityCheck i1 i2 = do
 mkSanityCheck :: Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> TestTree
 mkSanityCheck i1 i2 =
   testCase
-  (printf "%s -> %s" (prettyStr $ inductiveName i1) (prettyStr $ inductiveName i2))
+  (printf "%s -> %s" (prettyStr @'Chick $ inductiveName i1) (prettyStr @'Chick $ inductiveName i2))
   (sanityCheck i1 i2)
 
 sanityChecks :: [TestTree]

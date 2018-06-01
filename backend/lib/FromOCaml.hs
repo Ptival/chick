@@ -88,9 +88,10 @@ instance FromOCaml Expression_desc (Expression -> TermX () Variable) where
 
     _ -> error $ show ocaml
 
--- instance FromOCaml Case (Branch () Variable) where
---   fromOCaml ocaml = case pc_guard ocaml of
---     Just _ ->
+instance FromOCaml Case (Branch () Variable) where
+  fromOCaml ocaml = case pc_guard ocaml of
+    Nothing -> error "TODO"
+    Just _ -> error "TODO"
 
 testProgram :: String
 testProgram = [s|

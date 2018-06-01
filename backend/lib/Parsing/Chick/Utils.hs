@@ -7,11 +7,11 @@ module Parsing.Chick.Utils
   , symbol
   ) where
 
-import           Control.Applicative
 import           Data.Functor
+import           Parsing.Types
 import           Text.Megaparsec
-import qualified Text.Megaparsec.Lexer as L
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Printf
 
 identifier :: Parser String

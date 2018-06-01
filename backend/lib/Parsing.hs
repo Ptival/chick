@@ -10,12 +10,12 @@ module Parsing
   , variableP
   ) where
 
-import           Control.Applicative
 import           Control.Monad.Fix
+import           Data.Void
 import           Text.Megaparsec
-import           Text.Megaparsec.String
 
 import           Parsing.Chick.Utils
+import           Parsing.Types
 import           Parsing.Utils
 import           Term.Binder
 import           Term.Raw as Raw
@@ -205,7 +205,7 @@ varP = Var Nothing <$> variableP
 langP :: Parser (Raw.Term Variable)
 langP = termP <* eof
 
-runParserTerm :: String -> Either (ParseError Char Dec) (Raw.Term Variable)
+runParserTerm :: String -> Either (ParseError Char Void) (Raw.Term Variable)
 runParserTerm = runParser langP "runParserTerm"
 
 parseMaybeTerm :: String -> Maybe (Raw.Term Variable)

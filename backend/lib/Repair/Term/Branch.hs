@@ -34,7 +34,9 @@ import qualified Diff.Inductive as ΔI
 import qualified Diff.LocalContext as ΔLC
 import qualified Diff.LocalDeclaration as ΔLD
 import qualified Diff.List as ΔL
+import qualified Diff.Maybe as ΔM
 import qualified Diff.Term as ΔT
+import qualified Diff.Pair as Δ2
 import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import           Inductive.Inductive
@@ -63,7 +65,7 @@ repairBranch repairTerm b c@(Constructor _ _ cps _) δi δc = do
   trace $ printf "> %s" (preview @'Chick b)
   trace $ printf "> %s" (preview @'Chick c)
 
-  let (_, args, body) = unpackBranch b
+  let (_, args, guardbody) = unpackBranch b
   let nbIps = length . inductiveParameters . constructorInductive $ c
 
   let (δctor, δcps) =
@@ -87,8 +89,8 @@ repairBranch repairTerm b c@(Constructor _ _ cps _) δi δc = do
   let δargs = merge nbIps δipArgs δcpArgs
 
   δbody <- withStateFromConstructorArgs cpArgs δcpArgs cps δcps
-           $ repairTerm body
-  return $ Δ3.Modify δctor δargs δbody
+           $ repairTerm (branchBody guardbody)
+  return $ Δ3.Modify δctor δargs (Δ2.Modify ΔM.Same δbody)
 
   where
 
@@ -235,7 +237,7 @@ repairBranches repairTerm bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
         let b = packBranch
                 ( constructorName c
                 , replicate (length (constructorParameters c)) (Binder Nothing)
-                , Hole ()
+                , GuardAndBody Nothing (Hole ())
                 )
         trace $ "Inserting branch:"
         trace $ preview @'Chick b

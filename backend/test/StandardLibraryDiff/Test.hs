@@ -1,4 +1,7 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module StandardLibraryDiff.Test where
 
@@ -6,6 +9,7 @@ import           Control.Monad.Freer.Exception
 
 import qualified Diff.Inductive as DI
 import           Inductive.Inductive
+import           Language
 import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
 import           StandardLibraryDiff
@@ -13,7 +17,7 @@ import           Term.Term
 import           Utils
 
 test ::
-  ( PrettyPrintable α
+  ( PrettyPrintable 'Chick α
   , Show α
   ) =>
   Inductive α Variable -> DI.Diff α -> Inductive α Variable -> IO Bool

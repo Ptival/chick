@@ -6,11 +6,11 @@ module Parsing.Vernacular
   ) where
 
 import           Control.Applicative
-import           Text.Megaparsec.String
 
 import qualified Definition as D
 import qualified DefinitionObjectKind as DOK
 import           Parsing
+import           Parsing.Types
 import           Parsing.Chick.Utils
 import           Parsing.Inductive
 import           Term.Raw as Raw

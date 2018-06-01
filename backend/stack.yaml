@@ -1,16 +1,19 @@
 flags: {}
 
 extra-deps:
+  - aeson-1.1.2.0
+  - free-4.12.4
   - gdiff-1.1
   - GenericPretty-1.2.1
   - heist-1.0.1.0
+  - lens-4.15.4
   - map-syntax-0.2.0.2
   - prettyprinter-1.2.0.1
   - snap-1.0.0.2
   - text-1.2.2.2
   - xmlhtml-0.2.5.1
 
-resolver: lts-9.12
+resolver: lts-11.11
 
 packages:
   - '.'
@@ -24,7 +27,7 @@ packages:
     extra-dep: true
   - location:
       git: https://github.com/Ptival/language-ocaml
-      commit: 8021f89b2c5105c8e267543a52cdd5051d0cfc63
+      commit: 4f74a654d39cdf0eed3be8ed8a1458dfb2abf583
     extra-dep: true
 
 nix:

@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+
 module Diff.Guess.Term.Test
   ( unitTests
   ) where
@@ -8,6 +11,7 @@ import           Test.Tasty.HUnit
 import qualified Diff.Term as ΔT
 import           Diff.Guess.Node
 import           Diff.Guess.Term
+import           Language
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
 import qualified Term.Raw as Raw
@@ -38,7 +42,7 @@ testFlippedArguments = do
   δ <- testTerms s1 s2
   case ΔT.patchMaybe t1 δ of
     Nothing -> putStrLn "Patching failed"
-    Just t2 -> putStrLn $ prettyStr t2
+    Just t2 -> putStrLn $ prettyStr @'Chick t2
 
 term1 :: IO (ΔT.Diff Raw.Raw)
 term1 = testTerms

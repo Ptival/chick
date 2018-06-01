@@ -1,7 +1,9 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Eliminator.Test where
@@ -18,7 +20,9 @@ import qualified Diff.Inductive as DI
 import qualified Diff.Term as DT
 import           Inductive.Eliminator
 import           Inductive.Inductive
+import           Language
 import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.Term
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Term
@@ -40,17 +44,17 @@ test indFrom δind indTo =
 
   Just δelim -> do
     trace $ "-- Eliminator before:"
-    trace $ prettyStr elimFrom
+    trace $ prettyStr @'Chick elimFrom
     trace $ replicate 80 '-'
     trace $ "-- δ computed to patch eliminator:"
-    trace $ prettyStr δelim
+    trace $ prettyStr @'Chick δelim
     trace $ replicate 80 '-'
     trace $ "-- Eliminator expected:"
-    trace $ prettyStr elimTo
+    trace $ prettyStr @'Chick elimTo
     trace $ replicate 80 '-'
     elimTo' <- DT.patch elimFrom δelim
     trace $ "-- Eliminator obtained:"
-    trace $ prettyStr elimTo'
+    trace $ prettyStr @'Chick elimTo'
     trace $ replicate 80 '-'
     trace $ "-- Eliminator expected and obtained are α-equivalent?"
     return (elimTo' == elimTo)

@@ -1,19 +1,22 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Term.Term.Test where
 
-import           Test.Tasty
+import Test.Tasty
 
-import           Examples.Term
-import           Examples.Utils
-import           TestUtils
+import Examples.Term
+import Examples.Utils
+import Language
+import TestUtils
 
 equalityChecks :: [TestTree]
 equalityChecks = [ equalityCheck t | t <- terms ]
 
 inequalityChecks :: [TestTree]
 inequalityChecks =
-  [ inequalityCheck t1 t2 | (t1, t2) <- distinctPairs terms ]
+  [ inequalityCheck @'Chick t1 t2 | (t1, t2) <- distinctPairs terms ]
 
 unitTests :: TestTree
 unitTests = testGroup "Term.Term" $ []

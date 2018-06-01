@@ -7,10 +7,10 @@ module Parsing.Inductive
 
 import Control.Applicative
 import Control.Monad.Fix
-import Text.Megaparsec.String
 
 import Inductive.Inductive
 import Parsing
+import Parsing.Types
 import Parsing.Chick.Utils
 import Term.Raw as Raw
 import Term.Term

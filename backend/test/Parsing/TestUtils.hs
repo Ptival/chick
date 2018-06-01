@@ -6,8 +6,9 @@ module Parsing.TestUtils
   ) where
 
 import Data.Maybe
+import Data.Void
+import Parsing.Types
 import Text.Megaparsec
-import Text.Megaparsec.String
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -27,6 +28,6 @@ mkParsingTestFromFile parser fileName =
       )
     @? "Failed to parse " ++ fileName
 
-debugParsing :: Parser a -> String -> Either (ParseError (Token String) Dec) a
+debugParsing :: Parser a -> String -> Either (ParseError (Token String) Void) a
 debugParsing parser input =
   parse (parser <* eof) "DEBUG" input

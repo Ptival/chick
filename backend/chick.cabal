@@ -20,9 +20,9 @@ Library
   ghc-options:      -Wall -Wno-orphans
   hs-source-dirs:   lib, test
   pkgconfig-depends: zlib
-  build-depends: adjunctions               >= 4.3    && < 4.4,
-                 aeson                     >= 1.1    && < 1.2,
-                 base                      >= 4.0    && < 4.10,
+  build-depends: adjunctions               >= 4.4    && < 4.5,
+                 aeson                     >= 1.1    && < 1.3,
+                 base                      >= 4.0    && < 4.11,
                  bound                     >= 1.0    && < 2.0,
                  bytestring                >= 0.10   && < 0.11,
                  comonad                   >= 5.0    && < 5.1,
@@ -30,37 +30,37 @@ Library
                  convertible               >= 1.1    && < 1.2,
                  data-default              >= 0.7    && < 0.8,
                  directory                 >= 1.2    && < 1.4,
-                 either                    >= 4.4    && < 4.5,
+                 either                    >= 5      && < 6,
                  extra                     >= 1.5    && < 1.7,
-                 free                      >= 4.12   && < 4.13,
+                 free                      >= 4.0    && < 5.0,
                  freer-effects             >= 0.3    && < 0.4,
                  gdiff                     >= 1.0    && < 1.2,
                  ghc                       >= 8.0    && < 9.0,
                  GenericPretty             >= 1.2    && < 1.3,
                  hslogger                  >= 1.2    && < 1.3,
-                 language-ocaml            >= 0.1.13 && < 1.0,
-                 lens                      >= 4.14   && < 4.16,
-                 megaparsec                >= 5.0    && < 5.4,
+                 language-ocaml            >= 0.1.14 && < 1.0,
+                 lens                      >= 4.14   && < 4.17,
+                 megaparsec                >= 6.0    && < 6.5,
                  MissingH                  >= 1.4    && < 1.5,
                  monad-loops               >= 0.4    && < 0.5,
                  mtl                       >= 2.2    && < 2.3,
                  network                   >= 2.6    && < 2.7,
                  parser-combinators        >= 0.0    && < 2.0,
                  prettyprinter             >= 1.2    && < 1.3,
-                 process                   >= 1.2    && < 1.5,
-                 QuickCheck                >= 2.8    && < 2.10,
+                 process                   >= 1.2    && < 1.7,
+                 QuickCheck                >= 2.10   && < 2.11,
                  random                    >= 1.1    && < 1.2,
                  smallcheck                >= 1.1    && < 1.2,
                  snap                      >= 1.0    && < 1.1,
                  snap-core                 >= 1.0    && < 1.1,
                  snap-server               >= 1.0    && < 1.1,
                  string-qq                 >= 0.0    && < 0.1,
-                 tasty                     >= 0.11   && < 0.12,
-                 tasty-hunit               >= 0.9    && < 0.10,
-                 tasty-quickcheck          >= 0.8    && < 0.9,
+                 tasty                     >= 1.0    && < 1.1,
+                 tasty-hunit               >= 0.9    && < 0.11,
+                 tasty-quickcheck          >= 0.8    && < 0.10,
                  tasty-smallcheck          >= 0.8    && < 0.9,
                  text                      >= 1.2    && < 1.3,
-                 time                      >= 1.5    && < 1.7,
+                 time                      >= 1.5    && < 1.9,
                  utility-ht                >= 0.0    && < 0.1,
                  unordered-containers      >= 0.2    && < 0.3,
                  utf8-string               >= 1.0    && < 1.1
@@ -117,6 +117,7 @@ Library
                    Notations
                    Parsing
                    -- Parsing.Atomic
+                   Parsing.Types
                    Parsing.Chick.Utils
                    Parsing.Inductive
                    Parsing.Inductive.Test
@@ -246,16 +247,17 @@ Test-suite Test
   hs-source-dirs:   test
   main-is:          Main.hs
   build-depends: chick,
-                 base                      >= 4.9   && < 4.10,
-                 data-default              >= 0.7   && < 0.8,
-                 freer-effects             >= 0.3   && < 0.4,
-                 megaparsec                >= 5.0   && < 5.4,
-                 QuickCheck                >= 2.8   && < 2.10,
-                 smallcheck                >= 1.1   && < 1.2,
-                 tasty                     >= 0.11  && < 0.12,
-                 tasty-hunit               >= 0.9   && < 0.10,
-                 tasty-quickcheck          >= 0.8   && < 0.9,
-                 tasty-smallcheck          >= 0.8   && < 0.9
+                 base,
+                 data-default,
+                 freer-effects,
+                 megaparsec,
+                 QuickCheck,
+                 smallcheck,
+                 string-qq,
+                 tasty,
+                 tasty-hunit,
+                 tasty-quickcheck,
+                 tasty-smallcheck
   other-modules:
     Diff.ConcatMap.Test
     Diff.Eliminator.Test
@@ -267,7 +269,6 @@ Test-suite Test
     Diff.Motive.Test
     Inductive.Eliminator.Test
     Inductive.Inductive.Test
-    Parsing.OCaml.StructureItem.Test
     Parsing.Inductive.Test
     StandardLibraryDiff.Test
     Term.Term.Test

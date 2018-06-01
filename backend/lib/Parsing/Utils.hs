@@ -8,7 +8,8 @@ module Parsing.Utils
 
 import Control.Applicative
 import Text.Megaparsec
-import Text.Megaparsec.String
+
+import Parsing.Types
 
 {-
 
