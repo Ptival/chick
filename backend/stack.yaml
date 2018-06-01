@@ -29,12 +29,3 @@ packages:
       git: https://github.com/Ptival/language-ocaml
       commit: 4f74a654d39cdf0eed3be8ed8a1458dfb2abf583
     extra-dep: true
-
-nix:
-  enable: true
-  #packages:
-  #  - binutils
-  #  - git
-  #  - ncurses
-  path: [nixpkgs=/home/ptival/nixpkgs]
-  shell-file: shell-stack.nix
