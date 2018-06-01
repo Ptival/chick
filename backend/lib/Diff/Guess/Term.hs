@@ -94,6 +94,7 @@ termChildren = go
         Right (cs, c) -> map (view _3) cs ++ [c]
       Type _ -> []
       Var _ _ -> []
+      UnsupportedOCaml _ -> []
     variableFromBinder (Binder b) = case b of
       Nothing -> Var Nothing (mkVariable "__FIXME_Diff.Guess.Term__")
       Just v  -> Var Nothing v

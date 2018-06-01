@@ -4,6 +4,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -126,6 +127,8 @@ unknownTypeRepair t = do
     Hole _ -> exc "utr: Hole"
     Lam _ _ -> exc "utr: Lam"
     Let _ _ _ -> exc "utr: Let"
+
+    UnsupportedOCaml _o -> exc "utr: UnsupportedOCaml"
 
 -- | `genericRepair t τ` attempts to repair `t` without more information about
 -- | how its type `τ` changed

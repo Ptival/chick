@@ -24,3 +24,4 @@ raw = \case
   Pi    _ τ1 bτ2 -> Pi    () (raw τ1) (over scopedTerm (hoistScope raw) bτ2)
   Type  u        -> Type  u
   Var   _ v      -> Var   Nothing v
+  UnsupportedOCaml o -> UnsupportedOCaml o

@@ -4,7 +4,7 @@ module Examples.Term
 
 import           Examples.Inductive
 import           Inductive.Eliminator
-import           Inductive.Inductive
+-- import           Inductive.Inductive
 import           Parsing.Unsafe
 import qualified StandardLibrary as STDLIB
 import qualified Term.Raw as Raw
@@ -17,7 +17,7 @@ terms = []
   -- These contain duplicates:
   -- ++ [ constructorRawType True c | i <- inductives
   --                                , c <- inductiveConstructors i
-  --    ] 
+  --    ]
   ++ [ unsafeParseTerm "λ x, x y" ]
   ++ [ unsafeParseTerm $ unlines
        [ "λ x s t, match t with                                     "

@@ -21,7 +21,7 @@ module PrettyPrinting.Chick.Term
 
 import Bound.Name
 import Control.Lens
-import Control.Monad.Reader
+import Control.Monad.Reader (MonadReader, ask, runReader)
 import Data.Default
 import Data.Text.Prettyprint.Doc
 
@@ -150,6 +150,8 @@ prettyTermDocPrec precs = goTerm
       Type u -> (pretty $ show u, PrecAtom)
 
       Var _ v -> (prettyDoc @'Chick v, PrecAtom)
+
+      UnsupportedOCaml _o -> error "TODO"
 
     goLams :: [Doc ()] -> TermX α Variable -> Doc ()
     goLams l = \case

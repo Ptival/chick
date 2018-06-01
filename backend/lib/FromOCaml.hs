@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -49,6 +51,7 @@ instance FromOCaml Structure_item_desc (Structure_item -> Vernacular () Variable
         , definitionType = Hole ()
         , definitionTerm = fromOCaml . pvb_expr $ vb
         }
+      _ -> error "TODO"
     _ -> Vernacular.UnsupportedOCaml
 
 instance FromOCaml Expression (TermX () Variable) where
@@ -93,8 +96,8 @@ instance FromOCaml Case (Branch () Variable) where
     Nothing -> error "TODO"
     Just _ -> error "TODO"
 
-testProgram :: String
-testProgram = [s|
+_testProgram :: String
+_testProgram = [s|
 open Lexing
 open Ast
 open Env
@@ -119,8 +122,8 @@ and tstm' =
 and tstm = tstm' pos_ast [@@deriving show, eq]
 |]
 
-test :: Maybe [Vernacular () Variable]
-test = map fromOCaml <$> parseMaybe implementation_P testProgram
+_test :: Maybe [Vernacular () Variable]
+_test = map fromOCaml <$> parseMaybe implementation_P _testProgram
 
-prettyTest :: Maybe String
-prettyTest = prettyStrU @'Chick <$> test
+_prettyTest :: Maybe String
+_prettyTest = prettyStrU @'Chick <$> _test

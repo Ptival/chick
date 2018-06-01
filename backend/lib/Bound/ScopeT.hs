@@ -5,7 +5,6 @@ module Bound.ScopeT where
 
 import Bound
 import Bound.Name
-import Control.Monad (liftM)
 import Control.Comonad
 import Data.Functor.Classes
 

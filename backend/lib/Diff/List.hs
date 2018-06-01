@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -61,6 +62,7 @@ instance (PrettyPrintable l t, PrettyPrintable l δt) => PrettyPrintable l (Diff
     Replace l   -> fillSep [ "Replace", encloseSep lbracket rbracket comma (map (prettyDoc @l) l) ]
     Same        -> "Same"
     where
+      go :: PrettyPrintable l x => x -> Doc ()
       go x = fillSep [ lparen, prettyDoc @l x, rparen ]
 
 instance Bifunctor Diff where

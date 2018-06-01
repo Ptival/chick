@@ -12,7 +12,7 @@ module PrettyPrinting.Chick.Vernacular
 
 import Control.Monad.Reader
 import Data.Default
-import Data.Text.Prettyprint.Doc
+-- import Data.Text.Prettyprint.Doc
 import Language.OCaml.PrettyPrinter
 
 import Language (Language(Chick))

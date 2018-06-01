@@ -1,4 +1,5 @@
 {-# language FlexibleContexts #-}
+{-# language MonoLocalBinds #-}
 
 module Diff.Utils
  ( permute

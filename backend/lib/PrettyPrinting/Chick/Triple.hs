@@ -13,8 +13,8 @@
 
 module PrettyPrinting.Chick.Triple where
 
-import Control.Monad.Reader
-import Data.Default
+--import Control.Monad.Reader
+--import Data.Default
 import Data.Text.Prettyprint.Doc
 
 import Language (Language(Chick))

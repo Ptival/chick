@@ -71,12 +71,13 @@ nodeAndDescendantsPostOrder n =
 
 label :: Node -> String
 label n = case node n of
-  Annot _ _ _ -> "Annot"
-  App   _ _ _ -> "App"
-  Hole  _     -> "Hole"
-  Lam   _ _   -> "Lam"
-  Let   _ _ _ -> "Let"
-  Match _ _ _ -> "Match"
-  Pi    _ _ _ -> "Pi"
-  Type  _     -> "Type"
-  Var   _ v   -> printf "Var(%s)" (show v)
+  Annot _ _ _        -> "Annot"
+  App   _ _ _        -> "App"
+  Hole  _            -> "Hole"
+  Lam   _ _          -> "Lam"
+  Let   _ _ _        -> "Let"
+  Match _ _ _        -> "Match"
+  Pi    _ _ _        -> "Pi"
+  Type  _            -> "Type"
+  Var   _ v          -> printf "Var(%s)" (show v)
+  UnsupportedOCaml _ -> "UnsupportedOCaml"

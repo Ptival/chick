@@ -37,7 +37,7 @@ instance ToOCaml (Vernacular () Variable) Structure_item where
       let expr = toOCaml $ definitionTerm d in
       let vb = mkVb Nothing Nothing Nothing Nothing pat expr in
       mkStr Nothing $ Pstr_value r [vb]
-    Inductive i -> error "TODO"
+    Inductive _i -> error "TODO"
     Vernacular.UnsupportedOCaml o -> o
     --mkStr Nothing
 
@@ -47,6 +47,7 @@ instance ToOCaml DefinitionObjectKind Rec_flag where
     DefinitionObjectKind.Definition -> Nonrecursive
 
 instance ToOCaml (Structure_item -> Vernacular () Variable) Structure_item_desc where
+  toOCaml = error "TODO"
 
 instance ToOCaml (TermX () Variable) Expression where
   toOCaml chick = case chick of
@@ -74,8 +75,8 @@ instance ToOCaml (Binder Variable) Pattern where
 
 --instance ToOCaml (Expression -> TermX () Variable) Expression_desc where
 
-testProgram :: String
-testProgram = [s|
+_testProgram :: String
+_testProgram = [s|
 (*
  * Copyright (c) 2016 - present Facebook, Inc.
  * All rights reserved.
@@ -139,8 +140,8 @@ let dirname_of_stats_type = function
 
 |]
 
-test :: Maybe [Structure_item]
-test = map (toOCaml . fromOCaml) <$> parseMaybe implementation_P testProgram
+_test :: Maybe [Structure_item]
+_test = map (toOCaml . fromOCaml) <$> parseMaybe implementation_P _testProgram
 
-prettyTest :: Maybe String
-prettyTest = (show . structure_PP) <$> test
+_prettyTest :: Maybe String
+_prettyTest = (show . structure_PP) <$> _test
