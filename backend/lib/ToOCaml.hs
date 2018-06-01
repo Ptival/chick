@@ -77,67 +77,24 @@ instance ToOCaml (Binder Variable) Pattern where
 
 _testProgram :: String
 _testProgram = [s|
-(*
- * Copyright (c) 2016 - present Facebook, Inc.
- * All rights reserved.
- *
- * This source code is licensed under the BSD style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
- *)
+open Pos
 
-(** Performance Statistics gathering and reporting *)
+type size = int [@@deriving show]
 
-open! IStd
-module F = Format
-module L = Logging
+type var_name' = string [@@deriving show]
+and var_name = var_name' pos_ast [@@deriving show]
 
-type mem_perf =
-  { minor_gb: float
-  ; promoted_gb: float
-  ; major_gb: float
-  ; allocated_gb: float
-  ; minor_collections: int
-  ; major_collections: int
-  ; compactions: int
-  ; top_heap_gb: float
-  ; stack_kb: float
-  ; minor_heap_kb: float }
+type fun_name' = string [@@deriving show]
+and fun_name = fun_name' pos_ast [@@deriving show]
 
-type time_perf = {rtime: float; utime: float; stime: float; cutime: float; cstime: float}
+type struct_name' = string [@@deriving show]
+and struct_name = struct_name' pos_ast [@@deriving show]
 
-type perf_stats = {mem: mem_perf option; time: time_perf option}
-
-type stats_kind = Time of Mtime_clock.counter * Unix.process_times | Memory | TimeAndMemory
-
-type stats_type =
-  | ClangLinters
-  | ClangFrontend
-  | ClangFrontendLinters
-  | JavaFrontend
-  | PythonFrontend
-  | Backend
-  | Reporting
-  | Driver
-
-let dirname_of_stats_type = function
-  | ClangLinters ->
-      Config.frontend_stats_dir_name
-  | ClangFrontend ->
-      Config.frontend_stats_dir_name
-  | ClangFrontendLinters ->
-      Config.frontend_stats_dir_name
-  | JavaFrontend ->
-      Config.frontend_stats_dir_name
-  | PythonFrontend ->
-      Config.frontend_stats_dir_name
-  | Backend ->
-      Config.backend_stats_dir_name
-  | Reporting ->
-      Config.reporting_stats_dir_name
-  | Driver ->
-      Config.driver_stats_dir_name
-
+type mutability' =
+  | Const
+  | Mut
+[@@deriving show]
+and mutability = mutability' pos_ast [@@deriving show]
 |]
 
 _test :: Maybe [Structure_item]
