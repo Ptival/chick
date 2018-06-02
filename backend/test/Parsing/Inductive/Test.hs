@@ -51,7 +51,7 @@ indNat =
 
 zeroNat, succNat :: Constructor Raw.Raw Variable
 zeroNat = Constructor indNat "O" [] []
-succNat = Constructor indNat "S" [((), "_", "nat")] []
+succNat = Constructor indNat "S" [((), "n", "nat")] []
 
 indList :: Inductive Raw.Raw Variable
 indList =

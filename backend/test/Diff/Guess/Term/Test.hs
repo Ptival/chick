@@ -17,8 +17,8 @@ import           Term.Term
 import qualified Term.Raw as Raw
 import           Repair.Benchmark
 
-traceGuessδBench :: RepairTermBenchmark -> IO (ΔT.Diff Raw.Raw)
-traceGuessδBench b = traceGuessδ (repairTermFromType b) (repairTermToType b)
+_traceGuessδBench :: RepairTermBenchmark -> IO (ΔT.Diff Raw.Raw)
+_traceGuessδBench b = traceGuessδ (repairTermFromType b) (repairTermToType b)
 
 guessδBench :: RepairTermBenchmark -> ΔT.Diff Raw.Raw
 guessδBench b = guessδ (repairTermFromType b) (repairTermToType b)
@@ -34,8 +34,8 @@ testTerms t1 t2 = do
   putStrLn $ show g
   return g
 
-testFlippedArguments :: IO ()
-testFlippedArguments = do
+_testFlippedArguments :: IO ()
+_testFlippedArguments = do
   let s1 = "f b y c d e"
   let s2 = "f a d b x c"
   let t1 = unsafeParseRaw s1
@@ -44,8 +44,8 @@ testFlippedArguments = do
     Nothing -> putStrLn "Patching failed"
     Just t2 -> putStrLn $ prettyStr @'Chick t2
 
-term1 :: IO (ΔT.Diff Raw.Raw)
-term1 = testTerms
+_term1 :: IO (ΔT.Diff Raw.Raw)
+_term1 = testTerms
   "∀ (h : A) (t : list A), list A"
   "∀ (h : A) (t : Vec A), Vec A"
 
@@ -57,11 +57,11 @@ unitTests = testGroup "Diff.Guess.Term" $ []
   ++ [testCase "bench4" $ testBench termBench4 ]
   ++ [testCase "bench5" $ testBench termBench5 ]
 
-test :: IO ()
-test = defaultMain unitTests
+_test :: IO ()
+_test = defaultMain unitTests
 
-testAnonymous :: IO ()
-testAnonymous = do
+_testAnonymous :: IO ()
+_testAnonymous = do
   let term = unsafeParseRaw "λ _ l, match l with | nil _ => O | cons _ _ _ => S O end"
   putStrLn $ show (term == term)
   res <- traceGuessδ term term
@@ -79,9 +79,9 @@ testMatchPairs = withNodeMapping $ \ n1 n2 m -> do
 
 -- FIXME: right now, this generates Permuted [2, 1, 0] instead of Permuted [1, 2, 0]
 -- which is correct but not what I'd prefer.
-testMatchPairs1 :: IO [Match]
-testMatchPairs1 = testMatchPairs (unsafeParseRaw "a b c d e") (unsafeParseRaw "x d b y")
+_testMatchPairs1 :: IO [Match]
+_testMatchPairs1 = testMatchPairs (unsafeParseRaw "a b c d e") (unsafeParseRaw "x d b y")
 
 -- FIXME: this should be a match but isn't for some reason
-testMatchPairs2 :: IO [Match]
-testMatchPairs2 = testMatchPairs (unsafeParseRaw "f") (unsafeParseRaw "f x")
+_testMatchPairs2 :: IO [Match]
+_testMatchPairs2 = testMatchPairs (unsafeParseRaw "f") (unsafeParseRaw "f x")

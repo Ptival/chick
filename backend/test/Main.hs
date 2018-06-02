@@ -1,8 +1,11 @@
-{-# language OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Main where
 
 import Data.Default
+import GHC.IO.Encoding
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck as QC
@@ -10,6 +13,7 @@ import Test.Tasty.SmallCheck as SC
 import Text.Megaparsec
 import Text.Printf
 
+import Language
 import Notations
 import Parsing
 import Precedence
@@ -18,22 +22,24 @@ import PrettyPrinting.Term ()
 import Term.Raw as Raw
 import Term.Term
 
-import qualified Diff.ConcatMap.Test
-import qualified Diff.Eliminator.Test
-import qualified Diff.Guess.Constructor.Test
-import qualified Diff.Guess.Inductive.Test
-import qualified Diff.Guess.Script.Test
+-- import qualified Diff.ConcatMap.Test
+-- import qualified Diff.Eliminator.Test
+-- import qualified Diff.Guess.Constructor.Test
+-- import qualified Diff.Guess.Inductive.Test
+-- import qualified Diff.Guess.Script.Test
 import qualified Diff.Guess.Term.Test
-import qualified Diff.Guess.Vernacular.Test
-import qualified Diff.Motive.Test
-import qualified Inductive.Eliminator.Test
+-- import qualified Diff.Guess.Vernacular.Test
+-- import qualified Diff.Motive.Test
+-- import qualified Inductive.Eliminator.Test
 import qualified Inductive.Inductive.Test
 import qualified Parsing.Inductive.Test
-import qualified StandardLibraryDiff.Test
-import qualified Term.Term.Test
+-- import qualified StandardLibraryDiff.Test
+-- import qualified Term.Term.Test
 
 main :: IO ()
-main = defaultMain tests
+main = do
+  setLocaleEncoding utf8
+  defaultMain tests
 
 tests :: TestTree
 tests =
@@ -69,7 +75,7 @@ parseMaybeRaw :: String -> Maybe (Raw.Term Variable)
 parseMaybeRaw = parseMaybe termP
 
 prettyRaw :: Raw.Term Variable -> String
-prettyRaw = prettyStr
+prettyRaw = prettyStr @'Chick
 
 unitTestTerms :: [(Raw.Term Variable, String)]
 unitTestTerms =

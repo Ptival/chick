@@ -12,7 +12,7 @@ import Language
 import TestUtils
 
 equalityChecks :: [TestTree]
-equalityChecks = [ equalityCheck t | t <- terms ]
+equalityChecks = [ equalityCheck @'Chick t | t <- terms ]
 
 inequalityChecks :: [TestTree]
 inequalityChecks =

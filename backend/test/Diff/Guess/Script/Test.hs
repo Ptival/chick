@@ -1,6 +1,5 @@
 module Diff.Guess.Script.Test where
 
-import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
 import           Text.Printf

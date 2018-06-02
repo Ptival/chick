@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -22,7 +23,6 @@ import           Inductive.Eliminator
 import           Inductive.Inductive
 import           Language
 import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.Term
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Term

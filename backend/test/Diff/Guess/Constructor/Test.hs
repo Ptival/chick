@@ -1,18 +1,14 @@
 module Diff.Guess.Constructor.Test where
 
-import           Control.Monad.Freer
 import           Control.Monad.Freer.Trace
-import           Test.Tasty
-import           Test.Tasty.HUnit
 import           Text.Megaparsec
 import           Text.Printf
 
-import qualified Diff.Term as ΔT
+import qualified Diff.Constructor as ΔC
 import qualified Diff.Guess.Constructor as ΔGC
 import           Inductive.Inductive
 import           Parsing.Inductive
 import qualified Term.Raw as Raw
-import           Repair.Benchmark
 import           StandardLibrary
 import           Term.Variable
 
@@ -30,11 +26,13 @@ indList1 = unsafeParseInductive
   , "| cons : ∀ (h : A) (t : Vec A), Vec A"
   ]
 
+guessNil :: IO (ΔC.Diff Raw.Raw)
 guessNil =
   let l0 = inductiveConstructors indList in
   let l1 = inductiveConstructors indList1 in
   runTrace $ ΔGC.guess (l0 !! 0) (l1 !! 0)
 
+guessCons :: IO (ΔC.Diff Raw.Raw)
 guessCons =
   let l0 = inductiveConstructors indList in
   let l1 = inductiveConstructors indList1 in
