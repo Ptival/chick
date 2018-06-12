@@ -77,24 +77,9 @@ instance ToOCaml (Binder Variable) Pattern where
 
 _testProgram :: String
 _testProgram = [s|
-open Pos
-
-type size = int [@@deriving show]
-
-type var_name' = string [@@deriving show]
-and var_name = var_name' pos_ast [@@deriving show]
-
-type fun_name' = string [@@deriving show]
-and fun_name = fun_name' pos_ast [@@deriving show]
-
-type struct_name' = string [@@deriving show]
-and struct_name = struct_name' pos_ast [@@deriving show]
-
-type mutability' =
-  | Const
-  | Mut
-[@@deriving show]
-and mutability = mutability' pos_ast [@@deriving show]
+type 'a list =
+  | Nil
+  | Cons of ('a * 'a list)
 |]
 
 _test :: Maybe [Structure_item]
