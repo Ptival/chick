@@ -25,6 +25,7 @@ module Term.Term
   , ScopedTerm(..)
   , TermX(..)
   , TypeX
+  , UnsupportedOCamlTerm(..)
   , abstractAnonymous
   , abstractBinder
   , abstractVariable
@@ -240,6 +241,16 @@ instance ToJSON α => ToJSON (Branch α Variable) where
     , "branchBody"        .= body
     ]
 
+data UnsupportedOCamlTerm
+  = UnsupportedExpression Expression
+  | UnsupportedCoreType   Core_type
+  deriving
+    ( Eq
+    , Generic
+    , Show
+    , Typeable
+    )
+
 data TermX α ν
   = Annot α (TermX α ν) (TypeX α ν)
   | App   α (TermX α ν) (TermX α ν)
@@ -253,7 +264,7 @@ data TermX α ν
   -- but having α makes it not an applicative (can't come up with arbitrary α)
   -- so (Maybe α) lets us put stuff there when handy, but not always
   | Var   (Maybe α) ν
-  | UnsupportedOCaml Expression
+  | UnsupportedOCaml UnsupportedOCamlTerm
   deriving
     ( Foldable
     , Functor
