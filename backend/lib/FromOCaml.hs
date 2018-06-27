@@ -28,6 +28,7 @@ import Inductive.Inductive
 import Language
 import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Chick ()
+import Script
 import Term.Term as Term
 import Term.Universe as Universe
 import Utils
@@ -65,9 +66,9 @@ instance FromOCaml Core_type_desc (Core_type -> TermX () Variable) where
       Nothing -> Term.UnsupportedOCaml . UnsupportedCoreType
       Just i' ->
         const $ foldl (\ acc elt -> App () acc elt) (Var Nothing i') (map fromOCaml l)
-    Ptyp_class  _ _ -> todo
-    Ptyp_alias  _ _ -> todo
-    Ptyp_poly   _ _ -> todo
+    Ptyp_class _ _ -> todo
+    Ptyp_alias _ _ -> todo
+    Ptyp_poly  _ _ -> todo
 
 instance FromOCaml Core_type (TermX () Variable) where
   fromOCaml t = fromOCaml (ptyp_desc t) t
@@ -179,8 +180,8 @@ type 'a list =
   | Cons of ('a * 'a list)
 |]
 
-_test :: Maybe [Vernacular () Variable]
-_test = map fromOCaml <$> parseMaybe implementation_P _testProgram
+_test :: Maybe (Script () Variable)
+_test = Script . map fromOCaml <$> parseMaybe implementation_P _testProgram
 
 _prettyTest :: Maybe String
 _prettyTest = prettyStrU @'Chick <$> _test
