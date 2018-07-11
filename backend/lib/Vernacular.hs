@@ -15,9 +15,9 @@ import qualified Inductive.Inductive as I
 import           Term.Term
 
 data Vernacular α ν
-  = Definition  (D.Definition α ν)
-  | Inductive   (I.Inductive α ν)
-  | UnsupportedOCaml Structure_item
+  = Definition       (D.Definition α ν)
+  | Inductive        (I.Inductive α ν)
+  | UnsupportedOCaml StructureItem
   deriving (Generic, Show)
 
 deriving instance (Eq α) => Eq (Vernacular α Variable)

@@ -37,21 +37,21 @@ import Vernacular
 class FromOCaml a b | a -> b where
   fromOCaml :: a -> b
 
-instance FromOCaml Structure_item (Vernacular () Variable) where
-  fromOCaml ocaml = (fromOCaml . pstr_desc $ ocaml) ocaml
+instance FromOCaml StructureItem (Vernacular () Variable) where
+  fromOCaml ocaml = (fromOCaml . pstrDesc $ ocaml) ocaml
 
-instance FromOCaml Rec_flag DefinitionObjectKind where
+instance FromOCaml RecFlag DefinitionObjectKind where
   fromOCaml = \case
     Recursive    -> Fixpoint
-    Nonrecursive -> DefinitionObjectKind.Definition
+    NonRecursive -> DefinitionObjectKind.Definition
 
-instance FromOCaml Core_type_desc (Core_type -> TermX () Variable) where
+instance FromOCaml CoreTypeDesc (CoreType -> TermX () Variable) where
   fromOCaml ocaml =
     let todo = error $ "TODO: " ++ show ocaml in
     case ocaml of
-    Ptyp_any -> error "TODO"
-    Ptyp_var v -> const $ Var Nothing $ mkVariable v
-    Ptyp_arrow l t1 t2 ->
+    PtypAny -> error "TODO"
+    PtypVar v -> const $ Var Nothing $ mkVariable v
+    PtypArrow l t1 t2 ->
       let st2 =
             case l of
             Nolabel    -> abstractAnonymous (fromOCaml t2)
@@ -59,56 +59,61 @@ instance FromOCaml Core_type_desc (Core_type -> TermX () Variable) where
             Optional _ -> todo
       in
       const $ Pi () (fromOCaml t1) st2
-    Ptyp_tuple [] -> todo
-    Ptyp_tuple l -> const $ foldr1 (\ t ts -> App () (App () "prod" t) ts) (map fromOCaml l)
-    Ptyp_constr i l ->
+    PtypTuple [] -> todo
+    PtypTuple l -> const $ foldr1 (\ t ts -> App () (App () "prod" t) ts) (map fromOCaml l)
+    PtypConstr i l ->
       case fromOCaml $ txt i of
       Nothing -> Term.UnsupportedOCaml . UnsupportedCoreType
       Just i' ->
         const $ foldl (\ acc elt -> App () acc elt) (Var Nothing i') (map fromOCaml l)
-    Ptyp_class _ _ -> todo
-    Ptyp_alias _ _ -> todo
-    Ptyp_poly  _ _ -> todo
+    PtypClass _ _ -> todo
+    PtypAlias _ _ -> todo
+    PtypPoly  _ _ -> todo
+    PtypObject _ _ -> todo
+    PtypVariant _ _ _ -> todo
+    PtypPackage _ -> todo
+    PtypExtension _ -> todo
 
-instance FromOCaml Core_type (TermX () Variable) where
-  fromOCaml t = fromOCaml (ptyp_desc t) t
+instance FromOCaml CoreType (TermX () Variable) where
+  fromOCaml t = fromOCaml (ptypDesc t) t
 
-instance FromOCaml Constructor_arguments [TermX () Variable] where
+instance FromOCaml ConstructorArguments [TermX () Variable] where
   fromOCaml ocaml =
     case ocaml of
-    Pcstr_tuple l -> map fromOCaml l
+    PcstrTuple l -> map fromOCaml l
+    PcstrRecord _ -> error "TODO"
 
 instance FromOCaml
-         Constructor_declaration
+         ConstructorDeclaration
          (Inductive () Variable -> Constructor () Variable) where
-  fromOCaml (Constructor_declaration { pcd_name, pcd_args, pcd_res }) ind =
-    case pcd_res of
+  fromOCaml (ConstructorDeclaration { pcdName, pcdArgs, pcdRes }) ind =
+    case pcdRes of
     Just _ -> error "TODO"
     Nothing -> Constructor
       { constructorInductive  = ind
-      , constructorName       = mkVariable $ txt $ pcd_name
-      , constructorParameters = map (\ t -> ((), Binder Nothing, t)) (fromOCaml pcd_args)
+      , constructorName       = mkVariable $ txt $ pcdName
+      , constructorParameters = map (\ t -> ((), Binder Nothing, t)) (fromOCaml pcdArgs)
       , constructorIndices    = []
       }
 
-instance FromOCaml Structure_item_desc (Structure_item -> Vernacular () Variable) where
+instance FromOCaml StructureItemDesc (StructureItem -> Vernacular () Variable) where
   fromOCaml ocaml =
     let todo = error $ "TODO: " ++ show ocaml in
     case ocaml of
 
-    Pstr_type _ [Type_declaration { ptype_kind, ptype_name, ptype_params }] ->
-      case ptype_kind of
-        Ptype_variant cs ->
+    PstrType _ [TypeDeclaration { ptypeKind, ptypeName, ptypeParams }] ->
+      case ptypeKind of
+        PtypeVariant cs ->
           let cs' = map fromOCaml cs in
           let ind = Inductive.Inductive.Inductive
-                { inductiveName         = mkVariable $ txt $ ptype_name
+                { inductiveName         = mkVariable $ txt $ ptypeName
                 , inductiveParameters   =
                   let fromParam (typ, _) =
                         case fromOCaml typ of
                         Var _ v -> ((), v, Term.Type Universe.Type)
                         _ -> error "NO"
                   in
-                  map fromParam ptype_params
+                  map fromParam ptypeParams
                 , inductiveIndices      = []
                 , inductiveUniverse     = Universe.Type
                 , inductiveConstructors = map ($ ind) cs'
@@ -117,20 +122,20 @@ instance FromOCaml Structure_item_desc (Structure_item -> Vernacular () Variable
           const $ Vernacular.Inductive ind
         _ -> todo
 
-    Pstr_value r [vb] ->
-      case ppat_desc . pvb_pat $ vb of
-      Ppat_var v -> const . Vernacular.Definition $ Definition.Definition
+    PstrValue r [vb] ->
+      case ppatDesc . pvbPat $ vb of
+      PpatVar v -> const . Vernacular.Definition $ Definition.Definition
         { definitionKind = fromOCaml r
         , definitionName = mkVariable (txt v)
         , definitionType = Hole ()
-        , definitionTerm = fromOCaml . pvb_expr $ vb
+        , definitionTerm = fromOCaml . pvbExpr $ vb
         }
       _ -> todo
 
     _ -> todo
 
 instance FromOCaml Expression (TermX () Variable) where
-  fromOCaml ocaml = (fromOCaml . pexp_desc $ ocaml) ocaml
+  fromOCaml ocaml = (fromOCaml . pexpDesc $ ocaml) ocaml
 
 instance FromOCaml Longident (Maybe Variable) where
   fromOCaml ocaml = case ocaml of
@@ -138,29 +143,29 @@ instance FromOCaml Longident (Maybe Variable) where
     Ldot   _ _ -> Nothing
     Lapply _ _ -> Nothing
 
-instance FromOCaml Expression_desc (Expression -> TermX () Variable) where
+instance FromOCaml ExpressionDesc (Expression -> TermX () Variable) where
   fromOCaml ocaml =
     let unsupported = Term.UnsupportedOCaml . UnsupportedExpression in
     case ocaml of
 
-    Pexp_apply f as ->
+    PexpApply f as ->
       const $ mkApps (fromOCaml f) (map ((const ()) *** fromOCaml) as)
 
-    Pexp_function l ->
+    PexpFunction l ->
       let arg :: Variable = "__arg__" in
       const
       $ Lam () $ abstractVariable arg
       $ Match () (Var Nothing arg)
       $ map fromOCaml l
 
-    Pexp_ident i -> case fromOCaml $ txt i of
+    PexpIdent i -> case fromOCaml $ txt i of
       Nothing -> unsupported
       Just v -> const $ Var Nothing v
 
-    Pexp_let Nonrecursive [vb] e ->
-      case ppat_desc $ pvb_pat vb of
-      Ppat_var v ->
-        let e1 = fromOCaml . pvb_expr $ vb in
+    PexpLet NonRecursive [vb] e ->
+      case ppatDesc $ pvbPat vb of
+      PpatVar v ->
+        let e1 = fromOCaml . pvbExpr $ vb in
         let b  = mkBinder $ txt v in
         let e2 = fromOCaml e in
         const $ Let () e1 (abstractBinder b e2)
@@ -169,7 +174,7 @@ instance FromOCaml Expression_desc (Expression -> TermX () Variable) where
     _ -> error $ show ocaml
 
 instance FromOCaml Case (Branch () Variable) where
-  fromOCaml ocaml = case pc_guard ocaml of
+  fromOCaml ocaml = case pcGuard ocaml of
     Nothing -> error "TODO"
     Just _ -> error "TODO"
 
@@ -181,7 +186,7 @@ type 'a list =
 |]
 
 _test :: Maybe (Script () Variable)
-_test = Script . map fromOCaml <$> parseMaybe implementation_P _testProgram
+_test = Script . map fromOCaml <$> parseMaybe implementationP _testProgram
 
 _prettyTest :: Maybe String
 _prettyTest = prettyStrU @'Chick <$> _test

@@ -243,7 +243,7 @@ instance ToJSON α => ToJSON (Branch α Variable) where
 
 data UnsupportedOCamlTerm
   = UnsupportedExpression Expression
-  | UnsupportedCoreType   Core_type
+  | UnsupportedCoreType   CoreType
   deriving
     ( Eq
     , Generic

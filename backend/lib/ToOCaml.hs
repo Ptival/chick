@@ -11,8 +11,11 @@ module ToOCaml
 
   ) where
 
+import Data.Default
 import Data.String.QQ
 import Language.OCaml.Parser.Common
+import Language.OCaml.Definitions.Parsing.ASTHelper.Str as Str
+import Language.OCaml.Definitions.Parsing.ASTHelper.Vb as Vb
 import Language.OCaml.Definitions.Parsing.ASTTypes
 import Language.OCaml.Definitions.Parsing.ParseTree
 import Language.OCaml.PrettyPrinter
@@ -29,24 +32,24 @@ import Vernacular
 class ToOCaml a b | a -> b where
   toOCaml :: a -> b
 
-instance ToOCaml (Vernacular () Variable) Structure_item where
+instance ToOCaml (Vernacular () Variable) StructureItem where
   toOCaml = \case
     Vernacular.Definition d ->
       let r = toOCaml $ definitionKind d in
-      let pat = mkpat $ Ppat_var $ toOCaml $ definitionName d in
+      let pat = mkpat $ PpatVar $ toOCaml $ definitionName d in
       let expr = toOCaml $ definitionTerm d in
-      let vb = mkVb Nothing Nothing Nothing Nothing pat expr in
-      mkStr Nothing $ Pstr_value r [vb]
+      let vb = Vb.mk def pat expr in
+      Str.mk def $ PstrValue r [vb]
     Inductive _i -> error "TODO"
     Vernacular.UnsupportedOCaml o -> o
     --mkStr Nothing
 
-instance ToOCaml DefinitionObjectKind Rec_flag where
+instance ToOCaml DefinitionObjectKind RecFlag where
   toOCaml = \case
     Fixpoint                        -> Recursive
-    DefinitionObjectKind.Definition -> Nonrecursive
+    DefinitionObjectKind.Definition -> NonRecursive
 
-instance ToOCaml (Structure_item -> Vernacular () Variable) Structure_item_desc where
+instance ToOCaml (StructureItem -> Vernacular () Variable) StructureItemDesc where
   toOCaml = error "TODO"
 
 instance ToOCaml (TermX () Variable) Expression where
@@ -56,11 +59,11 @@ instance ToOCaml (TermX () Variable) Expression where
       let (b, e2) = unscopeTerm be2 in
       let pat = toOCaml b in
       let expr = toOCaml e1 in
-      let vb = mkVb Nothing Nothing Nothing Nothing pat expr in
+      let vb = Vb.mk def pat expr in
       let e = toOCaml e2 in
-      mkexp $ Pexp_let Nonrecursive [vb] e
+      mkexp $ PexpLet NonRecursive [vb] e
 
-    Var _ v -> mkexp $ Pexp_ident $ mkLoc (Lident (unVariable v)) none
+    Var _ v -> mkexp $ PexpIdent $ mkLoc (Lident (unVariable v)) none
 
     _ -> error $ show chick
 
@@ -68,8 +71,8 @@ instance ToOCaml Variable (Loc String) where
   toOCaml v = mkLoc (unVariable v) none
 
 instance ToOCaml (Binder Variable) Pattern where
-  toOCaml (Binder Nothing) = mkpat $ Ppat_any
-  toOCaml (Binder (Just v)) = mkpat $ Ppat_var $ toOCaml v
+  toOCaml (Binder Nothing) = mkpat $ PpatAny
+  toOCaml (Binder (Just v)) = mkpat $ PpatVar $ toOCaml v
 
 --instance ToOCaml (Maybe Variable) Longident where
 
@@ -82,8 +85,8 @@ type 'a list =
   | Cons of ('a * 'a list)
 |]
 
-_test :: Maybe [Structure_item]
-_test = map (toOCaml . fromOCaml) <$> parseMaybe implementation_P _testProgram
+_test :: Maybe [StructureItem]
+_test = map (toOCaml . fromOCaml) <$> parseMaybe implementationP _testProgram
 
 _prettyTest :: Maybe String
-_prettyTest = (show . structure_PP) <$> _test
+_prettyTest = (show . structurePP) <$> _test
