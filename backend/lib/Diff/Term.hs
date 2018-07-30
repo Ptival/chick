@@ -28,6 +28,7 @@ module Diff.Term
   , mkLams
   , mkPis
   , nCpyApps
+  , nCpyLams
   , nCpyPis
   , nInsertApps
   , nRemoveApps
@@ -216,15 +217,19 @@ patch term δterm =
     patch τ2 δ
   (_, RemovePi _) -> exc "RemovePi: not a Pi"
 
+nCpy :: (Diff α -> Diff α) -> Int -> Diff α -> Diff α
+nCpy _ 0 base         = base
+nCpy _ n _    | n < 0 = error "nCpy: n became negative!"
+nCpy f n base         = f (nCpy f (n-1) base)
+
 nCpyApps :: Int -> Diff α -> Diff α
-nCpyApps 0 base         = base
-nCpyApps n _    | n < 0 = error "nCpyApps: n became negative!"
-nCpyApps n base         = CpyApp (nCpyApps (n-1) base) Same
+nCpyApps = nCpy (\ δ -> CpyApp δ Same)
+
+nCpyLams :: Int -> Diff α -> Diff α
+nCpyLams = nCpy (\ δ -> CpyLam ΔA.Same δ)
 
 nCpyPis :: Int -> Diff α -> Diff α
-nCpyPis 0 base         = base
-nCpyPis n _    | n < 0 = error "nCpyPis: n became negative!"
-nCpyPis n base         = CpyPi Same ΔA.Same $ nCpyPis (n - 1) base
+nCpyPis = nCpy (\ δ -> CpyPi Same ΔA.Same δ)
 
 nInsertApps :: Int -> (α, TermX α Variable) -> Diff α -> Diff α
 nInsertApps 0 _      base         = base

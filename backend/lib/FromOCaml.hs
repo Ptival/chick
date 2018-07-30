@@ -9,6 +9,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module FromOCaml
@@ -16,11 +17,11 @@ module FromOCaml
   ) where
 
 import Control.Arrow
+import Data.List (genericLength)
 import Data.String.QQ
 import Language.OCaml.Definitions.Parsing.ASTTypes
 import Language.OCaml.Definitions.Parsing.ParseTree
 import Language.OCaml.Parser
-import Text.Megaparsec
 
 import Definition
 import DefinitionObjectKind
@@ -60,7 +61,9 @@ instance FromOCaml CoreTypeDesc (CoreType -> TermX () Variable) where
       in
       const $ Pi () (fromOCaml t1) st2
     PtypTuple [] -> todo
-    PtypTuple l -> const $ foldr1 (\ t ts -> App () (App () "prod" t) ts) (map fromOCaml l)
+    -- problem: in OCaml, we can distinguish (a * (b * c)) from (a * b * c)
+    PtypTuple [l, r] -> const $ App () (App () "prod" (fromOCaml l)) (fromOCaml r)
+    PtypTuple _ -> Term.UnsupportedOCaml . UnsupportedCoreType
     PtypConstr i l ->
       case fromOCaml $ txt i of
       Nothing -> Term.UnsupportedOCaml . UnsupportedCoreType
@@ -92,9 +95,14 @@ instance FromOCaml
     Nothing -> Constructor
       { constructorInductive  = ind
       , constructorName       = mkVariable $ txt $ pcdName
-      , constructorParameters = map (\ t -> ((), Binder Nothing, t)) (fromOCaml pcdArgs)
+      -- OCaml constructors are uncurried
+      , constructorParameters = [((), Binder Nothing, mkParameter pcdArgs)]
       , constructorIndices    = []
       }
+      where
+        mkParameter :: ConstructorArguments -> TermX () Variable
+        mkParameter (PcstrTuple args) = mkApps (Var Nothing "tuple") (((), genericLength args) : map (const () &&& fromOCaml) args)
+        mkParameter (PcstrRecord _) = error "TODO"
 
 instance FromOCaml StructureItemDesc (StructureItem -> Vernacular () Variable) where
   fromOCaml ocaml =
@@ -103,24 +111,29 @@ instance FromOCaml StructureItemDesc (StructureItem -> Vernacular () Variable) w
 
     PstrType _ [TypeDeclaration { ptypeKind, ptypeName, ptypeParams }] ->
       case ptypeKind of
-        PtypeVariant cs ->
-          let cs' = map fromOCaml cs in
-          let ind = Inductive.Inductive.Inductive
-                { inductiveName         = mkVariable $ txt $ ptypeName
-                , inductiveParameters   =
-                  let fromParam (typ, _) =
-                        case fromOCaml typ of
-                        Var _ v -> ((), v, Term.Type Universe.Type)
-                        _ -> error "NO"
-                  in
-                  map fromParam ptypeParams
-                , inductiveIndices      = []
-                , inductiveUniverse     = Universe.Type
-                , inductiveConstructors = map ($ ind) cs'
-                }
-          in
-          const $ Vernacular.Inductive ind
-        _ -> todo
+
+      PtypeAbstract -> error "TODO: PtypeAbstract"
+
+      PtypeVariant cs ->
+        let cs' = map fromOCaml cs in
+        let ind = Inductive.Inductive.Inductive
+                  { inductiveName         = mkVariable $ txt $ ptypeName
+                  , inductiveParameters   =
+                    let fromParam (typ, _) =
+                          case fromOCaml typ of
+                          -- FIXME: Chick requires named parameters, OCaml does not
+                          Var _ v -> ((), "_param", Term.Var Nothing v)
+                          _ -> error "NO"
+                    in
+                    map fromParam ptypeParams
+                  , inductiveIndices      = []
+                  , inductiveUniverse     = Universe.Type
+                  , inductiveConstructors = map ($ ind) cs'
+                  }
+        in
+        const $ Vernacular.Inductive ind
+
+      _ -> todo
 
     PstrValue r [vb] ->
       case ppatDesc . pvbPat $ vb of
@@ -151,6 +164,33 @@ instance FromOCaml ExpressionDesc (Expression -> TermX () Variable) where
     PexpApply f as ->
       const $ mkApps (fromOCaml f) (map ((const ()) *** fromOCaml) as)
 
+    PexpConstruct ctor maybeArgsExpr ->
+      case maybeArgsExpr of
+      Nothing ->
+        case fromOCaml ctor of
+        Nothing -> error "TODO"
+        Just ctor' -> const $ Var Nothing ctor'
+      Just (Expression { pexpDesc = argsExpr }) ->
+        case argsExpr of
+        PexpTuple args ->
+          case fromOCaml ctor of
+          Nothing -> error "TODO"
+          Just ctor' ->
+            -- OCaml constructors are uncurried
+            let argsAsTuple = mkApps (Var Nothing "tuple") (((), genericLength args) : map ((,) () . fromOCaml) args) in
+            const $ App () (Var Nothing ctor') argsAsTuple
+        _ -> error $ "\n\n" ++ show argsExpr
+
+    PexpFun Nolabel Nothing patt expr ->
+      case ppatDesc patt of
+      PpatVar ls ->
+        let v = mkVariable $ txt ls in
+        const
+        $ Lam ()
+        $ abstractVariable v
+        $ fromOCaml expr
+      _ -> error $ show ocaml
+
     PexpFunction l ->
       let arg :: Variable = "__arg__" in
       const
@@ -171,12 +211,50 @@ instance FromOCaml ExpressionDesc (Expression -> TermX () Variable) where
         const $ Let () e1 (abstractBinder b e2)
       _ -> unsupported
 
+    PexpMatch disc cases ->
+      const
+      $ Match () (fromOCaml disc)
+      $ map fromOCaml cases
+
     _ -> error $ show ocaml
 
 instance FromOCaml Case (Branch () Variable) where
-  fromOCaml ocaml = case pcGuard ocaml of
-    Nothing -> error "TODO"
-    Just _ -> error "TODO"
+  fromOCaml (Case { pcGuard, pcLHS, pcRHS }) =
+    let (ctor, args) = fromOCaml pcLHS in
+    let guard = fromOCaml <$> pcGuard in
+    let body = fromOCaml pcRHS in
+    packBranch (ctor, args, GuardAndBody guard body)
+
+instance FromOCaml Pattern (Variable, [Binder Variable]) where
+  fromOCaml (Pattern { ppatDesc }) =
+    case ppatDesc of
+    PpatConstruct constr maybeArgsPattern ->
+      let ctor = case fromOCaml constr of
+            Nothing -> error "TODO"
+            Just ctor' -> ctor'
+      in
+      let args = case maybeArgsPattern of
+            Nothing -> []
+            Just argsPattern ->
+              let Pattern { ppatDesc = argsPpatDesc } = argsPattern in
+              case argsPpatDesc of
+              PpatTuple args' ->
+                let patternToBinder (Pattern { ppatDesc = innerPpatDesc }) = case innerPpatDesc of
+                      PpatVar v -> Binder (Just $ mkVariable $ fromOCaml v)
+                      PpatAny -> Binder Nothing
+                      _ -> error "TODO"
+                in
+                map patternToBinder args'
+              _ -> error "TODO"
+      in
+      (ctor, args)
+    _ -> error "TODO"
+
+instance FromOCaml a b => FromOCaml (Loc a) b where
+  fromOCaml = fromOCaml . txt
+
+instance FromOCaml String String where
+  fromOCaml = id
 
 _testProgram :: String
 _testProgram = [s|
@@ -185,8 +263,8 @@ type 'a list =
   | Cons of ('a * 'a list)
 |]
 
-_test :: Maybe (Script () Variable)
-_test = Script . map fromOCaml <$> parseMaybe implementationP _testProgram
+_test :: Either String (Script () Variable)
+_test = Script . map fromOCaml <$> parseImplementationG _testProgram
 
-_prettyTest :: Maybe String
+_prettyTest :: Either String String
 _prettyTest = prettyStrU @'Chick <$> _test

@@ -54,6 +54,7 @@ module Term.Term
   , simultaneousSubstitute
   , substitute
   , unpackBranch
+  , unsafeTermToNum
   , unscopeNames
   , unscopeTerm
   , wildcardSymbol
@@ -612,6 +613,25 @@ deriving instance (Show α, Show ν) => Show (TermX α ν)
 
 instance (PrintfArg α, Show α) => PrintfArg (TermX α Variable) where
   formatArg t = formatString (show t)
+
+unsafeTermToNum :: Num a => TermX () Variable -> a
+unsafeTermToNum (Var _ "O") = 0
+unsafeTermToNum (App _ (Var _ "S") rest) = 1 + unsafeTermToNum rest
+unsafeTermToNum _ = error "unsafeTermToNum: not a number"
+
+instance Num (TermX () Variable) where
+  a + b = fromInteger $ unsafeTermToNum a + unsafeTermToNum b
+  a * b = fromInteger $ unsafeTermToNum a * unsafeTermToNum b
+  abs a = fromInteger $ abs $ unsafeTermToNum a
+  negate _ = error "Num for Term only works for positive numbers"
+
+  signum (Var _ "O") = Var Nothing "O"
+  -- this is weird, but we just need to check that it's a number and return 1
+  signum n = (unsafeTermToNum n :: Int) `seq` App () (Var Nothing "S") (Var Nothing "O")
+
+  fromInteger n | n < 0     = error "Num for Term only works for positive numbers"
+                | n == 0    = Var Nothing "O"
+                | otherwise = App () "S" (fromInteger (n - 1))
 
 -- getName :: (Foldable t) => Scope (Name Variable ()) t a -> Variable
 -- getName t =

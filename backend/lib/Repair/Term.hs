@@ -16,7 +16,9 @@ module Repair.Term where
 import           Control.Arrow
 --import           Control.Monad
 import           Control.Monad.Freer
+import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
+import           Data.List.Utils
 import           Text.Printf
 
 import qualified Diff.Atom as ΔA
@@ -44,7 +46,7 @@ guessIndMatched ::
   ( RepairEff r
   ) =>
   Raw.Term Variable -> [Branch Raw.Raw Variable] -> Eff r (Inductive Raw.Raw Variable)
-guessIndMatched discriminee _branches = do
+guessIndMatched discriminee branches = do
   let exc (s :: String) = throwExc $ printf "Repair.Term/guessIndMatched: %s" s
   trace "*** Trying to guess matched type using discriminee"
   case discriminee of
@@ -58,8 +60,16 @@ guessIndMatched discriminee _branches = do
           case GE.lookupInductiveByName indName e of
             Just ind -> return ind
             Nothing -> exc $ printf "Could not find %s in global environment" (prettyStr @'Chick indName)
-        _ -> exc "Could not guess the inductive being matched because the type of the discriminee did not look like a variable applied"
+        _ -> exc
+          $ "Could not guess the inductive being matched because the type of the discriminee did not look like a variable applied:\n"
+          ++ show fun
     _ -> exc "Could not guess the inductive being matched because the term being matched is not a variable (TODO)"
+  `catchError`
+    ( \ (errorWhenGuessingByDiscriminee :: String) -> do
+      trace "*** Trying to guess matched type using branches"
+      let constructors = map branchConstructor branches
+      error $ show constructors
+    )
 
 -- | `unknownTypeRepair t` attempts to repair `t` without any information
 unknownTypeRepair ::
@@ -124,7 +134,9 @@ unknownTypeRepair t = do
       return $ ΔT.CpyMatch δd δbs
 
     Annot _ _ _ -> exc "utr: Annot"
-    Hole _ -> exc "utr: Hole"
+
+    Hole _ -> return $ ΔT.Same -- TODO: better idea?
+
     Lam _ _ -> exc "utr: Lam"
     Let _ _ _ -> exc "utr: Let"
 
@@ -149,10 +161,19 @@ genericRepair t τ = do
     -- even though the diff is same, something inside might need updating
     Lam _ bt -> do
       let (b, tlam) = unscopeTerm bt
-      (_, τ1, _, τ2) <- ΔT.extractPi τ
-      RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $ do
-        ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
-
+      do
+        (_, τ1, _, τ2) <- ΔT.extractPi τ
+        RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $ do
+          ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
+      `catchError` (
+        const @_ @String $ do
+          -- If we cannot extract a Pi from the type, we should proceed by repairing
+          (binders, body) <- ΔT.extractLams t
+          let addBinder e (_, b) =
+                e >>> RS.withLocalAssum (b, Hole ()) >>> RS.withδLocalContext ΔL.Keep
+          flip (foldl addBinder) binders id $ do -- gotta type annotate to resolve overlapping instances
+            ΔT.nCpyLams (length binders) <$> unknownTypeRepair body
+        )
     _ -> unknownTypeRepair t
 
 {-| `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff
