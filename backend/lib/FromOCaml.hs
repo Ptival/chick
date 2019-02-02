@@ -1,10 +1,10 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -18,18 +18,13 @@ module FromOCaml
 
 import Control.Arrow
 import Data.List (genericLength)
-import Data.String.QQ
 import Language.OCaml.Definitions.Parsing.ASTTypes
 import Language.OCaml.Definitions.Parsing.ParseTree
-import Language.OCaml.Parser
 
 import Definition
 import DefinitionObjectKind
 import Inductive.Inductive
-import Language
-import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Chick ()
-import Script
 import Term.Term as Term
 import Term.Universe as Universe
 import Utils
@@ -255,16 +250,3 @@ instance FromOCaml a b => FromOCaml (Loc a) b where
 
 instance FromOCaml String String where
   fromOCaml = id
-
-_testProgram :: String
-_testProgram = [s|
-type 'a list =
-  | Nil
-  | Cons of ('a * 'a list)
-|]
-
-_test :: Either String (Script () Variable)
-_test = Script . map fromOCaml <$> parseImplementationG _testProgram
-
-_prettyTest :: Either String String
-_prettyTest = prettyStrU @'Chick <$> _test

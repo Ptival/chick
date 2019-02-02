@@ -100,16 +100,16 @@ lookupInductiveByName target =
       _ -> []
     found i = I.inductiveName i == target
 
--- lookupInductiveByConstructor ::
---   Eq ν => ν -> GlobalEnvironment α ν -> Maybe (I.Inductive α ν)
--- lookupInductiveByConstructor target =
---   find foundInductive . concatMap selectInductives . unGlobalEnvironment
---   where
---     selectInductives = \case
---       GlobalInd i -> [i]
---       _ -> []
---     foundInductive   i = any foundConstructor (I.inductiveConstructors i)
---     foundConstructor c = I.constructorName c == target
+lookupInductiveByConstructors ::
+  Eq ν => ν -> GlobalEnvironment α ν -> Maybe (I.Inductive α ν)
+lookupInductiveByConstructors target =
+  find foundInductive . concatMap selectInductives . unGlobalEnvironment
+  where
+    selectInductives = \case
+      GlobalInd i -> [i]
+      _ -> []
+    foundInductive   i = any foundConstructor (I.inductiveConstructors i)
+    foundConstructor c = I.constructorName c == target
 
 lookupRawType ::
   Variable -> GlobalEnvironment Raw.Raw Variable ->

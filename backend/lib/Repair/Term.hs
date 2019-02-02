@@ -18,7 +18,6 @@ import           Control.Arrow
 import           Control.Monad.Freer
 import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
-import           Data.List.Utils
 import           Text.Printf
 
 import qualified Diff.Atom as ΔA
@@ -65,7 +64,7 @@ guessIndMatched discriminee branches = do
           ++ show fun
     _ -> exc "Could not guess the inductive being matched because the term being matched is not a variable (TODO)"
   `catchError`
-    ( \ (errorWhenGuessingByDiscriminee :: String) -> do
+    ( \ (_errorWhenGuessingByDiscriminee :: String) -> do
       trace "*** Trying to guess matched type using branches"
       let constructors = map branchConstructor branches
       error $ show constructors

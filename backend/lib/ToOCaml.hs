@@ -237,7 +237,7 @@ let rec map f l =
 |]
 
 roundtrip0 :: String -> Either String Structure
-roundtrip0 = parseImplementationG
+roundtrip0 = parseImplementation
 
 roundtrip1 :: String -> Either String [Vernacular () Variable]
 roundtrip1 input = map fromOCaml <$> roundtrip0 input
@@ -261,10 +261,10 @@ _main :: IO ()
 _main = putStrLn $ _prettyTest
 
 _test1 :: Either String Structure
-_test1 = parseImplementationG "let f x = y"
+_test1 = parseImplementation "let f x = y"
 
 _test2 :: Either String Structure
-_test2 = parseImplementationG "let f = fun x -> y"
+_test2 = parseImplementation "let f = fun x -> y"
 
 testDiffGuess :: IO (ΔS.Diff ())
 testDiffGuess =
@@ -279,7 +279,7 @@ testDiffGuess =
   runSkipTrace $ guess (Script p1) (Script p2)
 
 unsafeParseOCaml :: String -> Script () Variable
-unsafeParseOCaml o = case map fromOCaml <$> parseImplementationG o of
+unsafeParseOCaml o = case map fromOCaml <$> parseImplementation o of
   Left e -> error e
   Right r -> Script r
 
