@@ -1,0 +1,225 @@
+author:
+  - Valentin Robert <valentin.robert.42@gmail.com>
+
+default-extensions:
+  - DeriveGeneric
+  - DuplicateRecordFields
+  - GADTs
+  - LambdaCase
+  - NamedFieldPuns
+  - RankNTypes
+  - RecordWildCards
+  - ScopedTypeVariables
+  - TypeApplications
+
+dependencies:
+  - base
+  - data-default
+  - freer-effects
+  - megaparsec       >= 7.0
+  - QuickCheck
+  - smallcheck
+  - string-qq
+  - tasty
+  - tasty-hunit
+  - tasty-quickcheck
+  - tasty-smallcheck
+
+ghc-options:
+  - -Wall
+  - -Werror
+
+library:
+
+  dependencies:
+    - adjunctions
+    - aeson
+    - bound
+    - bytestring
+    - comonad
+    - containers
+    - convertible
+    - directory
+    - either
+    - extra
+    - free
+    - gdiff
+    - ghc
+    - GenericPretty
+    - hslogger
+    - language-ocaml >= 0.2.2
+    - lens
+    - MissingH
+    - monad-loops
+    - mtl
+    - network
+    - parser-combinators
+    - prettyprinter
+    - process
+    - random
+    - snap
+    - snap-core
+    - snap-server
+    - text
+    - time
+    - utility-ht
+    - unordered-containers
+    - utf8-string
+
+  exposed-modules: []
+
+  other-modules:
+    - Bound.ScopeT
+    - Definition
+    - DefinitionObjectKind
+    - DictMetaOut
+    - Diff.Atom
+    - Diff.Binder
+    - Diff.ConcatMap
+    - Diff.Constructor
+    - Diff.Eliminator
+    - Diff.Guess.Atom
+    - Diff.Guess.BottomUp
+    - Diff.Guess.Constructor
+    - Diff.Guess.HIList
+    - Diff.Guess.Inductive
+    - Diff.Guess.Mapping
+    - Diff.Guess.Node
+    - Diff.Guess.Script
+    - Diff.Guess.Term
+    - Diff.Guess.TopDown
+    - Diff.Guess.Vernacular
+    - Diff.GlobalDeclaration
+    - Diff.GlobalEnvironment
+    - Diff.Inductive
+    - Diff.List
+    - Diff.ListFold
+    - Diff.ListFoldLeft
+    - Diff.ListFoldRight
+    - Diff.ListFoldUtils
+    - Diff.LocalContext
+    - Diff.LocalDeclaration
+    - Diff.Maybe
+    - Diff.Motive
+    - Diff.Pair
+    - Diff.Script
+    - Diff.Term
+    - Diff.Triple
+    - Diff.Utils
+    - Diff.Variable
+    - Diff.Vernacular
+    - Examples.Diff.SoftwareFoundations
+    - Examples.Inductive
+    - Examples.Term
+    - Examples.Utils
+    - FromOCaml
+    - Goal
+    - Inductive.Eliminator
+    - Inductive.Inductive
+    - Inductive.Motive
+    - Inductive.Utils
+    - Language
+    - Notations
+    - Parsing
+    - Parsing.Types
+    - Parsing.Chick.Utils
+    - Parsing.Inductive
+    - Parsing.Script
+    - Parsing.Unsafe
+    - Parsing.Utils
+    - Parsing.Vernacular
+    - Precedence
+    - PrettyPrinting.Chick
+    - PrettyPrinting.Chick.Binder
+    - PrettyPrinting.Chick.Constructor
+    - PrettyPrinting.Chick.Declaration
+    - PrettyPrinting.Chick.Definition
+    - PrettyPrinting.Chick.DefinitionObjectKind
+    - PrettyPrinting.Chick.LocalContext
+    - PrettyPrinting.Chick.LocalDeclaration
+    - PrettyPrinting.Chick.GlobalEnvironment
+    - PrettyPrinting.Chick.GlobalDeclaration
+    - PrettyPrinting.Chick.Inductive
+    - PrettyPrinting.Chick.List
+    - PrettyPrinting.Chick.Pair
+    - PrettyPrinting.Chick.Script
+    - PrettyPrinting.Chick.Term
+    - PrettyPrinting.Chick.Triple
+    - PrettyPrinting.Chick.Unit
+    - PrettyPrinting.Chick.Universe
+    - PrettyPrinting.Chick.Variable
+    - PrettyPrinting.Chick.Vernacular
+    - PrettyPrinting.Term
+    - PrettyPrinting.PrettyPrintable
+    - PrettyPrinting.PrettyPrintableAnnotated
+    - PrettyPrinting.PrettyPrintableUnannotated
+    - PrettyPrinting.Universe
+    - PrettyPrinting.Utils
+    - Repair.Benchmark
+    - Repair.Inductive
+    - Repair.Script
+    - Repair.State
+    - Repair.Term
+    - Repair.Term.Argument
+    - Repair.Term.Branch
+    - Repair.Utils
+    - Repair.Vernacular
+    - Script
+    - Server.Chick
+    - Server.ChickHandler
+    - Server.Server
+    - Server.Session
+    - Snap.Extras.JSON
+    - StandardLibrary
+    - StandardLibraryDiff
+    - Term.AlphaEquivalence
+    - Term.AlphaRenaming
+    - Term.Binder
+    - Term.Diff
+    - Term.Free
+    - Term.Fresh
+    - Term.Raw
+    - Term.Term
+    - Term.TypeChecked
+    - Term.TypeErrored
+    - Term.Universe
+    - Term.Variable
+    - ToOCaml
+    - TypeCheckingFailure
+    - Typing.GlobalDeclaration
+    - Typing.GlobalEnvironment
+    - Typing.LocalContext
+    - Typing.LocalDeclaration
+    - Typing.Utils
+    - Utils
+    - Vernacular
+    - WellFormed
+    - Work
+
+  source-dirs: lib
+
+license: BSD3
+
+name: chick
+
+tests:
+  test:
+    main: Main.hs
+    source-dirs: test
+    other-modules:
+      - Diff.ConcatMap.Test
+      - Diff.Eliminator.Test
+      - Diff.Guess.Constructor.Test
+      - Diff.Guess.Term.Test
+      - Diff.Guess.Inductive.Test
+      - Diff.Guess.Script.Test
+      - Diff.Guess.Vernacular.Test
+      - Diff.Motive.Test
+      - Inductive.Eliminator.Test
+      - Inductive.Inductive.Test
+      - Parsing.Inductive.Test
+      - StandardLibraryDiff.Test
+      - Term.Term.Test
+      - TestUtils
+
+version: 0.1.0

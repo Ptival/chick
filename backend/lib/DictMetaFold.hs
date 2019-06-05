@@ -1,8 +1,8 @@
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
-{-# language TypeFamilies #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
-module DictMetaMap where
+module DictMetaFold where
 
 import Term.Term
 

@@ -205,7 +205,7 @@ varP = Var Nothing <$> variableP
 langP :: Parser (Raw.Term Variable)
 langP = termP <* eof
 
-runParserTerm :: String -> Either (ParseError Char Void) (Raw.Term Variable)
+runParserTerm :: String -> Either (ParseErrorBundle String Void) (Raw.Term Variable)
 runParserTerm = runParser langP "runParserTerm"
 
 parseMaybeTerm :: String -> Maybe (Raw.Term Variable)

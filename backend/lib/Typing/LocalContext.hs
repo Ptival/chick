@@ -26,7 +26,7 @@ import Term.TypeChecked
 
 newtype LocalContext α ν =
   LocalContext { unLocalContext :: [LocalDeclaration α ν] }
-  deriving (Eq, Monoid, Show)
+  deriving (Eq, Monoid, Semigroup, Show)
 
 addHyp ::
   (Eq ν, MonadError String m) =>

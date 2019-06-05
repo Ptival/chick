@@ -4,14 +4,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module PrettyPrinting.Term where
+module PrettyPrinting.Coq.Term where
 
 import Control.Monad.Reader
 import Data.Default
 
-import Language (Language(Coq))
+import Language                                  ( Language(Coq) )
 import Precedence
-import PrettyPrinting.Chick.Term as PPChick
+import PrettyPrinting.Chick.Term                 as PPChick
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Utils

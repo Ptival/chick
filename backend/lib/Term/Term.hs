@@ -22,6 +22,7 @@ module Term.Term
   , module Term.Variable
   , Branch(..)
   , GuardAndBody(..)
+  , NamesScopeT
   , ScopedTerm(..)
   , TermX(..)
   , TypeX

@@ -10,6 +10,9 @@
 
 module ToOCaml
   ( ToOCaml
+  , guessAndPatch
+  , testDiffGuess
+  , theWholeThing
   ) where
 
 import           Control.Arrow
@@ -295,7 +298,7 @@ guessAndPatch p1 p2 = do
   runError $ ΔS.patch p1 δ
 
 unsafeChickToOCaml :: Script () Variable -> Structure
-unsafeChickToOCaml s = map toOCaml $ unScript s
+unsafeChickToOCaml = map toOCaml . unScript
 
 theWholeThing :: String -> String -> IO ()
 theWholeThing ocaml1 ocaml2 = do

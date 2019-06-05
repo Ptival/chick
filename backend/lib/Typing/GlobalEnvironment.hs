@@ -14,6 +14,7 @@ module Typing.GlobalEnvironment
   , addGlobalDef
   , addGlobalInd
   , addInductiveType
+  , lookupInductiveByConstructors
   , lookupInductiveByName
   , lookupRawType
   ) where

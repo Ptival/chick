@@ -1,7 +1,9 @@
+{-# LANGUAGE DataKinds #-}
 {-# language ConstraintKinds #-}
 {-# language DeriveFunctor #-}
 {-# language FlexibleContexts #-}
 {-# language LambdaCase #-}
+{-# language OverloadedStrings #-}
 {-# language RankNTypes #-}
 {-# language UndecidableInstances #-}
 
@@ -10,29 +12,31 @@ module Work where
 --import Bound.Name
 --import Bound.Scope
 --import Control.Monad
-import Control.Monad.Cont
-import Control.Monad.Except
-import Control.Monad.Identity
-import Control.Monad.Reader
-import Control.Monad.Trans.Free
-import Data.Bifunctor
+import           Control.Monad.Cont
+import           Control.Monad.Except
+import           Control.Monad.Identity
+import           Control.Monad.Reader
+import           Control.Monad.Trans.Free
+import           Data.Bifunctor
 --import Data.Default
-import Prelude                                   hiding (or)
+import           Data.Text.Prettyprint.Doc
+import           Prelude                                   hiding (or)
 --import Text.Printf
-import Text.PrettyPrint.Annotated.WL
 
-import Precedence
-import PrettyPrinting.Term ()
-import PrettyPrinting.PrettyPrintableUnannotated
-import Typing.LocalContext
-import Term.Binder
+import           Language
+import           Precedence
+import           PrettyPrinting.PrettyPrintableUnannotated
+import           PrettyPrinting.Term                       ()
+import           Term.Binder
+import           Typing.LocalContext
 --import PrettyPrinting.Term
-import Term.Raw                                  as Raw
-import Term.Term
-import Term.TypeChecked                          as TypeChecked
-import Term.TypeErrored                          as TypeErrored
-import TypeCheckingFailure
-import Utils
+import           Term.Raw                                  as Raw
+import           Term.Term
+import           Term.TypeChecked                          as TypeChecked
+import           Term.TypeErrored                          as TypeErrored
+import qualified Term.Universe                             as U
+import           TypeCheckingFailure
+import           Utils
 
 type TypeCheckingTerm ν = Either (TypeErrored.Term ν) (TypeChecked.Term ν)
 
@@ -79,32 +83,32 @@ prettyTypeCheckerF ::
   TypeCheckerF Variable k -> m (Doc ())
 prettyTypeCheckerF = \case
   Check _γ t τ _ -> do
-    tDoc <- prettyDocU t
-    τDoc <- prettyDocU τ
+    tDoc <- prettyDocU @'Chick t
+    τDoc <- prettyDocU @'Chick τ
     return $ fillSep
-      [ text "Check"
-      , text "γ ⊢"
+      [ "Check"
+      , "γ ⊢"
       , tDoc
-      , text ":"
+      , ":"
       , τDoc
       ]
   Synth _γ t _ -> do
-    tDoc <- prettyDocU t
+    tDoc <- prettyDocU @'Chick t
     return $ fillSep
-      [ text "Synth"
-      , text "γ ⊢"
+      [ "Synth"
+      , "γ ⊢"
       , tDoc
       ]
   Failure f -> do
-    fDoc <- prettyDocU (raw f)
+    fDoc <- prettyDocU @'Chick (raw f)
     return $ fillSep
-      [ text "Failure"
+      [ "Failure"
       , fDoc
       ]
   Success s -> do
-    sDoc <- prettyDocU (raw s)
+    sDoc <- prettyDocU @'Chick (raw s)
     return $ fillSep
-      [ text "Success"
+      [ "Success"
       , sDoc
       ]
 
@@ -178,7 +182,7 @@ done r = liftF $ Done r
 -}
 
 rawType :: Raw.Term ν
-rawType = Type
+rawType = Type U.Type
 
 {-
 meither :: Monad m => m (Either l r) -> (l -> m o) -> (r -> m o) -> m o
@@ -193,8 +197,8 @@ tryEither m l = cont $ meither m l
 
 (~!!) ::
   forall ξ.
-  NameScope (TermX ξ) Variable ->
-  NameScope (TermX (Either (TypeError Variable) (TypeChecked.Checked Variable))) Variable
+  ScopedTerm (TermX ξ) Variable ->
+  ScopedTerm (TermX (Either (TypeError Variable) (TypeChecked.Checked Variable))) Variable
 (~!!) s =
   let (b, t) = unscopeTerm s in
   abstractBinder b ((~!) t)
@@ -267,8 +271,8 @@ runSynth' γ = \case
            (\ fFun -> App (Left AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
     τFun <- typeOf sFun `orElse`
-           (App (Left AppFunctionFailed) ((!->)sFun) ((~!) arg))
-    Pi _ τIn bτOut <-
+           (App (Left AppFunctionFailed) ((!->) sFun) ((~!) arg))
+    (_, τIn, bτOut) <-
       isPi τFun `orElse`
       (App (Left (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
     -- check that arg has the type τIn
@@ -291,15 +295,15 @@ runSynth' γ = \case
 
   Pi _ τIn bτOut -> do
     let (b, τOut) = unscopeTerm bτOut
-    τIn' <- checkM γ τIn Type
+    τIn' <- checkM γ τIn (Type U.Type)
            (\ _τIn' -> error "TODO qwer")
     let γ' = addLocalAssum (b, τIn') γ
-    τOut' <- checkM γ' τOut Type
+    τOut' <- checkM γ' τOut (Type U.Type)
             (\ _τOut' -> error "TODO adsf")
     -- this is weird
-    return $ Pi (Checked Type) τIn' (abstractBinder b τOut')
+    return $ Pi (Checked (Type U.Type)) τIn' (abstractBinder b τOut')
 
-  Type -> return $ Type
+  Type _ -> return $ Type U.Type
 
   Lam _ bt -> throwError $ Lam (Left SynthesizeLambda) ((~!!) bt)
 
@@ -312,8 +316,8 @@ runCheck' γ t τ = case t of
 
   Lam _ bt -> do
     let (bLam, tLam) = unscopeTerm bt
-    τ' <- checkM γ τ Type                     (\ _τ' -> annotateError NotAType t)
-    Pi _ τIn bτOut <- isPi (redβ τ') `orElse` annotateError (error "TODO") t
+    τ' <- checkM γ τ (Type U.Type)            (\ _τ' -> annotateError NotAType t)
+    (_, τIn, bτOut) <- isPi (redβ τ') `orElse` annotateError (error "TODO") t
     let (bOut, τOut) = unscopeTerm bτOut
     _ <- matchBinders bLam bOut      `orElse` annotateError (error . show $ bOut) t
     let γ' = addLocalAssum (bLam, τIn) γ

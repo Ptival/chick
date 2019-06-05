@@ -26,6 +26,8 @@ import           Typing.LocalContextOps
 import           Typing.TypeCheckOps
 import           Utils
 
+import Examples
+
 type Checked = C.Term Variable
 type Ctxt    = LC.LocalContext (C.Checked Variable) Variable
 type Error   = E.Term Variable
@@ -45,3 +47,5 @@ runCheck t τ = skipTrace $ runCheck' t τ
 
 traceCheck :: Term α -> Term β -> IO (Either Error (Checked, Ctxt))
 traceCheck t τ = runTrace $ runCheck' t τ
+
+test = traceCheck tFlip τFlip

@@ -45,9 +45,9 @@ foldlWith f l a = foldl f a l
 foldrWith :: Foldable t => (a -> b -> b) -> t a -> b -> b
 foldrWith f l a = foldr f a l
 
-isPi :: TermX ξ ν -> Maybe (TermX ξ ν)
-isPi t@(Pi _ _ _) = Just t
-isPi _            = Nothing
+isPi :: TermX ξ ν -> Maybe (ξ, TypeX ξ ν, ScopedTerm (TypeX ξ) ν)
+isPi (Pi a b c) = Just (a, b, c)
+isPi _          = Nothing
 
 mapWithIndex :: (a -> Int -> b) -> [a] -> [b]
 mapWithIndex f l = map (\(e, i) -> f e i) (zip l [0..])

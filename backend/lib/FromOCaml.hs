@@ -17,16 +17,21 @@ module FromOCaml
   ) where
 
 import Control.Arrow
-import Data.List (genericLength)
+import Data.List                                    ( genericLength )
+import Data.String.QQ
 import Language.OCaml.Definitions.Parsing.ASTTypes
 import Language.OCaml.Definitions.Parsing.ParseTree
+import Language.OCaml.Parser
 
 import Definition
 import DefinitionObjectKind
 import Inductive.Inductive
-import PrettyPrinting.Chick ()
-import Term.Term as Term
-import Term.Universe as Universe
+import Language
+import PrettyPrinting.PrettyPrintableUnannotated
+import PrettyPrinting.Chick                         (  )
+import Script
+import Term.Term                                    as Term
+import Term.Universe                                as Universe
 import Utils
 import Vernacular
 
@@ -43,7 +48,7 @@ instance FromOCaml RecFlag DefinitionObjectKind where
 
 instance FromOCaml CoreTypeDesc (CoreType -> TermX () Variable) where
   fromOCaml ocaml =
-    let todo = error $ "TODO: " ++ show ocaml in
+    let todo :: CoreType -> TermX () Variable = error $ "TODO: " ++ show ocaml in
     case ocaml of
     PtypAny -> error "TODO"
     PtypVar v -> const $ Var Nothing $ mkVariable v
@@ -52,7 +57,7 @@ instance FromOCaml CoreTypeDesc (CoreType -> TermX () Variable) where
             case l of
             Nolabel    -> abstractAnonymous (fromOCaml t2)
             Labelled v -> abstractVariable (mkVariable v) (fromOCaml t2)
-            Optional _ -> todo
+            Optional _ -> error "TODO"
       in
       const $ Pi () (fromOCaml t1) st2
     PtypTuple [] -> todo
@@ -250,3 +255,16 @@ instance FromOCaml a b => FromOCaml (Loc a) b where
 
 instance FromOCaml String String where
   fromOCaml = id
+
+_testProgram :: String
+_testProgram = [s|
+type 'a list =
+  | Nil
+  | Cons of ('a * 'a list)
+|]
+
+_test :: Either String (Script () Variable)
+_test = Script . map fromOCaml <$> parseImplementation _testProgram
+
+_prettyTest :: Either String String
+_prettyTest = prettyStrU @'Chick <$> _test

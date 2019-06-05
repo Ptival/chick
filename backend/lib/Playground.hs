@@ -1,29 +1,30 @@
-{-# options_ghc -fno-warn-unused-imports #-}
+{-# LANGUAGE DataKinds #-}
 
 module Playground where
 
 import Control.Monad
-import Control.Monad.Except
+-- import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Default
-import Test.QuickCheck
-import Text.PrettyPrint.Annotated.WL
-import Text.Printf
+-- import Test.QuickCheck
+-- import Text.PrettyPrint.Annotated.WL
+-- import Text.Printf
 
-import Parsing
-import PrettyPrinting.PrettyPrintable
+import Language
+-- import Parsing
+-- import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.PrettyPrintableUnannotated
 import PrettyPrinting.Utils
 import StandardLibrary
-import Tactic
-import Term.AlphaRenaming
-import Term.Fresh
-import Term.Raw                                  as Raw
+-- import Tactic
+-- import Term.AlphaRenaming
+-- import Term.Fresh
+-- import Term.Raw                                  as Raw
 import Term.Term
-import Term.TypeChecked                          as TypeChecked
-import Term.TypeErrored                          as TypeErrored
-import Term.Variable
-import Typing.GlobalEnvironment
+-- import Term.TypeChecked                          as TypeChecked
+-- import Term.TypeErrored                          as TypeErrored
+-- import Term.Variable
+-- import Typing.GlobalEnvironment
 import Typing.LocalContext
 import Work
 
@@ -35,8 +36,8 @@ genPi = do
 
 test :: IO ()
 test = do
-  let task = checkF (LocalContext []) tId τId id
-  --let task = checkF [] tFlip τFlip id
+  -- let task = checkF (LocalContext []) tId τId id
+  let task = checkF (LocalContext []) tFlip τFlip id
   let trace = tcTrace stepTypeCheckerF task
   forM_ trace $ \ item -> do
     putStrLn $ doc2String $ runReader (prettyTypeCheckerF item) def
@@ -45,22 +46,22 @@ typeCheck :: TermX ξ Variable -> Maybe (TypeX ξ Variable) -> IO ()
 typeCheck t mτ = do
   putStrLn $ replicate 80 '-'
   putStrLn "Type-checking:"
-  putStrLn $ prettyStrU t
+  putStrLn $ prettyStrU @'Chick t
   case mτ of
     Nothing -> return ()
     Just τ  -> do
       putStrLn "Against type:"
-      putStrLn $ prettyStrU τ
+      putStrLn $ prettyStrU @'Chick τ
   let e = tc $ case mτ of
         Nothing -> synthF (LocalContext []) t id
         Just τ  -> checkF (LocalContext []) t τ id
   case e of
     Left  l -> do
       putStrLn "Failed:"
-      putStrLn $ prettyStrU l
+      putStrLn $ prettyStrU @'Chick l
     Right r -> do
       putStrLn "Succeded:"
-      putStrLn $ prettyStrU r
+      putStrLn $ prettyStrU @'Chick r
   return ()
 
 {-

@@ -23,12 +23,14 @@ import           Control.Monad.Freer.Exception
 import           Control.Monad.Freer.Trace
 import           Text.Printf
 
-import           PrettyPrinting.Term ()
+import           Language
 import           PrettyPrinting.PrettyPrintableUnannotated
+import           PrettyPrinting.Term                       ()
 import           Term.Binder
 import           Term.Term
-import qualified Term.TypeChecked as C
-import qualified Term.TypeErrored as E
+import qualified Term.TypeChecked                          as C
+import qualified Term.TypeErrored                          as E
+import qualified Term.Universe                             as U
 import           TypeCheckingFailure
 import           Typing.LocalContextOps
 import           Typing.Utils
@@ -69,8 +71,8 @@ handleCheck t τ = case t of
 
   Lam _ bt -> do
     let (bLam, tLam) = unscopeTerm bt
-    τ'             <- check τ  Type ||| \ _τ' -> E.annotateError NotAType t
-    Pi _ τIn bτOut <- isPi  τ'      ^||          E.annotateError TODO t
+    τ'             <- check τ  (Type U.Type) ||| \ _τ' -> E.annotateError NotAType t
+    (_,τIn, bτOut) <- isPi  τ'               ^||          E.annotateError TODO t
     let (bOut, τOut) = unscopeTerm bτOut
     -- the binders at the type- and term- level may differ, reconcile them
     binder         <- freshBinder @(C.Checked Variable) [bLam, bOut]
@@ -99,10 +101,10 @@ handleSynth t = case t of
     return $ Annot (C.Checked τ') t'' τ'
 
   App _ fun arg -> do
-    sFun           <- synth    fun      ||| \ fFun -> sadAppFun     fFun       ((~!) arg)
-    τFun           <- C.typeOf sFun     ^||           sadAppFun     ((!) sFun) ((~!) arg)
-    Pi _ τIn bτOut <- isPi     τFun     ^||           sadAppFunType ((!) sFun) ((~!) arg)
-    cArg           <- check    arg  τIn ||| \ fArg -> sadAppArg     ((!) sFun) fArg
+    sFun            <- synth    fun      ||| \ fFun -> sadAppFun     fFun       ((~!) arg)
+    τFun            <- C.typeOf sFun     ^||           sadAppFun     ((!) sFun) ((~!) arg)
+    (_, τIn, bτOut) <- isPi     τFun     ^||           sadAppFunType ((!) sFun) ((~!) arg)
+    cArg            <- check    arg  τIn ||| \ fArg -> sadAppArg     ((!) sFun) fArg
     let (b, τOut) = unscopeTerm bτOut
     let τOut' = case unBinder b of
           Nothing -> τOut
@@ -113,13 +115,13 @@ handleSynth t = case t of
 
   Pi _ τIn bτOut -> do
     let (b, τOut) = unscopeTerm bτOut
-    τIn'  <- check τIn Type       ||| \ fτIn  -> sadPiTODO fτIn       ((~!\) bτOut)
+    τIn'  <- check τIn (Type U.Type) ||| \ fτIn  -> sadPiTODO fτIn       ((~!\) bτOut)
     τOut' <-
       withAssumption b τIn' $ do
-      check τOut Type             ||| \ fτOut -> sadPiTODO ((!) τIn') (abstractBinder b fτOut)
-    return $ Pi (C.Checked Type) τIn' (abstractBinder b τOut')
+      check τOut (Type U.Type)       ||| \ fτOut -> sadPiTODO ((!) τIn') (abstractBinder b fτOut)
+    return $ Pi (C.Checked (Type U.Type)) τIn' (abstractBinder b τOut')
 
-  Type -> pure $ Type
+  Type _ -> pure $ Type U.Type
 
   Var _ name -> do
     -- γ <- getLocalContext
@@ -137,12 +139,16 @@ runTraceTypeCheckOps ::
   Eff (TypeCheckOps ': r) a -> Eff r a
 runTraceTypeCheckOps = handleRelay pure $ \case
   Check t τ -> \ arr -> do
-    γ <- getLocalContext @(C.Checked Variable)
-    trace $ printf "Checking (%s : %s) in context:\n%s" (prettyStrU t) (prettyStrU τ) (prettyStrU γ)
+    _γ <- getLocalContext @(C.Checked Variable)
+    trace $ printf "Checking (%s : %s) in context:\n%s" (prettyStrU @'Chick t) (prettyStrU @'Chick τ)
+      "TODO: Pretty-printing local context"
+      -- (prettyStrU @Chick γ)
     runTraceTypeCheckOps (handleCheck t τ) >>= arr
   Synth t   -> \ arr -> do
-    γ <- getLocalContext @(C.Checked Variable)
-    trace $ printf "Synthesizing %s in context:\n%s" (prettyStrU t) (prettyStrU γ)
+    _γ <- getLocalContext @(C.Checked Variable)
+    trace $ printf "Synthesizing %s in context:\n%s" (prettyStrU @'Chick t)
+      "TODO: Pretty-printing local context"
+      -- (prettyStrU @Chick γ)
     runTraceTypeCheckOps (handleSynth t) >>= arr
 
 runTypeCheckOps ::
