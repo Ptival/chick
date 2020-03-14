@@ -1,6 +1,3 @@
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
-{-# language TypeFamilies #-}
 
 module DictMetaMap where
 

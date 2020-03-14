@@ -1,10 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.ListFoldLeft
   ( module Diff.ListFold
@@ -16,10 +11,7 @@ import Diff.ListFold
 import Diff.Utils
 
 δListFoldLeft :: ∀ τ δτ δ. ΔListFold τ δτ δ -> [τ] -> DL.Diff τ δτ -> δ -> δ
-δListFoldLeft
-  (ΔListFold
-   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame })
-  = go
+δListFoldLeft ΔListFold{..} = go
   where
     go :: [τ] -> DL.Diff τ δτ -> δ -> δ
     go l δl = case (δl, l) of

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Language
   ( defaultLanguage
   , Language(..)

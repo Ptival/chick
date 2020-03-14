@@ -1,5 +1,3 @@
-{-# language ConstraintKinds #-}
-{-# language FlexibleContexts #-}
 {-# language OverloadedStrings #-}
 
 module Typing.Inductive where

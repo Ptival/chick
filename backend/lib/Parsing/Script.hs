@@ -1,4 +1,3 @@
-{-# language RankNTypes #-}
 
 module Parsing.Script
   ( scriptP

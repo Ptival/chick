@@ -1,7 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
-
 module Repair.Inductive
   ( repair
   ) where
@@ -24,10 +20,10 @@ repair ::
   I.Inductive Raw.Raw Variable -> DI.Diff Raw.Raw -> Sem r (DI.Diff Raw.Raw)
 repair (I.Inductive _n _ps _is _u _cs) = \case
 
-  DI.Modify δn δps δis δu δcs -> do
+  DI.Modify δn δps δis δu δcs ->
     -- FIXME
     return $ DI.Modify δn δps δis δu δcs
 
-  DI.Same -> do
+  DI.Same ->
     -- FIXME
-    return $ DI.Same
+    return DI.Same

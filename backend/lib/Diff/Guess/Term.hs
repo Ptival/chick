@@ -1,15 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Guess.Term (
   Match(..),
@@ -24,11 +15,11 @@ module Diff.Guess.Term (
   ) where
 
 import           Control.Lens                   ( _1, _2, _3, over, view )
-import           Control.Monad                  ( foldM, forM )
+import           Control.Monad                  ( foldM, forM, when )
 import           Data.Function                  ( fix )
 import qualified Data.List                      as List
 import           Data.List.HT                   ( viewR )
-import           Data.Maybe                     ( catMaybes )
+import           Data.Maybe                     ( mapMaybe )
 import           Polysemy                       ( Member, Sem, run, runM )
 import           Polysemy.Error                 ( runError )
 import           Polysemy.State                 ( State, get, modify, runState )
@@ -76,7 +67,7 @@ termChildren = go
   where
     go input = case input of
       Annot _ t τ -> [t, τ]
-      App _ _ _ ->
+      App{} ->
         case run $ runError (ΔT.extractApps input) of
         Left (_ :: String) -> error "This should not happen"
         Right (c, cs) -> c : map (view _2) cs
@@ -88,7 +79,7 @@ termChildren = go
           map (variableFromBinder . view _2) cs ++ [c]
       Let _ t1 bt2 -> [t1, t2] where (_, t2) = unscopeTerm bt2
       Match _ t bs -> t : map branchChild bs
-      Pi _ _ _ ->
+      Pi{} ->
         case run $ runError (ΔT.extractPis input) of
         Left (_ :: String) -> error "This should not happen"
         Right (cs, c) -> map (view _3) cs ++ [c]
@@ -105,7 +96,7 @@ termHeight t = case termChildren t of
   c  -> 1 + maximum (map termHeight c)
 
 fresh :: (Member (State Int) r) => Sem r Int
-fresh = get <* modify ((+) (1 :: Int))
+fresh = get <* modify (+ 1)
 
 makeNode ::
   Member (State Int) r =>
@@ -117,7 +108,7 @@ makeNode t = ($ Nothing) <$> go t
       i <- fresh
       childrenGen <- mapM go (termChildren t)
       return $ \ p -> fix $ \ n -> Node
-        { children   = map ($ (Just n)) childrenGen
+        { children   = map ($ Just n) childrenGen
         , height     = termHeight t
         , identifier = i
         , node       = t
@@ -170,8 +161,7 @@ traceGuessδ ::
   Raw.Term Variable -> Raw.Term Variable -> IO (ΔT.Diff Raw.Raw)
 traceGuessδ = withNodeMapping $ \ n1 n2 m -> do
   putStrLn $ printf "MAPPING:\n%s\n" (show m)
-  δ <- runM $ traceToIO $ mkGuessδ n1 n2 m
-  return δ
+  runM $ traceToIO $ mkGuessδ n1 n2 m
 
 unsafeSplitWhen :: (t -> Bool) -> [t] -> ([t], t, [t])
 unsafeSplitWhen _ [] = error "unsafeSplitWhen"
@@ -226,12 +216,11 @@ r =  D X Y G Z A H F
 generatePermutation :: (a -> t -> Bool) -> [a] -> [t] -> [Int]
 generatePermutation equals l1 l2 =
   let replacements =
-        catMaybes
-        $ map (\ e2 -> List.findIndex (\ e1 -> equals e1 e2) l1) l2
+        mapMaybe (\ e2 -> List.findIndex (`equals` e2) l1) l2
   in go (zip l1 [0..]) replacements
   where
     go [] _ = []
-    go ((e1, _) : l1) (r : rs) | List.any (\ e2 -> equals e1 e2) l2 = r : go l1 rs
+    go ((e1, _) : l1) (r : rs) | List.any (equals e1) l2 = r : go l1 rs
     go ((_, p1) : l1) rs = p1 : go l1 rs
 
 data Match
@@ -260,7 +249,7 @@ RightUnmatched y                   []             []
 
 -}
 matchPairs :: Mapping -> [Node] -> [Node] -> [Match]
-matchPairs m l1 l2 = go l1 l2
+matchPairs m = go
   where
     equals e1 e2 = (e1, e2) `elem` m
     go [] [] = []
@@ -295,16 +284,16 @@ mkGuessδ n1 n2 m = go n1 n2
       trace $ printf "Guessing δ for (%s, %s)" (preview @'Chick (node n1)) (preview @'Chick (node n2))
 
       if (n1, n2) `elem` m
-        then do
+        then
         if isomorphic n1 n2
           then do
           trace "Matched and isomorphic!"
-          return $ ΔT.Same
+          return ΔT.Same
           else do
           trace "Matched, but not isomorphic!"
           case (node n1, node n2) of
 
-            (App _ _ _, App _ _ _) -> do
+            (App{}, App{}) -> do
               let pairs = matchPairs m (children n1) (children n2)
               trace $ printf "About to foldApps (%s, %s)" (show $ children n1) (show $ children n2)
               let pairsRest = case pairs of
@@ -313,14 +302,14 @@ mkGuessδ n1 n2 m = go n1 n2
               (δ, _) <- foldM foldApps (id, NoPermutation) pairsRest
               return $ δ ΔT.Same
 
-            (Lam _ _, Lam _ _) -> do
+            (Lam{}, Lam{}) -> do
               let pairs = matchPairs m (children n1) (children n2)
               (δ, _) <- foldM foldLams (id, (node n1, node n2)) pairs
               return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
 
             -- when we have two non-isomorphic Pis to match together,
             -- we attempt to find a matching among the Pi-telescopes
-            (Pi _ _ _, Pi _ _ _) -> do
+            (Pi{}, Pi{}) -> do
               -- trace $ show $ node n1
               -- trace $ show $ node n2
               let pairs = matchPairs m (children n1) (children n2)
@@ -348,7 +337,7 @@ mkGuessδ n1 n2 m = go n1 n2
             --   δ2 <- go n1 τ2
             --   return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
 
-          (_, _, Pi _ _ _, τs') -> do
+          (_, _, Pi{}, τs') -> do
 
             δs' <- forM τs' (go n1)
             case viewR δs' of
@@ -357,26 +346,24 @@ mkGuessδ n1 n2 m = go n1 n2
                 -- Problem: τs' does not contain the name of the binders for each child
                 -- Solution: extract them from (node n2)
                 (πs, _) <- extractPis (node n2)
-                if length πs /= length δs'
-                  then do
+                when (length πs /= length δs') $ do
                   trace $ printf "%s" (show $ map (prettyStr @'Chick) πs)
                   trace $ printf "%s" (show δs')
                   error "This is possibly odd, check if it happens"
-                  else return ()
                 return $ foldr (\ (δ, b) δs -> ΔT.InsPi () δ b δs) δ' (zip δs' (map (view _2) πs))
 
-          (Pi _ _ _, _ : τ2 : _, Var _ _, _) -> do
+          (Pi{}, _ : τ2 : _, Var _ _, _) -> do
             δ <- go τ2 n2
             return $ ΔT.RemovePi δ
 
-          (App _ _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
-          (Var _ _, _, App _ _ _, f' : args') -> do
+          (App{}, _, Var{}, _) -> return $ ΔT.Replace (node n2)
+          (Var{}, _, App{}, f' : args') ->
             -- if the Var on the left has a match on the right, InsApp, else Replace
             if node n1 == node f'
               then do
               let δf = ΔT.Same
               δargs <- forM args' (go n1)
-              return $ foldr (\ δ δs -> ΔT.InsApp () δs δ) δf δargs
+              return $ foldr (flip (ΔT.InsApp ())) δf δargs
               else return $ ΔT.Replace (node n2)
 
           -- no choice here
@@ -384,7 +371,7 @@ mkGuessδ n1 n2 m = go n1 n2
           (Var _ _, _, Type _,  _) -> return $ ΔT.Replace (node n2)
           (Var _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
 
-          _ -> do
+          _ ->
             error $ printf "TODO: (%s, %s) (%s, %s)" (preview @'Chick $ node n1) (preview @'Chick $ node n2) (show $ node n1) (show $ node n2)
 
 -- δs' <- forM τs' (go n1)
@@ -446,9 +433,9 @@ LeftUnmatched e         ->   RemoveApp (e)
           return (δ, DelayedPermutation p d')
 
       δ <- case m of
-        RightUnmatched t -> do
+        RightUnmatched t ->
           return $ flip (ΔT.InsApp ()) (ΔT.Replace (node t)) . δ
-        LeftUnmatched _ -> do
+        LeftUnmatched _ ->
           return $ ΔT.RemoveApp . δ
         Matched t t' -> do
           δ2 <- go t t'
@@ -462,26 +449,26 @@ LeftUnmatched e         ->   RemoveApp (e)
         let (Lam α' bt') = t'
         let (_, t') = unscopeTerm bt'
         let b = view originalBinder bt'
-        return $ (δ . ΔT.InsLam α' b, (t, t'))
+        return (δ . ΔT.InsLam α' b, (t, t'))
       LeftUnmatched _ -> do
         let (Lam _ bt) = t
         let (_, t) = unscopeTerm bt
-        return $ (δ . ΔT.RemoveLam, (t, t'))
-      Matched t1 t1' -> do
+        return (δ . ΔT.RemoveLam, (t, t'))
+      Matched t1 t1' ->
         case (t, t') of
           (Lam _ bt, Lam _ bt') -> do
             let (_, t2) = unscopeTerm bt
             let (_, t2') = unscopeTerm bt'
             δ1 <- go t1 t1'
-            return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (t2, t2'))
-          (_, _) -> do
+            return (δ . ΔT.CpyPi δ1 ΔA.Same, (t2, t2'))
+          (_, _) ->
             -- nothing to do here?
-            return $ (δ, (t, t'))
-      Permuted p -> do
+            return (δ, (t, t'))
+      Permuted p ->
         case ΔT.patchMaybe t (ΔT.PermutLams p ΔT.Same) of
           Nothing -> error "computed permutation was incorrect"
-          Just tPatched -> do
-            return $ (δ . ΔT.PermutLams p, (tPatched, t'))
+          Just tPatched ->
+            return (δ . ΔT.PermutLams p, (tPatched, t'))
 
     foldPis (δ, (t, t')) = \case
       RightUnmatched _ -> do
@@ -489,23 +476,23 @@ LeftUnmatched e         ->   RemoveApp (e)
         let b = view originalBinder bτ2'
         let (_, τ2') = unscopeTerm bτ2'
         trace $ printf "IMMA INSERT SOME %s" (show b)
-        return $ (δ . ΔT.InsPi α' (ΔT.Replace τ1') b, (t, τ2'))
+        return (δ . ΔT.InsPi α' (ΔT.Replace τ1') b, (t, τ2'))
       LeftUnmatched _ -> do
         let (Pi _ _ bτ2) = t
         let (_, τ2) = unscopeTerm bτ2
-        return $ (δ . ΔT.RemovePi, (τ2, t'))
-      Matched τ1 τ1' -> do
+        return (δ . ΔT.RemovePi, (τ2, t'))
+      Matched τ1 τ1' ->
         case (t, t') of
           (Pi _ _ bτ2, Pi _ _ bτ2') -> do
             δ1 <- go τ1 τ1'
             let (_, τ2) = unscopeTerm bτ2
             let (_, τ2') = unscopeTerm bτ2'
-            return $ (δ . ΔT.CpyPi δ1 ΔA.Same, (τ2, τ2'))
-          (_, _) -> do
+            return (δ . ΔT.CpyPi δ1 ΔA.Same, (τ2, τ2'))
+          (_, _) ->
             -- nothing to do here?
-            return $ (δ, (t, t'))
-      Permuted p -> do
+            return (δ, (t, t'))
+      Permuted p ->
         case ΔT.patchMaybe t (ΔT.PermutPis p ΔT.Same) of
           Nothing -> error "computed permutation was incorrect"
-          Just tPatched -> do
-            return $ (δ . ΔT.PermutPis p, (tPatched, t'))
+          Just tPatched ->
+            return (δ . ΔT.PermutPis p, (tPatched, t'))

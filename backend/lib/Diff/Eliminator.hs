@@ -1,12 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Diff.Eliminator
   ( δeliminatorName
@@ -84,8 +79,8 @@ import           Utils
             δSecond _   _    = error "THIS SHOULD NOT HAPPEN"
         _ -> error "THIS SHOULD NOT HAPPEN"
 
-  let onInsert a _ acc = foldrWith (\ b acc -> DL.Insert b acc) (addRec' a) <$> acc
-  let onKeep   a _ acc = onChanged a a acc
+  let onInsert a _ acc = foldrWith DL.Insert (addRec' a) <$> acc
+  let onKeep   a _     = onChanged a a
   let onModify δa a _ acc =
         case D3.patchMaybe DA.patchMaybe DA.patchMaybe DT.patchMaybe a δa of
         Nothing -> Nothing
@@ -188,7 +183,7 @@ import           Utils
       DC.Same                 -> Just (DT.Same, DA.Same)
       DC.Modify δcn δcps δcis -> do
         δcase <- δmkCase n δn ips δips iis δiis cn δcn cps δcps cis δcis DT.Same DT.Same
-        return $ (δcase, DA.Same)
+        return (δcase, DA.Same)
 
 δquantifyCases ::
   ( Default α
@@ -220,11 +215,10 @@ import           Utils
   $ DT.CpyVar δn
 
 δmkEliminatorType' ::
-  ( Default α
-  , Eq α
+  Default α =>
+  Eq α =>
   -- , PrettyPrintable α
-  , Show α
-  ) =>
+  Show α =>
   α ->
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
@@ -235,13 +229,13 @@ import           Utils
   let δdiscrimineeType = δmkDiscrimineeType δn ips δips iis δiis in
   let δmotiveType =  δmkMotiveType' δn ips δips iis δiis in
   δquantifyVariables ips δips
-  <$> DT.CpyPi δmotiveType DA.Same
+  . DT.CpyPi δmotiveType DA.Same
   <$> ( -- quantifyCases may fail
     δquantifyCases α n δn ips δips iis δiis motive cs δcs
     --(unpackConstructors cs) (unpackΔConstructors δcs)
-    $ δquantifyBinders iis δiis
-    $ DT.CpyPi δdiscrimineeType DA.Same
-    $ DT.CpyApp (δapplyBinders iis δiis DT.Same)
+    . δquantifyBinders iis δiis
+    . DT.CpyPi δdiscrimineeType DA.Same
+    . DT.CpyApp (δapplyBinders iis δiis DT.Same)
     $ DT.Same
   )
 

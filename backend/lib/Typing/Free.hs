@@ -1,12 +1,5 @@
-{-# language DataKinds #-}
-{-# language FlexibleContexts #-}
-{-# language GADTs #-}
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
 {-# language TemplateHaskell #-}
-{-# language TypeOperators #-}
 {-# language TypeSynonymInstances #-}
-{-# language RankNTypes #-}
 
 module Typing.Free
   ( traceCheck

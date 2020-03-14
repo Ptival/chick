@@ -23,7 +23,7 @@ testBenchmark b = do
     Right s2 -> do
       result <- runM . traceToIO $ ΔGS.guess s1 s2
       putStrLn "SUCCESS:"
-      putStrLn $ show result
+      print result
 
 testListVec :: IO ()
 testListVec = testBenchmark repairListToVec

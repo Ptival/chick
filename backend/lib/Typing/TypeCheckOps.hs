@@ -1,14 +1,5 @@
-{-# language DataKinds #-}
-{-# language FlexibleContexts #-}
-{-# language GADTs #-}
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
-{-# language TemplateHaskell #-}
-{-# language TypeApplications #-}
-{-# language TypeOperators #-}
-{-# language TypeSynonymInstances #-}
-{-# language RankNTypes #-}
-{-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Typing.TypeCheckOps
   ( TypeCheckOps(..)

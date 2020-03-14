@@ -1,10 +1,4 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Server.ChickHandler where
 
@@ -61,13 +55,13 @@ chickGuessHandler = do
       body <- Snap.readRequestBody bodyLength
       res <- case decode body of
         Nothing -> return $ Just "decode body failed"
-        Just (GuessInput { before, after }) -> do
+        Just GuessInput{..} ->
           case (parseMaybe scriptP before, parseMaybe scriptP after) of
             (Just bef, Just aft) -> do
               liftIO $ do
-                putStrLn $ "BEFORE:"
+                putStrLn "BEFORE:"
                 putStrLn $ prettyStrU @'Language.Chick bef
-                putStrLn $ "AFTER:"
+                putStrLn "AFTER:"
                 putStrLn $ prettyStrU @'Language.Chick aft
               δ <- liftIO $ runM $ traceToIO $ ΔGS.guess bef aft
               liftIO $ putStrLn $ printf "GUESSED:\n%s" (show δ)
@@ -79,11 +73,11 @@ chickGuessHandler = do
                   -- ++ show δ
                   -- ++ "*)"
             (Nothing, Just _)  ->
-              return $ Just $ "Parsing before failed"
+              return . Just $ "Parsing before failed"
             (Just _,  Nothing) ->
-              return $ Just $ "Parsing after  failed"
+              return . Just $ "Parsing after  failed"
             (Nothing, Nothing) ->
-              return $ Just $ "Parsing before and after failed"
+              return . Just $ "Parsing before and after failed"
       writeJSON res
 
 runCommandWithoutBuffering :: String -> IO (IO.Handle, IO.Handle, IO.Handle, ProcessHandle)
@@ -126,7 +120,7 @@ getSessionState = modifySessionState (\ s -> (s, s))
 insertSession :: Int -> SessionState -> GlobalState -> (GlobalState, ())
 insertSession mapKey s gs =
   (
-    over gNextSession ((+) 1)
+    over gNextSession (+ 1)
     . over gActiveSessions (IM.insert mapKey s)
     $ gs
   , ()
@@ -154,7 +148,7 @@ getSessionKey = with lSession $ do
       setInSession keyField (T.pack . show $ key)
       --liftIO . logAction $ "No session key found, initializing: " ++ show key
       return key
-    Just key -> do
+    Just key ->
       --liftIO . logAction $ "Session key found: " ++ show key
       return . read . T.unpack $ key
   where
@@ -163,31 +157,29 @@ getSessionKey = with lSession $ do
 
 hWrite :: IO.Handle -> String -> IO ()
 hWrite hi input = do
-  putStrLn $ input
+  putStrLn input
   catchError
     (IO.hPutStrLn hi input)
-    (\e -> do
+    (\e ->
       putStrLn $ "CATCH: Write failed with exception: " ++ show e
     )
   return ()
 
 hRead :: IO.Handle -> IO [String]
-hRead ho = do
+hRead ho =
   -- flush stderr if anything is there... (should report to user?)
   -- putStrLn "Trying to flush he"
   -- whileM_ (hReady he) $ hGetLine he >>= putStrLn
 
   -- putStrLn "Trying to read ho"
-  ls <- whileM (IO.hReady ho) $ do
+  whileM (IO.hReady ho) $ do
     -- putStrLn "Trying to read a line:"
     l <- catchError
       (IO.hGetLine ho)
-      ((\e -> do
+      (\e -> do
         putStrLn $ "CATCH: Read failed with exception: " ++ show e
         return ""
-      ))
+      )
     putStrLn $ "OUTPUT: " ++ l
     return l
   -- putStrLn "Done"
-
-  return ls

@@ -1,4 +1,3 @@
-{-# language LambdaCase #-}
 
 module Term.AlphaEquivalence where
 {-

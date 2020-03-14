@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Bound.ScopeT where
 
@@ -59,7 +58,7 @@ abstract1TName a = abstractTName (\b -> if a == b then Just () else Nothing)
 -------------------------------------------------------------------------------
 
 instantiateT :: (Bound t, Monad f) => (n -> f a) -> ScopeT n t f a -> t f a
-instantiateT k (ScopeT e) = e >>>= \v -> case v of
+instantiateT k (ScopeT e) = e >>>= \case
     B b -> k b
     F a -> a
 
@@ -73,7 +72,7 @@ instantiate1T e = instantiateT (const e)
 -------------------------------------------------------------------------------
 
 fromScopeT :: (Bound t, Monad f) => ScopeT n t f a -> t f (Var n a)
-fromScopeT (ScopeT s) = s >>>= \v -> case v of
+fromScopeT (ScopeT s) = s >>>= \case
     F e -> fmap F e
     B b -> return (B b)
 
@@ -133,7 +132,7 @@ hoistScopeT t f (ScopeT b) = ScopeT $ t $ (f <$>) <$> b
 instantiateNameT ::
   (Bound t, Monad f, Comonad n) =>
   (b -> f a) -> ScopeT (n b) t f a -> t f a
-instantiateNameT k e = unscopeT e >>>= \v -> case v of
+instantiateNameT k e = unscopeT e >>>= \case
   B b -> k (extract b)
   F a -> a
 

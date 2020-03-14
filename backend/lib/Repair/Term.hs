@@ -1,15 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UnicodeSyntax #-}
 
 module Repair.Term where
 
@@ -91,7 +83,7 @@ unknownTypeRepair t = do
       (δv, δτv) <- unpackDeclarationDiff <$> findDeclarationDiff v
       repairArgs repair [] τv δτv (ΔT.CpyVar δv)
 
-    App _ _ _ -> do
+    App{} -> do
       -- (f, [x, y, z])
       (fun, args)   <- ΔT.extractApps t
       case fun of
@@ -113,7 +105,7 @@ unknownTypeRepair t = do
 
     Pi _ τ1 bτ2 -> do
       let (b, τ2) = unscopeTerm bτ2
-      RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $ do
+      RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $
         ΔT.CpyPi
           <$> repair τ1 (Type U.Type) ΔT.Same
           <*> pure ΔA.Same
@@ -132,12 +124,12 @@ unknownTypeRepair t = do
       trace $ printf "*** PROPOSED: %s" (prettyStr @'Chick δbs)
       return $ ΔT.CpyMatch δd δbs
 
-    Annot _ _ _ -> exc "utr: Annot"
+    Annot{} -> exc "utr: Annot"
 
-    Hole _ -> return $ ΔT.Same -- TODO: better idea?
+    Hole _ -> return ΔT.Same -- TODO: better idea?
 
     Lam _ _ -> exc "utr: Lam"
-    Let _ _ _ -> exc "utr: Let"
+    Let{} -> exc "utr: Let"
 
     UnsupportedOCaml _o -> exc "utr: UnsupportedOCaml"
 
@@ -161,7 +153,7 @@ genericRepair t τ = do
       let (b, tlam) = unscopeTerm bt
       do
         (_, τ1, _, τ2) <- ΔT.extractPi τ
-        RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $ do
+        RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $
           ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
             `catch` (
             const @_ @String $ do
@@ -169,7 +161,7 @@ genericRepair t τ = do
               (binders, body) <- ΔT.extractLams t
               let addBinder e (_, b) =
                     e >>> RS.withLocalAssum (b, Hole ()) >>> RS.withδLocalContext ΔL.Keep
-              flip (foldl addBinder) binders id $ do -- gotta type annotate to resolve overlapping instances
+              foldl addBinder id binders $ -- gotta type annotate to resolve overlapping instances
                 ΔT.nCpyLams (length binders) <$> unknownTypeRepair body
             )
     _ -> unknownTypeRepair t
@@ -214,17 +206,17 @@ repair t τ δτ =
     _ <- exc "YO FIXME"
     return $ ΔT.Replace "TODO" -- TODO: confirm this is always good
 
-  ΔT.InsApp _ _ _ -> genericRepair t τ -- not sure what to do here
+  ΔT.InsApp{} -> genericRepair t τ -- not sure what to do here
 
-  ΔT.InsLam _ _ _   -> genericRepair t τ -- FIXME: improve this
-  ΔT.PermutLams _ _ -> genericRepair t τ -- FIXME: improve this
-  ΔT.PermutApps _ _ -> genericRepair t τ -- FIXME: improve this
+  ΔT.InsLam{}     -> genericRepair t τ -- FIXME: improve this
+  ΔT.PermutLams{} -> genericRepair t τ -- FIXME: improve this
+  ΔT.PermutApps{} -> genericRepair t τ -- FIXME: improve this
 
   ΔT.CpyPi δ1 δb δ2 ->
     case (t, τ) of
       (Lam _ bt, Pi _ τ1 bτ2) -> do
         let (b, _) = unscopeTerm bt
-        RS.withLocalAssumAndδ (b, τ1) (δb, δ1) $ do
+        RS.withLocalAssumAndδ (b, τ1) (δb, δ1) $
           ΔT.CpyLam ΔA.Same
             <$> repair (snd $ unscopeTerm bt) (snd $ unscopeTerm bτ2) δ2
       _ -> genericRepair t τ
@@ -234,7 +226,7 @@ repair t τ δτ =
     -- - find a b' binder like b that is free in t
     -- - InsLam b'
     -- - recursively diff by substituting b' for b
-    let varsFreeInTerm = foldr (\ v -> (v :)) [] t
+    let varsFreeInTerm = foldr (:) [] t
     boundVarsInContext <- RS.boundVarsInContext
     trace $ printf "Variables free  in the term:    %s" (show . map (prettyStr @'Chick) $ varsFreeInTerm)
     trace $ printf "Variables bound in the context: %s" (show . map (prettyStr @'Chick) $ boundVarsInContext)

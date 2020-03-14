@@ -1,31 +1,23 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
-module Utils
-  ( extractApps
-  , extractLams
-  , extractPi
-  , extractPis
-  , extractSomeApps
-  , extractSomeLams
-  , extractSomePis
-  , foldlWith
-  , foldrWith
-  , isPi
-  , mapWithIndex
-  , mkApps
-  , mkLams
-  , mkPis
-  , orElse
-  , orElse'
-  -- , runSkipTrace
-  -- , skipTrace
-  , splitList
-  , unzipMaybe
-  , withState
+module Utils (
+  extractApps,
+  extractLams,
+  extractPi,
+  extractPis,
+  extractSomeApps,
+  extractSomeLams,
+  extractSomePis,
+  foldlWith,
+  foldrWith,
+  isPi,
+  mapWithIndex,
+  mkApps,
+  mkLams,
+  mkPis,
+  orElse,
+  orElse',
+  splitList,
+  unzipMaybe,
+  withState,
   ) where
 
 import           Control.Lens
@@ -48,7 +40,7 @@ isPi (Pi a b c) = Just (a, b, c)
 isPi _          = Nothing
 
 mapWithIndex :: (a -> Int -> b) -> [a] -> [b]
-mapWithIndex f l = map (\(e, i) -> f e i) (zip l [0..])
+mapWithIndex f l = zipWith f l [0..]
 
 orElse ::
   ME.MonadError e m =>
@@ -105,7 +97,7 @@ extractApps t = over _2 reverse <$> go t
   where
     go (App a t1 t2) = do
       (f, args) <- go t1
-      return $ (f, (a, t2) : args)
+      return (f, (a, t2) : args)
     go t1              = return (t1, [])
 
 extractSomeApps ::

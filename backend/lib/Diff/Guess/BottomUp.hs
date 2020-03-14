@@ -1,14 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UnicodeSyntax #-}
 
 module Diff.Guess.BottomUp (
   bottomUpStateM,
@@ -42,7 +34,7 @@ data BottomUpReader = BottomUpReader
   deriving (Show)
 makeLenses ''BottomUpReader
 
-data BottomUpState = BottomUpState
+newtype BottomUpState = BottomUpState
   { _bottomUpStateM  :: Mapping
   }
   deriving (Show)
@@ -135,12 +127,12 @@ bottomUp = do
   -- root2   <- view (bottomUpReaderRoot2   @α) <$> ask
   minDice <- view bottomUpReaderMinDice <$> ask
 
-  forM_ [ t1 | t1 <- nodeAndDescendantsPostOrder root1 ] $ \ t1 -> do
+  forM_ (nodeAndDescendantsPostOrder root1) $ \ t1 ->
     -- trace $ printf "BU: %s" (preview . node $ t1)
     -- whenM (isUnmatched1 t1)        $ trace "is unmatched"
     -- forM_ (children t1) $ \ c -> trace $ printf "child: %s" (show c)
     -- whenM (hasMatchedChildren1 t1) $ trace "has matched children"
-    whenM (isUnmatched1 t1 <&&> hasMatchedChildren1 t1) $ do
+    whenM (isUnmatched1 t1 <&&> hasMatchedChildren1 t1) do
       -- trace $ "let's find a candidate"
       candidate t1 >>= \case
         Nothing -> return ()
@@ -148,7 +140,7 @@ bottomUp = do
           -- trace $ printf "Found a candidate: %s" (preview . node $ t2)
           m <- getM
           -- trace $ printf "Candidate dice: %s" (show $ dice m t1 t2)
-          when (dice m t1 t2 > minDice) $ do
+          when (dice m t1 t2 > minDice) do
             -- trace "Adding bottom-up mapping"
             modify $ over bottomUpStateM $ union [(t1, t2)]
             -- TODO: opt

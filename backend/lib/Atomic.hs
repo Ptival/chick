@@ -1,13 +1,10 @@
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
-
 module Atomic (
   Atomic(..),
   runAtomic,
   ) where
 
 import           Control.Monad.Except
-import           Text.PrettyPrint.Annotated.WL
+import qualified Data.Text.Prettyprint.Doc      as Doc
 import           Text.Printf
 
 import           Goal
@@ -17,11 +14,11 @@ import           Term.AlphaRenaming
 import           Term.Binder
 import           Term.Free
 import           Term.Term
-import qualified Term.TypeChecked as C
+import qualified Term.TypeChecked               as C
 import           Term.Variable
-import qualified Typing.GlobalEnvironment as GE
+import qualified Typing.GlobalEnvironment       as GE
 import           Typing.LocalDeclaration
-import qualified Typing.LocalContext as LC
+import qualified Typing.LocalContext            as LC
 import           Utils
 
 data Atomic ν

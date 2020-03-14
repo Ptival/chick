@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 
 module Playground where
 
@@ -39,7 +38,7 @@ test = do
   -- let task = checkF (LocalContext []) tId τId id
   let task = checkF (LocalContext []) tFlip τFlip id
   let trace = tcTrace stepTypeCheckerF task
-  forM_ trace $ \ item -> do
+  forM_ trace $ \ item ->
     putStrLn $ doc2String $ runReader (prettyTypeCheckerF item) def
 
 typeCheck :: TermX ξ Variable -> Maybe (TypeX ξ Variable) -> IO ()

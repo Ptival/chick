@@ -3,4 +3,4 @@
 , nixpkgs ? import <nixpkgs> { overlays = [ nur.overlays.chick ]; }
 }:
 with nixpkgs;
-haskellPackages.callCabal2nix "chick" ./. {}
+haskell.lib.doCheck (haskellPackages.callCabal2nix "chick" ./. {})

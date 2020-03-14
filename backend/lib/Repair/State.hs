@@ -1,7 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Repair.State (
@@ -78,26 +74,23 @@ initialRepairState =
   (GlobalEnvironment []) ΔL.Same
 
 getContexts ::
-  ( Member (State RepairState) r
-  ) =>
+  Member (State RepairState) r =>
   Sem r (LocalContext Raw.Raw Variable, ΔLC.Diff Raw.Raw)
 getContexts = do
   s <- get
   return (view context s, view δcontext s)
 
 getEnvironments ::
-  ( Member (State RepairState) r
-  ) =>
+  Member (State RepairState) r =>
   Sem r (GlobalEnvironment Raw.Raw Variable, ΔGE.Diff Raw.Raw)
 getEnvironments = do
   s <- get
   return (view environment s, view δenvironment s)
 
 traceState ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   Sem r ()
 traceState = do
   RepairState γ δγ e δe <- get
@@ -112,16 +105,14 @@ traceState = do
   trace $ printf "> e': %s" (prettyStr @'Chick e')
 
 boundVarsInContext ::
-  ( Member (State RepairState) r
-  ) =>
+  Member (State RepairState) r =>
   Sem r [Variable]
 boundVarsInContext = boundNames . view context <$> get
 
 sanityCheck ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   Sem r ()
 sanityCheck = do
   trace "*** SANITY CHECK ***"
@@ -133,10 +124,9 @@ sanityCheck = do
   return ()
 
 withGlobalAssum ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (Binder Variable,  Raw.Term Variable) ->
   Sem r a -> Sem r a
 withGlobalAssum (b, τ) e = do
@@ -144,10 +134,9 @@ withGlobalAssum (b, τ) e = do
   withState (over environment (addGlobalAssum (b, τ))) e
 
 withδGlobalAssum ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a
 withδGlobalAssum (δb, δτ) e = do
@@ -159,19 +148,21 @@ withGlobalAssumAndδ ::
   , Member Trace r
   , Member (State RepairState) r
   ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (Binder Variable,  Raw.Term Variable) ->
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a
-withGlobalAssumAndδ (b, τ) (δb, δτ) e = do
+withGlobalAssumAndδ (b, τ) (δb, δτ) e =
   withGlobalAssum (b, τ) >>> withδGlobalAssum (δb, δτ) $ do
     sanityCheck
     e
 
 withGlobalDef ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (Binder Variable,  Raw.Type Variable, Raw.Term Variable) ->
   Sem r a -> Sem r a
 withGlobalDef (b, τ, t) e = do
@@ -179,10 +170,9 @@ withGlobalDef (b, τ, t) e = do
   withState (over environment (addGlobalDef (b, τ, t))) e
 
 withδGlobalDef ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw,   ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a
 withδGlobalDef (δb, δτ, δt) e = do
@@ -190,41 +180,37 @@ withδGlobalDef (δb, δτ, δt) e = do
   withState (over δenvironment (ΔL.Modify (ΔGD.ModifyGlobalDef δb δτ δt))) e
 
 withGlobalDefAndδ ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (Binder Variable,  Raw.Term Variable, Raw.Term Variable) ->
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw,   ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a
-withGlobalDefAndδ d δd e = do
+withGlobalDefAndδ d δd e =
   withGlobalDef d >>> withδGlobalDef δd $ do
     sanityCheck
     e
 
 withδLocalContext ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (ΔLC.Diff Raw.Raw -> ΔLC.Diff Raw.Raw) ->
   Sem r a -> Sem r a
 withδLocalContext δ = withState (over δcontext δ)
 
 withδGlobalEnv ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (ΔGE.Diff Raw.Raw -> ΔGE.Diff Raw.Raw) ->
   Sem r a -> Sem r a
 withδGlobalEnv δ = withState (over δenvironment δ)
 
 withLocalAssum ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (Binder Variable,  Raw.Term Variable) ->
   Sem r a -> Sem r a
 withLocalAssum (b, τ) e = do
@@ -232,10 +218,9 @@ withLocalAssum (b, τ) e = do
   withState (over context (addLocalAssum (b, τ))) e
 
 withδLocalAssum ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (ΔA.Diff (Binder Variable), ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a
 withδLocalAssum (δb, δτ) e = do
@@ -243,38 +228,34 @@ withδLocalAssum (δb, δτ) e = do
   withState (over δcontext (ΔL.Modify (ΔLD.ModifyLocalAssum δb δτ))) e
 
 withLocalAssumAndδ ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   (Binder Variable,  Raw.Term Variable) ->
   (ΔA.Diff (Binder Variable), ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a
-withLocalAssumAndδ (b, τ) (δb, δτ) e = do
+withLocalAssumAndδ (b, τ) (δb, δτ) e =
   withLocalAssum (b, τ) >>> withδLocalAssum (δb, δτ) $ do
     sanityCheck
     e
 
 withInsertLocalAssum ::
-  ( Member (State RepairState) r
-  ) =>
+  Member (State RepairState) r =>
   (Binder Variable, Raw.Term Variable) ->
   Sem r a -> Sem r a
 withInsertLocalAssum (b, τ) =
   withState (over δcontext (ΔL.Insert (LocalAssum b τ)))
 
 withConstructor ::
-  ( Member (State RepairState) r
-  ) =>
+  Member (State RepairState) r =>
   Constructor Raw.Raw Variable ->
   Sem r a -> Sem r a
 withConstructor c = withState (over environment (addConstructor c))
 
 withGlobalInd ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   Inductive Raw.Raw Variable -> ΔI.Diff Raw.Raw ->
   Sem r a -> Sem r a
 withGlobalInd ind δind e = do
@@ -286,10 +267,9 @@ withGlobalInd ind δind e = do
     e
 
 withGlobalAssumIndType ::
-  ( Member (Error String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   Inductive Raw.Raw Variable ->
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a
@@ -302,10 +282,9 @@ withGlobalAssumIndType ind (δb, δτ) e = do
     e
 
 withFixpointAndδ ::
-  ( Member Trace r
-  , Member (State RepairState) r
-  , Member (Error String) r
-  ) =>
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
   D.Definition Raw.Raw Variable ->
   (ΔA.Diff Variable, ΔT.Diff Raw.Raw, ΔT.Diff Raw.Raw) ->
   Sem r a -> Sem r a

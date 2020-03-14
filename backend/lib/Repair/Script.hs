@@ -6,7 +6,6 @@ module Repair.Script (
   ) where
 
 import           Control.Arrow                             ( (>>>) )
-import           Control.Monad                             ( liftM )
 import           Polysemy                                  ( Member, Sem )
 import           Polysemy.Error                            ( Error, runError, throw )
 import           Polysemy.State                            ( State, runState )
@@ -105,15 +104,13 @@ withStateFromConstructors prefix ips δips cs δcs e =
         trace $ printf "About to add constructor modification: %s" (preview @'Chick c)
         withConstructor c >>> withδGlobalEnv δge $ do
           sanityCheck
-          withStateFromConstructors prefix ips δips cs δcs $ do
-            e
+          withStateFromConstructors prefix ips δips cs δcs e
 
       insert δge cs δcs = do
         trace $ printf "About to add constructor insertion"
         withδGlobalEnv δge $ do
           sanityCheck
-          withStateFromConstructors prefix ips δips cs δcs $ do
-            e
+          withStateFromConstructors prefix ips δips cs δcs e
 
 {- `withStateFromVernacular v δv` takes a vernacular command `v` and its
 (assumed repaired) diff `δv` and modifies the global environment to accound for
@@ -155,7 +152,7 @@ withStateFromVernacular v δv e = do
       withGlobalInd ind δind $ do
         (env, _) <- getEnvironments
         trace $ printf "Environment after ind:\n%s" (prettyStrU @'Chick env)
-        withGlobalAssumIndType ind (δindName, δτind) $ do
+        withGlobalAssumIndType ind (δindName, δτind) $
             -- DO NOT MERGE WITH PREVIOUS withGlobalAssumIndType
             -- because mkEliminatorName needs the previous things in scope
             withGlobalAssumAndδ
@@ -172,8 +169,8 @@ withStateFromVernacular v δv e = do
 
   where
 
-    unchangedInductive ind@(I.Inductive indName ips _ _ cs) = do
-      withGlobalInd ind ΔI.Same $ do
+    unchangedInductive ind@(I.Inductive indName ips _ _ cs) =
+      withGlobalInd ind ΔI.Same $
         withGlobalAssumIndType ind (ΔA.Same, ΔT.Same) $ do
           trace "UNCHANGED"
           sanityCheck
@@ -258,7 +255,7 @@ runRepair' ::
   Sem r (Either String (Script Raw.Raw Variable))
 runRepair' s δs =
   runError
-  . liftM snd
+  . fmap snd
   . runState initialRepairState
   $ do δs' <- repair s δs
        trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')

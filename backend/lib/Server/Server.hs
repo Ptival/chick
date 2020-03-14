@@ -2,30 +2,30 @@
 
 module Server.Server where
 
-import           Control.Concurrent (forkIO, threadDelay)
-import           Control.Lens
-import           Control.Monad (forever, forM)
-import           Control.Monad.IO.Class (liftIO)
-import           Data.ByteString (ByteString, append)
-import qualified Data.HashMap.Strict as HM (map)
-import           Data.IORef
-import qualified Data.IntMap as IM
-import           Data.String.Utils
-import           Data.Time.Format
-import           Data.Time.LocalTime
-import           Network.Socket
-import           Prelude hiding (log)
-import           Snap.Core
+import           Control.Concurrent                          ( forkIO, threadDelay )
+import           Control.Lens                                ( set, view )
+import           Control.Monad                               ( forever, forM_ )
+import           Control.Monad.IO.Class                      ( liftIO )
+import           Data.ByteString                             ( ByteString, append )
+import qualified Data.HashMap.Strict                         as HM
+import           Data.IORef                                  ( IORef, atomicModifyIORef', newIORef )
+import qualified Data.IntMap                                 as IM
+import           Data.String.Utils                           ( startswith )
+import           Data.Time.Format                            ( defaultTimeLocale, formatTime )
+import           Data.Time.LocalTime                         ( getZonedTime )
+import           Network.Socket                              ( socketPort )
+import           Prelude                                     hiding (log)
+import           Snap.Core                                   ( MonadSnap, modifyResponse, setHeader )
 import           Snap.Http.Server.Config
 import           Snap.Snaplet
-import           Snap.Snaplet.Session hiding (touchSession)
+import           Snap.Snaplet.Session                        hiding (touchSession)
 import           Snap.Snaplet.Session.Backends.CookieSession (initCookieSessionManager)
-import           Snap.Snaplet.Session.SessionManager ()
+import           Snap.Snaplet.Session.SessionManager         ()
 import           Snap.Util.FileServe
 import           System.Directory
 --import           System.IO
 import           System.Log.Formatter
-import           System.Log.Handler (setFormatter)
+import           System.Log.Handler                          (setFormatter)
 import           System.Log.Handler.Simple
 import           System.Log.Logger
 --import           System.Process
@@ -66,14 +66,14 @@ data ChickConfig =
   deriving (Read, Show)
 
 serverConfig :: MonadSnap m => ChickConfig -> String -> Config m a
-serverConfig (ChickConfig { configLogPath = l }) nowString =
+serverConfig ChickConfig{..} nowString =
   setStartupHook hook -- figures out which port was used and prints it
   . setPort 0         -- 0 means that unless specified, pick a random port
   . setAccessLog (ConfigFileLog $ prefix ++ "access.log")
   . setErrorLog (ConfigFileLog $ prefix ++ "error.log")
   $ defaultConfig
   where
-    prefix = l ++ "/" ++ nowString ++ "-"
+    prefix = configLogPath ++ "/" ++ nowString ++ "-"
     hook dat = do
       port <- socketPort . head $ getStartupSockets dat
       putStrLn $ "Server listening on port: " ++ show port
@@ -88,16 +88,14 @@ serve = do
   homeDir <- getHomeDirectory
   fileString <- readFile (homeDir ++ "/" ++ configFile)
   let configString = unwords . filter (not <$> startswith "--") $ lines fileString
-  let config@(ChickConfig { configLogPath          = l
-                          , configDirectoryToServe = serveDir
-                          }) = read configString
+  let config@ChickConfig{..} = read configString
   handler <- fileHandler
-            (l ++ "/" ++ nowString ++ ".log")
+            (configLogPath ++ "/" ++ nowString ++ ".log")
             loggingPriority
   let format = simpleLogFormatter "[$time] $msg"
   let fHandler = setFormatter handler format
   updateGlobalLogger rootLoggerName (setLevel loggingPriority . addHandler fHandler)
-  serveSnaplet (serverConfig config nowString) (chickSnaplet serveDir)
+  serveSnaplet (serverConfig config nowString) (chickSnaplet configDirectoryToServe)
 
 sessionTimeoutSeconds :: Int
 sessionTimeoutSeconds = 60 * sessionTimeoutMinutes
@@ -114,7 +112,7 @@ closeSession _s = return ()
 cleanStaleSessions :: IORef GlobalState -> IO ()
 cleanStaleSessions globRef = forever $ do
   sessionsToClose <- atomicModifyIORef' globRef markAndSweep
-  _ <- forM sessionsToClose closeSession
+  forM_ sessionsToClose closeSession
   threadDelay sessionTimeoutMicroseconds
   where
     markAndSweep :: GlobalState -> (GlobalState, [SessionState])
@@ -131,18 +129,18 @@ newChickGlobalState = liftIO $ do
 
 globRefInit :: IORef GlobalState -> SnapletInit Chick ChickGlobRef
 globRefInit globRef =
-  makeSnaplet "globRef" "Holds Chick's global state IORef" Nothing $ do
+  makeSnaplet "globRef" "Holds Chick's global state IORef" Nothing $
     return globRef
 
 hashInit :: String -> SnapletInit Chick ChickHash
 hashInit hash =
-  makeSnaplet "hash" "Holds the current git commit hash" Nothing $ do
+  makeSnaplet "hash" "Holds the current git commit hash" Nothing $
     return hash
 
 chickSnaplet :: String -> SnapletInit Chick Chick
 chickSnaplet directoryToServe = makeSnaplet "Chick" "Chick" Nothing $ do
-  hash <- liftIO $ getGitCommitHash
-  globRef <- liftIO $ newChickGlobalState
+  hash    <- liftIO getGitCommitHash
+  globRef <- liftIO newChickGlobalState
   g <- nestSnaplet "globRef" lGlobRef $ globRefInit globRef
   h <- nestSnaplet "hash" lHash $ hashInit hash
   s <- nestSnaplet "session" lSession cookieSessionManager
@@ -156,6 +154,6 @@ chickSnaplet directoryToServe = makeSnaplet "Chick" "Chick" Nothing $ do
 myDirConfig :: DirectoryConfig (Handler Chick Chick)
 myDirConfig =
   defaultDirectoryConfig
-  { mimeTypes = HM.map (\ m -> append m "; charset=utf-8") defaultMimeTypes
+  { mimeTypes = HM.map (`append` "; charset=utf-8") defaultMimeTypes
   , indexFiles = ["index.html"]
   }

@@ -35,7 +35,7 @@ unsafeParseRaw s =
     δps = DL.Same
     δis = DL.Same
     -- for sake of testing, let's permute
-    δcs = DL.Permute [1, 0] $ DL.Modify δfalse $ DL.Modify δtrue $ DL.Same
+    δcs = DL.Permute [1, 0] . DL.Modify δfalse . DL.Modify δtrue $ DL.Same
 
     δfalse = DC.Modify (DA.Replace "O") DL.Same DL.Same
     δtrue = DC.Modify (DA.Replace "S") δsuccPs DL.Same
@@ -50,14 +50,14 @@ unsafeParseRaw s =
     δn = DA.Replace "list"
     δps = DL.Insert ((), "A", Type U.Type) DL.Same
     δis = DL.Same
-    δcs = DL.Modify δzeroToNil $ DL.Modify δsuccToCons $ DL.Same
+    δcs = DL.Modify δzeroToNil . DL.Modify δsuccToCons $ DL.Same
 
     δzeroToNil = DC.Modify (DA.Replace "nil") DL.Same DL.Same
     δsuccToCons = DC.Modify (DA.Replace "cons") δsuccToConsPs DL.Same
 
     δsuccToConsPs =
       DL.Insert ((), "x", "A")
-      $ DL.Modify (D3.Modify DA.Same (DA.Replace "xs") (DT.Replace (unsafeParseRaw "list A")))
+      . DL.Modify (D3.Modify DA.Same (DA.Replace "xs") (DT.Replace (unsafeParseRaw "list A")))
       $ DL.Same
 
 δListToVec :: DI.Diff Raw.Raw
@@ -68,15 +68,15 @@ unsafeParseRaw s =
     δn = DA.Replace "Vec"
     δps = DL.Same
     δis = DL.Insert ((), "size", "nat") DL.Same
-    δcs = DL.Modify δnil $ DL.Modify δcons $ DL.Same
+    δcs = DL.Modify δnil . DL.Modify δcons $ DL.Same
 
     δnil = DC.Modify (DA.Replace "vnil") DL.Same (DL.Insert ((), "O") DL.Same)
     δcons = DC.Modify (DA.Replace "vcons") δconsPs δconsIs
 
     δconsPs =
       DL.Keep
-      $ DL.Insert ((), "n", "nat")
-      $ DL.Modify
+      . DL.Insert ((), "n", "nat")
+      . DL.Modify
       (D3.Modify DA.Same DA.Same
         (DT.InsApp ()
           (DT.CpyApp (DT.Replace "Vec") DT.Same)

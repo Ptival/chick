@@ -1,5 +1,3 @@
-{-# language LambdaCase #-}
-{-# language TypeFamilies #-}
 
 module DictMetaMapId where
 

@@ -1,21 +1,15 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
 
-module PrettyPrinting.Coq.Binder
-  (
-  ) where
+module PrettyPrinting.Coq.Binder where
 
-import Text.PrettyPrint.Annotated.WL
+import qualified Data.Text.Prettyprint.Doc      as Doc
 
-import Language (Language(Coq))
-import PrettyPrinting.PrettyPrintable
-import Term.Binder
+import           Language                       (Language(Coq))
+import           PrettyPrinting.PrettyPrintable
+import           Term.Binder
 
 instance PrettyPrintable 'Coq ν => PrettyPrintable 'Coq (Binder ν) where
-  prettyDoc (Binder Nothing)  = text "_"
+  prettyDoc (Binder Nothing)  = Doc.pretty "_"
   prettyDoc (Binder (Just v)) = prettyDoc @'Coq v

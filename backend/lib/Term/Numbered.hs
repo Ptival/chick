@@ -1,7 +1,3 @@
-{-# language LambdaCase #-}
-{-# language RankNTypes #-}
-{-# language ScopedTypeVariables #-}
-{-# language TypeFamilies #-}
 
 module Term.Numbered where
 

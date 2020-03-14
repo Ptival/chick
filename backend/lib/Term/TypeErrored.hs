@@ -1,8 +1,5 @@
--- {-# language FlexibleContexts #-}
 -- {-# language FlexibleInstances #-}
--- {-# language LambdaCase #-}
 -- {-# language MultiParamTypeClasses #-}
--- {-# language TypeFamilies #-}
 -- {-# language TypeSynonymInstances #-}
 -- {-# language UndecidableInstances #-}
 

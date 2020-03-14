@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-
 module Diff.ConcatMap.Test where
 
 import           Polysemy

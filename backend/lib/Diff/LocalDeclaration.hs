@@ -1,11 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Diff.LocalDeclaration (

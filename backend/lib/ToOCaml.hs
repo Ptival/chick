@@ -1,12 +1,7 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TupleSections #-}
 
 module ToOCaml
   ( ToOCaml
@@ -52,9 +47,7 @@ class ToOCaml a b where
   toOCaml :: a -> b
 
 instance ToOCaml (Constructor () Variable) ConstructorDeclaration where
-  toOCaml (Constructor { constructorName
-                       , constructorParameters
-                       }) =
+  toOCaml Constructor{..} =
     let args = case constructorParameters of
           [(_, _, tuple)] ->
             let (fun, args') = run $ extractApps tuple in
@@ -83,14 +76,14 @@ instance ToOCaml (Vernacular () Variable) StructureItem where
       let vb = Vb.mk def pat expr in
       Str.mk def $ PstrValue r [vb]
 
-    Vernacular.Inductive (Inductive.Inductive { inductiveConstructors
-                                              , inductiveName
-                                              , inductiveParameters
-                                              }) ->
+    Vernacular.Inductive Inductive.Inductive{ inductiveConstructors
+                                            , inductiveName
+                                            , inductiveParameters
+                                            } ->
       -- so, OCaml generates a PtypeAbstract for empty types
       -- I'll try a PtypeVariant with no constructor instead, until it breaks!
       let kind = PtypeVariant $ map toOCaml inductiveConstructors in
-      let params = map (flip (,) Invariant . toOCaml . view ipType) inductiveParameters in
+      let params = map ((, Invariant) . toOCaml . view ipType) inductiveParameters in
       let t = Type.mk (def { kind
                            , params
                            }
@@ -119,7 +112,7 @@ instance ToOCaml (StructureItem -> Vernacular () Variable) StructureItemDesc whe
 instance ToOCaml (TypeX () Variable) CoreType where
   toOCaml chick = case chick of
 
-    App _ _ _ ->
+    App{} ->
       let (fun, args) = run $ extractApps chick in
       case fun of
       Var _ v -> case unVariable v of
@@ -128,16 +121,16 @@ instance ToOCaml (TypeX () Variable) CoreType where
         _ -> mktyp $ PtypConstr (mkLoc (Lident (unVariable v)) none) $ map (toOCaml . snd) args
       _ -> error "TODO"
 
-    Type _ -> mktyp $ PtypVar $ "FIXME: Type?"
+    Type{} -> mktyp . PtypVar $ "FIXME: Type?"
 
-    Var _ v -> mktyp $ PtypVar $ unVariable v
+    Var _ v -> mktyp . PtypVar $ unVariable v
 
     _ -> error $ "TODO: " ++ show chick
 
 instance ToOCaml (TermX () Variable) Expression where
   toOCaml chick = case chick of
 
-    App _ _ _ ->
+    App{} ->
       let (fun, args) = run $ extractApps chick in
       case fun of
       Var _ v ->
@@ -163,10 +156,7 @@ instance ToOCaml (TermX () Variable) Expression where
 
     Lam _ sBody ->
       let (binder, body) = unscopeTerm sBody in
-      let binder' = case unBinder binder of
-            Nothing -> "_"
-            Just v  -> unVariable v
-      in
+      let binder' = maybe "_" unVariable (unBinder binder) in
       let patt = mkpat $ PpatVar (mkLoc binder' none) in
       let body' = toOCaml body in
       mkexp $ PexpFun Nolabel Nothing patt body'
@@ -192,8 +182,8 @@ instance ToOCaml Variable (Loc String) where
   toOCaml v = mkLoc (unVariable v) none
 
 instance ToOCaml (Binder Variable) Pattern where
-  toOCaml (Binder Nothing) = mkpat $ PpatAny
-  toOCaml (Binder (Just v)) = mkpat $ PpatVar $ toOCaml v
+  toOCaml (Binder Nothing)  = mkpat PpatAny
+  toOCaml (Binder (Just v)) = mkpat . PpatVar $ toOCaml v
 
 instance ToOCaml (Branch () Variable) Case where
   toOCaml b =
@@ -262,7 +252,7 @@ _prettyTest :: String
 _prettyTest = roundtrip _fromProgram
 
 _main :: IO ()
-_main = putStrLn $ _prettyTest
+_main = putStrLn _prettyTest
 
 _test1 :: Either String Structure
 _test1 = parseImplementation "let f x = y"
@@ -308,6 +298,5 @@ theWholeThing ocaml1 ocaml2 = do
   δ <- runM . traceToIO $ guess p1 p2
   ep3 <- runM . traceToIO $ runRepair' p1 δ
   case ep3 of
-    Left e -> error e
-    Right p3 -> do
-      putStrLn $ show $ structurePP $ unsafeChickToOCaml p3
+    Left  e  -> error e
+    Right p3 -> print . structurePP $ unsafeChickToOCaml p3

@@ -1,18 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE UnicodeSyntax #-}
 
 module PrettyPrinting.Chick.Term
   ( boundTermDocBinder
@@ -64,7 +55,7 @@ prettyGuardAndBodyDocPrec precs gb = fillCat [ guard, "=", space, body ]
 prettyBranchDocPrec :: PrecedenceTable -> Branch α Variable -> Doc ()
 prettyBranchDocPrec precs b =
   let (ctor, args, guardbody) = unpackBranch b in
-  fillSep $
+  fillSep
   [ "|"
   , prettyDoc @'Chick ctor
   , fillSep $ map (prettyDoc @'Chick) args

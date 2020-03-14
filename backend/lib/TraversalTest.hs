@@ -22,19 +22,19 @@ data ContainsInts = ContainsInts
   deriving (Show)
 
 t1 :: Traversal' ContainsMoreInts Int
-t1 f (ContainsMoreInts {..}) =
+t1 f ContainsMoreInts{..} =
   ContainsMoreInts
   <$> pure yetAnotherInt
   <*> pure yetAnotherBool
   <*> f oneLastInt
 
 t2 :: Traversal' ContainsInts Int
-t2 f (ContainsInts {..}) =
+t2 f ContainsInts{..} =
   ContainsInts
   <$> f    anInt
   <*> pure aBool
   <*> f    anotherInt
-  <*> (traverseOf t1 f containsMoreInts) -- (_ f containsMoreInts)
+  <*> traverseOf t1 f containsMoreInts -- (_ f containsMoreInts)
 
 beep :: ContainsMoreInts
 beep = ContainsMoreInts 0 True 42

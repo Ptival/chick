@@ -1,1 +1,1 @@
-((haskell-mode . ((dante-target . "test"))))
+((haskell-mode . ((dante-target . "chick"))))

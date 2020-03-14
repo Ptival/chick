@@ -1,8 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-
 module StandardLibraryDiff.Test where
 
 import           Polysemy
@@ -21,7 +16,7 @@ test ::
   PrettyPrintable 'Chick α =>
   Show α =>
   Inductive α Variable -> DI.Diff α -> Inductive α Variable -> IO Bool
-test indFrom δind indTo = do
+test indFrom δind indTo =
   case run . ignoreTrace . runError $ DI.patch indFrom δind of
     Left e -> do
       putStrLn e

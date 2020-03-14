@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Diff.Guess.Node
   ( Node(..)
   , dice

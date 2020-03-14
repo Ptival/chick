@@ -20,14 +20,16 @@ testListToVec =
   let listMotive = mkMotiveType () indList (Type U.Type) in
   let vecMotive  = mkMotiveType () indVec  (Type U.Type) in
   let δlistMotive = δmkMotiveType indList δListToVec in
-  do
+  -- do
     -- putStrLn $ prettyStr listMotive
     -- putStrLn $ prettyStr δlistMotive
     -- putStrLn $ prettyStr vecMotive
     (runM . ignoreTrace . runError $ DT.patch listMotive δlistMotive) >>= \case
-      Left (_s :: String) -> do
+      Left (_s :: String) ->
+        -- do
         -- putStrLn s
         return False
-      Right motive' -> do
+      Right motive' ->
+        -- do
         -- putStrLn $ prettyStr motive'
         return (motive' == vecMotive)

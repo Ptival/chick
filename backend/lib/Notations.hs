@@ -1,5 +1,3 @@
-{-# language FlexibleContexts #-}
-
 module Notations where
 
 import           Data.Default
@@ -22,23 +20,31 @@ hole :: Default α => TermX α ν
 hole = Hole def
 
 -- Lam
-(^\) :: (Default α) => [Variable] -> TermX α Variable -> TermX α Variable
+(^\) ::
+  Default α =>
+  [Variable] -> TermX α Variable -> TermX α Variable
 (^\) []       t = t
 (^\) (n : ns) t = Lam def (abstractVariable n ((^\) ns t))
 
 -- Let
-let' :: (Default α) => [(Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
+let' ::
+  Default α =>
+  [(Variable, TermX α Variable)] -> TermX α Variable -> TermX α Variable
 let' []             t  = t
 let' ((n, t1) : ns) t2 = Let def t1 (abstractVariable n (let' ns t2))
 
 -- Pi (named)
-π :: (Default α) => [(Variable, TypeX α Variable)] -> TermX α Variable -> TermX α Variable
+π ::
+  Default α =>
+  [(Variable, TypeX α Variable)] -> TermX α Variable -> TermX α Variable
 π []             t = t
 π ((n, τ) : nτs) t = Pi def τ (abstractVariable n (π nτs t))
 
 -- Pi (anonymous)
 infixr 1 ^->
-(^->) :: Default α => TypeX α Variable -> TermX α Variable -> TermX α Variable
+(^->) ::
+  Default α =>
+  TypeX α Variable -> TermX α Variable -> TermX α Variable
 τ ^-> t = Pi def τ (abstractAnonymous t)
 
 -- Type

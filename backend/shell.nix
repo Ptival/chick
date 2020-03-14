@@ -5,6 +5,7 @@ with nixpkgs;
 mkShell {
   buildInputs = [
     cabal-install
+    haskellPackages.hlint
   ];
   inputsFrom = [
     (haskellPackages.callCabal2nix "chick" ./. {}).env

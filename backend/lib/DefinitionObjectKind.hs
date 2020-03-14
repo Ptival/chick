@@ -1,6 +1,4 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 module DefinitionObjectKind
   ( DefinitionObjectKind(..)

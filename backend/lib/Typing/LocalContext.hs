@@ -1,10 +1,6 @@
 {-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
 
 module Typing.LocalContext
   ( LocalContext(..)
@@ -26,7 +22,7 @@ import Term.TypeChecked
 
 newtype LocalContext α ν =
   LocalContext { unLocalContext :: [LocalDeclaration α ν] }
-  deriving (Eq, Monoid, Semigroup, Show)
+  deriving ( Eq, Monoid, Semigroup, Show )
 
 addHyp ::
   (Eq ν, MonadError String m) =>

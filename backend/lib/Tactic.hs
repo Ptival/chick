@@ -1,10 +1,3 @@
-{-# language DeriveAnyClass #-}
-{-# language DeriveGeneric #-}
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
-{-# language StandaloneDeriving #-}
-{-# language TypeFamilies #-}
 {-# language UndecidableInstances #-}
 
 module Tactic

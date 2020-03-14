@@ -1,11 +1,6 @@
-{-# LANGUAGE DataKinds #-}
-{-# language ConstraintKinds #-}
-{-# language DeriveFunctor #-}
-{-# language FlexibleContexts #-}
-{-# language LambdaCase #-}
-{-# language OverloadedStrings #-}
-{-# language RankNTypes #-}
-{-# language UndecidableInstances #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Work where
 
@@ -45,7 +40,7 @@ data TypeCheckerF ν k
   | Synth (LocalContext (Checked ν) ν) (Raw.Term ν)              (TypeCheckingTerm ν -> k)
   | Failure (TypeErrored.Term ν)
   | Success (TypeChecked.Term ν)
-  deriving (Functor)
+  deriving ( Functor )
 
 tcTrace ::
   (TypeCheckerF ν k -> TypeCheckerF ν k) -> TypeCheckerF ν k -> [TypeCheckerF ν k]
@@ -270,14 +265,14 @@ runSynth' γ = \case
     sFun <- synthM γ fun
            (\ fFun -> App (Left AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
-    τFun <- typeOf sFun `orElse`
-           (App (Left AppFunctionFailed) ((!->) sFun) ((~!) arg))
+    τFun <- typeOf sFun
+            `orElse` App (Left AppFunctionFailed) ((!->) sFun) ((~!) arg)
     (_, τIn, bτOut) <-
-      isPi τFun `orElse`
-      (App (Left (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg))
+      isPi τFun
+      `orElse` App (Left (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg)
     -- check that arg has the type τIn
     cArg <- checkM γ arg τIn
-           (\ fArg -> App (Left AppArgumentFailed) ((!->) sFun) fArg)
+            (App (Left AppArgumentFailed) ((!->) sFun))
     -- perform substitution if needed
     --let n = name _ --bτOut
     let (b, τOut) = unscopeTerm bτOut

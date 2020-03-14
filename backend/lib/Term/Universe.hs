@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Term.Universe
   ( Universe(..)
   ) where

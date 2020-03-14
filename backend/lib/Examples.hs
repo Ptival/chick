@@ -1,7 +1,4 @@
-{-# language DeriveAnyClass #-}
-{-# language FlexibleContexts #-}
 {-# language OverloadedStrings #-}
-{-# language StandaloneDeriving #-}
 {-# language UndecidableInstances #-}
 
 module Examples where

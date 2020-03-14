@@ -1,5 +1,3 @@
-{-# language LambdaCase #-}
-{-# language ScopedTypeVariables #-}
 
 module Term.AlphaRenaming where
 

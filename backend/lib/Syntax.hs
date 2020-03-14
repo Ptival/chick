@@ -1,18 +1,5 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE ApplicativeDo #-}
 
 module Syntax where
 
@@ -23,7 +10,7 @@ import Text.Megaparsec
 import Text.Megaparsec.String
 import Text.PrettyPrint.Annotated.WL
 
-import Parsing (identifier, rword, symbol)
+import Parsing                       ( identifier, rword, symbol )
 import Term.Binder
 import Term.Term
 import Term.Variable

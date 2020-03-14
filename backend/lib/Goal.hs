@@ -1,6 +1,3 @@
-{-# language DeriveGeneric #-}
-{-# language StandaloneDeriving #-}
-
 module Goal
   ( Goal(..)
   ) where

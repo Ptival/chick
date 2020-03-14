@@ -1,10 +1,7 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
-module Definition
-  ( Definition(..)
+module Definition (
+  Definition(..),
   ) where
 
 import GHC.Generics

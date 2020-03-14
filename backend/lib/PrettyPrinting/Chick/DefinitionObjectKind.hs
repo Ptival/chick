@@ -1,16 +1,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
-module PrettyPrinting.Chick.DefinitionObjectKind
-  (
-  ) where
+module PrettyPrinting.Chick.DefinitionObjectKind where
 
 import Control.Monad.Reader (runReader)
 import Data.Default (def)
@@ -26,5 +20,5 @@ instance PrettyPrintable 'Chick DefinitionObjectKind where
 
 instance PrettyPrintableUnannotated 'Chick DefinitionObjectKind where
   prettyDocU = \case
-    Definition -> return $ "Definition"
-    Fixpoint   -> return $ "Fixpoint"
+    Definition -> return "Definition"
+    Fixpoint   -> return "Fixpoint"

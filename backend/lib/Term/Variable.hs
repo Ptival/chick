@@ -1,21 +1,12 @@
-{-# language ConstraintKinds #-}
-{-# language DeriveAnyClass #-}
-{-# language DeriveGeneric #-}
-{-# language FlexibleContexts #-}
-{-# language FlexibleInstances #-}
-{-# language GADTs #-}
-{-# language LambdaCase #-}
-{-# language MultiParamTypeClasses #-}
-{-# language ScopedTypeVariables #-}
-{-# language StandaloneDeriving #-}
-{-# language TypeFamilies #-}
-{-# language TypeOperators #-}
-{-# language UndecidableInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module Term.Variable
-  ( Variable
-  , mkVariable
-  , unVariable
+module Term.Variable (
+  Variable,
+  mkVariable,
+  unVariable,
   ) where
 
 import Data.Aeson
@@ -28,7 +19,7 @@ import Text.PrettyPrint.GenericPretty (Out)
 
 newtype Variable
   = Variable { unVariable :: String }
-  deriving (Eq, Generic, Out, Show)
+  deriving ( Eq, Generic, Out, Show )
 
 mkVariable :: String -> Variable
 mkVariable "_" = error "Trying to make an underscore variable"

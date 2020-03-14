@@ -1,10 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Diff.GlobalEnvironment
   ( Diff
   , findGlobalDeclarationDiff
@@ -72,7 +65,7 @@ findGlobalDeclarationDiff v e δe = do
     ΔL.Modify dgd δ ->
       case unGlobalEnvironment e of
         []    -> exc "ΔL.Modify but empty environment"
-        h : e' -> do
+        h : e' ->
           case dgd of
 
             ΔGD.Same -> error "This should already be matched ealier..."
@@ -95,7 +88,7 @@ findGlobalDeclarationDiff v e δe = do
     ΔL.Keep δ ->
       case unGlobalEnvironment e of
         []    -> exc "ΔL.Keep but empty context"
-        h : e' -> do
+        h : e' ->
           if nameOf h == v
           then return ΔGD.Same
           else findGlobalDeclarationDiff v (GlobalEnvironment e') δ

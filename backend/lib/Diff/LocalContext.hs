@@ -1,14 +1,7 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
-module Diff.LocalContext
-  ( Diff
-  , findLocalDeclarationDiff
-  , patch
+module Diff.LocalContext (
+  Diff,
+  findLocalDeclarationDiff,
+  patch,
   ) where
 
 import           Polysemy                                  ( Member, Sem )
@@ -72,7 +65,7 @@ findLocalDeclarationDiff v γ δγ =
     DL.Modify dld δ ->
       case unLocalContext γ of
         [] -> exc "DL.Change but empty context"
-        ld : γ' -> do
+        ld : γ' ->
           if nameOf ld == Just v
           then return dld
           else findLocalDeclarationDiff v (LocalContext γ') δ
@@ -82,7 +75,7 @@ findLocalDeclarationDiff v γ δγ =
     DL.Keep δ ->
       case unLocalContext γ of
         []    -> exc "DL.Keep but empty context"
-        h : γ' -> do
+        h : γ' ->
           if nameOf h == Just v
           then return DLD.Same
           else findLocalDeclarationDiff v (LocalContext γ') δ

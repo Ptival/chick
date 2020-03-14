@@ -1,6 +1,4 @@
 {-# language DeriveAnyClass #-}
-{-# language DeriveGeneric #-}
-{-# language LambdaCase #-}
 
 module Precedence
   ( Precedence(..)

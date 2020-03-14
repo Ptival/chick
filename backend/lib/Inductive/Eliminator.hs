@@ -1,10 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UnicodeSyntax #-}
 
 module Inductive.Eliminator
   ( addRecursiveMotive
@@ -16,16 +12,17 @@ module Inductive.Eliminator
   , unpackConstructors
   ) where
 
-import           Data.Default
-import           Data.String
+import           Data.Default        ( Default )
+import           Data.Maybe          ( fromMaybe )
+import           Data.String         ( IsString )
 
 import           Inductive.Inductive
 import           Inductive.Motive
 import           Inductive.Utils
 import           Term.Binder
 import           Term.Term
-import qualified Term.Raw as Raw
-import qualified Term.Universe as U
+import qualified Term.Raw            as Raw
+import qualified Term.Universe       as U
 import           Utils
 
 -- `acc` will contain the concrete indices, and will be well-sorted since
@@ -36,7 +33,7 @@ unpackIfFullyAppliedInductive' ::
   Φiis α Variable ->
   TermX α Variable ->
   [(α, TermX α Variable)] -> Maybe [(α, TermX α Variable)]
-unpackIfFullyAppliedInductive' n ips iis term acc = go term ips iis acc
+unpackIfFullyAppliedInductive' n ips iis term = go term ips iis
   where
     go (Var _ v)   []        []        acc | v == n    = Just acc
                                            | otherwise = Nothing
@@ -63,9 +60,7 @@ addRecursiveMotive ::
   Φcp α Variable ->
   [(α, Binder Variable, TypeX α Variable)]
 addRecursiveMotive n ips iis motive (α, b, τ) =
-  let v = case unBinder b of
-        Nothing -> "__rec__"
-        Just v -> v
+  let v = fromMaybe "__rec__" (unBinder b)
   in
   case unpackIfFullyAppliedInductive n ips iis τ of
     Just indices ->
@@ -117,10 +112,10 @@ mkEliminatorType' :: ∀ α.
 mkEliminatorType' α n ips iis _ cs =
 
   quantifyVariables   ips
-  $ quantifyVariables [(α, motive, motiveType)]
-  $ quantifyCases
-  $ quantifyBinders iis
-  $ quantifyVariables [(α, discriminee, discrimineeType)]
+  . quantifyVariables [(α, motive, motiveType)]
+  . quantifyCases
+  . quantifyBinders iis
+  . quantifyVariables [(α, discriminee, discrimineeType)]
   $ outputType
 
   where

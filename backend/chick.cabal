@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2b0e06ca7a827189cb9b18f6a99e2dbc2b8e695b323d01d8bac35f41ab98a016
+-- hash: 626b011d6bbc190284fb07a7ed1cd163a993cfcd150a0b2c646a8b96114bd615
 
 name:           chick
 version:        0.1.0
@@ -33,6 +33,7 @@ library
       Examples.Diff.SoftwareFoundations
       Examples.Term
       Examples.Utils
+      FromOCaml
       Inductive.Eliminator
       Inductive.Inductive
       Inductive.Motive
@@ -44,6 +45,7 @@ library
       Precedence
       PrettyPrinting.Chick
       PrettyPrinting.PrettyPrintable
+      PrettyPrinting.PrettyPrintableUnannotated
       PrettyPrinting.Term
       Repair.Benchmark
       Script
@@ -82,7 +84,6 @@ library
       Diff.Variable
       Diff.Vernacular
       Examples.Inductive
-      FromOCaml
       Goal
       Inductive.Utils
       Parsing.Types
@@ -110,7 +111,6 @@ library
       PrettyPrinting.Chick.Variable
       PrettyPrinting.Chick.Vernacular
       PrettyPrinting.PrettyPrintableAnnotated
-      PrettyPrinting.PrettyPrintableUnannotated
       PrettyPrinting.Universe
       PrettyPrinting.Utils
       Repair.Inductive
@@ -145,54 +145,55 @@ library
       Work
   hs-source-dirs:
       lib
-  default-extensions: DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
+  default-extensions: BlockArguments ConstraintKinds DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs KindSignatures LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators UnicodeSyntax
   ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
   build-depends:
-      GenericPretty
-    , MissingH
-    , QuickCheck
-    , adjunctions
-    , aeson
-    , base
-    , bound
-    , bytestring
-    , comonad
-    , containers
-    , convertible
-    , data-default
-    , directory
-    , either
-    , extra
-    , free
-    , gdiff
-    , ghc
-    , hslogger
+      GenericPretty >=1.2.2 && <1.3
+    , MissingH >=1.4.2.0 && <1.5
+    , QuickCheck >=2.13.2 && <2.14
+    , adjunctions >=4.4 && <4.5
+    , aeson >=1.4.6.0 && <1.5
+    , base >=4.13.0.0 && <4.14
+    , bound >=2.0.1 && <2.1
+    , bytestring >=0.10.10.0 && <0.11
+    , comonad >=5.0.6 && <5.1
+    , containers >=0.6.2.1 && <0.7
+    , convertible >=1.1.1.0 && <1.2
+    , data-default >=0.7.1.1 && <0.8
+    , directory >=1.3.6.0 && <1.4
+    , either >=5.0.1.1 && <5.1
+    , extra >=1.6.21 && <1.7
+    , filepath >=1.4.2.1 && <1.5
+    , free >=5.1.3 && <5.2
+    , gdiff >=1.1 && <1.2
+    , ghc >=8.8.3 && <8.9
+    , hslogger >=1.3.1.0 && <1.4
     , language-ocaml >=0.2.2 && <0.3
-    , lens
-    , megaparsec >=8.0
-    , monad-loops
-    , mtl
-    , network
-    , parser-combinators
-    , polysemy
-    , polysemy-plugin
-    , prettyprinter
-    , process
-    , random
-    , smallcheck
+    , lens >=4.18.1 && <4.19
+    , megaparsec >=8.0 && <8.1
+    , monad-loops >=0.4.3 && <0.5
+    , mtl >=2.2.2 && <2.3
+    , network >=3.1.1.1 && <3.2
+    , parser-combinators >=1.2.1 && <1.3
+    , polysemy >=1.3.0.0 && <1.4
+    , polysemy-plugin >=0.2.5.0 && <0.3
+    , prettyprinter >=1.6.1 && <1.7
+    , process >=1.6.8.0 && <1.7
+    , random >=1.1 && <1.2
+    , smallcheck >=1.1.5 && <1.2
     , snap >=1.1.1.0 && <1.2
-    , snap-core
-    , snap-server
-    , string-qq
-    , tasty
-    , tasty-hunit
-    , tasty-quickcheck
-    , tasty-smallcheck
-    , text
-    , time
-    , unordered-containers
-    , utf8-string
-    , utility-ht
+    , snap-core >=1.0.4.1 && <1.1
+    , snap-server >=1.1.1.1 && <1.2
+    , string-qq >=0.0.4 && <0.1
+    , tasty >=1.2.3 && <1.3
+    , tasty-hunit >=0.10.0.2 && <0.11
+    , tasty-quickcheck >=0.10.1.1 && <0.11
+    , tasty-smallcheck >=0.8.1 && <0.9
+    , text >=1.2.4.0 && <1.3
+    , time >=1.9.3 && <1.10
+    , unordered-containers >=0.2.10.0 && <0.3
+    , utf8-string >=1.0.1.1 && <1.1
+    , utility-ht >=0.0.14 && <0.1
   default-language: Haskell2010
 
 executable chick-server
@@ -201,23 +202,26 @@ executable chick-server
       Paths_chick
   hs-source-dirs:
       exec
-  default-extensions: DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
+  default-extensions: BlockArguments ConstraintKinds DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs KindSignatures LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators UnicodeSyntax
   ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
   build-depends:
-      QuickCheck
-    , base
+      QuickCheck >=2.13.2 && <2.14
+    , base >=4.13.0.0 && <4.14
+    , bound >=2.0.1 && <2.1
     , chick
-    , data-default
-    , lens
-    , megaparsec >=8.0
-    , polysemy
-    , polysemy-plugin
-    , smallcheck
-    , string-qq
-    , tasty
-    , tasty-hunit
-    , tasty-quickcheck
-    , tasty-smallcheck
+    , data-default >=0.7.1.1 && <0.8
+    , directory >=1.3.6.0 && <1.4
+    , filepath >=1.4.2.1 && <1.5
+    , language-ocaml >=0.2.2 && <0.3
+    , megaparsec >=8.0 && <8.1
+    , polysemy >=1.3.0.0 && <1.4
+    , polysemy-plugin >=0.2.5.0 && <0.3
+    , smallcheck >=1.1.5 && <1.2
+    , string-qq >=0.0.4 && <0.1
+    , tasty >=1.2.3 && <1.3
+    , tasty-hunit >=0.10.0.2 && <0.11
+    , tasty-quickcheck >=0.10.1.1 && <0.11
+    , tasty-smallcheck >=0.8.1 && <0.9
   default-language: Haskell2010
 
 test-suite test
@@ -240,21 +244,24 @@ test-suite test
       TestUtils
   hs-source-dirs:
       test
-  default-extensions: DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
+  default-extensions: BlockArguments ConstraintKinds DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs KindSignatures LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators UnicodeSyntax
   ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
   build-depends:
-      QuickCheck
-    , base
+      QuickCheck >=2.13.2 && <2.14
+    , base >=4.13.0.0 && <4.14
+    , bound >=2.0.1 && <2.1
     , chick
-    , data-default
-    , lens
-    , megaparsec >=8.0
-    , polysemy
-    , polysemy-plugin
-    , smallcheck
-    , string-qq
-    , tasty
-    , tasty-hunit
-    , tasty-quickcheck
-    , tasty-smallcheck
+    , data-default >=0.7.1.1 && <0.8
+    , directory >=1.3.6.0 && <1.4
+    , filepath >=1.4.2.1 && <1.5
+    , language-ocaml >=0.2.2 && <0.3
+    , megaparsec >=8.0 && <8.1
+    , polysemy >=1.3.0.0 && <1.4
+    , polysemy-plugin >=0.2.5.0 && <0.3
+    , smallcheck >=1.1.5 && <1.2
+    , string-qq >=0.0.4 && <0.1
+    , tasty >=1.2.3 && <1.3
+    , tasty-hunit >=0.10.0.2 && <0.11
+    , tasty-quickcheck >=0.10.1.1 && <0.11
+    , tasty-smallcheck >=0.8.1 && <0.9
   default-language: Haskell2010

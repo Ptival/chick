@@ -1,13 +1,7 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Diff.Inductive (
   Δc,
@@ -189,8 +183,8 @@ patch ind@(Inductive n ps is u cs) = \case
   Int ->
   Δips Raw.Raw ->
   DT.Diff Raw.Raw
-δinductiveRawConstructorPrefix δindName nPs δps =
-  processPs nPs (DT.CpyVar δindName) δps
+δinductiveRawConstructorPrefix δindName nPs =
+  processPs nPs (DT.CpyVar δindName)
 
   where
 
@@ -208,8 +202,8 @@ patch ind@(Inductive n ps is u cs) = \case
   -- foldrWith mkPi $ foldrWith mkApp $ foldrWith (mkApp . fst)
 
   δquantifyVariables ips δips
-  $ δquantifyBinders cps δcps
-  $ δapplyTerms cis δcis
+  . δquantifyBinders cps δcps
+  . δapplyTerms cis δcis
   $ prefix
 
   -- WAS:

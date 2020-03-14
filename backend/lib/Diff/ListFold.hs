@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Diff.ListFold
@@ -54,7 +53,7 @@ indicesListList :: [[a]] -> [[Int]]
 indicesListList l =
   zipWith offsetBy (countElementsBeforeGroup l) (map indices l)
   where
-    offsetBy offset = map ((+) offset)
+    offsetBy offset = map (offset +)
 
 -- say:
 -- [        a,            b,    c ] = l
@@ -88,7 +87,7 @@ indicesListList l =
       case patchA δa a of
       Nothing -> Nothing
       Just a' -> foldrWith   (\ _ acc -> ΔL.Remove   <$> acc) (f a)
-                 $ foldrWith (\ b acc -> ΔL.Insert b <$> acc) (f a')
+                 . foldrWith (\ b acc -> ΔL.Insert b <$> acc) (f a')
                  $ acc
     onPermute p l acc = ΔL.Permute (δpermute (take (length p) l) f p) <$> acc
     onRemove  _ _ _acc = error "TODO: δListFoldConcatMap onRemove"
@@ -124,7 +123,7 @@ indicesListList l =
     onPermute     _   _  _ = error "TODO: δListFoldMkAppTerms onPermute"
     onRemove        _ _  _ = error "TODO: δListFoldMkAppTerms onRemove"
     onReplace     _   _  _ = error "TODO: δListFoldMkAppTerms onReplace"
-    onSame            l  b = ΔT.nCpyApps (length l) b
+    onSame            l    = ΔT.nCpyApps (length l)
 
 {-
 This dictionary explains how a list gets modified when trying to build a nested
@@ -157,7 +156,7 @@ fully-instantiated diffs...
     onPermute _ _ _ = error "TODO: δListFoldMkAppBinders onPermute"
     onRemove _ _ _ = ΔT.RemoveApp ΔT.Same
     onReplace _ _ _ = error "TODO: δListFoldMkAppBinders onReplace"
-    onSame l b = ΔT.nCpyApps (length l) b
+    onSame l = ΔT.nCpyApps (length l)
 
 {-
 This dictionary explains how a list gets modified when trying to build a nested
@@ -184,7 +183,7 @@ fully-instantiated diffs...
     onPermute _ _ _ = error "TODO: δListFoldMkAppVariables onPermute"
     onRemove _ _ _ = ΔT.RemoveApp ΔT.Same
     onReplace _ _ _ = error "TODO: δListFoldMkAppVariables onReplace"
-    onSame l b = ΔT.nCpyApps (length l) b
+    onSame l = ΔT.nCpyApps (length l)
 
 δListFoldMkPiGeneric ::
   -- PrettyPrintable τ =>
@@ -194,17 +193,16 @@ fully-instantiated diffs...
 δListFoldMkPiGeneric pi δpi = ΔListFold
   { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
   where
-    insert e δ = ΔT.InsPi α δτ b δ where (α, δτ, b) = pi e
-    onInsert e _    δ = insert e δ
-    onKeep _ _      δ = ΔT.CpyPi   ΔT.Same ΔA.Same δ
-    onModify δe e _ δ = ΔT.CpyPi   δτ      δb      δ where (δτ, δb) = δpi e δe
-    onPermute _p   _δ = error "TODO: δListFoldMkPiGeneric onPermute"
-    onRemove _ _    δ = ΔT.RemovePi δ
-    onReplace l l'  δ =
+    insert e        = ΔT.InsPi α δτ b where (α, δτ, b) = pi e
+    onInsert e _    = insert e
+    onKeep _ _      = ΔT.CpyPi   ΔT.Same ΔA.Same
+    onModify δe e _ = ΔT.CpyPi   δτ      δb      where (δτ, δb) = δpi e δe
+    onPermute _p _δ = error "TODO: δListFoldMkPiGeneric onPermute"
+    onRemove _ _    = ΔT.RemovePi
+    onReplace l l'  =
       foldrWith   insert                   l'
-      $ foldrWith (\ _ δ -> ΔT.RemovePi δ) l
-      $ δ
-    onSame l        δ = ΔT.nCpyPis (length l) δ
+      . foldrWith (\ _ δ -> ΔT.RemovePi δ) l
+    onSame l        = ΔT.nCpyPis (length l)
 
 δListFoldMkPiGenericMaybe ::
   (τ -> (α, ΔT.Diff α, Binder Variable)) ->

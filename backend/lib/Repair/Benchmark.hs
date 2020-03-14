@@ -1,13 +1,7 @@
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Repair.Benchmark where
 
-import           Control.Monad                             ( liftM )
 import           Data.Foldable                             ( for_ )
 import           Polysemy                                  ( Member, Sem, run, runM )
 import           Polysemy.Error                            ( runError )
@@ -64,14 +58,14 @@ patchProof ::
   Sem r (Either String (Raw.Term Variable))
 patchProof t τ δτ =
   runError
-  . liftM snd
+  . fmap snd
   . runState initialRepairState
-  $ do RT.repair t τ δτ
-         >>= (\ δ -> do
-               trace $ printf "REPAIR COMPLETED: %s" $ prettyStr @'Chick δ
-               return δ
-             )
-         >>= ΔT.patch t
+  $ RT.repair t τ δτ
+  >>= (\ δ -> do
+        trace $ printf "REPAIR COMPLETED: %s" $ prettyStr @'Chick δ
+        return δ
+      )
+  >>= ΔT.patch t
 
 patchProofTrace ::
   Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw ->
@@ -100,7 +94,7 @@ termBench1 =
   , repairTermToType   = unsafeParseRaw "A → B → B"
   , repairTermDiff     =
     ΔT.InsPi () (ΔT.Replace "A") (Binder Nothing)
-    $ ΔT.Same
+    ΔT.Same
   , repairTermExpected = unsafeParseRaw "λ _ b , b"
   }
 
@@ -111,7 +105,7 @@ termBench2 =
   , repairTermToType   = unsafeParseRaw "B → A → B"
   , repairTermDiff     =
     ΔT.CpyPi ΔT.Same ΔA.Same
-    $ ΔT.InsPi () (ΔT.Replace "A") (Binder Nothing)
+    . ΔT.InsPi () (ΔT.Replace "A") (Binder Nothing)
     $ ΔT.Same
   , repairTermExpected = unsafeParseRaw "λ b _ , b"
   }
@@ -123,7 +117,7 @@ termBench3 =
   , repairTermToType   = unsafeParseRaw "A → (A → B) → B"
   , repairTermDiff     =
     ΔT.PermutPis [1, 0]
-    $ ΔT.Same
+    ΔT.Same
   , repairTermExpected = unsafeParseRaw "λ a f , f a"
   }
 
@@ -152,12 +146,12 @@ termBench5 =
   , repairTermDiff     =
       ΔT.CpyPi
       ( ΔT.CpyPi ΔT.Same ΔA.Same
-      $ ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing)
+      . ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing)
       $ ΔT.CpyPi ΔT.Same ΔA.Same ΔT.Same
       )
       ΔA.Same
       ( ΔT.CpyPi ΔT.Same ΔA.Same
-      $ ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing)
+      . ΔT.InsPi () (ΔT.Replace "B") (Binder Nothing)
       $ ΔT.Same
       )
   , repairTermExpected = unsafeParseRaw "λ f a _ c , f a (_ : B) c"
@@ -172,7 +166,7 @@ repairTermBenchmarks = []
   ++ [termBench5]
 
 repairTermBenchmark :: IO ()
-repairTermBenchmark = do
+repairTermBenchmark =
   for_ repairTermBenchmarks $ \
     (RepairTermBenchmark fromTerm fromType toType diff expected) -> do
     putStrLn $
@@ -194,7 +188,7 @@ repairTermBenchmark = do
       else do
         putStrLn $ printf "Sanity-checking diff %s failed" (show diff)
         case diffed of
-          Left  e -> do
+          Left  e ->
             putStrLn $ printf "Diffing failed: %s" e
           Right d -> do
             putStrLn $ printf "Original type: %s" (prettyStrU @'Chick toType)
@@ -206,7 +200,7 @@ repairScript ::
   Sem r (Either String (Script Raw.Raw Variable))
 repairScript s δs =
   runError
-  . liftM snd
+  . fmap snd
   . runState initialRepairState
   $ do δs' <- RS.repair s δs
        trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
@@ -241,7 +235,6 @@ repairFlippedArguments = RepairScriptBenchmark
         (ΔT.PermutPis [3, 1, 0, 2] ΔT.Same)
         ΔT.Same
       )
-      $
       ΔL.Same
 
   , repairScriptExpected = Nothing
@@ -290,7 +283,7 @@ repairListToVec = RepairScriptBenchmark
 
   , repairScriptDiff =
     ΔL.nKeeps 4
-    $ ΔL.Modify (ΔV.ModifyInductive δListToVec)
+    . ΔL.Modify (ΔV.ModifyInductive δListToVec)
     $ ΔL.Same
 
   , repairScriptExpected = Just $ Script $
@@ -337,7 +330,7 @@ repairScriptBenchmark = do
         Nothing -> do
           putStrLn "\n(*** Patching succeeded: ***)\n"
           printScript s''
-        Just e -> do
+        Just e ->
           if s'' == e
             then do
             putStrLn "\n(*** Patching succeeded, and matched expectations: ***)\n"
@@ -346,10 +339,10 @@ repairScriptBenchmark = do
             putStrLn "\n(*** Patching succeeded, BUT did not match expectations: ***)\n"
             putStrLn "(*** Expected ***)\n"
             printScript e
-            putStrLn $ show e
+            print e
             putStrLn "(*** Obtained ***)\n"
             printScript s''
-            putStrLn $ show s''
+            print s''
   where
     printScript :: Script α Variable -> IO ()
     printScript = putStrLn . prettyStrU @'Chick

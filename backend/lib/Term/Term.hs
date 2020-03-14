@@ -3,71 +3,55 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UnicodeSyntax #-}
 
-module Term.Term
-  ( module Term.Binder
-  , module Term.Variable
-  , Branch(..)
-  , GuardAndBody(..)
-  , NamesScopeT
-  , ScopedTerm(..)
-  , TermX(..)
-  , TypeX
-  , UnsupportedOCamlTerm(..)
-  , abstractAnonymous
-  , abstractBinder
-  , abstractVariable
-  , annotateHead
-  , annotationOf
-  , annotSymbol
-  , arrowSymbol
-  , scopedTerm
-  , forallSymbol
-  -- , getName
-  , holeSymbol
-  , lamSymbol
-  , originalBinder
-  , originalVariable
-  , packBranch
-  , postForallSymbol
-  , postLamSymbol
---  , rAnnot
---  , rApp
---  , rHole
---  , rLam
---  , rLet
---  , rPi
---  , rType
---  , rVar
-  , simultaneousSubstitute
-  , substitute
-  , unpackBranch
-  , unsafeTermToNum
-  , unscopeNames
-  , unscopeTerm
-  , wildcardSymbol
+module Term.Term (
+  module Term.Binder,
+  module Term.Variable,
+  Branch(..),
+  GuardAndBody(..),
+  NamesScopeT,
+  ScopedTerm(..),
+  TermX(..),
+  TypeX,
+  UnsupportedOCamlTerm(..),
+  abstractAnonymous,
+  abstractBinder,
+  abstractVariable,
+  annotateHead,
+  annotationOf,
+  annotSymbol,
+  arrowSymbol,
+  scopedTerm,
+  forallSymbol,
+  holeSymbol,
+  lamSymbol,
+  originalBinder,
+  originalVariable,
+  packBranch,
+  postForallSymbol,
+  postLamSymbol,
+  simultaneousSubstitute,
+  substitute,
+  unpackBranch,
+  unsafeTermToNum,
+  unscopeNames,
+  unscopeTerm,
+  wildcardSymbol,
   ) where
 
-import Bound.Class
-import Bound.Name
-import Bound.Scope
-import Bound.ScopeT
-import Control.Lens hiding ((.=))
-import Control.Monad
-import Data.Aeson
+import Bound.Class                                  ( Bound(..) )
+import Bound.Name                                   ( _Name, Name, abstract1Name, abstractName, instantiate1Name, instantiateName, name )
+import Bound.Scope                                  ( Scope, bindings, hoistScope )
+import Bound.ScopeT                                 ( ScopeT, (>>>>=), abstractNameT, bindingsT, hoistScopeT, instantiateNameT )
+import Control.Lens                                 ( makeLenses, over, view )
+import Control.Monad                                ( ap )
+import Data.Aeson                                   ( ToJSON(..), (.=), object )
+import Data.Bifunctor                               ( Bifunctor, bimap, first )
 import Data.Functor.Classes
 import Data.Functor.Compose
 import Data.List
@@ -80,7 +64,7 @@ import Text.Printf
 
 import Term.Binder
 import Term.Variable
-import Term.Universe (Universe)
+import Term.Universe                                (Universe)
 
 {-
 The type-ascription symbol unfortunately cannot be ":" like you would expect,
@@ -283,7 +267,7 @@ instance Bifunctor Branch where
   bimap l r (Branch a b c) = Branch a b (bimapGB c)
     where
       bimapGB :: NamesScopeT GuardAndBody (TermX a) c -> NamesScopeT GuardAndBody (TermX b) d
-      bimapGB s = hoistScopeT (dispatchGuardAndBody (bimap l id)) (bimap l id) $ r <$> s
+      bimapGB s = hoistScopeT (dispatchGuardAndBody (first l)) (first l) $ r <$> s
       -- bimapGB :: NamesScope (GuardAndBody (TermX a)) c -> NamesScope (GuardAndBody (TermX b)) d
       -- bimapGB s = hoistScope (dispatchGuardAndBody (bimap l id)) $ r <$> s
 
@@ -302,28 +286,28 @@ instance Bifunctor TermX where
       UnsupportedOCaml o -> UnsupportedOCaml o
     where
       go = bimap l r
-      bimapScope s = hoistScope (bimap l id) (r <$> s)
+      bimapScope s = hoistScope (first l) (r <$> s)
 
 instance Eq1 (TermX α) where
   liftEq eqVar term1 term2 =
     let (===) = liftEq eqVar in
     case (term1, term2) of
       (Annot _ t τ,  Annot _ t' τ')  -> t === t' && τ === τ'
-      (Annot _ _ _, _) -> False
+      (Annot{}, _) -> False
       (App _ t1 t2,  App _ t1' t2')  -> t1 === t1' && t2 === t2'
-      (App _ _ _, _) -> False
+      (App{}, _) -> False
       (Hole _,       Hole _)         -> True
       (Hole _, _) -> False
       (Lam _ bt,     Lam _ bt')      -> liftEq eqVar (view scopedTerm bt) (view scopedTerm bt')
       (Lam _ _, _) -> False
       (Let _ t1 bt2, Let _ t1' bt2') ->
         t1 === t1' && liftEq eqVar (view scopedTerm bt2) (view scopedTerm bt2')
-      (Let _ _ _, _) -> False
+      (Let{}, _) -> False
       (Match _ d bs, Match _ d' bs') -> d === d' && liftEq (liftEq eqVar) bs bs'
-      (Match _ _ _, _) -> False
+      (Match{}, _) -> False
       (Pi _ τ1 bτ2,  Pi _ τ1' bτ2')  ->
         τ1 === τ1' && liftEq eqVar (view scopedTerm bτ2) (view scopedTerm bτ2')
-      (Pi _ _ _, _) -> False
+      (Pi{}, _) -> False
       (Type u,       Type u')        -> u == u'
       (Type _, _) -> False
       (Var _ v,      Var _ v')       -> eqVar v v'
@@ -509,7 +493,7 @@ annotationOf = \case
   UnsupportedOCaml _ -> Nothing
 
 annotateHead :: α -> TermX β ν -> TermX α ν
-annotateHead a = bimap (const a) id
+annotateHead a = first (const a)
 
 substitute ::
   (Monad f, Eq a) => a -> f a -> f a -> f a
@@ -535,7 +519,7 @@ unscopeNamesWithT :: (Bound t, Foldable (t f), Monad f) =>
   (Int -> Binder ν1, t f ν2)
 unscopeNamesWithT f s =
   let varAtIndex = mkVarAtIndexT s in
-  (Binder <$> varAtIndex, instantiateNameT (f <$> fromJust <$> varAtIndex) s)
+  (Binder <$> varAtIndex, instantiateNameT (f . fromJust <$> varAtIndex) s)
 
 unscopeNamesWith :: (Foldable f, Monad f) =>
   (ν1 -> f ν2) ->
@@ -543,7 +527,7 @@ unscopeNamesWith :: (Foldable f, Monad f) =>
   (Int -> Binder ν1, f ν2)
 unscopeNamesWith f s =
   let varAtIndex = mkVarAtIndex s in
-  (Binder <$> varAtIndex, instantiateName (f <$> fromJust <$> varAtIndex) s)
+  (Binder <$> varAtIndex, instantiateName (f . fromJust <$> varAtIndex) s)
 
 unscopeNamesT :: (Bound t, Foldable (t f), Monad f) =>
   ScopeT (Name ν Int) t f ν ->

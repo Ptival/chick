@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeApplications #-}
-
 module Inductive.Eliminator.Test where
 
 import Control.Monad

@@ -1,13 +1,7 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
 
-module PrettyPrinting.Coq.Declaration
-  (
-  ) where
+module PrettyPrinting.Coq.Declaration where
 
 import           Text.PrettyPrint.Annotated.WL
 

@@ -1,13 +1,6 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Diff.Term
@@ -107,9 +100,9 @@ instance
     InsApp _ δ1 δ2    -> Doc.fillSep [ "InsApp",     go δ1, go δ2 ]
     InsLam _ δ1 δ2    -> Doc.fillSep [ "InsLam",     go δ1, go δ2 ]
     InsPi  _ δ1 δ2 δ3 -> Doc.fillSep [ "InsPi",      go δ1, go δ2, go δ3 ]
-    PermutApps p δ1   -> Doc.fillSep [ "PermutApp",  (Doc.pretty $ show p), go δ1 ]
-    PermutLams p δ1   -> Doc.fillSep [ "PermutLam",  (Doc.pretty $ show p), go δ1 ]
-    PermutPis  p δ1   -> Doc.fillSep [ "PermutPi",   (Doc.pretty $ show p), go δ1 ]
+    PermutApps p δ1   -> Doc.fillSep [ "PermutApp",  Doc.pretty (show p), go δ1 ]
+    PermutLams p δ1   -> Doc.fillSep [ "PermutLam",  Doc.pretty (show p), go δ1 ]
+    PermutPis  p δ1   -> Doc.fillSep [ "PermutPi",   Doc.pretty (show p), go δ1 ]
     RemoveApp δ1      -> Doc.fillSep [ "RemoveApp",  go δ1 ]
     RemoveLam δ1      -> Doc.fillSep [ "RemoveApp",  go δ1 ]
     RemovePi δ1       -> Doc.fillSep [ "RemovePi",   go δ1 ]
@@ -183,7 +176,7 @@ patch term δterm =
   (Pi a τ1 bτ2, CpyPi d1 db d2) ->
     let (b, τ2) = unscopeTerm bτ2 in
     Pi a <$> patch τ1 d1 <*> (abstractBinder <$> ΔA.patch b db <*> patch τ2 d2)
-  (_, CpyPi _ _ _) -> exc "CpyPi, not a Pi"
+  (_, CpyPi{}) -> exc "CpyPi, not a Pi"
 
   (Var a v, CpyVar δv) -> Var a <$> ΔA.patch v δv
   (_, CpyVar _) -> exc $ printf "CpyVar, not a Var: %s" (prettyStr @'Chick term)
@@ -226,13 +219,13 @@ nCpy _ n _    | n < 0 = error "nCpy: n became negative!"
 nCpy f n base         = f (nCpy f (n-1) base)
 
 nCpyApps :: Int -> Diff α -> Diff α
-nCpyApps = nCpy (\ δ -> CpyApp δ Same)
+nCpyApps = nCpy (`CpyApp` Same)
 
 nCpyLams :: Int -> Diff α -> Diff α
-nCpyLams = nCpy (\ δ -> CpyLam ΔA.Same δ)
+nCpyLams = nCpy (CpyLam ΔA.Same)
 
 nCpyPis :: Int -> Diff α -> Diff α
-nCpyPis = nCpy (\ δ -> CpyPi Same ΔA.Same δ)
+nCpyPis = nCpy (CpyPi Same ΔA.Same)
 
 nInsertApps :: Int -> (α, TermX α Variable) -> Diff α -> Diff α
 nInsertApps 0 _      base         = base

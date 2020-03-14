@@ -1,5 +1,3 @@
-{-# language LambdaCase #-}
-{-# language RankNTypes #-}
 
 module Parsing.Inductive
   ( inductiveP
@@ -39,7 +37,7 @@ inductiveP = do
       -- check sort?
       return (cis, univ)
 
-    csP ips = many $ do
+    csP ips = many do
       symbol "|"
       cn <- variableP
       symbol ":"

@@ -1,10 +1,7 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
-module Vernacular
-  ( Vernacular(..)
+module Vernacular (
+  Vernacular(..),
   ) where
 
 import GHC.Generics

@@ -1,6 +1,3 @@
-{-# language LambdaCase #-}
-{-# language RankNTypes #-}
-{-# language TypeFamilies #-}
 
 module DictMeta where
 

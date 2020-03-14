@@ -1,17 +1,10 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module PrettyPrinting.PrettyPrintableUnannotated
-  ( PrettyPrintableUnannotated(..)
+module PrettyPrinting.PrettyPrintableUnannotated (
+  PrettyPrintableUnannotated(..),
   ) where
 
 import Control.Monad.Reader

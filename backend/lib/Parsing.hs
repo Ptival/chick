@@ -1,4 +1,3 @@
-{-# language RankNTypes #-}
 
 module Parsing
   ( binderP
@@ -10,17 +9,18 @@ module Parsing
   , variableP
   ) where
 
-import           Control.Monad.Fix
-import           Data.Void
-import           Text.Megaparsec
+import           Control.Monad.Fix   ( fix )
+import           Data.Functor        ( ($>) )
+import           Data.Void           ( Void )
+import qualified Text.Megaparsec     as MP
 
 import           Parsing.Chick.Utils
 import           Parsing.Types
 import           Parsing.Utils
 import           Term.Binder
-import           Term.Raw as Raw
+import           Term.Raw            as Raw
 import           Term.Term
-import qualified Term.Universe as U
+import qualified Term.Universe       as U
 
 type Parser1 a = Parser a -> Parser  a
 type Parser2 a = Parser a -> Parser1 a
@@ -65,10 +65,10 @@ unModularP (AtomParser p) = \ _topP _selfP _nextP -> p
 
 choiceOrNextP :: Parser a -> [ModularParser a] -> Parser1 a
 choiceOrNextP topP ps nextP =
-  fix $ \ selfP -> choice $ map (\ p -> unModularP p topP selfP nextP) ps ++ [nextP]
+  fix $ \ selfP -> MP.choice $ map (\ p -> unModularP p topP selfP nextP) ps ++ [nextP]
 
 foldP :: [[ModularParser a]] -> Parser a
-foldP ps = fix $ \ topP -> foldr ($) (parens topP) (map (choiceOrNextP topP) ps)
+foldP ps = fix $ \ topP -> foldr (choiceOrNextP topP) (parens topP) ps
 
 termP :: Parser (Raw.Term Variable)
 termP = foldP parser
@@ -76,16 +76,16 @@ termP = foldP parser
 -- Binary operator parsers
 
 binOpLP :: String -> (a -> a -> a) -> Parser3 a
-binOpLP s k _topP _selfP nextP = chainl1 nextP (symbol s *> return k)
+binOpLP s k _topP _selfP nextP = chainl1 nextP (symbol s $> k)
 
 binOpRP :: String -> (a -> a -> a) -> Parser3 a
-binOpRP s k _topP selfP nextP = try $ k <$> (nextP <* symbol s) <*> selfP
+binOpRP s k _topP selfP nextP = MP.try $ k <$> (nextP <* symbol s) <*> selfP
 -- unfortunately, we cannot commit after the symbol, because it could be the
 -- prefix of something else
 
 {-
 -- short for:
-binOpRP s k selfP nextP = try $ do
+binOpRP s k selfP nextP = try do
   l <- nextP
   symbol s
   r <- selfP
@@ -101,7 +101,7 @@ variableP :: Parser Variable
 variableP = mkVariable <$> identifier
 
 binderP :: Parser (Binder Variable)
-binderP = Binder <$> ((Nothing <$ symbol wildcardSymbol) <|> (Just <$> variableP))
+binderP = Binder <$> ((Nothing <$ symbol wildcardSymbol) MP.<|> (Just <$> variableP))
 
 holeP :: Parser (Raw.Term Variable)
 holeP = Hole () <$ symbol holeSymbol
@@ -109,7 +109,7 @@ holeP = Hole () <$ symbol holeSymbol
 lamP :: Parser3 (Raw.Term Variable)
 lamP _topP selfP _nextP =
   lams
-  <$> (try (symbol lamSymbol) *> some binderP)
+  <$> (MP.try (symbol lamSymbol) *> MP.some binderP)
   <*> (symbol postLamSymbol *> selfP)
 
 {-
@@ -122,13 +122,13 @@ lamP _topP selfP _nextP =
   return $ lams bs t
 -}
   where
-    lams :: [Binder Variable] -> (Raw.Term Variable) -> (Raw.Term Variable)
+    lams :: [Binder Variable] -> Raw.Term Variable -> Raw.Term Variable
     lams []       t = t
     lams (b : bs) t = Lam () (abstractBinder b (lams bs t))
 
 letP :: Parser3 (Raw.Term Variable)
 letP topP selfP _nextP = do
-  try $ rword "let"
+  MP.try $ rword "let"
   b <- binderP
   symbol "="
   t1 <- topP
@@ -153,13 +153,13 @@ guardP = return Nothing -- FIXME: parse guards
 
 matchP :: Parser3 (Raw.Term Variable)
 matchP topP _selfP _nextP = do
-  try $ rword "match"
+  MP.try $ rword "match"
   discriminee <- topP
   rword "with"
-  branches <- many $ do
+  branches <- MP.many $ do
     symbol "|"
     ctor <- variableP
-    args <- many binderP
+    args <- MP.many binderP
     -- TODO: check for unicity of bound names
     guard <- guardP
     symbol "=>"
@@ -170,11 +170,11 @@ matchP topP _selfP _nextP = do
 
 namedPiP :: Parser3 (Raw.Term Variable)
 namedPiP topP selfP _nextP = do
-  groups <- try $ do
+  groups <- MP.try $ do
     symbol forallSymbol
-    groups <- many $ do
+    groups <- MP.many $ do
       symbol "("
-      bs <- some binderP
+      bs <- MP.some binderP
       symbol ":"
       τ1 <- topP
       symbol ")"
@@ -184,14 +184,14 @@ namedPiP topP selfP _nextP = do
   τ2 <- selfP
   return $ pis groups τ2
   where
-    pis :: [([Binder Variable], Raw.Term Variable)] -> (Raw.Term Variable) -> (Raw.Term Variable)
+    pis :: [([Binder Variable], Raw.Term Variable)] -> Raw.Term Variable -> Raw.Term Variable
     pis [] τ2 = τ2
     pis (((b : bs), τ1) : τ1s) τ2 =
       Pi () τ1 (abstractBinder b $ pis ((bs, τ1) : τ1s) τ2)
     pis (([], _) : τ1s) τ2 = pis τ1s τ2
 
 typeP :: Parser (Raw.Term Variable)
-typeP = Type <$> (propP <|> setP <|> typeP')
+typeP = Type <$> (propP MP.<|> setP MP.<|> typeP')
   where
     propP  = U.Prop <$ rword "Prop"
     setP   = U.Set  <$ rword "Set"
@@ -203,20 +203,20 @@ varP = Var Nothing <$> variableP
 -- Running parsers
 
 langP :: Parser (Raw.Term Variable)
-langP = termP <* eof
+langP = termP <* MP.eof
 
-runParserTerm :: String -> Either (ParseErrorBundle String Void) (Raw.Term Variable)
-runParserTerm = runParser langP "runParserTerm"
+runParserTerm :: String -> Either (MP.ParseErrorBundle String Void) (Raw.Term Variable)
+runParserTerm = MP.runParser langP "runParserTerm"
 
 parseMaybeTerm :: String -> Maybe (Raw.Term Variable)
-parseMaybeTerm = parseMaybe langP
+parseMaybeTerm = MP.parseMaybe langP
 
 bindingP :: Parser b -> Parser ([b], Term Variable)
 bindingP bindP = parens $ do
-  bs <- some bindP
+  bs <- MP.some bindP
   symbol ":"
   τ1 <- termP
   return (bs, τ1)
 
 bindingsP :: Parser b -> Parser [([b], Term Variable)]
-bindingsP bindP = many (bindingP bindP)
+bindingsP bindP = MP.many (bindingP bindP)
