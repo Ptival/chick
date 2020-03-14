@@ -61,7 +61,6 @@ module Term.Term
   , wildcardSymbol
   ) where
 
-import Bound ((>>>=))
 import Bound.Class
 import Bound.Name
 import Bound.Scope

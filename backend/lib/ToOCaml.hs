@@ -15,37 +15,38 @@ module ToOCaml
   , theWholeThing
   ) where
 
-import           Control.Arrow
-import           Control.Lens hiding (none)
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Char (isUpper)
-import           Data.Default
-import           Data.Either.Utils
-import           Data.String.QQ
-import           Language.OCaml.Parser.Common
-import           Language.OCaml.Definitions.Parsing.ASTHelper.Exp as Exp hiding (fun, tuple)
-import           Language.OCaml.Definitions.Parsing.ASTHelper.Str as Str
-import           Language.OCaml.Definitions.Parsing.ASTHelper.Type as Type
-import           Language.OCaml.Definitions.Parsing.ASTHelper.Vb as Vb
-import           Language.OCaml.Definitions.Parsing.ASTTypes
-import           Language.OCaml.Definitions.Parsing.ParseTree
-import           Language.OCaml.PrettyPrinter
-import           Language.OCaml.Parser
+import Control.Arrow                                     ( (***) )
+import Control.Lens                                      ( view )
+import Data.Char                                         ( isUpper )
+import Data.Default                                      ( def )
+import Data.Either.Utils                                 ( fromEither )
+import Data.String.QQ                                    ( s )
+import Polysemy                                          ( Member, Sem, run, runM )
+import Polysemy.Error                                    ( runError )
+import Polysemy.Trace                                    ( Trace, ignoreTrace, traceToIO, trace )
 
-import           Definition
-import           DefinitionObjectKind
-import           Diff.Guess.Script
+import Language.OCaml.Parser.Common
+import Language.OCaml.Definitions.Parsing.ASTHelper.Exp  as Exp hiding ( fun, tuple )
+import Language.OCaml.Definitions.Parsing.ASTHelper.Str  as Str
+import Language.OCaml.Definitions.Parsing.ASTHelper.Type as Type
+import Language.OCaml.Definitions.Parsing.ASTHelper.Vb   as Vb
+import Language.OCaml.Definitions.Parsing.ASTTypes
+import Language.OCaml.Definitions.Parsing.ParseTree
+import Language.OCaml.PrettyPrinter
+import Language.OCaml.Parser
+
+import Definition
+import DefinitionObjectKind
+import Diff.Guess.Script
 import qualified Diff.Script as ΔS
-import           FromOCaml
-import           Inductive.Inductive as Inductive
-import           PrettyPrinting.Chick ()
-import           Repair.Script
-import           Script
-import           Term.Term
-import           Utils
-import           Vernacular
+import FromOCaml
+import Inductive.Inductive                               as Inductive
+import PrettyPrinting.Chick                              ()
+import Repair.Script
+import Script
+import Term.Term
+import Utils
+import Vernacular
 
 class ToOCaml a b where
   toOCaml :: a -> b
@@ -279,7 +280,7 @@ testDiffGuess =
         Left e -> error e
         Right r -> r
   in
-  runSkipTrace $ guess (Script p1) (Script p2)
+  runM . ignoreTrace . ignoreTrace $ guess (Script p1) (Script p2)
 
 unsafeParseOCaml :: String -> Script () Variable
 unsafeParseOCaml o = case map fromOCaml <$> parseImplementation o of
@@ -289,7 +290,7 @@ unsafeParseOCaml o = case map fromOCaml <$> parseImplementation o of
 guessAndPatch ::
   ( Member Trace r
   ) =>
-  Script () Variable -> Script () Variable -> Eff r (Either String (Script () Variable))
+  Script () Variable -> Script () Variable -> Sem r (Either String (Script () Variable))
 guessAndPatch p1 p2 = do
   δ <- guess p1 p2
   trace "\n\n=== DIFF ===\n\n"
@@ -304,8 +305,8 @@ theWholeThing :: String -> String -> IO ()
 theWholeThing ocaml1 ocaml2 = do
   let p1 = unsafeParseOCaml ocaml1
   let p2 = unsafeParseOCaml ocaml2
-  δ <- runTrace $ guess p1 p2
-  ep3 <- runTrace $ runRepair' p1 δ
+  δ <- runM . traceToIO $ guess p1 p2
+  ep3 <- runM . traceToIO $ runRepair' p1 δ
   case ep3 of
     Left e -> error e
     Right p3 -> do

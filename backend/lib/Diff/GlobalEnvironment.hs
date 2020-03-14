@@ -12,32 +12,31 @@ module Diff.GlobalEnvironment
   , patch
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error, throw )
+import           Polysemy.Trace                 ( Trace )
+import           Text.Printf                    ( printf )
 
 import qualified Diff.GlobalDeclaration as ΔGD
 import qualified Diff.Inductive as ΔI
 import qualified Diff.List as ΔL
-import           Diff.Utils
 import           Inductive.Inductive
-import           Language (Language(Chick))
+import           Language                       ( Language(Chick) )
 import           PrettyPrinting.PrettyPrintable
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 import           Term.Variable
-import           Typing.GlobalEnvironment
 import           Typing.GlobalDeclaration
+import           Typing.GlobalEnvironment
 
 type Diff α = ΔL.Diff (GlobalDeclaration α Variable) (ΔGD.Diff α)
 
 patch ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   -- , PrettyPrintable α
   , Show α
   ) =>
-  GlobalEnvironment α Variable -> Diff α -> Eff r (GlobalEnvironment α Variable)
+  GlobalEnvironment α Variable -> Diff α -> Sem r (GlobalEnvironment α Variable)
 patch (GlobalEnvironment e) δe = do
   e' <- ΔL.patch ΔGD.patch e δe
   return $ GlobalEnvironment e'
@@ -45,15 +44,16 @@ patch (GlobalEnvironment e) δe = do
 -- annotation has to be Raw because of inductives
 -- TODO: need to decide whether this find inductives or not, so far no?
 findGlobalDeclarationDiff ::
-  ( Member (Exc String) r
-  , Member Trace r
-  ) =>
-  Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Eff r (ΔGD.Diff Raw.Raw)
+  Member (Error String) r =>
+  Member Trace          r =>
+  Variable -> GlobalEnvironment Raw.Raw Variable -> Diff Raw.Raw -> Sem r (ΔGD.Diff Raw.Raw)
 findGlobalDeclarationDiff v e δe = do
   -- trace (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff:\nSearching %s in %s" (prettyStr v) (prettyStrU e))
   -- trace (printf "δe: %s" (prettyStr δe))
-  let exc (reason :: String) =
-        throwExc $ printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc (reason :: String) =
+        throw (printf "Diff.GlobalEnvironment/findGlobalDeclarationDiff: %s" reason :: String)
 
   case δe of
 
@@ -108,14 +108,16 @@ findGlobalDeclarationDiff v e δe = do
 -- modified
 findGlobalIndDiff ::
   ( Eq ν
-  , Member (Exc String) r
+  , Member (Error String) r
   , PrettyPrintable 'Chick α
   ) =>
   Inductive α ν -> GlobalEnvironment ξ ν -> Diff α ->
-  Eff r (ΔI.Diff α)
+  Sem r (ΔI.Diff α)
 findGlobalIndDiff ind e δe = do
-  let exc (reason :: String) =
-        throwExc $ printf "Diff.GlobalEnvironment/findGlobalIndDiff: %s" reason
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc (reason :: String) =
+        throw (printf "Diff.GlobalEnvironment/findGlobalIndDiff: %s" reason :: String)
   case (δe, unGlobalEnvironment e) of
     (ΔL.Insert _ δ, _) -> findGlobalIndDiff ind e δ
     (ΔL.Keep δ, GlobalInd ind' : e') ->

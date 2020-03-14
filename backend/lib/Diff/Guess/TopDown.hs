@@ -8,21 +8,21 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module Diff.Guess.TopDown
-  ( runTopDown
-  , topDownStateM
+module Diff.Guess.TopDown (
+  runTopDown,
+  topDownStateM,
   ) where
 
-import Control.Lens (Lens', makeLenses, over, set, view)
-import Control.Monad
-import Control.Monad.Loops
-import Control.Monad.Freer
-import Control.Monad.Freer.Reader
-import Control.Monad.Freer.State
-import Control.Monad.Freer.Trace
-import Data.List (partition, sortBy, union)
-import Data.Ord (comparing)
-import Prelude hiding (product)
+import Control.Lens        ( Lens', makeLenses, over, set, view )
+import Control.Monad       ( forM_, when )
+import Control.Monad.Loops ( whileM_ )
+import Data.List           ( partition, sortBy, union )
+import Data.Ord            ( comparing )
+import Polysemy            ( Member, Sem )
+import Polysemy.Reader     ( Reader, ask, runReader )
+import Polysemy.State      ( State, get, modify, runState )
+import Polysemy.Trace      ( Trace, trace )
+import Prelude             hiding ( product )
 
 import Diff.Guess.HIList
 import Diff.Guess.Mapping
@@ -33,7 +33,7 @@ data TopDownReader = TopDownReader
   , _topDownReaderRoot1 :: Node
   , _topDownReaderRoot2 :: Node
   }
-  deriving (Show)
+  deriving ( Show )
 makeLenses ''TopDownReader
 
 data TopDownState = TopDownState
@@ -42,18 +42,18 @@ data TopDownState = TopDownState
   , _topDownStateA  :: Mapping
   , _topDownStateM  :: Mapping
   }
-  deriving (Show)
+  deriving ( Show )
 makeLenses ''TopDownState
 
 open ::
-  ( Member (State TopDownState) r
-  ) => Node -> Lens' TopDownState HIList -> Eff r ()
+  Member (State TopDownState) r =>
+  Node -> Lens' TopDownState HIList -> Sem r ()
 open t lens = forM_ (reverse $ children t) $ \ c -> do
   modify $ over lens $ insert c
 
 pop ::
-  ( Member (State TopDownState) r
-  ) => Lens' TopDownState HIList -> Eff r [Node]
+  Member (State TopDownState) r =>
+  Lens' TopDownState HIList -> Sem r [Node]
 pop lens = do
   l <- view lens <$> get
   let (popped, l') = partition ((==) (peekMax l) . height) (unHIList l)
@@ -61,8 +61,8 @@ pop lens = do
   return popped
 
 popHead ::
-  ( Member (State TopDownState) r
-  ) => Lens' TopDownState [a] -> Eff r a
+  Member (State TopDownState) r =>
+  Lens' TopDownState [a] -> Sem r a
 popHead lens = do
   l <- view lens <$> get
   case l of
@@ -72,17 +72,16 @@ popHead lens = do
       return h
 
 push ::
-  ( Member (State TopDownState) r
-  ) => Node -> Lens' TopDownState HIList -> Eff r ()
+  Member (State TopDownState) r =>
+  Node -> Lens' TopDownState HIList -> Sem r ()
 push n lens = do
   modify $ over lens $ insert n
 
 runTopDown :: ∀ r.
-  ( Member Trace r
-  ) =>
-  Node -> Node -> Int -> Eff r TopDownState
+  Member Trace r =>
+  Node -> Node -> Int -> Sem r TopDownState
 runTopDown n1 n2 minHeight =
-  snd <$> runState (runReader topDown r) s0
+  fst <$> runState s0 (runReader r topDown)
   where
     r = TopDownReader
       { _topDownReaderMinHeight = minHeight
@@ -97,11 +96,10 @@ runTopDown n1 n2 minHeight =
       }
 
 topDown :: ∀ r.
-  ( Member (Reader TopDownReader) r
-  , Member (State  TopDownState) r
-  , Member Trace r
-  ) =>
-  Eff r ()
+  Member (Reader TopDownReader) r =>
+  Member (State  TopDownState)  r =>
+  Member Trace                  r =>
+  Sem r ()
 topDown = do
 
   root1 <- view topDownReaderRoot1 <$> ask

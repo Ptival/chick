@@ -18,17 +18,17 @@ module Diff.List
   , patch
   ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
-import Control.Monad.Freer.Trace
-import Data.Aeson
-import Data.Bifunctor
-import GHC.Generics
-import Text.Printf
-import Data.Text.Prettyprint.Doc
+import           Data.Aeson                     ( ToJSON )
+import           Data.Bifunctor                 ( Bifunctor, bimap )
+import qualified Data.Text.Prettyprint.Doc      as Doc
+import           GHC.Generics                   ( Generic )
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error, throw )
+import           Polysemy.Trace                 ( Trace )
+import           Text.Printf                    ( printf )
 
-import Diff.Utils
-import PrettyPrinting.PrettyPrintable
+import           Diff.Utils
+import           PrettyPrinting.PrettyPrintable
 
 data Diff t δt
   = Insert   t    (Diff t δt)
@@ -40,9 +40,13 @@ data Diff t δt
   | Same
   deriving (Eq, Generic)
 
-instance (ToJSON t, ToJSON δt) => ToJSON (Diff t δt) where
+instance ( ToJSON t
+         , ToJSON δt
+         ) => ToJSON (Diff t δt) where
 
-instance (Show t, Show δt) => Show (Diff t δt) where
+instance ( Show t
+         , Show δt
+         ) => Show (Diff t δt) where
   show = \case
     Insert t  δ -> printf "Insert (%s)\n%s"  (show t)  (show δ)
     Keep      δ -> printf "Keep\n%s"                   (show δ)
@@ -52,18 +56,20 @@ instance (Show t, Show δt) => Show (Diff t δt) where
     Replace l   -> printf "Replace (%s)"     (show l)
     Same        -> "Same"
 
-instance (PrettyPrintable l t, PrettyPrintable l δt) => PrettyPrintable l (Diff t δt) where
+instance ( PrettyPrintable l t
+         , PrettyPrintable l δt
+         ) => PrettyPrintable l (Diff t δt) where
   prettyDoc = \case
-    Insert t  δ -> fillSep [ "Insert",  go t,              go δ ]
-    Keep      δ -> fillSep [ "Keep",                       go δ ]
-    Modify δt δ -> fillSep [ "Modify",  go δt,             go δ ]
-    Permute p δ -> fillSep [ "Permute", (pretty $ show p), go δ ]
-    Remove    δ -> fillSep [ "Remove",                     go δ ]
-    Replace l   -> fillSep [ "Replace", encloseSep lbracket rbracket comma (map (prettyDoc @l) l) ]
+    Insert t  δ -> Doc.fillSep [ "Insert",  go t,              go δ ]
+    Keep      δ -> Doc.fillSep [ "Keep",                       go δ ]
+    Modify δt δ -> Doc.fillSep [ "Modify",  go δt,             go δ ]
+    Permute p δ -> Doc.fillSep [ "Permute", (Doc.pretty $ show p), go δ ]
+    Remove    δ -> Doc.fillSep [ "Remove",                     go δ ]
+    Replace l   -> Doc.fillSep [ "Replace", Doc.encloseSep Doc.lbracket Doc.rbracket Doc.comma (map (prettyDoc @l) l) ]
     Same        -> "Same"
     where
-      go :: PrettyPrintable l x => x -> Doc ()
-      go x = fillSep [ lparen, prettyDoc @l x, rparen ]
+      go :: PrettyPrintable l x => x -> Doc.Doc ()
+      go x = Doc.fillSep [ Doc.lparen, prettyDoc @l x, Doc.rparen ]
 
 instance Bifunctor Diff where
   bimap fa fb = \case
@@ -76,12 +82,11 @@ instance Bifunctor Diff where
     Replace la   -> Replace (map fa la)
 
 patch ::
-  ( Member (Exc String) r
-  , Member Trace r
-  -- , PrettyPrintable l a
-  -- , PrettyPrintable l δa
-  ) =>
-  (a -> δa -> Eff r a) -> [a] -> Diff a δa -> Eff r [a]
+  Member (Error String) r =>
+  Member Trace r =>
+  -- PrettyPrintable l a =>
+  -- PrettyPrintable l δa =>
+  (a -> δa -> Sem r a) -> [a] -> Diff a δa -> Sem r [a]
 patch patchElem la δa =
   -- trace (printf "Diff.List/patch(l: %s, δ: %s)"
   --       (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
@@ -89,7 +94,10 @@ patch patchElem la δa =
   --       ) >>
   go la δa
   where
-    failWith (s :: String) = throwExc $ printf "[Diff.List.patch] %s" s
+
+    failWith :: Member (Error String) r => String -> Sem r a
+    failWith s = throw (printf "[Diff.List.patch] %s" s :: String)
+
     go l = \case
 
       Same -> return l

@@ -21,20 +21,18 @@ module Utils
   , mkPis
   , orElse
   , orElse'
-  , runSkipTrace
-  , skipTrace
+  -- , runSkipTrace
+  -- , skipTrace
   , splitList
   , unzipMaybe
   , withState
   ) where
 
 import           Control.Lens
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Internal
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
 import qualified Control.Monad.Error.Class as ME
+import           Polysemy
+import           Polysemy.Error
+import           Polysemy.State
 import           Text.Printf
 
 import           Term.Term
@@ -52,23 +50,27 @@ isPi _          = Nothing
 mapWithIndex :: (a -> Int -> b) -> [a] -> [b]
 mapWithIndex f l = map (\(e, i) -> f e i) (zip l [0..])
 
-orElse :: ME.MonadError e m => Maybe a -> e -> m a
+orElse ::
+  ME.MonadError e m =>
+  Maybe a -> e -> m a
 orElse Nothing  e = ME.throwError e
 orElse (Just a) _ = return a
 
-orElse' :: ME.MonadError e m => Bool -> e -> m ()
+orElse' ::
+  ME.MonadError e m =>
+  Bool -> e -> m ()
 orElse' False e = ME.throwError e
 orElse' True  _ = return ()
 
 -- dumb, but has the same signature as `runTrace`, so easier to interchange
-runSkipTrace :: Eff '[Trace] a -> IO a
-runSkipTrace = return <$> skipTrace
-
-skipTrace :: Eff '[Trace] a -> a
-skipTrace (Val x) = x
-skipTrace (E u q) =
-  case extract u of
-    Trace _ -> skipTrace (qApp q ())
+-- runSkipTrace :: Sem '[Trace] a -> IO a
+-- runSkipTrace = return <$> skipTrace
+--
+-- skipTrace :: Sem '[Trace] a -> a
+-- skipTrace (Val x) = x
+-- skipTrace (E u q) =
+--   case extract u of
+--     Trace _ -> skipTrace (qApp q ())
 
 splitList
    :: Int -> [a] -> Maybe ([a], a, [a])
@@ -88,7 +90,7 @@ unzipMaybe (Just (a, b)) = (Just a,  Just b)
 -- | `withState` localizes a modification of the state to a given effectful computation
 withState ::
   Member (State s) r =>
-  (s -> s) -> Eff r a -> Eff r a
+  (s -> s) -> Sem r a -> Sem r a
 withState f e = do
   s <- get
   put (f s)
@@ -98,7 +100,7 @@ withState f e = do
 
 -- | `f a b c` becomes `(f, [a, b, c])`
 extractApps ::
-  TermX α Variable -> Eff r (TermX α Variable, [(α, TermX α Variable)])
+  TermX α Variable -> Sem r (TermX α Variable, [(α, TermX α Variable)])
 extractApps t = over _2 reverse <$> go t
   where
     go (App a t1 t2) = do
@@ -107,23 +109,23 @@ extractApps t = over _2 reverse <$> go t
     go t1              = return (t1, [])
 
 extractSomeApps ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Show α
   ) =>
-  Int -> TermX α Variable -> Eff r (TermX α Variable, [(α, TermX α Variable)])
+  Int -> TermX α Variable -> Sem r (TermX α Variable, [(α, TermX α Variable)])
 extractSomeApps 0 t = return (t, [])
 extractSomeApps n (App a t1 t2) = do
   (f, args) <- extractSomeApps (n - 1) t1
   return (f, args ++ [(a, t2)]) -- TODO: make this not quadratic, I'm being lazy
 extractSomeApps _ t =
   let e :: String = printf "extractLams: not a Lam: %s" (show t) in
-  throwError e
+  throw e
 
 extractSomeLams ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Show α
   )=>
-  Int -> TermX α Variable -> Eff r ([(α, Binder Variable)], TermX α Variable)
+  Int -> TermX α Variable -> Sem r ([(α, Binder Variable)], TermX α Variable)
 extractSomeLams 0 t = return ([], t)
 extractSomeLams n (Lam a bt) = do
   let (b, t) = unscopeTerm bt
@@ -131,10 +133,10 @@ extractSomeLams n (Lam a bt) = do
   return ((a, b) : l, rest)
 extractSomeLams _ t =
   let e :: String = printf "extractLams: not a Lam: %s" (show t) in
-  throwError e
+  throw e
 
 extractLams ::
-  TermX α Variable -> Eff r ([(α, Binder Variable)], TermX α Variable)
+  TermX α Variable -> Sem r ([(α, Binder Variable)], TermX α Variable)
 extractLams = \case
   Lam a bt -> do
     let (b, t) = unscopeTerm bt
@@ -143,10 +145,9 @@ extractLams = \case
   t -> return ([], t)
 
 extractSomePis ::
-  ( Member (Exc String) r
-  , Show α
-  ) =>
-  Int -> TermX α Variable -> Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
+  Member (Error String) r =>
+  Show α =>
+  Int -> TermX α Variable -> Sem r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
 extractSomePis 0 t = return ([], t)
 extractSomePis n (Pi a τ1 bτ2) = do
   let (b, τ2) = unscopeTerm bτ2
@@ -154,11 +155,11 @@ extractSomePis n (Pi a τ1 bτ2) = do
   return ((a, b, τ1) : l, rest)
 extractSomePis _ t =
   let e :: String = printf "extractPis: not a Pi: %s" (show t) in
-  throwError e
+  throw e
 
 extractPis ::
   TermX α Variable ->
-  Eff r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
+  Sem r ([(α, Binder Variable, TermX α Variable)], TermX α Variable)
 extractPis = \case
   Pi a τ1 bτ2 -> do
     let (b, τ2) = unscopeTerm bτ2
@@ -167,18 +168,17 @@ extractPis = \case
   t -> return ([], t)
 
 extractPi ::
-  ( Member (Exc String) r
-  , Show α
-  ) =>
+  Member (Error String) r =>
+  Show α =>
   TermX α Variable ->
-  Eff r (α, TermX α Variable, Binder Variable, TermX α Variable)
+  Sem r (α, TermX α Variable, Binder Variable, TermX α Variable)
 extractPi = \case
   Pi a τ1 bτ2 -> do
     let (b, τ2) = unscopeTerm bτ2
     return (a, τ1, b, τ2)
   t ->
     let e :: String = printf "extractPi: not a Pi: %s" (show t) in
-    throwError e
+    throw e
 
 mkApps :: TermX α Variable -> [(α, TermX α Variable)] -> TermX α Variable
 mkApps f []           = f

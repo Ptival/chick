@@ -14,22 +14,22 @@ module Diff.Eliminator
   , δmkEliminatorType'
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Default
+import           Data.Default         ( Default )
+import           Polysemy             ( Member, Sem, run )
+import           Polysemy.Error       ( Error, runError )
+import           Polysemy.Trace       ( Trace, ignoreTrace )
 
-import qualified Diff.Atom as DA
+import qualified Diff.Atom            as DA
 import           Diff.ConcatMap
-import qualified Diff.Constructor as DC
-import qualified Diff.Inductive as DI
-import qualified Diff.List as DL
+import qualified Diff.Constructor     as DC
+import qualified Diff.Inductive       as DI
+import qualified Diff.List            as DL
 import           Diff.ListFoldRight
 import           Diff.ListFoldUtils
 import           Diff.Motive
-import qualified Diff.Pair as D2
-import qualified Diff.Term as DT
-import qualified Diff.Triple as D3
+import qualified Diff.Pair            as D2
+import qualified Diff.Term            as DT
+import qualified Diff.Triple          as D3
 import           Inductive.Eliminator
 import           Inductive.Inductive
 import           Inductive.Utils
@@ -41,18 +41,17 @@ import           Utils
 -- being `concatMap`-ped also changes.
 
 δListFoldConcatMapAddRecursiveMotive ::
-  ( Eq α
-  , Member (Exc String) r
-  , Member Trace r
+  Eq α =>
+  Member (Error String) r =>
+  Member Trace          r =>
   -- , PrettyPrintable α
-  , Show α
-  ) =>
+  Show α =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
   TermX α Variable -> DT.Diff α ->
   -- oh gee Rick...
-  Eff r (
+  Sem r (
     ΔListFold (α, Binder Variable, TypeX α Variable)
     (D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α))
     (Maybe (DL.Diff (α, Binder Variable, TypeX α Variable)
@@ -102,10 +101,9 @@ import           Utils
     { onInsert, onKeep, onModify, onPermute, onRemove, onReplace, onSame }
 
 δconcatMapAddRecursiveMotive ::
-  ( Eq α
+  Eq α =>
   --, PrettyPrintable α
-  , Show α
-  ) =>
+  Show α =>
   Variable -> DA.Diff Variable ->
   Φips α Variable -> DI.Δips α ->
   Φiis α Variable -> DI.Δiis α ->
@@ -124,7 +122,7 @@ import           Utils
   n δn ips δips iis δiis _cn _δcn cps δcps _cis _δcis motive δmotive δ = do
   let eff = δListFoldConcatMapAddRecursiveMotive
             n δn ips δips iis δiis motive δmotive
-  case skipTrace $ runError eff of
+  case run . ignoreTrace $ runError eff of
     Left (_ :: String) -> Nothing
     Right δListFold -> δListFoldRight δListFold cps δcps (Just δ)
 

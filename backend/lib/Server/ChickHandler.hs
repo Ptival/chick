@@ -8,33 +8,34 @@
 
 module Server.ChickHandler where
 
-import           Control.Lens
-import           Control.Monad.Except
-import           Control.Monad.Freer.Trace
-import           Control.Monad.Loops (whileM)
-import           Control.Monad.Representable.Reader (ask)
-import           Data.Aeson
+import           Control.Lens                              ( over, view )
+import           Control.Monad.Except                      ( catchError, liftIO )
+import           Control.Monad.Loops                       ( whileM )
+import           Control.Monad.Representable.Reader        ( ask )
+import           Data.Aeson                                ( FromJSON, decode )
+import           Polysemy                                  ( runM )
+import           Polysemy.Trace                            ( traceToIO )
 -- import qualified Data.ByteString.UTF8 as BSU
 -- import qualified Data.ByteString.Lazy as BSL
-import           Data.IORef
-import qualified Data.IntMap as IM
-import qualified Data.Text as T
+import           Data.IORef                                ( atomicModifyIORef', readIORef )
+import qualified Data.IntMap                               as IM
+import qualified Data.Text                                 as T
 import           GHC.Generics
-import           Prelude hiding (init)
-import           Snap.Core
-import           Snap.Extras.JSON
-import           Snap.Snaplet
-import           Snap.Snaplet.Session hiding (touchSession)
-import           Snap.Snaplet.Session.SessionManager ()
-import           System.Directory (doesFileExist)
-import           System.IO
-import           System.Process
-import           System.Random
-import           Text.Megaparsec (parseMaybe)
-import           Text.Printf
+import           Prelude                                   hiding ( init )
+import qualified Snap.Core                                 as Snap
+import           Snap.Extras.JSON                          ( writeJSON )
+import           Snap.Snaplet                              ( Handler, with )
+import           Snap.Snaplet.Session                      hiding ( touchSession )
+import           Snap.Snaplet.Session.SessionManager       (  )
+import           System.Directory                          ( doesFileExist )
+import qualified System.IO                                 as IO
+import           System.Process                            ( ProcessHandle, runInteractiveCommand )
+import           System.Random                             ( randomIO )
+import           Text.Megaparsec                           ( parseMaybe )
+import           Text.Printf                               ( printf )
 
-import qualified Diff.Guess.Script as ΔGS
-import qualified Language (Language(Chick))
+import qualified Diff.Guess.Script                         as ΔGS
+import qualified Language                                  ( Language(Chick) )
 import           Parsing.Script
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.Benchmark
@@ -53,11 +54,11 @@ instance FromJSON GuessInput where
 
 chickGuessHandler :: ChickHandler ()
 chickGuessHandler = do
-  r <- getRequest
-  case rqContentLength r of
+  r <- Snap.getRequest
+  case Snap.rqContentLength r of
     Nothing -> return ()
     Just bodyLength -> do
-      body <- readRequestBody bodyLength
+      body <- Snap.readRequestBody bodyLength
       res <- case decode body of
         Nothing -> return $ Just "decode body failed"
         Just (GuessInput { before, after }) -> do
@@ -68,9 +69,9 @@ chickGuessHandler = do
                 putStrLn $ prettyStrU @'Language.Chick bef
                 putStrLn $ "AFTER:"
                 putStrLn $ prettyStrU @'Language.Chick aft
-              δ <- liftIO $ runTrace $ ΔGS.guess bef aft
+              δ <- liftIO $ runM $ traceToIO $ ΔGS.guess bef aft
               liftIO $ putStrLn $ printf "GUESSED:\n%s" (show δ)
-              liftIO (runTrace (repairScript bef δ)) >>= \case
+              liftIO (runM . traceToIO $ repairScript bef δ) >>= \case
                 Left e -> return $ Just e
                 Right patched ->
                   return $ Just $ prettyStrU @'Language.Chick patched
@@ -85,12 +86,12 @@ chickGuessHandler = do
               return $ Just $ "Parsing before and after failed"
       writeJSON res
 
-runCommandWithoutBuffering :: String -> IO (Handle, Handle, Handle, ProcessHandle)
+runCommandWithoutBuffering :: String -> IO (IO.Handle, IO.Handle, IO.Handle, ProcessHandle)
 runCommandWithoutBuffering cmd = do
   (hi, ho, he, ph) <- runInteractiveCommand cmd
-  hSetBuffering hi NoBuffering
-  hSetBuffering ho NoBuffering
-  hSetBuffering he NoBuffering
+  IO.hSetBuffering hi IO.NoBuffering
+  IO.hSetBuffering ho IO.NoBuffering
+  IO.hSetBuffering he IO.NoBuffering
   return (hi, ho, he, ph)
 
 getGlobalState :: ChickHandler GlobalState
@@ -160,27 +161,27 @@ getSessionKey = with lSession $ do
     keyField :: T.Text
     keyField = "key"
 
-hWrite :: Handle -> String -> IO ()
+hWrite :: IO.Handle -> String -> IO ()
 hWrite hi input = do
   putStrLn $ input
   catchError
-    (hPutStrLn hi input)
+    (IO.hPutStrLn hi input)
     (\e -> do
       putStrLn $ "CATCH: Write failed with exception: " ++ show e
     )
   return ()
 
-hRead :: Handle -> IO [String]
+hRead :: IO.Handle -> IO [String]
 hRead ho = do
   -- flush stderr if anything is there... (should report to user?)
   -- putStrLn "Trying to flush he"
   -- whileM_ (hReady he) $ hGetLine he >>= putStrLn
 
   -- putStrLn "Trying to read ho"
-  ls <- whileM (hReady ho) $ do
+  ls <- whileM (IO.hReady ho) $ do
     -- putStrLn "Trying to read a line:"
     l <- catchError
-      (hGetLine ho)
+      (IO.hGetLine ho)
       ((\e -> do
         putStrLn $ "CATCH: Read failed with exception: " ++ show e
         return ""

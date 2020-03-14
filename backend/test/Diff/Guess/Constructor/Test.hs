@@ -1,6 +1,7 @@
 module Diff.Guess.Constructor.Test where
 
-import           Control.Monad.Freer.Trace
+import           Polysemy
+import           Polysemy.Trace
 import           Text.Megaparsec
 import           Text.Printf
 
@@ -30,7 +31,7 @@ guessNil :: IO (ΔC.Diff Raw.Raw)
 guessNil =
   let l0 = inductiveConstructors indList in
   let l1 = inductiveConstructors indList1 in
-  runTrace $ ΔGC.guess (l0 !! 0) (l1 !! 0)
+  runM . traceToIO $ ΔGC.guess (l0 !! 0) (l1 !! 0)
 
 guessCons :: IO (ΔC.Diff Raw.Raw)
 guessCons =
@@ -38,7 +39,7 @@ guessCons =
   let l1 = inductiveConstructors indList1 in
   do
     putStrLn $ show $ l0 == l1
-    runTrace $ ΔGC.guess (l0 !! 1) (l1 !! 1)
+    runM . traceToIO $ ΔGC.guess (l0 !! 1) (l1 !! 1)
 
 -- testBench :: RepairTermBenchmark -> Assertion
 -- testBench b =

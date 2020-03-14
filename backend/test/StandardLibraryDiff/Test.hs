@@ -5,25 +5,25 @@
 
 module StandardLibraryDiff.Test where
 
-import           Control.Monad.Freer.Exception
+import           Polysemy
+import           Polysemy.Error
+import           Polysemy.Trace
 
-import qualified Diff.Inductive as DI
+import qualified Diff.Inductive                 as DI
 import           Inductive.Inductive
 import           Language
 import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Term
-import           Utils
 
 test ::
-  ( PrettyPrintable 'Chick α
-  , Show α
-  ) =>
+  PrettyPrintable 'Chick α =>
+  Show α =>
   Inductive α Variable -> DI.Diff α -> Inductive α Variable -> IO Bool
 test indFrom δind indTo = do
-  case skipTrace . runError $ DI.patch indFrom δind of
-    Left (e :: String) -> do
+  case run . ignoreTrace . runError $ DI.patch indFrom δind of
+    Left e -> do
       putStrLn e
       return False
     Right indTo' ->

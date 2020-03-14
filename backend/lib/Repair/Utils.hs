@@ -7,22 +7,22 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Repair.Utils
-  ( RepairEff
-  , RepairTermType
-  , RepairTermType''
-  , lookupType
-  , findDeclarationDiff
-  , findGlobalDeclarationDiff
-  , unpackDeclarationDiff
+module Repair.Utils (
+  Repair,
+  RepairTermType,
+  RepairTermType'',
+  lookupType,
+  findDeclarationDiff,
+  findGlobalDeclarationDiff,
+  unpackDeclarationDiff,
   ) where
 
-import           Control.Applicative
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Control.Applicative            ( (<|>) )
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error, catch, throw )
+import           Polysemy.State                 ( State )
+import           Polysemy.Trace                 ( Trace )
+import           Text.Printf                    ( printf )
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.Binder as ΔB
@@ -32,41 +32,40 @@ import qualified Diff.LocalContext as ΔLC
 import qualified Diff.LocalDeclaration as ΔLD
 import qualified Diff.Term as ΔT
 -- import qualified Diff.Term as ΔT
-import           Diff.Utils
-import           Language (Language(Chick))
+import           Language                       (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           Repair.State
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 import           Term.Term
-import qualified Typing.GlobalEnvironment as GE
-import qualified Typing.LocalContext as LC
+import qualified Typing.GlobalEnvironment       as GE
+import qualified Typing.LocalContext            as LC
 
-type RepairEff r =
-  ( Member (Exc String) r
+type Repair r =
+  ( Member (Error String) r
   , Member Trace r
   , Member (State RepairState) r
   )
 
 type RepairTermType r =
-  (RepairEff r
-  ) =>
+  Repair r =>
   Raw.Term Variable ->
   Raw.Type Variable ->
   ΔT.Diff Raw.Raw ->
-  Eff r (ΔT.Diff Raw.Raw)
+  Sem r (ΔT.Diff Raw.Raw)
 
 type RepairTermType'' r =
-  (RepairEff r
-  ) =>
+  Repair r =>
   Raw.Term Variable ->
-  Eff r (ΔT.Diff Raw.Raw)
+  Sem r (ΔT.Diff Raw.Raw)
 
 lookupType ::
-  ( Member (Exc String) r
-  , Member (State RepairState) r
-  ) => Variable -> Eff r (Raw.Type Variable)
+  Member (Error String)      r =>
+  Member (State RepairState) r =>
+  Variable -> Sem r (Raw.Type Variable)
 lookupType target = do
-  let exc (reason :: String) = throwExc $ printf "Repair.Utils/lookupType: %s" reason
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc reason = throw (printf "Repair.Utils/lookupType: %s" reason :: String)
   (γ, _) <- getContexts
   (e, _) <- getEnvironments
   let res = LC.lookupType target γ <|> GE.lookupRawType target e
@@ -75,31 +74,32 @@ lookupType target = do
     Just τ  -> return τ
 
 findGlobalDeclarationDiff ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   , Member (State RepairState) r
   ) =>
-  Variable -> Eff r (ΔGD.Diff Raw.Raw)
+  Variable -> Sem r (ΔGD.Diff Raw.Raw)
 findGlobalDeclarationDiff v = do
   (e, δe) <- getEnvironments
   ΔGE.findGlobalDeclarationDiff v e δe
 
 findDeclarationDiff ::
-  ( Member (Exc String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
-  Variable -> Eff r (Either (ΔLD.Diff Raw.Raw) (ΔGD.Diff Raw.Raw))
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
+  Variable -> Sem r (Either (ΔLD.Diff Raw.Raw) (ΔGD.Diff Raw.Raw))
 findDeclarationDiff v = do
-  let exc (reason :: String) = throwExc $ printf "Repair.Utils/findDeclarationDiff: %s" reason
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc reason = throw (printf "Repair.Utils/findDeclarationDiff: %s" reason :: String)
   (γ, δγ) <- getContexts
   (e, δe) <- getEnvironments
   result <-
     (Left <$> ΔLC.findLocalDeclarationDiff  v γ δγ)
-    `catchError`
+    `catch`
     (\ (localError :: String) ->
         (Right <$> ΔGE.findGlobalDeclarationDiff v e δe)
-        `catchError`
+        `catch`
         (\ (globalError :: String) -> exc $ printf
           "Could not find %s in either local context or global environment:\n  > %s\n  > %s"
           (prettyStr @'Chick v) localError globalError

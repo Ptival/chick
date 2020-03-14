@@ -19,16 +19,16 @@ module Diff.Constructor
   , patch
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Text.Prettyprint.Doc
+import qualified Data.Text.Prettyprint.Doc      as Doc
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error )
+import           Polysemy.Trace                 ( Trace )
 
-import qualified Diff.Atom as DA
-import qualified Diff.List as DL
-import qualified Diff.Pair as D2
-import qualified Diff.Term as DT
-import qualified Diff.Triple as D3
+import qualified Diff.Atom                      as DA
+import qualified Diff.List                      as DL
+import qualified Diff.Pair                      as D2
+import qualified Diff.Term                      as DT
+import qualified Diff.Triple                    as D3
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
@@ -39,41 +39,39 @@ type Δcp α = D3.Diff (DA.Diff α) (DA.Diff (Binder Variable)) (DT.Diff α)
 type Δcps α = DL.Diff (Φcp α Variable) (Δcp α)
 
 cpPatch ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   , Show α
   ) =>
-  Φcp α Variable -> Δcp α -> Eff r (Φcp α Variable)
+  Φcp α Variable -> Δcp α -> Sem r (Φcp α Variable)
 cpPatch = D3.patch DA.patch DA.patch DT.patch
 
 cpsPatch ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   -- , PrettyPrintable α -- huh
   , Show α
   ) =>
-  Φcps α Variable -> Δcps α -> Eff r (Φcps α Variable)
+  Φcps α Variable -> Δcps α -> Sem r (Φcps α Variable)
 cpsPatch = DL.patch cpPatch
 
 type Δci α = D2.Diff (DA.Diff α) (DT.Diff α)
 type Δcis α = DL.Diff (Φci α Variable) (Δci α)
 
 ciPatch ::
-  ( Member (Exc String) r
-  , Member Trace r
+  Member (Error String) r =>
+  Member Trace          r =>
   -- , PrettyPrintable α -- huh
-  , Show α
-  ) =>
-  Φci α Variable -> Δci α -> Eff r (Φci α Variable)
+  Show α =>
+  Φci α Variable -> Δci α -> Sem r (Φci α Variable)
 ciPatch = D2.patch DA.patch DT.patch
 
 cisPatch ::
-  ( Member (Exc String) r
-  , Member Trace r
+  Member (Error String) r =>
+  Member Trace          r =>
   -- , PrettyPrintable α -- huh
-  , Show α
-  ) =>
-  Φcis α Variable -> Δcis α -> Eff r (Φcis α Variable)
+  Show α =>
+  Φcis α Variable -> Δcis α -> Sem r (Φcis α Variable)
 cisPatch = DL.patch ciPatch
 
 data Diff α
@@ -96,19 +94,18 @@ instance
   ) => PrettyPrintable l (Diff α) where
   prettyDoc Same              = "Same"
   prettyDoc (Modify δ1 δ2 δ3) =
-    fillSep [ "Modify", prettyDoc @l δ1, prettyDoc @l δ2, prettyDoc @l δ3 ]
+    Doc.fillSep [ "Modify", prettyDoc @l δ1, prettyDoc @l δ2, prettyDoc @l δ3 ]
 
 -- | Note: `patch` does not replace the reference to `Inductive` in the constructor.
 -- | The caller must finish tying the knot!
 patch ::
-  ( Member (Exc String) r
-  , Member Trace r
+  Member (Error String) r =>
+  Member Trace r =>
   -- , PrettyPrintable α
-  , Show α
-  ) =>
+  Show α =>
   Constructor α Variable ->
   Diff α ->
-  Eff r (Constructor α Variable)
+  Sem r (Constructor α Variable)
 patch c@(Constructor ind cn cps cis) d = case d of
   Same              -> return c
   Modify { δcn, δcps, δcis } -> do

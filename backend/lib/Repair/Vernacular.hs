@@ -10,43 +10,44 @@ module Repair.Vernacular
   ) where
 
 -- import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Polysemy                                  ( Member, Sem )
+import           Polysemy.Error                            ( Error, throw )
+import           Polysemy.State                            ( State )
+import           Polysemy.Trace                            ( Trace, trace )
+import           Text.Printf                               ( printf )
 
-import qualified Definition as D
+import qualified Definition                                as D
 import qualified Diff.Atom as ΔA
 import qualified Diff.Inductive as ΔI
 import qualified Diff.Term as ΔT
-import           Diff.Utils
 import qualified Diff.Vernacular as ΔV
-import           Language (Language(Chick))
-import           PrettyPrinting.Chick ()
+import           Language                                  ( Language(Chick) )
+import           PrettyPrinting.Chick                      ( )
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
-import qualified Repair.Inductive as RI
+import qualified Repair.Inductive                          as RI
 import           Repair.State
-import qualified Repair.Term as RT
-import qualified Term.Raw as Raw
+import qualified Repair.Term                               as RT
+import qualified Term.Raw                                  as Raw
 import           Term.Term
-import qualified Term.Universe as U
+import qualified Term.Universe                             as U
 import           Vernacular
 
 -- | `repair v δv` takes a vernacular command `v` and a command diff `δv`, and it computes a repaired
 -- | command diff `δv'`, that propagates changes down the line
 repair ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   , Member (State RepairState) r
   ) =>
-  Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Eff r (ΔV.Diff Raw.Raw)
+  Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Sem r (ΔV.Diff Raw.Raw)
 repair v δv =
   trace (printf "Repair.Vernacular/repair:\nv: %s\nδv: %s\n"
          (prettyStrU @'Chick v) (prettyStr @'Chick δv)) >>
-  let exc (reason :: String) =
-        throwExc $ printf "Repair.Vernacular/repair: %s" reason in
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc reason = throw (printf "Repair.Vernacular/repair: %s" reason :: String)
+  in
   case (v, δv) of
 
     (Definition d, ΔV.ModifyDefinition δb δn δτ δt) -> do

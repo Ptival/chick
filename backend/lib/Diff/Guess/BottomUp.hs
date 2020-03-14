@@ -10,27 +10,27 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module Diff.Guess.BottomUp
-  ( bottomUpStateM
-  , runBottomUp
+module Diff.Guess.BottomUp (
+  bottomUpStateM,
+  runBottomUp,
   ) where
 
-import Control.Lens (makeLenses, over, view)
-import Control.Monad
-import Control.Monad.Extra (whenM)
-import Control.Monad.Loops (anyM)
-import Control.Monad.Freer
-import Control.Monad.Freer.Reader
-import Control.Monad.Freer.State
-import Control.Monad.Freer.Trace
-import Data.List (maximumBy, union)
-import Data.Ord (comparing)
-import Prelude hiding (product)
-import Text.Printf
-import Util ((<&&>))
+import Control.Lens                   ( makeLenses, over, view )
+import Control.Monad                  ( filterM, forM_, when )
+import Control.Monad.Extra            ( whenM)
+import Control.Monad.Loops            ( anyM)
+import Data.List                      ( maximumBy, union )
+import Data.Ord                       ( comparing )
+import Polysemy                       ( Member, Sem )
+import Polysemy.Reader                ( Reader, ask, runReader )
+import Polysemy.State                 ( State, get, modify, runState )
+import Polysemy.Trace                 ( Trace, trace )
+import Prelude                        hiding (product)
+import Text.Printf                    ( printf )
+import Util                           ( (<&&>) )
 
 import Diff.Guess.Mapping
-import Language (Language(Chick))
+import Language                       ( Language(Chick) )
 import Diff.Guess.Node
 import PrettyPrinting.PrettyPrintable
 
@@ -49,45 +49,45 @@ data BottomUpState = BottomUpState
 makeLenses ''BottomUpState
 
 getM :: ∀ r.
-  ( Member (State BottomUpState) r
-  ) => Eff r Mapping
+  Member (State BottomUpState) r =>
+  Sem r Mapping
 getM = view bottomUpStateM <$> get
 
 isMatched1 ::
   ( Member (State BottomUpState) r
   ) =>
-  Node -> Eff r Bool
+  Node -> Sem r Bool
 isMatched1 n = any ((==) n . fst) <$> getM
 
 isMatched2 ::
   ( Member (State BottomUpState) r
   ) =>
-  Node -> Eff r Bool
+  Node -> Sem r Bool
 isMatched2 n = any ((==) n . snd) <$> getM
 
 isUnmatched1 ::
   ( Member (State BottomUpState) r
   ) =>
-  Node -> Eff r Bool
+  Node -> Sem r Bool
 isUnmatched1 n = not <$> isMatched1 n
 
 isUnmatched2 ::
   ( Member (State BottomUpState) r
   ) =>
-  Node -> Eff r Bool
+  Node -> Sem r Bool
 isUnmatched2 n = not <$> isMatched2 n
 
 hasMatchedChildren1 ::
   ( Member (State BottomUpState) r
   ) =>
-  Node -> Eff r Bool
+  Node -> Sem r Bool
 hasMatchedChildren1 n = anyM isMatched1 (children n)
 
 candidate :: ∀ r.
   ( Member (Reader BottomUpReader) r
   , Member (State  BottomUpState) r
   , Member Trace r
-  ) => Node -> Eff r (Maybe Node)
+  ) => Node -> Sem r (Maybe Node)
 candidate t1 = do
   root2 <- view bottomUpReaderRoot2 <$> ask
   candidates root2 t1 >>= \case
@@ -98,7 +98,7 @@ candidate t1 = do
       m <- getM
       return $ Just (maximumBy (comparing (dice m t1)) cs)
   where
-    candidates :: Node -> Node -> Eff r [Node]
+    candidates :: Node -> Node -> Sem r [Node]
     candidates root2 t1 = filterM (isCandidateFor t1) (nodeAndDescendants root2)
     isCandidateFor t1 t2 = do
       unmatched <- isUnmatched2 t2
@@ -108,11 +108,10 @@ candidate t1 = do
     areMatchingDescendants (t1, t2) = elem (t1, t2) <$> getM
 
 runBottomUp :: ∀ r.
-  ( Member Trace r
-  ) =>
-  Node -> Node -> Mapping -> Double -> Eff r BottomUpState
+  Member Trace r =>
+  Node -> Node -> Mapping -> Double -> Sem r BottomUpState
 runBottomUp n1 n2 m minDice =
-  snd <$> runState (runReader bottomUp r) s0
+  fst <$> runState s0 (runReader r bottomUp)
   where
     r = BottomUpReader
       { _bottomUpReaderMinDice = minDice
@@ -124,10 +123,10 @@ runBottomUp n1 n2 m minDice =
       }
 
 bottomUp :: ∀ r.
-  ( Member (Reader BottomUpReader) r
-  , Member (State  BottomUpState) r
-  , Member Trace r
-  ) => Eff r ()
+  Member (Reader BottomUpReader) r =>
+  Member (State  BottomUpState)  r =>
+  Member Trace                   r =>
+  Sem r ()
 bottomUp = do
 
   -- trace "STARTING BOTTOM-UP PHASE"

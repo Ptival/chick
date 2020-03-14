@@ -16,18 +16,18 @@ module Repair.Term.Argument
   ( repairArgs
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Polysemy                       ( Sem )
+import           Polysemy.Trace                 ( trace )
+import           Text.Printf                    ( printf )
 
 import qualified Diff.Term as ΔT
 import           Diff.Utils
-import           Language (Language(Chick))
-import           PrettyPrinting.Chick ()
+import           Language                       ( Language(Chick) )
+import           PrettyPrinting.Chick           ( )
 import           PrettyPrinting.PrettyPrintable
 import           Repair.Utils
 import           Term.Term
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 
 -- | For example:
 -- | τ  = A → C → D                             t  = (f a) c
@@ -43,14 +43,13 @@ import qualified Term.Raw as Raw
 -- | `δτ`   is the diff for `τ` to become the new telescope
 -- | `δfun` is the diff to apply to the actual function, which is the base of this "fold"
 repairArgs ::
-  ( RepairEff r
-  ) =>
+  Repair r =>
   RepairTermType r ->
   [Raw.Term Variable] ->
   Raw.Type Variable ->
   ΔT.Diff Raw.Raw ->
   ΔT.Diff Raw.Raw ->
-  Eff r (ΔT.Diff Raw.Raw)
+  Sem r (ΔT.Diff Raw.Raw)
 repairArgs repair args τ0 δτ0 δfun =
   trace "Repair.Term/repairArgs with:" >>
   trace (printf "> args: %s" (prettyStr @'Chick args)) >>

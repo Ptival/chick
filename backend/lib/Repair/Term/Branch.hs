@@ -16,16 +16,15 @@ module Repair.Term.Branch
   ( repairBranches
   ) where
 
-import           Control.Arrow
-import           Control.Lens hiding (preview)
---import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
-import           Data.Maybe
-import           Data.List
-import           Text.Printf
+import           Control.Arrow                  ( (>>>) )
+import           Control.Lens                   hiding ( preview )
+import           Data.List                      ( elemIndex )
+import           Data.Maybe                     ( fromJust )
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error )
+import           Polysemy.State                 ( State )
+import           Polysemy.Trace                 ( Trace, trace )
+import           Text.Printf                    ( printf )
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.Constructor as ΔC
@@ -41,25 +40,24 @@ import qualified Diff.Pair as Δ2
 import qualified Diff.Triple as Δ3
 import           Diff.Utils
 import           Inductive.Inductive
-import           Language (Language(Chick))
+import           Language                       (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 --import           PrettyPrinting.PrettyPrintableUnannotated
-import qualified Repair.State as RS
+import qualified Repair.State                   as RS
 import           Repair.Utils
 import           Term.Binder
 import           Term.Term
 -- import qualified Term.TypeChecked as C
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 --import qualified Term.Universe as U
 --import qualified Typing.GlobalEnvironment as GE
 
 repairBranch ::
-  ( RepairEff r
-  ) =>
+  Repair r =>
   RepairTermType'' r ->
   Branch Raw.Raw Variable -> Constructor Raw.Raw Variable ->
   ΔI.Diff Raw.Raw -> ΔC.Diff Raw.Raw ->
-  Eff r (ΔT.BranchDiff Raw.Raw)
+  Sem r (ΔT.BranchDiff Raw.Raw)
 repairBranch repairTerm b c@(Constructor _ _ cps _) δi δc = do
 
   trace ">>> repairBranch"
@@ -128,12 +126,11 @@ match construct.  cpArgs is the list of binders passed to the branch, i.e.:
 For each of these, we want to bring in scope the variable, and its type.
 -}
 withStateFromConstructorArgs :: ∀ r a.
-  ( RepairEff r
-  ) =>
+  Repair r =>
   [Binder Variable] ->
   ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable)) ->
   Φcps Raw.Raw Variable ->
-  ΔC.Δcps Raw.Raw -> Eff r a -> Eff r a
+  ΔC.Δcps Raw.Raw -> Sem r a -> Sem r a
 withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
   go cpArgs (map (view cpType) cps) δcpArgs δcps
   where
@@ -141,7 +138,7 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
     go ::
       [Binder Variable] -> [Raw.Term Variable] ->
       ΔL.Diff (Binder Variable) (ΔA.Diff (Binder Variable)) ->
-      ΔC.Δcps Raw.Raw -> Eff r a
+      ΔC.Δcps Raw.Raw -> Sem r a
 
     go [] [] _ _ = e
 
@@ -190,13 +187,12 @@ withStateFromConstructorArgs cpArgs δcpArgs cps δcps e =
       _ -> error $ printf "TODO: %s, %s" (preview @'Chick δargs) (preview @'Chick δcps)
 
 repairBranches :: ∀ r.
-  ( RepairEff r
-  ) =>
+  Repair r =>
   RepairTermType'' r ->
   [Branch Raw.Raw Variable] ->
   Inductive Raw.Raw Variable ->
   ΔI.Diff Raw.Raw ->
-  Eff r (ΔT.BranchesDiff Raw.Raw)
+  Sem r (ΔT.BranchesDiff Raw.Raw)
 repairBranches _repairTerm _bs _ind ΔI.Same =
   -- repairBranches repairTerm bs ind (ΔI.Modify _ _ _ _ δcs)
   -- FIXME: fix body of branches
@@ -218,10 +214,9 @@ repairBranches repairTerm bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
   where
 
     go ::
-      ( Member (Exc String) r
-      , Member Trace r
-      , Member (State RS.RepairState) r
-      ) =>
+      Member (Error String)         r =>
+      Member Trace                  r =>
+      Member (State RS.RepairState) r =>
       ( [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
       , [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
       ) ->
@@ -229,7 +224,7 @@ repairBranches repairTerm bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
       , [Constructor Raw.Raw Variable]
       , ΔL.Diff (Constructor Raw.Raw Variable) (ΔC.Diff Raw.Raw)
       ) ->
-      Eff r
+      Sem r
       ( [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
       , [ ΔT.BranchesDiff Raw.Raw -> ΔT.BranchesDiff Raw.Raw ]
       )

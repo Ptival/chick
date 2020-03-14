@@ -14,10 +14,10 @@ module Diff.Atom
   , patchMaybe
   ) where
 
-import Control.Monad.Freer
 import Data.Aeson
 import Data.Text.Prettyprint.Doc
 import GHC.Generics
+import Polysemy                       ( Sem, run )
 
 import PrettyPrinting.PrettyPrintable
 
@@ -32,10 +32,16 @@ instance PrettyPrintable l a => PrettyPrintable l (Diff a) where
 
 instance ToJSON a => ToJSON (Diff a) where
 
-patch :: a -> Diff a -> Eff r a
+patch ::
+  a ->
+  Diff a ->
+  Sem r a
 patch a d = case d of
   Same       -> return a
   Replace a' -> return a'
 
-patchMaybe :: a -> Diff a -> Maybe a
+patchMaybe ::
+  a ->
+  Diff a ->
+  Maybe a
 patchMaybe a d = Just . run $ patch a d

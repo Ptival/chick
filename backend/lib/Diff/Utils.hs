@@ -6,9 +6,9 @@ module Diff.Utils
  , throwExc
  ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
-import Text.Printf
+import Polysemy       ( Member, Sem )
+import Polysemy.Error ( Error, throw )
+import Text.Printf    ( printf )
 
 -- | Dumbest way to implement this
 permute :: [Int] -> [a] -> [a]
@@ -21,5 +21,7 @@ permute p@(h : t) l =
   else (l !! h) : permute t l
 
 -- | In the presence of overloaded strings, throwError freaks out
-throwExc :: Member (Exc String) r => String -> Eff r a
-throwExc = throwError
+throwExc ::
+  Member (Error String) r =>
+  String -> Sem r a
+throwExc = throw

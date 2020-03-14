@@ -15,8 +15,8 @@ module Diff.Guess.Inductive
   ) where
 
 import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Trace
+import           Polysemy
+import           Polysemy.Trace
 import           Data.Function.HT
 import           Prelude hiding (product)
 import           Text.Printf
@@ -36,9 +36,8 @@ import qualified Term.Raw as Raw
 --import           StandardLibrary
 
 guess ::
-  ( Member Trace r
-  ) =>
-  Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> Eff r (ΔI.Diff Raw.Raw)
+  Member Trace r =>
+  Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> Sem r (ΔI.Diff Raw.Raw)
 guess i1@(Inductive n1 ips1 iis1 u1 cs1) i2@(Inductive n2 ips2 iis2 u2 cs2) =
   if i1 == i2
   then return ΔI.Same

@@ -10,17 +10,17 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module Diff.Guess.Constructor
-  ( guess
-  , telescopeDiffToListDiff
-  , telescopeDiffToListDiffVariable
+module Diff.Guess.Constructor (
+  guess,
+  telescopeDiffToListDiff,
+  telescopeDiffToListDiffVariable,
   ) where
 
-import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Trace
-import           Prelude hiding (product)
-import           Text.Printf
+import           Control.Monad                  (  )
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Trace                 ( Trace, trace )
+import           Prelude                        hiding ( product )
+import           Text.Printf                    ( printf )
 
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Term as ΔGT
@@ -32,11 +32,11 @@ import qualified Diff.Pair as Δ2
 import qualified Diff.Term as ΔT
 import qualified Diff.Triple as Δ3
 import           Inductive.Inductive
-import           Language (Language(Chick))
+import           Language                       ( Language(Chick) )
 import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.Term ()
+import           PrettyPrinting.Term            ( )
 import           Term.Term
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 
 {- This is quite specific.  It takes a diff for a telescope, and turns it into a
 list of diffs for the parts of the telescope.  It should not concern itself with
@@ -152,7 +152,7 @@ guess ::
   ( Member Trace r
   ) =>
   Constructor Raw.Raw Variable -> Constructor Raw.Raw Variable ->
-  Eff r (ΔC.Diff Raw.Raw)
+  Sem r (ΔC.Diff Raw.Raw)
 guess c1@(Constructor _ n1 cps1 cis1) c2@(Constructor _ n2 cps2 cis2) =
   if c1 == c2
   then return ΔC.Same

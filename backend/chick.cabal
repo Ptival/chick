@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1edcb61f726525f94576621de43376ffb0103b91edbb17793fcdc566c40d25ec
+-- hash: 2b0e06ca7a827189cb9b18f6a99e2dbc2b8e695b323d01d8bac35f41ab98a016
 
 name:           chick
 version:        0.1.0
@@ -15,216 +15,246 @@ license-file:   LICENSE
 build-type:     Simple
 
 library
+  exposed-modules:
+      Diff.Atom
+      Diff.ConcatMap
+      Diff.Constructor
+      Diff.Eliminator
+      Diff.Guess.Constructor
+      Diff.Guess.Inductive
+      Diff.Guess.Node
+      Diff.Guess.Script
+      Diff.Guess.Term
+      Diff.Inductive
+      Diff.List
+      Diff.Motive
+      Diff.Script
+      Diff.Term
+      Examples.Diff.SoftwareFoundations
+      Examples.Term
+      Examples.Utils
+      Inductive.Eliminator
+      Inductive.Inductive
+      Inductive.Motive
+      Language
+      Notations
+      Parsing
+      Parsing.Inductive
+      Parsing.Unsafe
+      Precedence
+      PrettyPrinting.Chick
+      PrettyPrinting.PrettyPrintable
+      PrettyPrinting.Term
+      Repair.Benchmark
+      Script
+      Server.Server
+      StandardLibrary
+      StandardLibraryDiff
+      Term.Raw
+      Term.Term
+      Term.Universe
+      Term.Variable
+      Utils
   other-modules:
-    Bound.ScopeT
-    Definition
-    DefinitionObjectKind
-    DictMetaOut
-    Diff.Atom
-    Diff.Binder
-    Diff.ConcatMap
-    Diff.Constructor
-    Diff.Eliminator
-    Diff.Guess.Atom
-    Diff.Guess.BottomUp
-    Diff.Guess.Constructor
-    Diff.Guess.HIList
-    Diff.Guess.Inductive
-    Diff.Guess.Mapping
-    Diff.Guess.Node
-    Diff.Guess.Script
-    Diff.Guess.Term
-    Diff.Guess.TopDown
-    Diff.Guess.Vernacular
-    Diff.GlobalDeclaration
-    Diff.GlobalEnvironment
-    Diff.Inductive
-    Diff.List
-    Diff.ListFold
-    Diff.ListFoldLeft
-    Diff.ListFoldRight
-    Diff.ListFoldUtils
-    Diff.LocalContext
-    Diff.LocalDeclaration
-    Diff.Maybe
-    Diff.Motive
-    Diff.Pair
-    Diff.Script
-    Diff.Term
-    Diff.Triple
-    Diff.Utils
-    Diff.Variable
-    Diff.Vernacular
-    Examples.Diff.SoftwareFoundations
-    Examples.Inductive
-    Examples.Term
-    Examples.Utils
-    FromOCaml
-    Goal
-    Inductive.Eliminator
-    Inductive.Inductive
-    Inductive.Motive
-    Inductive.Utils
-    Language
-    Notations
-    Parsing
-    Parsing.Types
-    Parsing.Chick.Utils
-    Parsing.Inductive
-    Parsing.Script
-    Parsing.Unsafe
-    Parsing.Utils
-    Parsing.Vernacular
-    Precedence
-    PrettyPrinting.Chick
-    PrettyPrinting.Chick.Binder
-    PrettyPrinting.Chick.Constructor
-    PrettyPrinting.Chick.Declaration
-    PrettyPrinting.Chick.Definition
-    PrettyPrinting.Chick.DefinitionObjectKind
-    PrettyPrinting.Chick.LocalContext
-    PrettyPrinting.Chick.LocalDeclaration
-    PrettyPrinting.Chick.GlobalEnvironment
-    PrettyPrinting.Chick.GlobalDeclaration
-    PrettyPrinting.Chick.Inductive
-    PrettyPrinting.Chick.List
-    PrettyPrinting.Chick.Pair
-    PrettyPrinting.Chick.Script
-    PrettyPrinting.Chick.Term
-    PrettyPrinting.Chick.Triple
-    PrettyPrinting.Chick.Unit
-    PrettyPrinting.Chick.Universe
-    PrettyPrinting.Chick.Variable
-    PrettyPrinting.Chick.Vernacular
-    PrettyPrinting.Term
-    PrettyPrinting.PrettyPrintable
-    PrettyPrinting.PrettyPrintableAnnotated
-    PrettyPrinting.PrettyPrintableUnannotated
-    PrettyPrinting.Universe
-    PrettyPrinting.Utils
-    Repair.Benchmark
-    Repair.Inductive
-    Repair.Script
-    Repair.State
-    Repair.Term
-    Repair.Term.Argument
-    Repair.Term.Branch
-    Repair.Utils
-    Repair.Vernacular
-    Script
-    Server.Chick
-    Server.ChickHandler
-    Server.Server
-    Server.Session
-    Snap.Extras.JSON
-    StandardLibrary
-    StandardLibraryDiff
-    Term.AlphaEquivalence
-    Term.AlphaRenaming
-    Term.Binder
-    Term.Diff
-    Term.Free
-    Term.Fresh
-    Term.Raw
-    Term.Term
-    Term.TypeChecked
-    Term.TypeErrored
-    Term.Universe
-    Term.Variable
-    ToOCaml
-    TypeCheckingFailure
-    Typing.GlobalDeclaration
-    Typing.GlobalEnvironment
-    Typing.LocalContext
-    Typing.LocalDeclaration
-    Typing.Utils
-    Utils
-    Vernacular
-    WellFormed
-    Work
+      Bound.ScopeT
+      Definition
+      DefinitionObjectKind
+      DictMetaOut
+      Diff.Binder
+      Diff.Guess.Atom
+      Diff.Guess.BottomUp
+      Diff.Guess.HIList
+      Diff.Guess.Mapping
+      Diff.Guess.TopDown
+      Diff.Guess.Vernacular
+      Diff.GlobalDeclaration
+      Diff.GlobalEnvironment
+      Diff.ListFold
+      Diff.ListFoldLeft
+      Diff.ListFoldRight
+      Diff.ListFoldUtils
+      Diff.LocalContext
+      Diff.LocalDeclaration
+      Diff.Maybe
+      Diff.Pair
+      Diff.Triple
+      Diff.Utils
+      Diff.Variable
+      Diff.Vernacular
+      Examples.Inductive
+      FromOCaml
+      Goal
+      Inductive.Utils
+      Parsing.Types
+      Parsing.Chick.Utils
+      Parsing.Script
+      Parsing.Utils
+      Parsing.Vernacular
+      PrettyPrinting.Chick.Binder
+      PrettyPrinting.Chick.Constructor
+      PrettyPrinting.Chick.Declaration
+      PrettyPrinting.Chick.Definition
+      PrettyPrinting.Chick.DefinitionObjectKind
+      PrettyPrinting.Chick.LocalContext
+      PrettyPrinting.Chick.LocalDeclaration
+      PrettyPrinting.Chick.GlobalEnvironment
+      PrettyPrinting.Chick.GlobalDeclaration
+      PrettyPrinting.Chick.Inductive
+      PrettyPrinting.Chick.List
+      PrettyPrinting.Chick.Pair
+      PrettyPrinting.Chick.Script
+      PrettyPrinting.Chick.Term
+      PrettyPrinting.Chick.Triple
+      PrettyPrinting.Chick.Unit
+      PrettyPrinting.Chick.Universe
+      PrettyPrinting.Chick.Variable
+      PrettyPrinting.Chick.Vernacular
+      PrettyPrinting.PrettyPrintableAnnotated
+      PrettyPrinting.PrettyPrintableUnannotated
+      PrettyPrinting.Universe
+      PrettyPrinting.Utils
+      Repair.Inductive
+      Repair.Script
+      Repair.State
+      Repair.Term
+      Repair.Term.Argument
+      Repair.Term.Branch
+      Repair.Utils
+      Repair.Vernacular
+      Server.Chick
+      Server.ChickHandler
+      Server.Session
+      Snap.Extras.JSON
+      Term.AlphaEquivalence
+      Term.AlphaRenaming
+      Term.Binder
+      Term.Diff
+      Term.Free
+      Term.Fresh
+      Term.TypeChecked
+      Term.TypeErrored
+      ToOCaml
+      TypeCheckingFailure
+      Typing.GlobalDeclaration
+      Typing.GlobalEnvironment
+      Typing.LocalContext
+      Typing.LocalDeclaration
+      Typing.Utils
+      Vernacular
+      WellFormed
+      Work
   hs-source-dirs:
-    lib
-  default-extensions: DeriveGeneric DuplicateRecordFields GADTs LambdaCase NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
-  ghc-options: -Wall -Werror
+      lib
+  default-extensions: DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
+  ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
   build-depends:
-    GenericPretty,
-    MissingH,
-    QuickCheck,
-    adjunctions,
-    aeson,
-    base,
-    bound,
-    bytestring,
-    comonad,
-    containers,
-    convertible,
-    data-default,
-    directory,
-    either,
-    extra,
-    free,
-    freer-effects,
-    gdiff,
-    ghc,
-    hslogger,
-    language-ocaml >=0.2.2,
-    lens,
-    megaparsec >=7.0,
-    monad-loops,
-    mtl,
-    network,
-    parser-combinators,
-    prettyprinter,
-    process,
-    random,
-    smallcheck,
-    snap,
-    snap-core,
-    snap-server,
-    string-qq,
-    tasty,
-    tasty-hunit,
-    tasty-quickcheck,
-    tasty-smallcheck,
-    text,
-    time,
-    unordered-containers,
-    utf8-string,
-    utility-ht
+      GenericPretty
+    , MissingH
+    , QuickCheck
+    , adjunctions
+    , aeson
+    , base
+    , bound
+    , bytestring
+    , comonad
+    , containers
+    , convertible
+    , data-default
+    , directory
+    , either
+    , extra
+    , free
+    , gdiff
+    , ghc
+    , hslogger
+    , language-ocaml >=0.2.2 && <0.3
+    , lens
+    , megaparsec >=8.0
+    , monad-loops
+    , mtl
+    , network
+    , parser-combinators
+    , polysemy
+    , polysemy-plugin
+    , prettyprinter
+    , process
+    , random
+    , smallcheck
+    , snap >=1.1.1.0 && <1.2
+    , snap-core
+    , snap-server
+    , string-qq
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , tasty-smallcheck
+    , text
+    , time
+    , unordered-containers
+    , utf8-string
+    , utility-ht
+  default-language: Haskell2010
+
+executable chick-server
+  main-is: Main.hs
+  other-modules:
+      Paths_chick
+  hs-source-dirs:
+      exec
+  default-extensions: DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
+  ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
+  build-depends:
+      QuickCheck
+    , base
+    , chick
+    , data-default
+    , lens
+    , megaparsec >=8.0
+    , polysemy
+    , polysemy-plugin
+    , smallcheck
+    , string-qq
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , tasty-smallcheck
   default-language: Haskell2010
 
 test-suite test
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
-    Diff.ConcatMap.Test
-    Diff.Eliminator.Test
-    Diff.Guess.Constructor.Test
-    Diff.Guess.Term.Test
-    Diff.Guess.Inductive.Test
-    Diff.Guess.Script.Test
-    Diff.Guess.Vernacular.Test
-    Diff.Motive.Test
-    Inductive.Eliminator.Test
-    Inductive.Inductive.Test
-    Parsing.Inductive.Test
-    StandardLibraryDiff.Test
-    Term.Term.Test
-    TestUtils
+      Diff.ConcatMap.Test
+      Diff.Eliminator.Test
+      Diff.Guess.Constructor.Test
+      Diff.Guess.Term.Test
+      Diff.Guess.Inductive.Test
+      Diff.Guess.Script.Test
+      Diff.Guess.Vernacular.Test
+      Diff.Motive.Test
+      Inductive.Eliminator.Test
+      Inductive.Inductive.Test
+      Parsing.Inductive.Test
+      StandardLibraryDiff.Test
+      Term.Term.Test
+      TestUtils
   hs-source-dirs:
-    test
-  default-extensions: DeriveGeneric DuplicateRecordFields GADTs LambdaCase NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
-  ghc-options: -Wall -Werror
+      test
+  default-extensions: DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables TypeApplications
+  ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
   build-depends:
-    QuickCheck,
-    base,
-    data-default,
-    freer-effects,
-    megaparsec >=7.0,
-    smallcheck,
-    string-qq,
-    tasty,
-    tasty-hunit,
-    tasty-quickcheck,
-    tasty-smallcheck
+      QuickCheck
+    , base
+    , chick
+    , data-default
+    , lens
+    , megaparsec >=8.0
+    , polysemy
+    , polysemy-plugin
+    , smallcheck
+    , string-qq
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , tasty-smallcheck
   default-language: Haskell2010

@@ -1,27 +1,19 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-
-module Repair.Script
-  ( repair
-  , runRepair'
+module Repair.Script (
+  repair,
+  runRepair',
   ) where
 
-import           Control.Arrow
-import           Control.Monad (liftM)
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Control.Arrow                             ( (>>>) )
+import           Control.Monad                             ( liftM )
+import           Polysemy                                  ( Member, Sem )
+import           Polysemy.Error                            ( Error, runError, throw )
+import           Polysemy.State                            ( State, runState )
+import           Polysemy.Trace                            ( Trace, trace )
+import           Text.Printf                               ( printf )
 
-import qualified Definition as D
+import qualified Definition                                as D
 -- import qualified DefinitionObjectKind as DOK
 import qualified Diff.Atom as ΔA
 import qualified Diff.Constructor as ΔC
@@ -34,19 +26,18 @@ import qualified Diff.List as ΔL
 import qualified Diff.Script as ΔS
 import qualified Diff.Term as ΔT
 -- import qualified Diff.Triple as Δ3
-import           Diff.Utils
 import qualified Diff.Vernacular as ΔV
 import           Inductive.Eliminator
-import qualified Inductive.Inductive as I
-import           Language (Language(Chick))
+import qualified Inductive.Inductive                       as I
+import           Language                                  (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Repair.State
 -- import qualified Repair.Term as RT
-import qualified Repair.Vernacular as RV
+import qualified Repair.Vernacular                         as RV
 import           Script
 import           Term.Binder
-import qualified Term.Raw as Raw
+import qualified Term.Raw                                  as Raw
 import           Term.Term
 -- import qualified Term.Universe as U
 import           Typing.GlobalDeclaration
@@ -63,15 +54,14 @@ vernacularDiffToGlobalEnvironmentDiff = \case
   _ -> error "TODO: vernacularDiffToGlobalEnvironmentDiff"
 
 withStateFromConstructors ::
-  ( Member (Exc String) r
-  , Member (State RepairState) r
-  , Member Trace r
-  ) =>
+  Member (Error String)      r =>
+  Member (State RepairState) r =>
+  Member Trace               r =>
   ΔT.Diff Raw.Raw ->
   I.Φips Raw.Raw Variable -> ΔI.Δips Raw.Raw ->
   [I.Constructor Raw.Raw Variable] ->
   ΔL.Diff (I.Constructor Raw.Raw Variable) (ΔC.Diff Raw.Raw) ->
-  Eff r a -> Eff r a
+  Sem r a -> Sem r a
 withStateFromConstructors prefix ips δips cs δcs e =
 
   trace (printf "Adding Constructors: (%s, %s)" (preview @'Chick cs) (preview @'Chick δcs)) >>
@@ -129,16 +119,17 @@ withStateFromConstructors prefix ips δips cs δcs e =
 (assumed repaired) diff `δv` and modifies the global environment to accound for
 the effect in the vernacular command before and after changes. -}
 withStateFromVernacular ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member (State RepairState) r
   , Member Trace r
-  ) => Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Eff r a -> Eff r a
+  ) => Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Sem r a -> Sem r a
 withStateFromVernacular v δv e = do
 
   trace $ printf "withStateFromVernacular (%s, %s)" (preview @'Chick v) (preview @'Chick δv)
 
-  let exc (reason :: String) =
-        throwExc $ printf "Repair.Script/withStateFromVernacular: %s" reason
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc reason = throw $ printf "Repair.Script/withStateFromVernacular: %s" reason
 
   case (v, δv) of
 
@@ -158,7 +149,7 @@ withStateFromVernacular v δv e = do
       let δτind = ΔI.δinductiveRawType (length ips) δips (length iis) δiis
       let prefix = ΔI.δinductiveRawConstructorPrefix δindName (length ips) δips
       δeliminatorType <- case δmkEliminatorType () ind δind of
-        Nothing -> throwError "δmkEliminatorType failed"
+        Nothing -> throw "δmkEliminatorType failed"
         Just e -> return e
       trace (printf "PREFIX: %s" (show prefix))
       withGlobalInd ind δind $ do
@@ -195,18 +186,19 @@ withStateFromVernacular v δv e = do
 -- | `repair s δs` takes a script `s` and a script diff `δs`, and it computes a repaired script diff
 -- | `δs'`, that propagates changes down the line
 repair ::
-  ( Member (Exc String) r
-  , Member Trace r
-  , Member (State RepairState) r
-  ) =>
-  Script Raw.Raw Variable -> ΔS.Diff Raw.Raw -> Eff r (ΔS.Diff Raw.Raw)
+  Member (Error String)      r =>
+  Member Trace               r =>
+  Member (State RepairState) r =>
+  Script Raw.Raw Variable -> ΔS.Diff Raw.Raw -> Sem r (ΔS.Diff Raw.Raw)
 repair script@(Script s) δs =
 
   trace (printf "Repair.Script/repair(s: %s, δs: %s)" (prettyStrU @'Chick script) (prettyStr @'Chick δs)) >>
   --sanityCheck >>
   traceState >>
 
-  let exc (reason :: String) = throwExc $ printf "Repair.Script/repair: %s" reason in
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc reason = throw $ printf "Repair.Script/repair: %s" reason in
 
   case (s, δs) of
 
@@ -261,14 +253,13 @@ repair script@(Script s) δs =
     ([], ΔL.Keep _) -> exc $ printf "Keep on empty program"
 
 runRepair' ::
+  Member Trace r =>
   Script Raw.Raw Variable -> ΔS.Diff Raw.Raw ->
-  Eff '[Trace] (Either String (Script Raw.Raw Variable))
-runRepair' s δs = runAll repairThenPatch
-  where
-    runAll = runError
-             . liftM fst
-             . flip runState initialRepairState
-    repairThenPatch = do
-      δs' <- repair s δs
-      trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
-      ΔS.patch s δs'
+  Sem r (Either String (Script Raw.Raw Variable))
+runRepair' s δs =
+  runError
+  . liftM snd
+  . runState initialRepairState
+  $ do δs' <- repair s δs
+       trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
+       ΔS.patch s δs'

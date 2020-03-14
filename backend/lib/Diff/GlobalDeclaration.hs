@@ -13,15 +13,15 @@ module Diff.GlobalDeclaration
   , patch
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Text.Prettyprint.Doc
-import           Text.Printf
+import qualified Data.Text.Prettyprint.Doc      as Doc
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error )
+import           Polysemy.Trace                 ( Trace )
+import           Text.Printf                    ( printf )
 
-import qualified Diff.Atom as DA
-import qualified Diff.Inductive as DI
-import qualified Diff.Term as DT
+import qualified Diff.Atom                      as DA
+import qualified Diff.Inductive                 as DI
+import qualified Diff.Term                      as DT
 import           Diff.Utils
 import           Inductive.Inductive
 import           PrettyPrinting.PrettyPrintable
@@ -55,19 +55,19 @@ instance
   ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
     Same -> "Same"
-    ModifyGlobalAssum δ1 δ2    -> fillSep [ "ModifyGlobalAssum", go δ1, go δ2 ]
-    ModifyGlobalDef   δ1 δ2 δ3 -> fillSep [ "ModifyGlobalDef",   go δ1, go δ2, go δ3 ]
-    ModifyGlobalInd   δ1       -> fillSep [ "ModifyGlobalInd",   go δ1 ]
+    ModifyGlobalAssum δ1 δ2    -> Doc.fillSep [ "ModifyGlobalAssum", go δ1, go δ2 ]
+    ModifyGlobalDef   δ1 δ2 δ3 -> Doc.fillSep [ "ModifyGlobalDef",   go δ1, go δ2, go δ3 ]
+    ModifyGlobalInd   δ1       -> Doc.fillSep [ "ModifyGlobalInd",   go δ1 ]
     where
-      go :: PrettyPrintable l a => a -> Doc ()
-      go = parens . prettyDoc @l
+      go :: PrettyPrintable l a => a -> Doc.Doc ()
+      go = Doc.parens . prettyDoc @l
 
 patch ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   -- , PrettyPrintable l α
   , Show α
-  ) => GlobalDeclaration α Variable -> Diff α -> Eff r (GlobalDeclaration α Variable)
+  ) => GlobalDeclaration α Variable -> Diff α -> Sem r (GlobalDeclaration α Variable)
 patch gd δgd =
   let exc (reason :: String) = throwExc $ printf "Diff.GlobalDeclaration/patch: %s" reason in
   case δgd of

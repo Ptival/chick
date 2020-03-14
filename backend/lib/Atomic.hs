@@ -1,10 +1,10 @@
 {-# language FlexibleContexts #-}
 {-# language LambdaCase #-}
 
-module Atomic
-  ( Atomic(..)
-  , runAtomic
-  )where
+module Atomic (
+  Atomic(..),
+  runAtomic,
+  ) where
 
 import           Control.Monad.Except
 import           Text.PrettyPrint.Annotated.WL

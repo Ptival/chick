@@ -2,10 +2,13 @@ author:
   - Valentin Robert <valentin.robert.42@gmail.com>
 
 default-extensions:
+  - DataKinds
   - DeriveGeneric
   - DuplicateRecordFields
+  - FlexibleContexts
   - GADTs
   - LambdaCase
+  - MonoLocalBinds
   - NamedFieldPuns
   - RankNTypes
   - RecordWildCards
@@ -15,8 +18,10 @@ default-extensions:
 dependencies:
   - base
   - data-default
-  - freer-effects
-  - megaparsec       >= 7.0
+  - lens
+  - megaparsec       >= 8.0
+  - polysemy
+  - polysemy-plugin
   - QuickCheck
   - smallcheck
   - string-qq
@@ -25,7 +30,15 @@ dependencies:
   - tasty-quickcheck
   - tasty-smallcheck
 
+executables:
+  chick-server:
+    main: Main.hs
+    source-dirs: exec
+    dependencies:
+      - chick
+
 ghc-options:
+  - -fplugin=Polysemy.Plugin
   - -Wall
   - -Werror
 
@@ -47,7 +60,7 @@ library:
     - ghc
     - GenericPretty
     - hslogger
-    - language-ocaml >= 0.2.2
+    - language-ocaml ^>= 0.2.2
     - lens
     - MissingH
     - monad-loops
@@ -57,7 +70,7 @@ library:
     - prettyprinter
     - process
     - random
-    - snap
+    - snap           ^>= 1.1.1.0
     - snap-core
     - snap-server
     - text
@@ -66,33 +79,61 @@ library:
     - unordered-containers
     - utf8-string
 
-  exposed-modules: []
+  exposed-modules:
+    - Diff.Atom
+    - Diff.ConcatMap
+    - Diff.Constructor
+    - Diff.Eliminator
+    - Diff.Guess.Constructor
+    - Diff.Guess.Inductive
+    - Diff.Guess.Node
+    - Diff.Guess.Script
+    - Diff.Guess.Term
+    - Diff.Inductive
+    - Diff.List
+    - Diff.Motive
+    - Diff.Script
+    - Diff.Term
+    - Examples.Diff.SoftwareFoundations
+    - Examples.Term
+    - Examples.Utils
+    - Inductive.Eliminator
+    - Inductive.Inductive
+    - Inductive.Motive
+    - Language
+    - Notations
+    - Parsing
+    - Parsing.Inductive
+    - Parsing.Unsafe
+    - Precedence
+    - PrettyPrinting.Chick
+    - PrettyPrinting.PrettyPrintable
+    - PrettyPrinting.Term
+    - Repair.Benchmark
+    - Script
+    - Server.Server
+    - StandardLibrary
+    - StandardLibraryDiff
+    - Term.Raw
+    - Term.Term
+    - Term.Universe
+    - Term.Variable
+    - Utils
 
   other-modules:
     - Bound.ScopeT
     - Definition
     - DefinitionObjectKind
     - DictMetaOut
-    - Diff.Atom
     - Diff.Binder
-    - Diff.ConcatMap
-    - Diff.Constructor
-    - Diff.Eliminator
     - Diff.Guess.Atom
     - Diff.Guess.BottomUp
-    - Diff.Guess.Constructor
     - Diff.Guess.HIList
-    - Diff.Guess.Inductive
     - Diff.Guess.Mapping
-    - Diff.Guess.Node
-    - Diff.Guess.Script
-    - Diff.Guess.Term
     - Diff.Guess.TopDown
     - Diff.Guess.Vernacular
     - Diff.GlobalDeclaration
     - Diff.GlobalEnvironment
-    - Diff.Inductive
-    - Diff.List
     - Diff.ListFold
     - Diff.ListFoldLeft
     - Diff.ListFoldRight
@@ -100,36 +141,20 @@ library:
     - Diff.LocalContext
     - Diff.LocalDeclaration
     - Diff.Maybe
-    - Diff.Motive
     - Diff.Pair
-    - Diff.Script
-    - Diff.Term
     - Diff.Triple
     - Diff.Utils
     - Diff.Variable
     - Diff.Vernacular
-    - Examples.Diff.SoftwareFoundations
     - Examples.Inductive
-    - Examples.Term
-    - Examples.Utils
     - FromOCaml
     - Goal
-    - Inductive.Eliminator
-    - Inductive.Inductive
-    - Inductive.Motive
     - Inductive.Utils
-    - Language
-    - Notations
-    - Parsing
     - Parsing.Types
     - Parsing.Chick.Utils
-    - Parsing.Inductive
     - Parsing.Script
-    - Parsing.Unsafe
     - Parsing.Utils
     - Parsing.Vernacular
-    - Precedence
-    - PrettyPrinting.Chick
     - PrettyPrinting.Chick.Binder
     - PrettyPrinting.Chick.Constructor
     - PrettyPrinting.Chick.Declaration
@@ -149,13 +174,10 @@ library:
     - PrettyPrinting.Chick.Universe
     - PrettyPrinting.Chick.Variable
     - PrettyPrinting.Chick.Vernacular
-    - PrettyPrinting.Term
-    - PrettyPrinting.PrettyPrintable
     - PrettyPrinting.PrettyPrintableAnnotated
     - PrettyPrinting.PrettyPrintableUnannotated
     - PrettyPrinting.Universe
     - PrettyPrinting.Utils
-    - Repair.Benchmark
     - Repair.Inductive
     - Repair.Script
     - Repair.State
@@ -164,26 +186,18 @@ library:
     - Repair.Term.Branch
     - Repair.Utils
     - Repair.Vernacular
-    - Script
     - Server.Chick
     - Server.ChickHandler
-    - Server.Server
     - Server.Session
     - Snap.Extras.JSON
-    - StandardLibrary
-    - StandardLibraryDiff
     - Term.AlphaEquivalence
     - Term.AlphaRenaming
     - Term.Binder
     - Term.Diff
     - Term.Free
     - Term.Fresh
-    - Term.Raw
-    - Term.Term
     - Term.TypeChecked
     - Term.TypeErrored
-    - Term.Universe
-    - Term.Variable
     - ToOCaml
     - TypeCheckingFailure
     - Typing.GlobalDeclaration
@@ -191,7 +205,6 @@ library:
     - Typing.LocalContext
     - Typing.LocalDeclaration
     - Typing.Utils
-    - Utils
     - Vernacular
     - WellFormed
     - Work
@@ -206,6 +219,8 @@ tests:
   test:
     main: Main.hs
     source-dirs: test
+    dependencies:
+      - chick
     other-modules:
       - Diff.ConcatMap.Test
       - Diff.Eliminator.Test

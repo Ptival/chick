@@ -10,15 +10,15 @@
 module Diff.Eliminator.Test where
 
 import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
+import           Polysemy
+import           Polysemy.Error
+import           Polysemy.Trace
 import           System.Exit
 import           Text.Printf
 
 import           Diff.Eliminator
-import qualified Diff.Inductive as DI
-import qualified Diff.Term as DT
+import qualified Diff.Inductive                 as DI
+import qualified Diff.Term                      as DT
 import           Inductive.Eliminator
 import           Inductive.Inductive
 import           Language
@@ -26,13 +26,12 @@ import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Term
-import           Utils
 
 test ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   ) =>
-  Inductive () Variable -> DI.Diff () -> Inductive () Variable -> Eff r Bool
+  Inductive () Variable -> DI.Diff () -> Inductive () Variable -> Sem r Bool
 test indFrom δind indTo =
   let elimFrom = mkEliminatorType () indFrom in
   let elimTo   = mkEliminatorType () indTo   in
@@ -60,36 +59,36 @@ test indFrom δind indTo =
     return (elimTo' == elimTo)
 
 type Test r =
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
-  ) => Eff r Bool
+  ) => Sem r Bool
 
 testδBoolToNat ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   ) =>
-  Eff r Bool
+  Sem r Bool
 testδBoolToNat = test indBool δBoolToNat indNat
 
 testδNatToList ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   ) =>
-  Eff r Bool
+  Sem r Bool
 testδNatToList = test indNat δNatToList indList
 
 testδListToVec ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   ) =>
-  Eff r Bool
+  Sem r Bool
 testδListToVec = test indList δListToVec indVec
 
 unitTests ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   ) =>
-  [(String, Eff r Bool)]
+  [(String, Sem r Bool)]
 unitTests =
   [ ("testδBoolToNat", testδBoolToNat)
   , ("testδNatToList", testδNatToList)
@@ -100,7 +99,7 @@ main :: IO ()
 main = do
   putStrLn "\n"
   forM_ unitTests $ \ (name, t) -> do
-    (runSkipTrace $ runError t) >>= \case
+    (runM . ignoreTrace $ runError t) >>= \case
       Right True -> putStrLn $ printf "[✓] %s" name
       Right False -> do
         putStrLn $ printf "[✗] %s: patching succeeded, but unexpected result" name

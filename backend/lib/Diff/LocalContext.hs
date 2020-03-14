@@ -11,16 +11,15 @@ module Diff.LocalContext
   , patch
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Polysemy                                  ( Member, Sem )
+import           Polysemy.Error                            ( Error, throw )
+import           Polysemy.Trace                            ( Trace, trace )
+import           Text.Printf                               ( printf )
 
-import qualified Diff.List as DL
-import qualified Diff.LocalDeclaration as DLD
-import           Diff.Utils
-import           Language (Language(Chick))
-import           PrettyPrinting.Chick ()
+import qualified Diff.List                                 as DL
+import qualified Diff.LocalDeclaration                     as DLD
+import           Language                                  ( Language(Chick) )
+import           PrettyPrinting.Chick                      ()
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Variable
@@ -30,27 +29,30 @@ import           Typing.LocalDeclaration
 type Diff α = DL.Diff (LocalDeclaration α Variable) (DLD.Diff α)
 
 patch ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   , Show α
   ) =>
-  LocalContext α Variable -> Diff α -> Eff r (LocalContext α Variable)
+  LocalContext α Variable -> Diff α -> Sem r (LocalContext α Variable)
 patch (LocalContext γ) d = do
   γ' <- DL.patch DLD.patch γ d
   return $ LocalContext γ'
 
 findLocalDeclarationDiff ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   ) =>
-  Variable -> LocalContext α Variable -> Diff α -> Eff r (DLD.Diff α)
+  Variable -> LocalContext α Variable -> Diff α -> Sem r (DLD.Diff α)
 findLocalDeclarationDiff v γ δγ =
   trace (
   printf
     "Diff.LocalContext/findLocalDeclarationDiff: Searching %s in %s"
     (prettyStr @'Chick v) (prettyStrU @'Chick γ)
   ) >>
-  let exc (reason :: String) = throwExc $ printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason in
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc (reason :: String) = throw (printf "Diff.LocalContext/findLocalDeclarationDiff: %s" reason :: String)
+  in
   case δγ of
 
     DL.Same ->

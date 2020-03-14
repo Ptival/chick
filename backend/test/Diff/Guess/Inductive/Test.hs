@@ -5,8 +5,9 @@
 
 module Diff.Guess.Inductive.Test where
 
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
+import           Polysemy
+import           Polysemy.Error
+import           Polysemy.Trace
 import           Test.Tasty
 import           Test.Tasty.HUnit
 import           Text.Megaparsec
@@ -19,7 +20,7 @@ import           Language
 import           Parsing.Inductive
 import           PrettyPrinting.PrettyPrintable
 import           StandardLibrary
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 import           Term.Variable
 
 unsafeParseInductive :: [String] -> Inductive Raw.Raw Variable
@@ -38,9 +39,9 @@ indList1 = unsafeParseInductive
 
 sanityCheck :: Inductive Raw.Raw Variable -> Inductive Raw.Raw Variable -> Assertion
 sanityCheck i1 i2 = do
-  δ <- runTrace $ guess i1 i2
+  δ <- runM . traceToIO $ guess i1 i2
   putStrLn $ printf "δ:\n%s" (show δ)
-  runTrace (runError (ΔI.patch i1 δ)) >>= \case
+  (runM . traceToIO . runError $ ΔI.patch i1 δ) >>= \case
     Left (_ :: String) -> assertFailure "sanity check failed"
     Right i2'          -> i2' @?= i2
 

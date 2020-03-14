@@ -16,12 +16,11 @@ module Diff.Maybe
   -- , patchMaybe
   ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
-import Data.Aeson
-import GHC.Generics
+import Data.Aeson                     ( ToJSON )
+import GHC.Generics                   ( Generic )
+import Polysemy                       ( Member, Sem )
+import Polysemy.Error                 ( Error, throw )
 
-import Diff.Utils
 import PrettyPrinting.PrettyPrintable
 
 data Diff e δe
@@ -31,26 +30,28 @@ data Diff e δe
   | ModifyJust δe
   deriving (Eq, Generic, Show)
 
-instance (ToJSON e, ToJSON δe) => ToJSON (Diff e δe) where
+instance ( ToJSON e
+         , ToJSON δe
+         ) => ToJSON (Diff e δe) where
 
-instance (PrettyPrintable l δe) => PrettyPrintable l (Diff e δe) where
+instance ( PrettyPrintable l δe
+         ) => PrettyPrintable l (Diff e δe) where
   prettyDoc Same             = "Same"
   prettyDoc _                = "TODO: prettyprint Diff.Maybe"
 
 patch ::
-  ( Member (Exc String) r
-  ) =>
-  (e -> δe -> Eff r e) ->
+  Member (Error String) r =>
+  (e -> δe -> Sem r e) ->
   Maybe e ->
   Diff e δe ->
-  Eff r (Maybe e)
+  Sem r (Maybe e)
 patch patchE me = \case
   Same          -> return me
   BecomeNothing -> return Nothing
   BecomeJust e' -> return $ Just e'
   ModifyJust δe ->
     case me of
-    Nothing -> throwExc $ "[Diff.Maybe.patch] ModifyJust on Nothing"
+    Nothing -> throw ("[Diff.Maybe.patch] ModifyJust on Nothing" :: String)
     Just e -> Just <$> patchE e δe
 
 -- patchMaybe ::

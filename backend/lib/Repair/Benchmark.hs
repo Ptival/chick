@@ -7,35 +7,34 @@
 
 module Repair.Benchmark where
 
-import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
-import           Data.Foldable
-import           Text.Megaparsec
-import           Text.Printf
+import           Control.Monad                             ( liftM )
+import           Data.Foldable                             ( for_ )
+import           Polysemy                                  ( Member, Sem, run, runM )
+import           Polysemy.Error                            ( runError )
+import           Polysemy.State                            ( runState )
+import           Polysemy.Trace                            ( Trace, ignoreTrace, trace, traceToIO )
+import           Text.Megaparsec                           ( parseMaybe )
+import           Text.Printf                               ( printf )
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.List as ΔL
 import qualified Diff.Script as ΔS
 import qualified Diff.Term as ΔT
 import qualified Diff.Vernacular as ΔV
-import           Language (Language(Chick))
+import           Language                                  ( Language(Chick) )
 import           Parsing
 import           Parsing.Vernacular
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
-import qualified Repair.Script as RS
+import qualified Repair.Script                             as RS
 import           Repair.State
-import qualified Repair.Term as RT
+import qualified Repair.Term                               as RT
 import           Script
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Binder
-import qualified Term.Raw as Raw
+import qualified Term.Raw                                  as Raw
 import           Term.Term
-import           Utils
 import           Vernacular
 
 repairScriptBenchmarks :: [RepairScriptBenchmark]
@@ -60,30 +59,29 @@ unsafeParseVernac ss =
     Just t  -> t
 
 patchProof ::
+  Member Trace r =>
   Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw ->
-  Eff '[Trace] (Either String (Raw.Term Variable))
-patchProof t τ δτ = runAll repairThenPatch
-  where
-    runAll = runError
-             . liftM fst
-             . flip runState initialRepairState
-    repairThenPatch =
-      RT.repair t τ δτ
-      >>= (\ δ -> do
-            trace $ printf "REPAIR COMPLETED: %s" $ prettyStr @'Chick δ
-            return δ
-          )
-      >>= ΔT.patch t
+  Sem r (Either String (Raw.Term Variable))
+patchProof t τ δτ =
+  runError
+  . liftM snd
+  . runState initialRepairState
+  $ do RT.repair t τ δτ
+         >>= (\ δ -> do
+               trace $ printf "REPAIR COMPLETED: %s" $ prettyStr @'Chick δ
+               return δ
+             )
+         >>= ΔT.patch t
 
 patchProofTrace ::
   Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw ->
   IO (Either String (Raw.Term Variable))
-patchProofTrace t τ δτ = runTrace $ patchProof t τ δτ
+patchProofTrace t τ δτ = runM $ traceToIO $ patchProof t τ δτ
 
 patchProofSkipTrace ::
   Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw ->
   Either String (Raw.Term Variable)
-patchProofSkipTrace t τ δτ = skipTrace $ patchProof t τ δτ
+patchProofSkipTrace t τ δτ = run $ ignoreTrace $ patchProof t τ δτ
 
 data RepairTermBenchmark = RepairTermBenchmark
   { repairTermFromTerm :: Raw.Term Variable
@@ -180,11 +178,11 @@ repairTermBenchmark = do
     putStrLn $
       printf "Attempting to patch `%s` assumed to have type `%s` to type `%s`"
       (prettyStrU @'Chick fromTerm) (prettyStrU @'Chick fromType) (prettyStrU @'Chick toType)
-    diffed <- runSkipTrace . runError $ ΔT.patch fromType diff
+    diffed <- runM . ignoreTrace . runError $ ΔT.patch fromType diff
     if diffed == (Right toType :: Either String (Raw.Type Variable))
       then
-      runSkipTrace (patchProof fromTerm fromType diff) >>= \case
-      -- runTrace (patchProof fromTerm fromType diff) >>= \case
+      (runM . ignoreTrace $ patchProof fromTerm fromType diff) >>= \case
+      -- runM . traceToIO (patchProof fromTerm fromType diff) >>= \case
       Left  e -> putStrLn $ printf "Patching failed: %s" e
       Right r ->
         if r == expected
@@ -203,17 +201,16 @@ repairTermBenchmark = do
             putStrLn $ printf "Diffed   type: %s" (prettyStrU @'Chick d)
 
 repairScript ::
+  Member Trace r =>
   Script Raw.Raw Variable -> ΔS.Diff Raw.Raw ->
-  Eff '[Trace] (Either String (Script Raw.Raw Variable))
-repairScript s δs = runAll repairThenPatch
-  where
-    runAll = runError
-             . liftM fst
-             . flip runState initialRepairState
-    repairThenPatch = do
-      δs' <- RS.repair s δs
-      trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
-      ΔS.patch s δs'
+  Sem r (Either String (Script Raw.Raw Variable))
+repairScript s δs =
+  runError
+  . liftM snd
+  . runState initialRepairState
+  $ do δs' <- RS.repair s δs
+       trace $ printf "COMPUTED PATCH:\n\n%s\n\n" (show δs')
+       ΔS.patch s δs'
 
 data RepairScriptBenchmark = RepairScriptBenchmark
   { repairScriptFromScript :: Script Raw.Raw Variable
@@ -325,7 +322,7 @@ repairScriptBenchmark = do
     putStrLn $ "(*" ++ replicate 70 '*' ++ "*)"
     putStrLn "\n(*** Before: ***)\n"
     printScript s
-    result <- runTrace . runError $ ΔS.patch s δs
+    result <- runM . traceToIO . runError $ ΔS.patch s δs
     s' <- case result of
       Left  (e :: String) ->
         error $ printf "Could not patch the original script:\n%s" e
@@ -333,8 +330,8 @@ repairScriptBenchmark = do
     putStrLn "\n(*** Modified: ***)\n"
     printScript s'
     putStrLn $ printf "\n(*** Attempting to patch script ***)\n"
-    runSkipTrace (repairScript s δs) >>= \case
-    -- runTrace (repairScript s δs) >>= \case
+    (runM . ignoreTrace $ repairScript s δs) >>= \case
+    -- runM . traceToIO (repairScript s δs) >>= \case
       Left  e   -> putStrLn $ printf "Patching failed: %s" e
       Right s'' -> case me of
         Nothing -> do

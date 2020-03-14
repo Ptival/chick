@@ -8,18 +8,18 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Diff.LocalDeclaration
-  ( Diff(..)
-  , patch
+module Diff.LocalDeclaration (
+  Diff(..),
+  patch,
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Text.Prettyprint.Doc
+import qualified Data.Text.Prettyprint.Doc      as Doc
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error )
+import           Polysemy.Trace                 ( Trace )
 
-import qualified Diff.Atom as DA
-import qualified Diff.Term as DT
+import qualified Diff.Atom                      as DA
+import qualified Diff.Term                      as DT
 import           PrettyPrinting.PrettyPrintable
 import           Term.Binder
 import           Term.Term
@@ -43,16 +43,15 @@ instance
   prettyDoc = \case
     Same -> "Same"
     ModifyLocalAssum δ1 δ2 ->
-      fillSep [ "ModifyLocalAssum", prettyDoc @l δ1, prettyDoc @l δ2 ]
+      Doc.fillSep [ "ModifyLocalAssum", prettyDoc @l δ1, prettyDoc @l δ2 ]
     ModifyLocalDef δ1 δ2 ->
-      fillSep [ "ModifyLocalDef", prettyDoc @l δ1, prettyDoc @l δ2 ]
+      Doc.fillSep [ "ModifyLocalDef", prettyDoc @l δ1, prettyDoc @l δ2 ]
 
 patch ::
-  ( Member (Exc String) r
-  , Member Trace r
-  , Show α
-  ) =>
-  LocalDeclaration α Variable -> Diff α -> Eff r (LocalDeclaration α Variable)
+  Member (Error String) r =>
+  Member Trace          r =>
+  Show α =>
+  LocalDeclaration α Variable -> Diff α -> Sem r (LocalDeclaration α Variable)
 patch ld δ = case (ld, δ) of
 
   (_, Same) -> return ld

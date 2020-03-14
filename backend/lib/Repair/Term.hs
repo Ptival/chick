@@ -13,13 +13,13 @@
 
 module Repair.Term where
 
-import           Control.Arrow
+import           Control.Arrow                             ( (>>>) )
 --import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
+import           Polysemy                                  ( Member, Sem )
+import           Polysemy.Error                            ( catch )
+import           Polysemy.Trace                            ( Trace, trace )
 -- import           Data.List.Utils
-import           Text.Printf
+import           Text.Printf                               ( printf )
 
 import qualified Diff.Atom as ΔA
 --import qualified Diff.GlobalDeclaration as ΔGD
@@ -28,24 +28,24 @@ import qualified Diff.List as ΔL
 import qualified Diff.Term as ΔT
 import           Diff.Utils
 import           Inductive.Inductive
-import           Language (Language(Chick))
+import           Language                                  ( Language(Chick) )
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
-import qualified Repair.State as RS
+import qualified Repair.State                              as RS
 import           Repair.Term.Argument
 import           Repair.Term.Branch
 import           Repair.Utils
 import           Term.Binder
 import           Term.Term
 -- import qualified Term.TypeChecked as C
-import qualified Term.Raw as Raw
-import qualified Term.Universe as U
-import qualified Typing.GlobalEnvironment as GE
+import qualified Term.Raw                                  as Raw
+import qualified Term.Universe                             as U
+import qualified Typing.GlobalEnvironment                  as GE
 
 guessIndMatched ::
-  ( RepairEff r
-  ) =>
-  Raw.Term Variable -> [Branch Raw.Raw Variable] -> Eff r (Inductive Raw.Raw Variable)
+  Member Trace r =>
+  Repair r =>
+  Raw.Term Variable -> [Branch Raw.Raw Variable] -> Sem r (Inductive Raw.Raw Variable)
 guessIndMatched discriminee branches = do
   let exc (s :: String) = throwExc $ printf "Repair.Term/guessIndMatched: %s" s
   trace "*** Trying to guess matched type using discriminee"
@@ -64,7 +64,7 @@ guessIndMatched discriminee branches = do
           $ "Could not guess the inductive being matched because the type of the discriminee did not look like a variable applied:\n"
           ++ show fun
     _ -> exc "Could not guess the inductive being matched because the term being matched is not a variable (TODO)"
-  `catchError`
+  `catch`
     ( \ (_errorWhenGuessingByDiscriminee :: String) -> do
       trace "*** Trying to guess matched type using branches"
       let constructors = map branchConstructor branches
@@ -73,9 +73,8 @@ guessIndMatched discriminee branches = do
 
 -- | `unknownTypeRepair t` attempts to repair `t` without any information
 unknownTypeRepair ::
-  ( RepairEff r
-  ) =>
-  Raw.Term Variable -> Eff r (ΔT.Diff Raw.Raw)
+  Repair r =>
+  Raw.Term Variable -> Sem r (ΔT.Diff Raw.Raw)
 unknownTypeRepair t = do
 
   let exc (reason :: String) =
@@ -145,9 +144,8 @@ unknownTypeRepair t = do
 -- | `genericRepair t τ` attempts to repair `t` without more information about
 -- | how its type `τ` changed
 genericRepair ::
-  ( RepairEff r
-  ) =>
-  Raw.Term Variable -> Raw.Type Variable -> Eff r (ΔT.Diff Raw.Raw)
+  Repair r =>
+  Raw.Term Variable -> Raw.Type Variable -> Sem r (ΔT.Diff Raw.Raw)
 genericRepair t τ = do
 
   -- let exc (reason :: String) =
@@ -165,24 +163,23 @@ genericRepair t τ = do
         (_, τ1, _, τ2) <- ΔT.extractPi τ
         RS.withLocalAssum (b, τ1) >>> RS.withδLocalContext ΔL.Keep $ do
           ΔT.CpyLam ΔA.Same <$> repair tlam τ2 ΔT.Same
-      `catchError` (
-        const @_ @String $ do
-          -- If we cannot extract a Pi from the type, we should proceed by repairing
-          (binders, body) <- ΔT.extractLams t
-          let addBinder e (_, b) =
-                e >>> RS.withLocalAssum (b, Hole ()) >>> RS.withδLocalContext ΔL.Keep
-          flip (foldl addBinder) binders id $ do -- gotta type annotate to resolve overlapping instances
-            ΔT.nCpyLams (length binders) <$> unknownTypeRepair body
-        )
+            `catch` (
+            const @_ @String $ do
+              -- If we cannot extract a Pi from the type, we should proceed by repairing
+              (binders, body) <- ΔT.extractLams t
+              let addBinder e (_, b) =
+                    e >>> RS.withLocalAssum (b, Hole ()) >>> RS.withδLocalContext ΔL.Keep
+              flip (foldl addBinder) binders id $ do -- gotta type annotate to resolve overlapping instances
+                ΔT.nCpyLams (length binders) <$> unknownTypeRepair body
+            )
     _ -> unknownTypeRepair t
 
 {-| `repair t τ δτ` assumes `t` is a term whose type is `τ` and `δτ` is a diff
 describing how `τ` changed.  It attempts to build a patch `δt` s.t. `patch t δt`
 has type `patch τ δτ`. |-}
 repair ::
-  ( RepairEff r
-  ) =>
-  Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw -> Eff r (ΔT.Diff Raw.Raw)
+  Repair r =>
+  Raw.Term Variable -> Raw.Type Variable -> ΔT.Diff Raw.Raw -> Sem r (ΔT.Diff Raw.Raw)
 repair t τ δτ =
   trace (printf "Repair.Term/repair(t: %s, τ: %s, δτ: %s)" (prettyStrU @'Chick t) (prettyStrU @'Chick τ) (show δτ)) >>
   RS.traceState >>

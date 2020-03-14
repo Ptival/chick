@@ -36,27 +36,27 @@ module Diff.Term
   , patchMaybe
   ) where
 
-import Control.Monad.Freer
-import Control.Monad.Freer.Exception
-import Control.Monad.Freer.Trace
-import Data.Aeson
-import Data.Either.Combinators
-import GHC.Generics
-import Text.Printf
-import Data.Text.Prettyprint.Doc
+import           Data.Aeson                     ( ToJSON )
+import           Data.Either.Combinators        ( rightToMaybe )
+import qualified Data.Text.Prettyprint.Doc      as Doc
+import           GHC.Generics                   ( Generic )
+import           Polysemy                       ( Member, Sem, run )
+import           Polysemy.Error                 ( Error, runError, throw )
+import           Polysemy.Trace                 ( Trace, ignoreTrace )
+import           Text.Printf                    ( printf )
 
 import qualified Diff.Atom as ΔA
 import qualified Diff.List as ΔL
 import qualified Diff.Maybe as ΔM
 import qualified Diff.Pair as Δ2
 import qualified Diff.Triple as Δ3
-import Diff.Utils
-import Language (Language(Chick))
-import PrettyPrinting.Term ()
-import PrettyPrinting.PrettyPrintable
-import Term.Binder
-import Term.Term
-import Utils
+import           Diff.Utils
+import           Language                       ( Language(Chick) )
+import           PrettyPrinting.Term            ( )
+import           PrettyPrinting.PrettyPrintable
+import           Term.Binder
+import           Term.Term
+import           Utils
 
 type VariableDiff  = ΔA.Diff Variable
 type VariablesDiff = ΔL.Diff Variable VariableDiff
@@ -98,35 +98,35 @@ instance
   ) => PrettyPrintable l (Diff α) where
   prettyDoc = \case
     Same              -> "Same"
-    Replace t         -> fillSep [ "Replace",    go t ]
-    CpyApp δ1 δ2      -> fillSep [ "CpyApp",     go δ1, go δ2 ]
-    CpyLam δ1 δ2      -> fillSep [ "CpyLam",     go δ1, go δ2 ]
-    CpyMatch δ1 δ2    -> fillSep [ "CpyMatch",   go δ1, go δ2 ]
-    CpyPi  δ1 δ2 δ3   -> fillSep [ "CpyPi",      go δ1, go δ2, go δ3 ]
-    CpyVar δ1         -> fillSep [ "CpyVar",     go δ1 ]
-    InsApp _ δ1 δ2    -> fillSep [ "InsApp",     go δ1, go δ2 ]
-    InsLam _ δ1 δ2    -> fillSep [ "InsLam",     go δ1, go δ2 ]
-    InsPi  _ δ1 δ2 δ3 -> fillSep [ "InsPi",      go δ1, go δ2, go δ3 ]
-    PermutApps p δ1   -> fillSep [ "PermutApp",  (pretty $ show p), go δ1 ]
-    PermutLams p δ1   -> fillSep [ "PermutLam",  (pretty $ show p), go δ1 ]
-    PermutPis  p δ1   -> fillSep [ "PermutPi",   (pretty $ show p), go δ1 ]
-    RemoveApp δ1      -> fillSep [ "RemoveApp",  go δ1 ]
-    RemoveLam δ1      -> fillSep [ "RemoveApp",  go δ1 ]
-    RemovePi δ1       -> fillSep [ "RemovePi",   go δ1 ]
+    Replace t         -> Doc.fillSep [ "Replace",    go t ]
+    CpyApp δ1 δ2      -> Doc.fillSep [ "CpyApp",     go δ1, go δ2 ]
+    CpyLam δ1 δ2      -> Doc.fillSep [ "CpyLam",     go δ1, go δ2 ]
+    CpyMatch δ1 δ2    -> Doc.fillSep [ "CpyMatch",   go δ1, go δ2 ]
+    CpyPi  δ1 δ2 δ3   -> Doc.fillSep [ "CpyPi",      go δ1, go δ2, go δ3 ]
+    CpyVar δ1         -> Doc.fillSep [ "CpyVar",     go δ1 ]
+    InsApp _ δ1 δ2    -> Doc.fillSep [ "InsApp",     go δ1, go δ2 ]
+    InsLam _ δ1 δ2    -> Doc.fillSep [ "InsLam",     go δ1, go δ2 ]
+    InsPi  _ δ1 δ2 δ3 -> Doc.fillSep [ "InsPi",      go δ1, go δ2, go δ3 ]
+    PermutApps p δ1   -> Doc.fillSep [ "PermutApp",  (Doc.pretty $ show p), go δ1 ]
+    PermutLams p δ1   -> Doc.fillSep [ "PermutLam",  (Doc.pretty $ show p), go δ1 ]
+    PermutPis  p δ1   -> Doc.fillSep [ "PermutPi",   (Doc.pretty $ show p), go δ1 ]
+    RemoveApp δ1      -> Doc.fillSep [ "RemoveApp",  go δ1 ]
+    RemoveLam δ1      -> Doc.fillSep [ "RemoveApp",  go δ1 ]
+    RemovePi δ1       -> Doc.fillSep [ "RemovePi",   go δ1 ]
 
     where
-      go :: PrettyPrintable l a => a -> Doc ()
-      go = parens . (prettyDoc @l)
+      go :: PrettyPrintable l a => a -> Doc.Doc ()
+      go = Doc.parens . (prettyDoc @l)
 
 instance ToJSON α => ToJSON (Diff α) where
 
 patchGuardAndBody ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   , Show α
   ) =>
   GuardAndBody (TermX α) Variable -> GuardAndBodyDiff α ->
-  Eff r (GuardAndBody (TermX α) Variable)
+  Sem r (GuardAndBody (TermX α) Variable)
 patchGuardAndBody gb Δ2.Same = return gb
 patchGuardAndBody gb (Δ2.Modify δguard δbody) = do
   guard' <- ΔM.patch patch (branchGuard gb) δguard
@@ -134,11 +134,11 @@ patchGuardAndBody gb (Δ2.Modify δguard δbody) = do
   return $ GuardAndBody guard' body'
 
 patchBranch ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   , Show α
   ) =>
-  Branch α Variable -> BranchDiff α -> Eff r (Branch α Variable)
+  Branch α Variable -> BranchDiff α -> Sem r (Branch α Variable)
 patchBranch b Δ3.Same = return b
 patchBranch b (Δ3.Modify δctor δargs δguardbody) = do
   let (ctor, args, guardbody) = unpackBranch b
@@ -148,14 +148,17 @@ patchBranch b (Δ3.Modify δctor δargs δguardbody) = do
   return $ packBranch (ctor', args', guardbody')
 
 patch ::
-  ( Member (Exc String) r
+  ( Member (Error String) r
   , Member Trace r
   , Show α
   ) =>
-  TermX α Variable -> Diff α -> Eff r (TermX α Variable)
+  TermX α Variable -> Diff α -> Sem r (TermX α Variable)
 patch term δterm =
 
-  let exc (s :: String) = throwExc $ printf "Diff.Term/patch: %s" s in
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc s = throw (printf "Diff.Term/patch: %s" s :: String)
+  in
 
   -- trace (printf "Diff.Term/patch:(%s, %s)" (preview term) (show δterm)) >>
 
@@ -242,5 +245,7 @@ nRemoveApps 0 base         = base
 nRemoveApps n _    | n < 0 = error "nRemoveApps: n became negative!"
 nRemoveApps n base         = RemoveApp $ nRemoveApps (n - 1) base
 
-patchMaybe :: Show α => TermX α Variable -> Diff α -> Maybe (TermX α Variable)
-patchMaybe t d = rightToMaybe @String . skipTrace . runError $ patch t d
+patchMaybe ::
+  Show α =>
+  TermX α Variable -> Diff α -> Maybe (TermX α Variable)
+patchMaybe t d = rightToMaybe @String . run . ignoreTrace . runError $ patch t d

@@ -1,27 +1,26 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
 
-module Diff.Guess.Vernacular
-  ( guess
+module Diff.Guess.Vernacular (
+  guess,
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Trace
+import           Polysemy       ( Member, Sem )
+import           Polysemy.Trace ( Trace )
 
-import qualified Definition as D
+import qualified Definition     as D
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Inductive as ΔGI
 import qualified Diff.Guess.Term as ΔGT
 import qualified Diff.Vernacular as ΔV
-import qualified Term.Raw as Raw
+import qualified Term.Raw       as Raw
 import           Term.Variable
 import           Vernacular
 
 guess ::
-  ( Member Trace r
-  ) =>
+  Member Trace r =>
   Vernacular Raw.Raw Variable -> Vernacular Raw.Raw Variable ->
-  Eff r (ΔV.Diff Raw.Raw)
+  Sem r (ΔV.Diff Raw.Raw)
 guess (Definition d1) (Definition d2) = do
   δk <- ΔGA.guess (D.definitionKind d1) (D.definitionKind d2)
   δn <- ΔGA.guess (D.definitionName d1) (D.definitionName d2)

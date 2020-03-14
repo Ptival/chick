@@ -12,15 +12,17 @@ module Diff.Guess.Atom
   ( guess
   ) where
 
-import           Control.Monad
-import           Control.Monad.Freer
-import           Data.Function
-import           Prelude hiding (product)
+import           Control.Monad (  )
+import           Polysemy ( Sem )
+import           Data.Function (  )
+import           Prelude hiding ( product )
 
 import qualified Diff.Atom as ΔA
 import           PrettyPrinting.Term ()
 
-guess :: (Eq a) => a -> a -> Eff r (ΔA.Diff a)
+guess ::
+  Eq a =>
+  a -> a -> Sem r (ΔA.Diff a)
 guess v1 v2 =
   return $ if v1 == v2
            then ΔA.Same

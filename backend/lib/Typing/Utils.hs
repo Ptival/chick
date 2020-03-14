@@ -10,26 +10,26 @@ module Typing.Utils
   , (~!\)
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
 import           Data.Bifunctor
+import           Polysemy            ( Member, Sem )
+import           Polysemy.Error      ( Error, catch, throw )
 
 import           Term.Term
-import qualified Term.TypeChecked as C
-import qualified Term.TypeErrored as E
+import qualified Term.TypeChecked    as C
+import qualified Term.TypeErrored    as E
 import           TypeCheckingFailure
 
-type Error   = E.Term Variable
+type ErrorTerm   = E.Term Variable
 
-(|||) :: Member (Exc Error) r => Eff r a -> (Error -> Error) -> Eff r a
+(|||) :: Member (Error ErrorTerm) r => Sem r a -> (ErrorTerm -> ErrorTerm) -> Sem r a
 (|||) e f = do
-  e `catchError` (throwError . f)
+  e `catch` (throw . f)
 
-(^||) :: Member (Exc Error) r => Maybe a -> Error -> Eff r a
-(^||) m e = maybe (throwError e) pure m
+(^||) :: Member (Error ErrorTerm) r => Maybe a -> ErrorTerm -> Sem r a
+(^||) m e = maybe (throw e) pure m
 
-(?||) :: Member (Exc Error) r => Bool -> Error -> Eff r ()
-(?||) b e = if b then return () else throwError e
+(?||) :: Member (Error ErrorTerm) r => Bool -> ErrorTerm -> Sem r ()
+(?||) b e = if b then return () else throw e
 
 -- | Stands for "checked"
 (!) :: C.Term ν -> E.Term ν

@@ -3,16 +3,17 @@
 
 module Diff.Motive.Test where
 
-import           Control.Monad.Freer.Exception
+import           Polysemy
+import           Polysemy.Error
+import           Polysemy.Trace
 
 import           Diff.Motive
-import qualified Diff.Term as DT
+import qualified Diff.Term           as DT
 import           Inductive.Motive
 import           StandardLibrary
 import           StandardLibraryDiff
 import           Term.Term
-import qualified Term.Universe as U
-import           Utils
+import qualified Term.Universe       as U
 
 testListToVec :: IO Bool
 testListToVec =
@@ -23,7 +24,7 @@ testListToVec =
     -- putStrLn $ prettyStr listMotive
     -- putStrLn $ prettyStr δlistMotive
     -- putStrLn $ prettyStr vecMotive
-    (runSkipTrace . runError $ DT.patch listMotive δlistMotive) >>= \case
+    (runM . ignoreTrace . runError $ DT.patch listMotive δlistMotive) >>= \case
       Left (_s :: String) -> do
         -- putStrLn s
         return False

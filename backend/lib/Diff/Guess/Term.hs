@@ -11,30 +11,30 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
-module Diff.Guess.Term
-  ( Match(..)
-  , algorithm
-  , guess
-  , guessδ
-  , makeNode
-  , matchPairs
-  , recommended
-  , traceGuessδ
-  , withNodeMapping
+module Diff.Guess.Term (
+  Match(..),
+  algorithm,
+  guess,
+  guessδ,
+  makeNode,
+  matchPairs,
+  recommended,
+  traceGuessδ,
+  withNodeMapping,
   ) where
 
-import           Control.Lens hiding (children, preview)
-import           Control.Monad
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
-import           Data.Function
-import qualified Data.List as List
-import           Data.List.HT
-import           Data.Maybe
-import           Prelude hiding (product)
-import           Text.Printf
+import           Control.Lens                   ( _1, _2, _3, over, view )
+import           Control.Monad                  ( foldM, forM )
+import           Data.Function                  ( fix )
+import qualified Data.List                      as List
+import           Data.List.HT                   ( viewR )
+import           Data.Maybe                     ( catMaybes )
+import           Polysemy                       ( Member, Sem, run, runM )
+import           Polysemy.Error                 ( runError )
+import           Polysemy.State                 ( State, get, modify, runState )
+import           Polysemy.Trace                 ( Trace, ignoreTrace, trace, traceToIO )
+import           Prelude                        hiding ( product )
+import           Text.Printf                    ( printf )
 
 import qualified Diff.Atom as ΔA
 import           Diff.Guess.BottomUp
@@ -43,11 +43,11 @@ import           Diff.Guess.TopDown
 import           Diff.Guess.Node
 import qualified Diff.Term as ΔT
 import           Diff.Utils
-import           Language (Language(Chick))
-import           PrettyPrinting.Chick ()
+import           Language                       (Language(Chick))
+import           PrettyPrinting.Chick           ()
 import           PrettyPrinting.PrettyPrintable
 import           Term.Term
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 import           Utils
 
 -- FIXME: should I put guards in there too?
@@ -104,12 +104,15 @@ termHeight t = case termChildren t of
   [] -> 1 -- huh... why would they choose this...?
   c  -> 1 + maximum (map termHeight c)
 
-fresh :: (Member (State Int) r) => Eff r Int
+fresh :: (Member (State Int) r) => Sem r Int
 fresh = get <* modify ((+) (1 :: Int))
 
-makeNode :: (Member (State Int) r) => Raw.Term Variable -> Eff r Node
+makeNode ::
+  Member (State Int) r =>
+  Raw.Term Variable -> Sem r Node
 makeNode t = ($ Nothing) <$> go t
   where
+    go :: Member (State Int) r => Raw.Term Variable -> Sem r (Maybe Node -> Node)
     go t = do
       i <- fresh
       childrenGen <- mapM go (termChildren t)
@@ -124,7 +127,7 @@ makeNode t = ($ Nothing) <$> go t
 algorithm ::
   ( Member Trace r
   ) =>
-  Int -> Double -> Int -> Node -> Node -> Eff r Mapping
+  Int -> Double -> Int -> Node -> Node -> Sem r Mapping
 algorithm minHeight minDice _maxSize n1 n2 = do
   s1 <- runTopDown  n1 n2 minHeight
   let m1 = view topDownStateM s1
@@ -135,13 +138,13 @@ algorithm minHeight minDice _maxSize n1 n2 = do
 recommended ::
   ( Member Trace r
   ) =>
-  Node -> Node -> Eff r Mapping
+  Node -> Node -> Sem r Mapping
 recommended = algorithm 0 0.0 100
 
 guess ::
   ( Member Trace r
   ) =>
-  Raw.Term Variable -> Raw.Term Variable -> Eff r (ΔT.Diff Raw.Raw)
+  Raw.Term Variable -> Raw.Term Variable -> Sem r (ΔT.Diff Raw.Raw)
 guess = withNodeMapping mkGuessδ
 
 {- For many functions we will want to take as input two terms, and compute
@@ -151,8 +154,8 @@ withNodeMapping ::
   (Node -> Node -> Mapping -> a) ->
   Raw.Term Variable -> Raw.Term Variable -> a
 withNodeMapping k t1 t2 =
-  let (n1, n2) = fst . run $ runState s (0 :: Int) in
-  let m = skipTrace $ recommended n1 n2 in
+  let (n1, n2) = snd . run $ runState (0 :: Int) s in
+  let m = run $ ignoreTrace $ recommended n1 n2 in
   k n1 n2 m
   where
     s = do
@@ -161,13 +164,13 @@ withNodeMapping k t1 t2 =
       return (n1, n2)
 
 guessδ :: Raw.Term Variable -> Raw.Term Variable -> ΔT.Diff Raw.Raw
-guessδ t1 t2 = skipTrace (guess t1 t2)
+guessδ t1 t2 = run . ignoreTrace $ guess t1 t2
 
 traceGuessδ ::
   Raw.Term Variable -> Raw.Term Variable -> IO (ΔT.Diff Raw.Raw)
 traceGuessδ = withNodeMapping $ \ n1 n2 m -> do
   putStrLn $ printf "MAPPING:\n%s\n" (show m)
-  δ <- runTrace $ mkGuessδ n1 n2 m
+  δ <- runM $ traceToIO $ mkGuessδ n1 n2 m
   return δ
 
 unsafeSplitWhen :: (t -> Bool) -> [t] -> ([t], t, [t])
@@ -281,9 +284,8 @@ data FoldAppsStatus
   deriving (Show)
 
 mkGuessδ ::
-  ( Member Trace r
-  ) =>
-  Node -> Node -> Mapping -> Eff r (ΔT.Diff Raw.Raw)
+  Member Trace r =>
+  Node -> Node -> Mapping -> Sem r (ΔT.Diff Raw.Raw)
 mkGuessδ n1 n2 m = go n1 n2
 
   where

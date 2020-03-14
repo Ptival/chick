@@ -13,21 +13,20 @@ module Diff.Vernacular
   , patch
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Text.Prettyprint.Doc
-import           Text.Printf
+import qualified Data.Text.Prettyprint.Doc      as Doc
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error, throw )
+import           Polysemy.Trace                 ( Trace )
+import           Text.Printf                    ( printf )
 
-import qualified Definition as D
-import           DefinitionObjectKind (DefinitionObjectKind)
-import qualified Diff.Atom as DA
-import qualified Diff.Inductive as DI
-import qualified Diff.Term as DT
-import           Diff.Utils
-import qualified Inductive.Inductive as I
+import qualified Definition                     as D
+import           DefinitionObjectKind           (DefinitionObjectKind)
+import qualified Diff.Atom                      as DA
+import qualified Diff.Inductive                 as DI
+import qualified Diff.Term                      as DT
+import qualified Inductive.Inductive            as I
 import           PrettyPrinting.PrettyPrintable
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 import           Term.Term
 import           Term.Universe
 import           Vernacular
@@ -56,21 +55,23 @@ instance
   prettyDoc = \case
     Same -> "Same"
     ModifyDefinition δ1 δ2 δ3 δ4 ->
-      fillSep [ "ModifyDefinition", go δ1, go δ2, go δ3, go δ4 ]
-    ModifyInductive δ1 -> fillSep [ "ModifyInductive", go δ1 ]
-    Replace r -> fillSep [ "Replace", go r ]
+      Doc.fillSep [ "ModifyDefinition", go δ1, go δ2, go δ3, go δ4 ]
+    ModifyInductive δ1 -> Doc.fillSep [ "ModifyInductive", go δ1 ]
+    Replace r -> Doc.fillSep [ "Replace", go r ]
 
     where
-      go :: PrettyPrintable l a => a -> Doc ()
-      go = parens . prettyDoc @l
+      go :: PrettyPrintable l a => a -> Doc.Doc ()
+      go = Doc.parens . prettyDoc @l
 
 patch ::
-  ( Member (Exc String) r
-  , Member Trace r
-  ) =>
-  Vernacular Raw.Raw Variable -> Diff Raw.Raw -> Eff r (Vernacular Raw.Raw Variable)
+  Member (Error String) r =>
+  Member Trace          r =>
+  Vernacular Raw.Raw Variable -> Diff Raw.Raw -> Sem r (Vernacular Raw.Raw Variable)
 patch v δv =
-  let exc (reason :: String) = throwExc $ printf "Diff.Vernacular/patch: %s" reason in
+  let
+    exc :: Member (Error String) r => String -> Sem r a
+    exc reason = throw (printf "Diff.Vernacular/patch: %s" reason :: String)
+  in
   case δv of
     Same -> return v
     ModifyDefinition δk δn δτ δt ->

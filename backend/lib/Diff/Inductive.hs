@@ -9,41 +9,41 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Diff.Inductive
-  ( Δc
-  , Δcs
-  , Δii
-  , Δiis
-  , Δip
-  , Δips
-  , Diff(..)
-  , δconstructorRawType
-  , δinductiveRawType
-  , δinductiveRawConstructorPrefix
-  -- , instantiateΔis
-  , patch
-  , patchIndex
-  , patchParameter
+module Diff.Inductive (
+  Δc,
+  Δcs,
+  Δii,
+  Δiis,
+  Δip,
+  Δips,
+  Diff(..),
+  δconstructorRawType,
+  δinductiveRawType,
+  δinductiveRawConstructorPrefix,
+  -- instantiateΔis,
+  patch,
+  patchIndex,
+  patchParameter,
   ) where
 
-import           Control.Monad.Fix
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Data.Text.Prettyprint.Doc
+import           Control.Monad.Fix              ( fix )
+import qualified Data.Text.Prettyprint.Doc      as Doc
+import           Polysemy                       ( Member, Sem )
+import           Polysemy.Error                 ( Error )
+import           Polysemy.Trace                 ( Trace )
 
-import qualified Diff.Atom as DA
-import qualified Diff.Constructor as DC
-import qualified Diff.List as DL
+import qualified Diff.Atom                      as DA
+import qualified Diff.Constructor               as DC
+import qualified Diff.List                      as DL
 import           Diff.ListFoldUtils
-import qualified Diff.Term as DT
-import qualified Diff.Triple as D3
+import qualified Diff.Term                      as DT
+import qualified Diff.Triple                    as D3
 import           Inductive.Inductive
-import           PrettyPrinting.Chick ()
+import           PrettyPrinting.Chick           ()
 import           PrettyPrinting.PrettyPrintable
-import           PrettyPrinting.Universe ()
+import           PrettyPrinting.Universe        ()
 import           Term.Binder
-import qualified Term.Raw as Raw
+import qualified Term.Raw                       as Raw
 import           Term.Term
 import           Term.Universe
 import           Text.Printf
@@ -114,35 +114,32 @@ instance
   where
   prettyDoc = \case
     Same                  -> "Same"
-    Modify δ1 δ2 δ3 δ4 δ5 -> fillSep [ "Modify", go δ1 , go δ2, go δ3, go δ4, go δ5 ]
+    Modify δ1 δ2 δ3 δ4 δ5 -> Doc.fillSep [ "Modify", go δ1 , go δ2, go δ3, go δ4, go δ5 ]
 
     where
-      go :: PrettyPrintable l a => a -> Doc ()
-      go = parens . prettyDoc @l
+      go :: PrettyPrintable l a => a -> Doc.Doc ()
+      go = Doc.parens . prettyDoc @l
 
 patchParameter ::
-  ( Member (Exc String) r
-  , Member Trace r
-  , Show α
-  ) =>
-  Φip α Variable -> Δip α -> Eff r (Φip α Variable)
+  Member (Error String) r =>
+  Member Trace r        =>
+  Show α =>
+  Φip α Variable -> Δip α -> Sem r (Φip α Variable)
 patchParameter = D3.patch DA.patch DA.patch DT.patch
 
 patchIndex ::
-  ( Member (Exc String) r
-  , Member Trace r
-  , Show α
-  ) =>
-  Φii α Variable -> Δii α -> Eff r (Φii α Variable)
+  Member (Error String) r =>
+  Member Trace        r =>
+  Show α =>
+  Φii α Variable -> Δii α -> Sem r (Φii α Variable)
 patchIndex = D3.patch DA.patch DA.patch DT.patch
 
 patch ::
-  ( Member (Exc String) r
-  , Member Trace r
+  Member (Error String) r =>
+  Member Trace          r =>
   -- , PrettyPrintable α
-  , Show α
-  ) =>
-  Inductive α Variable -> Diff α -> Eff r (Inductive α Variable)
+  Show α =>
+  Inductive α Variable -> Diff α -> Sem r (Inductive α Variable)
 patch ind@(Inductive n ps is u cs) = \case
   Same                     -> return ind
   Modify δn δps δis δu δcs -> do
