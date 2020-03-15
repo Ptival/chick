@@ -130,7 +130,7 @@ letP :: Parser3 (Raw.Term Variable)
 letP topP selfP _nextP = do
   MP.try $ rword "let"
   b <- binderP
-  symbol "="
+  symbol postLetSymbol
   t1 <- topP
   rword "in"
   t2 <- selfP
@@ -175,7 +175,7 @@ namedPiP topP selfP _nextP = do
     groups <- MP.many $ do
       symbol "("
       bs <- MP.some binderP
-      symbol ":"
+      symbol hasTypeSymbol
       τ1 <- topP
       symbol ")"
       return (bs, τ1)

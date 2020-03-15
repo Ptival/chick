@@ -10,21 +10,21 @@ module PrettyPrinting.Chick.Term
   , boundTermDocVariable
   ) where
 
-import Bound.Name
-import Control.Lens
-import Control.Monad.Reader (MonadReader, ask, runReader)
-import Data.Default
-import Data.Text.Prettyprint.Doc
+import           Bound.Name
+import           Control.Lens
+import           Control.Monad.Reader                      ( MonadReader, ask, runReader )
+import           Data.Default
+import qualified Data.Text.Prettyprint.Doc                 as Doc
 
-import Language (Language(Chick))
-import Precedence
-import PrettyPrinting.Chick.Binder ()
-import PrettyPrinting.Chick.Variable ()
-import PrettyPrinting.PrettyPrintable
-import PrettyPrinting.PrettyPrintableUnannotated
-import PrettyPrinting.Utils
-import Term.Binder
-import Term.Term
+import           Language                                  ( Language(Chick) )
+import           Precedence
+import           PrettyPrinting.Chick.Binder               ( )
+import           PrettyPrinting.Chick.Variable             ( )
+import           PrettyPrinting.PrettyPrintable
+import           PrettyPrinting.PrettyPrintableUnannotated
+import           PrettyPrinting.Utils
+import           Term.Binder
+import           Term.Term
 
 instance PrettyPrintableUnannotated 'Chick (Branch α Variable) where
   prettyDocU b = do
@@ -44,61 +44,61 @@ instance PrettyPrintable 'Chick (TermX α Variable) where
   prettyDoc t = runReader (prettyDocU @'Chick t) def
   prettyStr = prettyStrU @'Chick
 
-prettyGuardAndBodyDocPrec :: PrecedenceTable -> GuardAndBody (TermX α) Variable -> Doc ()
-prettyGuardAndBodyDocPrec precs gb = fillCat [ guard, "=", space, body ]
+prettyGuardAndBodyDocPrec :: PrecedenceTable -> GuardAndBody (TermX α) Variable -> Doc.Doc ()
+prettyGuardAndBodyDocPrec precs gb = Doc.fillCat [ guard, "=", Doc.space, body ]
   where
     guard = case branchGuard gb of
       Nothing -> ""
-      Just g  -> fillCat [ fst $ prettyTermDocPrec precs g, space ]
+      Just g  -> Doc.fillCat [ fst $ prettyTermDocPrec precs g, Doc.space ]
     body = fst $ prettyTermDocPrec precs $ branchBody gb
 
-prettyBranchDocPrec :: PrecedenceTable -> Branch α Variable -> Doc ()
+prettyBranchDocPrec :: PrecedenceTable -> Branch α Variable -> Doc.Doc ()
 prettyBranchDocPrec precs b =
   let (ctor, args, guardbody) = unpackBranch b in
-  fillSep
+  Doc.fillSep
   [ "|"
   , prettyDoc @'Chick ctor
-  , fillSep $ map (prettyDoc @'Chick) args
+  , Doc.fillSep $ map (prettyDoc @'Chick) args
   , "=>"
   , prettyGuardAndBodyDocPrec precs guardbody
   ]
 
-prettyTermDocPrec :: ∀ α. PrecedenceTable -> TermX α Variable -> (Doc (), Precedence)
+prettyTermDocPrec :: ∀ α. PrecedenceTable -> TermX α Variable -> (Doc.Doc (), Precedence)
 prettyTermDocPrec precs = goTerm
 
   where
 
-    go :: (Precedence, Tolerance) -> TermX α Variable -> Doc ()
+    go :: (Precedence, Tolerance) -> TermX α Variable -> Doc.Doc ()
     go pt = par precs pt . prettyTermDocPrec precs
 
-    goTerm :: TermX α Variable -> (Doc (), Precedence)
+    goTerm :: TermX α Variable -> (Doc.Doc (), Precedence)
     goTerm = \case
 
       Annot _ t τ ->
-        (fillSep
+        (Doc.fillSep
          [ go (PrecAnnot, TolerateHigher) t
-         , pretty annotSymbol
+         , Doc.pretty annotSymbol
          , go (PrecAnnot, TolerateHigher) τ
          ]
         , PrecAnnot)
 
       App _ t1 t2 ->
-        (fillSep
+        (Doc.fillSep
          [ go (PrecApp, TolerateEqual) t1
          , go (PrecApp, TolerateHigher) t2
          ]
         , PrecApp)
 
-      Hole _ -> (pretty holeSymbol, PrecAtom)
+      Hole _ -> (Doc.pretty holeSymbol, PrecAtom)
 
       l@(Lam _ _) -> (goLams [] l, PrecLam)
 
       Let _ t1 bt2 ->
         let n = originalVariable bt2 in
-        (fillSep
+        (Doc.fillSep
          [ "let"
          , prettyDoc @'Chick n
-         , ":="
+         , Doc.pretty postLetSymbol
          , go (PrecMin, TolerateEqual) t1
          , "in"
          , go (PrecLet, TolerateEqual) (instantiate1Name (Var Nothing n) (view scopedTerm bt2))
@@ -106,10 +106,10 @@ prettyTermDocPrec precs = goTerm
         , PrecLet)
 
       Match _ d bs ->
-        (line <> (indent 2 . align . vsep $ matchDoc), PrecMatch)
+        (Doc.line <> (Doc.indent 2 . Doc.align . Doc.vsep $ matchDoc), PrecMatch)
         where
           matchDoc = []
-            ++ [ fillSep [ "match", go (PrecMin, TolerateEqual) d, "with" ] ]
+            ++ [ Doc.fillSep [ "match", go (PrecMin, TolerateEqual) d, "with" ] ]
             ++ map (prettyBranchDocPrec precs) bs
             ++ [ "end" ]
 
@@ -117,45 +117,45 @@ prettyTermDocPrec precs = goTerm
         let (b, τ2) = unscopeTerm bτ2 in
         case unBinder b of
           Nothing ->
-            (fillSep
+            (Doc.fillSep
               [ go (PrecArrow, TolerateHigher) τ1
-              , pretty arrowSymbol
+              , Doc.pretty arrowSymbol
               , go (PrecArrow, TolerateEqual) τ2
               ]
             , PrecArrow)
           Just v ->
-            (hcat
-              [ "∀"
-              , space
-              , parens $ fillSep
+            (Doc.hcat
+              [ Doc.pretty forallSymbol
+              , Doc.space
+              , Doc.parens $ Doc.fillSep
                 [ prettyDoc @'Chick (if unVariable v == "_" then error "NOOOO" else v)
-                , pretty ':'
+                , Doc.pretty hasTypeSymbol
                 , go (PrecMin, TolerateEqual) τ1
                 ]
-              , comma
-              , softline
+              , Doc.pretty postForallSymbol
+              , Doc.softline
               , go (PrecArrow, TolerateEqual) τ2
               ]
             , PrecArrow)
 
-      Type u -> (pretty $ show u, PrecAtom)
+      Type u -> (Doc.pretty $ show u, PrecAtom)
 
       Var _ v -> (prettyDoc @'Chick v, PrecAtom)
 
       UnsupportedOCaml _o -> error "TODO"
 
-    goLams :: [Doc ()] -> TermX α Variable -> Doc ()
+    goLams :: [Doc.Doc ()] -> TermX α Variable -> Doc.Doc ()
     goLams l = \case
       Lam _ bt ->
         let n = originalVariable bt in
         goLams (prettyDoc @'Chick n : l) (instantiate1Name (Var Nothing n) (view scopedTerm bt))
       t ->
-        hcat
-        [ pretty lamSymbol
-        , space
-        , fillSep . reverse $ l
-        , pretty postLamSymbol
-        , softline
+        Doc.hcat
+        [ Doc.pretty lamSymbol
+        , Doc.space
+        , Doc.fillSep . reverse $ l
+        , Doc.pretty postLamSymbol
+        , Doc.softline
         , go (PrecMin, TolerateEqual) t
         ]
 
@@ -164,7 +164,7 @@ boundTermDocBinder :: ∀ l m α.
   , PrettyPrintable l Variable
   , PrettyPrintableUnannotated l (TermX α Variable)
   ) =>
-  (α, Binder Variable, TermX α Variable) -> m (Doc ())
+  (α, Binder Variable, TermX α Variable) -> m (Doc.Doc ())
 boundTermDocBinder (α, Binder b, t) =
   case b of
     Nothing -> prettyDocU @l t
@@ -175,7 +175,7 @@ boundTermDocVariable :: ∀ l m α.
   , PrettyPrintable l Variable
   , PrettyPrintableUnannotated l (TermX α Variable)
   ) =>
-  (α, Variable, TermX α Variable) -> m (Doc ())
+  (α, Variable, TermX α Variable) -> m (Doc.Doc ())
 boundTermDocVariable (_, v, t) = do
   tDoc <- prettyDocU @l t
-  return $ parens . fillSep $ [ prettyDoc @l v, ":", tDoc ]
+  return $ Doc.parens . Doc.fillSep $ [ prettyDoc @l v, ":", tDoc ]

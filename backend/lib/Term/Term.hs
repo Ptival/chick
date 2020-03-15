@@ -28,6 +28,7 @@ module Term.Term (
   arrowSymbol,
   scopedTerm,
   forallSymbol,
+  hasTypeSymbol,
   holeSymbol,
   lamSymbol,
   originalBinder,
@@ -35,6 +36,7 @@ module Term.Term (
   packBranch,
   postForallSymbol,
   postLamSymbol,
+  postLetSymbol,
   simultaneousSubstitute,
   substitute,
   unpackBranch,
@@ -83,17 +85,27 @@ One could either:
 - change the Pi syntax, for instance `Π (t : t) → t`, but people would be surprised by
   the meaning of `(t : t) → t`
 
+Old decision:
+- type ascription will be akin to the usage in Agda, but reversed: `t ∈ T`
+- type dependency will look like in Agda too: `(a : A) -> B A a`
+
+New decision: to make it easier to import Coq stuff
+- type ascription will be `t : T`
+- type dependency will be `∀ (a : A), B A a`
+
 -}
 
-annotSymbol, arrowSymbol, forallSymbol, holeSymbol :: String
-lamSymbol, postForallSymbol, postLamSymbol, wildcardSymbol :: String
+annotSymbol, arrowSymbol, forallSymbol, hasTypeSymbol, holeSymbol :: String
+lamSymbol, postForallSymbol, postLamSymbol, postLetSymbol, wildcardSymbol :: String
 annotSymbol = ":"
 arrowSymbol = "→"
 forallSymbol = "∀"
+hasTypeSymbol = ":"
 holeSymbol  = "_"
 lamSymbol = "λ"
 postForallSymbol = ","
 postLamSymbol = ","
+postLetSymbol = ":="
 wildcardSymbol = "_"
 
 data ScopedTerm f a = ScopedTerm

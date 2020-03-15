@@ -43,7 +43,7 @@ tests :: TestTree
 tests =
   testGroup "Tests"
   [ testGroup "(checked by HUnit)" $ []
-    -- ++ [unitTests]
+    ++ [unitTests]
     -- ++ [TAE.unitTests]
     -- ++ [TAR.unitTests]
     -- ++ [TF.unitTests]
@@ -80,11 +80,15 @@ unitTestTerms =
   [ (var "a" ^:: var "b", printf "a %s b" annotSymbol)
   , (var "a" ^$ var "b", "a b")
   , (hole, holeSymbol)
-  , ((^\) ["arg1", "arg2", "arg3"] (var "body"), "λ arg1 arg2 arg3 . body")
-  , ( let' [("x1", var "body1"), ("x2", var "body2")] (var "body")
-    , "let x1 = body1 in let x2 = body2 in body"
+  , ( (^\) ["arg1", "arg2", "arg3"] (var "body")
+    , printf "%s arg1 arg2 arg3%s body" lamSymbol postLamSymbol
     )
-  , (π [("t", var "τ1")] (var "τ2"), "(t : τ1) → τ2")
+  , ( let' [("x1", var "body1"), ("x2", var "body2")] (var "body")
+    , printf "let x1 %s body1 in let x2 %s body2 in body"
+      postLetSymbol postLetSymbol
+    )
+  , ( π [("t", var "τ1")] (var "τ2")
+    , printf "%s (t : τ1)%s τ2" forallSymbol postForallSymbol)
   , (var "τ1" ^-> var "τ2", "τ1 → τ2")
   , (type', "Type")
   , (var "foo", "foo")
@@ -116,11 +120,12 @@ unitTests =
 
   ]
 
-  ++
+  -- Maybe it's fine to have "a : b : c"?
+  -- ++
 
-  [ let bad = printf "a %s b %s c" annotSymbol annotSymbol in
-    testCase (printf "should not parse %s" bad) $
-    parseMaybeRaw bad @?= Nothing ]
+  -- [ let bad = printf "a %s b %s c" annotSymbol annotSymbol in
+  --   testCase (printf "should not parse %s" bad) $
+  --   parseMaybeRaw bad @?= Nothing ]
 
 scProps :: TestTree
 scProps =
