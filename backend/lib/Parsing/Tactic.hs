@@ -1,7 +1,6 @@
-
-module Parsing.Tactic
-  ( atomicP
-  , tacticP
+module Parsing.Tactic (
+  atomicP,
+  tacticP,
   ) where
 
 import Text.Megaparsec.Combinator
@@ -22,7 +21,7 @@ atomicP =
   ]
 
 semicolonP :: Parser (Tactic Variable)
-semicolonP = chainl1 atomicP (symbol ";" *> return Semicolon)
+semicolonP = chainl1 atomicP (symbol ";" $> Semicolon)
 
 tacticP :: Parser (Tactic Variable)
 tacticP =

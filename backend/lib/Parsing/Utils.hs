@@ -11,6 +11,12 @@ import Text.Megaparsec
 
 import Parsing.Types
 
+parseRestOfOperation :: Monad m => m a -> m (b -> a -> b) -> (b -> m c) -> b -> m c
+parseRestOfOperation p op rest x = do
+  f <- op
+  y <- p
+  rest (f x y)
+
 {-
 
 This combinator is necessary because we want to parse succesfully even when
@@ -24,11 +30,7 @@ chain to capture `Foo.Bar` and ignore the `.baz`.
 chainl1try' :: Parser a -> Parser (b -> a -> b) -> (a -> b) -> Parser b
 chainl1try' p op bc = p >>= rest . bc
   where
-    rest x = tryOp x <|> return x
-    tryOp x = try $ do
-      f <- op
-      y <- p
-      rest (f x y)
+    rest x = try (parseRestOfOperation p op rest x) <|> return x
 
 chainl1try :: Parser b -> Parser (b -> b -> b) -> Parser b
 chainl1try p op = chainl1try' p op id
@@ -36,7 +38,7 @@ chainl1try p op = chainl1try' p op id
 chainl1' :: (Alternative m, Monad m) => m a -> m (b -> a -> b) -> (a -> b) -> m b
 chainl1' p op bc = p >>= rest . bc
   where
-    rest x = do { f <- op ; y <- p ; rest (f x y) } <|> return x
+    rest x = parseRestOfOperation p op rest x <|> return x
 
 chainl1 :: (Alternative m, Monad m) => m a -> m (a -> a -> a) -> m a
 chainl1 p op = chainl1' p op id

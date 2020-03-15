@@ -1,32 +1,31 @@
-
 module DictMetaId where
 
-import Data.Functor.Identity
+-- import Data.Functor.Identity
 
-import DictMeta
-import Term.Term
+-- import DictMeta
+-- import Term.Term
 
-type DictMetaId = DictMeta Identity
+-- type DictMetaId = DictMeta Identity
 
-dictMetaId :: ForallX ((~) t) ξ => t -> DictMetaId ξ
-dictMetaId = dictMeta' . pure
+-- dictMetaId :: ForallX ((~) t) ξ => t -> DictMetaId ξ
+-- dictMetaId = dictMeta' . pure
 
-metaAnnotId :: DictMetaId ξ -> X_Annot ξ
-metaAnnotId = runIdentity . metaAnnot
-metaAppId :: DictMetaId ξ -> X_App ξ
-metaAppId = runIdentity . metaApp
-metaHoleId :: DictMetaId ξ -> X_Hole ξ
-metaHoleId = runIdentity . metaHole
-metaLamId :: DictMetaId ξ -> X_Lam ξ
-metaLamId = runIdentity . metaLam
-metaLetId :: DictMetaId ξ -> X_Let ξ
-metaLetId = runIdentity . metaLet
-metaPiId :: DictMetaId ξ -> X_Pi ξ
-metaPiId = runIdentity . metaPi
-metaTypeId :: DictMetaId ξ -> X_Type ξ
-metaTypeId = runIdentity . metaType
-metaVarId :: DictMetaId ξ -> X_Var ξ
-metaVarId = runIdentity . metaVar
+-- metaAnnotId :: DictMetaId ξ -> X_Annot ξ
+-- metaAnnotId = runIdentity . metaAnnot
+-- metaAppId :: DictMetaId ξ -> X_App ξ
+-- metaAppId = runIdentity . metaApp
+-- metaHoleId :: DictMetaId ξ -> X_Hole ξ
+-- metaHoleId = runIdentity . metaHole
+-- metaLamId :: DictMetaId ξ -> X_Lam ξ
+-- metaLamId = runIdentity . metaLam
+-- metaLetId :: DictMetaId ξ -> X_Let ξ
+-- metaLetId = runIdentity . metaLet
+-- metaPiId :: DictMetaId ξ -> X_Pi ξ
+-- metaPiId = runIdentity . metaPi
+-- metaTypeId :: DictMetaId ξ -> X_Type ξ
+-- metaTypeId = runIdentity . metaType
+-- metaVarId :: DictMetaId ξ -> X_Var ξ
+-- metaVarId = runIdentity . metaVar
 
 {-
 metaId :: DictMetaId ψ -> TermX ξ ν -> TermX ψ ν

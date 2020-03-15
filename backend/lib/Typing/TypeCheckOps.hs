@@ -1,18 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Typing.TypeCheckOps
-  ( TypeCheckOps(..)
-  , check
-  , runTraceTypeCheckOps
-  , runTypeCheckOps
-  , synth
+module Typing.TypeCheckOps (
+  TypeCheckOps(..),
+  check,
+  runTraceTypeCheckOps,
+  runTypeCheckOps,
+  synth,
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.Trace
-import           Text.Printf
+import           Polysemy                                  ( Member, Sem )
+import           Polysemy.Error                            ( Error )
+import           Polysemy.Trace                            ( Trace )
+import           Text.Printf                               ( printf )
 
 import           Language
 import           PrettyPrinting.PrettyPrintableUnannotated
@@ -27,19 +27,21 @@ import           Typing.LocalContextOps
 import           Typing.Utils
 import           Utils
 
-type Checked = C.Term Variable
-type Error   = E.Term Variable
-type Term α  = TermX α Variable
-type Type α  = Term α
+type Checked   = C.Term Variable
+type ErrorTerm = E.Term Variable
+type Term α    = TermX α Variable
+type Type α    = Term α
 
-data TypeCheckOps a where
-  Check :: Term α -> Type β -> TypeCheckOps Checked
-  Synth :: Term α ->           TypeCheckOps Checked
+data TypeCheckOps m a where
+  Check :: Term α -> Type β -> TypeCheckOps m Checked
+  Synth :: Term α ->           TypeCheckOps m Checked
 
-check :: Member TypeCheckOps r => Term α -> Type β -> Eff r Checked
+makeSem ''TypeCheckOps
+
+check :: Member TypeCheckOps r => Term α -> Type β -> Sem r Checked
 check t τ = send $ Check t τ
 
-synth :: Member TypeCheckOps r => Term α -> Eff r Checked
+synth :: Member TypeCheckOps r => Term α -> Sem r Checked
 synth t = send $ Synth t
 
 -- | TODO: move this where it belongs and implement it
@@ -51,7 +53,7 @@ handleCheck :: ∀ α β r.
   --, Member Trace r
   , Member TypeCheckOps r
   , Member (LocalContextOps (C.Checked Variable)) r
-  ) => Term α -> Term β -> Eff r Checked
+  ) => Term α -> Term β -> Sem r Checked
 handleCheck t τ = case t of
 
   Annot _ t' τ' -> do
@@ -68,7 +70,7 @@ handleCheck t τ = case t of
     -- the binders at the type- and term- level may differ, reconcile them
     binder         <- freshBinder @(C.Checked Variable) [bLam, bOut]
     tLam'          <-
-      withAssumption binder τIn $ do
+      withAssumption binder τIn $
         check tLam τOut               ||| \ _t' -> E.annotateError TODO t
     return $ Lam (C.Checked τ') (abstractBinder bLam tLam')
 
@@ -83,7 +85,7 @@ handleSynth ::
   -- , Member Trace r
   , Member TypeCheckOps r
   , Member (LocalContextOps (C.Checked Variable)) r
-  ) => Term α -> Eff r Checked
+  ) => Term α -> Sem r Checked
 handleSynth t = case t of
 
   Annot _ t' τ -> do
@@ -127,7 +129,7 @@ runTraceTypeCheckOps ::
   , Member Trace r
   , Member (LocalContextOps (C.Checked Variable)) r
   ) =>
-  Eff (TypeCheckOps ': r) a -> Eff r a
+  Sem (TypeCheckOps ': r) a -> Sem r a
 runTraceTypeCheckOps = handleRelay pure $ \case
   Check t τ -> \ arr -> do
     _γ <- getLocalContext @(C.Checked Variable)
@@ -147,7 +149,7 @@ runTypeCheckOps ::
   , Member Trace r
   , Member (LocalContextOps (C.Checked Variable)) r
   ) =>
-  Eff (TypeCheckOps ': r) a -> Eff r a
+  Sem (TypeCheckOps ': r) a -> Sem r a
 runTypeCheckOps = handleRelay pure $ \case
   Check t τ -> (>>=) $ runTypeCheckOps $ handleCheck t τ
   Synth t   -> (>>=) $ runTypeCheckOps $ handleSynth t

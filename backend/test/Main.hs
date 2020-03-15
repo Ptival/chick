@@ -52,7 +52,7 @@ tests =
     ++ [ Parsing.Inductive.Test.unitTests ]
 
   , localOption (SmallCheckDepth 3) $
-    testGroup "(checked by SmallCheck)" $ []
+    testGroup "(checked by SmallCheck)" []
     -- ++ [TAE.scTests]
     -- ++ [TAR.scTests]
     -- ++ [TF.scTests]
@@ -62,7 +62,7 @@ tests =
     localOption (QuickCheckReplay Nothing) $
     localOption (QuickCheckShowReplay True) $
     --localOption (QuickCheckVerbose True) $
-    testGroup "(checked by QuickCheck)" $ []
+    testGroup "(checked by QuickCheck)" []
     -- ++ [TAE.qcTests]
     -- ++ [TAR.qcTests]
     -- ++ [TF.qcTests]
@@ -129,7 +129,7 @@ scProps =
 
   localOption (SmallCheckDepth 1) $
 
-  testGroup "(checked by SmallCheck)" $
+  testGroup "(checked by SmallCheck)"
 
   [ SC.testProperty
     "isTolerable' p (q, TolerateAny)" $
@@ -152,7 +152,7 @@ scProps =
 qcProps :: TestTree
 qcProps =
 
-  testGroup "Something something roundtrip" $ []
+  testGroup "Something something roundtrip" []
 
   -- ++ [ QC.testProperty
   --   "parseMaybeRaw . prettyRaw == Just" $

@@ -132,7 +132,7 @@ bottomUp = do
     -- whenM (isUnmatched1 t1)        $ trace "is unmatched"
     -- forM_ (children t1) $ \ c -> trace $ printf "child: %s" (show c)
     -- whenM (hasMatchedChildren1 t1) $ trace "has matched children"
-    whenM (isUnmatched1 t1 <&&> hasMatchedChildren1 t1) do
+    whenM (isUnmatched1 t1 <&&> hasMatchedChildren1 t1) $
       -- trace $ "let's find a candidate"
       candidate t1 >>= \case
         Nothing -> return ()
@@ -140,7 +140,7 @@ bottomUp = do
           -- trace $ printf "Found a candidate: %s" (preview . node $ t2)
           m <- getM
           -- trace $ printf "Candidate dice: %s" (show $ dice m t1 t2)
-          when (dice m t1 t2 > minDice) do
+          when (dice m t1 t2 > minDice) $
             -- trace "Adding bottom-up mapping"
             modify $ over bottomUpStateM $ union [(t1, t2)]
             -- TODO: opt

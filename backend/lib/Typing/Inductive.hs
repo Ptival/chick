@@ -1,4 +1,4 @@
-{-# language OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Typing.Inductive where
 

@@ -52,7 +52,7 @@ data ParserLabels τ = ParserLabels
   deriving (Functor)
 
 newtype ModularParser τ a = ModularParser
-  { unModularParser :: (ParserLabels τ -> Parser a)
+  { unModularParser :: ParserLabels τ -> Parser a
   }
   deriving (Functor)
 
@@ -99,7 +99,7 @@ letSyntax =
 --   return (b, t1, t2)
 
 interpretSyntaxAsParser :: Syntax τ a -> ModularParser τ a
-interpretSyntaxAsParser syn = ModularParser $ \ labels@(ParserLabels { topP, selfP, nextP }) -> case syn of
+interpretSyntaxAsParser syn = ModularParser $ \ labels@ParserLabels{..} -> case syn of
   Either a b -> (Left <$> runpack a labels) <|> (Right <$> runpack b labels)
   Keyword s  -> rword s
   Next       -> nextP

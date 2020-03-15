@@ -323,9 +323,9 @@ runCheck' γ t τ = case t of
 
   -- conversion rule
   _ -> do
-    t' <- synthM γ t                  (\ t' -> t')
-    τ' <- typeOf t' `orElse`  annotateError TODO t
-    () <- (τ' `eqβ` τ)      `orElse'` annotateError IncompatibleTypes t
+    t' <- synthM γ t             id
+    τ' <- typeOf t'    `orElse`  annotateError TODO t
+    () <- (τ' `eqβ` τ) `orElse'` annotateError IncompatibleTypes t
     return t'
 
 runTypeCheckerF ::

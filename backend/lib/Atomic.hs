@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Atomic (
   Atomic(..),
   runAtomic,
@@ -15,7 +18,7 @@ import           Term.Binder
 import           Term.Free
 import           Term.Term
 import qualified Term.TypeChecked               as C
-import           Term.Variable
+-- import           Term.Variable
 import qualified Typing.GlobalEnvironment       as GE
 import           Typing.LocalDeclaration
 import qualified Typing.LocalContext            as LC
@@ -28,12 +31,12 @@ data Atomic ν
   | Intro (Binder ν)
   deriving (Show)
 
-instance PrettyPrintable ν => PrettyPrintable (Atomic ν) where
+instance PrettyPrintable l ν => PrettyPrintable l (Atomic ν) where
   prettyDoc = \case
-    Admit    -> text "admit"
-    Destruct -> text "destruct"
-    Exact v  -> fillCat [text "exact", prettyDoc v]
-    Intro b  -> fillCat [text "intro", prettyDoc b]
+    Admit    -> Doc.pretty "admit"
+    Destruct -> Doc.pretty "destruct"
+    Exact v  -> Doc.fillCat [Doc.pretty "exact", prettyDoc v]
+    Intro b  -> Doc.fillCat [Doc.pretty "intro", prettyDoc b]
 
 -- TODO: this should go elsewhere
 -- TODO: turn this into a freer-effect
@@ -61,8 +64,8 @@ runAtomic ge a (Goal hyps concl) =
   Admit -> return []
 
   Destruct -> do
-    Pi _ τ1 _bτ2            <- isPi concl           `orElse` "destruct expects the goal to be a forall"
-    Inductive _n _ps _is cs <- GE.isInductive ge τ1 `orElse` "destruct expects the term to be inductive"
+    (_, τ1, _)    <- isPi concl           `orElse` "destruct expects the goal to be a forall"
+    Inductive{..} <- GE.isInductive ge τ1 `orElse` "destruct expects the term to be inductive"
     {-
     let (b, τ2) = unscopeTerm bτ2
     let conclModifier cTerm concl =
@@ -72,7 +75,7 @@ runAtomic ge a (Goal hyps concl) =
             -- if the Pi
             Just v  -> substitute v cTerm concl
     -}
-    forM cs $ \ _c -> do
+    forM inductiveConstructors $ \ _c ->
       error "TODO (see bottom of Inductive/Constructor.hs)"
 
   Exact v ->

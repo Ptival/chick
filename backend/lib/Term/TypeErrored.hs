@@ -1,7 +1,7 @@
--- {-# language FlexibleInstances #-}
--- {-# language MultiParamTypeClasses #-}
--- {-# language TypeSynonymInstances #-}
--- {-# language UndecidableInstances #-}
+-- {-# LANGUAGE FlexibleInstances #-}
+-- {-# LANGUAGE MultiParamTypeClasses #-}
+-- {-# LANGUAGE TypeSynonymInstances #-}
+-- {-# LANGUAGE UndecidableInstances #-}
 
 module Term.TypeErrored
   ( Annotation

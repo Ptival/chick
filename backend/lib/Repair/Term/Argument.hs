@@ -56,7 +56,7 @@ repairArgs repair args τ0 δτ0 δfun =
     go acc args τ δτ =
 
       (do
-        trace $ "Repair.Term/repairArgs/go:"
+        trace "Repair.Term/repairArgs/go:"
         trace $ printf "> args: %s" (prettyStr @'Chick args)
         trace $ printf "> τ:    %s" (prettyStr @'Chick τ)
         trace $ printf "> δτ:   %s" (prettyStr @'Chick δτ)
@@ -77,13 +77,13 @@ repairArgs repair args τ0 δτ0 δfun =
           δarg <- repair arg τ1 δ1
           go (ΔT.CpyApp acc δarg) args τ2 δ2
 
-        ([], ΔT.CpyPi _ _ _) ->
+        ([], ΔT.CpyPi{}) ->
           -- this happens when the function was partially applied
           return acc
 
         ([], ΔT.CpyVar _) -> return acc
 
-        ([], ΔT.InsApp _ _ _) -> return acc -- TODO: can we do better here?
+        ([], ΔT.InsApp{}) -> return acc -- TODO: can we do better here?
 
         --        | TYPE                  | TERM
         -- BEFORE | Xs →         → Zs → R | f xs zs

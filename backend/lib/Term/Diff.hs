@@ -1,6 +1,6 @@
-{-# language FlexibleInstances #-}
-{-# language MultiParamTypeClasses #-}
-{-# language UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Term.Diff
   ( TermDiff

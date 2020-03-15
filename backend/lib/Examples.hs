@@ -1,38 +1,38 @@
-{-# language OverloadedStrings #-}
-{-# language UndecidableInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Examples where
 
-import Control.Monad.Trans.Free
-import Text.Megaparsec
-import Text.PrettyPrint.GenericPretty (pp)
+import           Control.Monad.Trans.Free
+import           Text.Megaparsec
+import           Text.PrettyPrint.GenericPretty (pp)
 
-import Notations
-import Parsing
-import PrettyPrinting
-import Term.Raw                       as Raw
+import           Notations
+import           Parsing
+-- import PrettyPrinting
+import qualified Term.Raw                       as Raw
 --import Term.AlphaEquivalence
-import Term.Numbered                  as Numbered
-import Term.TypeChecked               as TypeChecked
-import Term.TypeErrored               as TypeErrored
-import Work
+import           Term.Numbered                  as Numbered
+import qualified Term.TypeChecked               as C
+import qualified Term.TypeErrored               as E
+import           Work
 
-τFlip :: Raw.Type
+τFlip :: Raw.Type ν
 τFlip = π [ ("A", type'), ("B", type'), ("C", type') ] $
      (var "A" ^-> var "B" ^-> var "C") ^->
      (var "B" ^-> var "A" ^-> var "C")
 
-tFlip :: Raw.Term
+tFlip :: Raw.Term ν
 tFlip = (^\) ["A", "B", "C", "f", "b", "a"] $
         var "f" ^$ var "a" ^$ var "b"
 
 testing ::
   Either
-  TypeErrored.Term
-  (FreeF TypeCheckerF TypeChecked.Term (TCMonad TypeChecked.Term))
+  (E.Term ν)
+  (FreeF (TypeCheckerF ν) (C.Term ν) (TCMonad ν (C.Term ν)))
 testing = runTypeCheck2 $ runCheck' [] tFlip τFlip
 
-trace :: [TypeCheckerF (TCMonad TypeChecked.Term)]
+trace :: [TypeCheckerF ν (TCMonad ν (C.Term ν))]
 trace = tcTrace stepTypeCheckerF $ checkF [] tFlip τFlip id
 
 {-
@@ -46,20 +46,20 @@ didItWork (a:[])  =
   _ -> error "sucks"
 -}
 
-testNumberize :: Numbered.Term
+testNumberize :: Numbered.Term ν
 testNumberize = numberize tFlip
 
-manyRightApps :: Int -> Raw.Term
+manyRightApps :: Int -> Raw.Term ν
 manyRightApps 0 = var "x"
 manyRightApps n = var "x" ^$ manyRightApps (n - 1)
 
-manyLeftApps :: Int -> Raw.Term
+manyLeftApps :: Int -> Raw.Term ν
 manyLeftApps 0 = var "x"
 manyLeftApps n = manyLeftApps (n - 1) ^$ var "x"
 
 testPretty :: IO ()
 testPretty = do
-  let p = (putStrLn . prettyTerm :: Raw.Term -> IO ())
+  let p = (putStrLn . prettyTerm :: Raw.Term ν -> IO ())
   p $ var "a" ^$ (var "b" ^$ (var "c" ^$ var "d"))
   p $ ((var "a" ^$ var "b") ^$ var "c") ^$ var "d"
   p $ manyLeftApps 40

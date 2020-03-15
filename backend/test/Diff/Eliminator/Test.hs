@@ -33,20 +33,20 @@ test indFrom δind indTo =
     return False
 
   Just δelim -> do
-    trace $ "-- Eliminator before:"
+    trace "-- Eliminator before:"
     trace $ prettyStr @'Chick elimFrom
     trace $ replicate 80 '-'
-    trace $ "-- δ computed to patch eliminator:"
+    trace "-- δ computed to patch eliminator:"
     trace $ prettyStr @'Chick δelim
     trace $ replicate 80 '-'
-    trace $ "-- Eliminator expected:"
+    trace "-- Eliminator expected:"
     trace $ prettyStr @'Chick elimTo
     trace $ replicate 80 '-'
     elimTo' <- DT.patch elimFrom δelim
-    trace $ "-- Eliminator obtained:"
+    trace "-- Eliminator obtained:"
     trace $ prettyStr @'Chick elimTo'
     trace $ replicate 80 '-'
-    trace $ "-- Eliminator expected and obtained are α-equivalent?"
+    trace "-- Eliminator expected and obtained are α-equivalent?"
     return (elimTo' == elimTo)
 
 type Test r =
@@ -89,7 +89,7 @@ unitTests =
 main :: IO ()
 main = do
   putStrLn "\n"
-  forM_ unitTests $ \ (name, t) -> do
+  forM_ unitTests $ \ (name, t) ->
     (runM . ignoreTrace $ runError t) >>= \case
       Right True -> putStrLn $ printf "[✓] %s" name
       Right False -> do

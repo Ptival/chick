@@ -85,8 +85,7 @@ findDeclarationDiff v = do
     exc reason = throw (printf "Repair.Utils/findDeclarationDiff: %s" reason :: String)
   (γ, δγ) <- getContexts
   (e, δe) <- getEnvironments
-  result <-
-    (Left <$> ΔLC.findLocalDeclarationDiff  v γ δγ)
+  (Left <$> ΔLC.findLocalDeclarationDiff  v γ δγ)
     `catch`
     (\ (localError :: String) ->
         (Right <$> ΔGE.findGlobalDeclarationDiff v e δe)
@@ -96,7 +95,6 @@ findDeclarationDiff v = do
           (prettyStr @'Chick v) localError globalError
         )
     )
-  return result
 
 unpackDeclarationDiff ::
   Either (ΔLD.Diff Raw.Raw) (ΔGD.Diff Raw.Raw) ->

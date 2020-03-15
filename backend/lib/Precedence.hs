@@ -1,4 +1,4 @@
-{-# language DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Precedence
   ( Precedence(..)

@@ -1,10 +1,10 @@
-module Typing.Utils
-  ( (|||)
-  , (^||)
-  , (?||)
-  , (!)
-  , (~!)
-  , (~!\)
+module Typing.Utils (
+  (|||),
+  (^||),
+  (?||),
+  (!),
+  (~!),
+  (~!\),
   ) where
 
 import           Data.Bifunctor
@@ -19,8 +19,7 @@ import           TypeCheckingFailure
 type ErrorTerm   = E.Term Variable
 
 (|||) :: Member (Error ErrorTerm) r => Sem r a -> (ErrorTerm -> ErrorTerm) -> Sem r a
-(|||) e f = do
-  e `catch` (throw . f)
+(|||) e f = e `catch` (throw . f)
 
 (^||) :: Member (Error ErrorTerm) r => Maybe a -> ErrorTerm -> Sem r a
 (^||) m e = maybe (throw e) pure m

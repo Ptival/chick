@@ -55,10 +55,10 @@ repair v δv =
       -- δt' <- RT.repair t' (D.definitionType d) δτ
       return $ ΔV.ModifyDefinition δb δn δτ δt
 
-    (_, ΔV.ModifyDefinition _ _ _ _) ->
+    (_, ΔV.ModifyDefinition{}) ->
       exc "ModifyDefinition, but not a Definition"
 
-    (Inductive ind, ΔV.ModifyInductive δind) -> do
+    (Inductive ind, ΔV.ModifyInductive δind) ->
       ΔV.ModifyInductive <$> RI.repair ind δind
 
     (Definition d, ΔV.Same) -> do
@@ -66,7 +66,7 @@ repair v δv =
       δτ <- RT.repair (D.definitionType d) (Type U.Type) ΔT.Same
       -- here we have to put ΔT.Same because we don't know the body repair yet,
       -- but this should only be temporary/local to repairing the body itself
-      δt <- withFixpointAndδ d (ΔA.Same, δτ, ΔT.Same) $ do
+      δt <- withFixpointAndδ d (ΔA.Same, δτ, ΔT.Same) $
         RT.repair (D.definitionTerm d) (D.definitionType d) δτ
       return $ ΔV.ModifyDefinition ΔA.Same ΔA.Same δτ δt
 

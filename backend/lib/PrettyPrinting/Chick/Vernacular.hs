@@ -3,9 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module PrettyPrinting.Chick.Vernacular
-  (
-  ) where
+module PrettyPrinting.Chick.Vernacular where
 
 import Control.Monad.Reader
 import Data.Default

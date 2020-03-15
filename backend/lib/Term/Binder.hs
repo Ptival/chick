@@ -27,7 +27,7 @@ instance Arbitrary ν => Arbitrary (Binder ν) where
     ]
   shrink (Binder b) = case b of
     Nothing -> []
-    Just v  -> [Binder Nothing] ++ [Binder (Just v') | v' <- shrink v]
+    Just v  -> Binder Nothing : [Binder (Just v') | v' <- shrink v]
 
 instance IsString ν => IsString (Binder ν) where
   fromString s = Binder (Just (fromString s))

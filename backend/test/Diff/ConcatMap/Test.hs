@@ -18,9 +18,9 @@ f n = replicate n n
 δinput :: DL.Diff Int (DA.Diff Int)
 δinput =
   DL.Permute [2, 0, 3, 1]
-  $ DL.Insert 1
-  $ DL.nKeeps (length input)
-  $ DL.Insert 6
+  . DL.Insert 1
+  . DL.nKeeps (length input)
+  . DL.Insert 6
   $ DL.Same
 
 patchList :: [Int] -> DL.Diff Int (DA.Diff Int) -> IO (Either String [Int])
@@ -43,13 +43,13 @@ test = do
       putStrLn e
       return False
     Right input' -> do
-      putStrLn $ show input'
+      print input'
       let output' = concatMap f input'
       case δconcatMap f patchElem input δinput of
         Nothing -> do
           putStrLn "Nothing"
           return False
-        Just δoutput -> do
+        Just δoutput ->
           patchList output δoutput >>= \case
             Left e -> do
               putStrLn e
@@ -57,11 +57,11 @@ test = do
             Right output'' ->
               if output' == output''
               then do
-                putStrLn $ show output''
+                print output''
                 return True
               else do
                 putStrLn "Expected:"
-                putStrLn $ show output'
+                print output'
                 putStrLn "Obtained:"
-                putStrLn $ show output''
+                print output''
                 return False

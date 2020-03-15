@@ -1,15 +1,15 @@
-{-# language TemplateHaskell #-}
-{-# language TypeSynonymInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
-module Typing.Free
-  ( traceCheck
-  , runCheck
+module Typing.Free (
+  traceCheck,
+  runCheck,
   ) where
 
-import           Control.Monad.Freer
-import           Control.Monad.Freer.Exception
-import           Control.Monad.Freer.State
-import           Control.Monad.Freer.Trace
+import           Polysemy
+import           Polysemy.Error
+import           Polysemy.State
+import           Polysemy.Trace
 
 import           Term.Term
 import qualified Term.TypeChecked as C

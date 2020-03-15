@@ -72,14 +72,14 @@ patch gd δgd =
     ModifyGlobalAssum δv δτ ->
       case gd of
         GlobalAssum v τ -> GlobalAssum <$> DA.patch v δv <*> DT.patch τ δτ
-        _               -> exc $ "ModifyGlobalAssum: not a GlobalAssum"
+        _               -> exc "ModifyGlobalAssum: not a GlobalAssum"
 
     ModifyGlobalDef δv δτ δt ->
       case gd of
         GlobalDef v τ t -> GlobalDef <$> DA.patch v δv <*> DT.patch τ δτ <*> DT.patch t δt
-        _               -> exc $ "ModifyGlobalDef: not a GlobalDef"
+        _               -> exc "ModifyGlobalDef: not a GlobalDef"
 
     ModifyGlobalInd δind ->
       case gd of
         GlobalInd ind -> GlobalInd <$> DI.patch ind δind
-        _               -> exc $ "ModifyGlobalInd: not a GlobalInd"
+        _               -> exc "ModifyGlobalInd: not a GlobalInd"

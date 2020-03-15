@@ -1,19 +1,18 @@
-{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Typing.LocalContext
-  ( LocalContext(..)
-  , TypeCheckedLocalContext
-  , addHyp
-  , addLocalAssum
-  , boundNames
-  , lookupType
+module Typing.LocalContext (
+  LocalContext(..),
+  TypeCheckedLocalContext,
+  addHyp,
+  addLocalAssum,
+  boundNames,
+  lookupType,
   ) where
 
-import Control.Monad
-import Control.Monad.Except
-import Data.Maybe
+import Control.Monad           ( msum )
+import Control.Monad.Except    ( MonadError, throwError )
+import Data.Maybe              ( mapMaybe )
 
 import Typing.LocalDeclaration
 import Term.Binder
@@ -45,4 +44,4 @@ lookupType target (LocalContext γ) = msum (map found γ)
       _ -> Nothing
 
 boundNames :: LocalContext α ν -> [ν]
-boundNames (LocalContext γ) = catMaybes $ map nameOf γ
+boundNames (LocalContext γ) = mapMaybe nameOf γ

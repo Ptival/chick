@@ -3,8 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 
-module Repair.Term.Branch
-  ( repairBranches
+module Repair.Term.Branch (
+  repairBranches,
   ) where
 
 import           Control.Arrow                  ( (>>>) )
@@ -187,7 +187,7 @@ repairBranches :: ∀ r.
 repairBranches _repairTerm _bs _ind ΔI.Same =
   -- repairBranches repairTerm bs ind (ΔI.Modify _ _ _ _ δcs)
   -- FIXME: fix body of branches
-  return $ ΔL.Same
+  return ΔL.Same
 repairBranches repairTerm bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
   let cs = inductiveConstructors ind
   -- the original branches are in some permutation of the original list of constructors,
@@ -226,7 +226,7 @@ repairBranches repairTerm bs ind δi@(ΔI.Modify _ _ _ _ δcs) = do
                 , replicate (length (constructorParameters c)) (Binder Nothing)
                 , GuardAndBody Nothing (Hole ())
                 )
-        trace $ "Inserting branch:"
+        trace "Inserting branch:"
         trace $ preview @'Chick b
         go (δbs, δins ++ [ΔL.Insert b]) (bs, cs, δcs)
       (b : bs, c : cs, ΔL.Modify δc δcs) -> do

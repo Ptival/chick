@@ -4,37 +4,37 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Inductive.Inductive
-  ( Φip
-  , Φips
-  , Φii
-  , Φiis
-  , Φcp
-  , Φcps
-  , Φci
-  , Φcis
-  , Constructor(..)
-  , Inductive(..)
-  , applyConstructorIndices
-  , constructorCheckedType
-  , constructorCheckedType'
-  , constructorRawType
-  , constructorRawType'
-  , cpAnnotation
-  , cpBinder
-  , cpType
-  , inductiveFamilyType'
-  , inductiveRawType
-  , inductiveRawType'
-  , inductiveType
-  , inductiveType'
-  , ipAnnotation
-  , ipBinder
-  , ipType
-  , quantifyConstructorParameters
-  , quantifyInductiveIndices
-  , quantifyInductiveParameters
-  , rawInductive
+module Inductive.Inductive (
+  Φip,
+  Φips,
+  Φii,
+  Φiis,
+  Φcp,
+  Φcps,
+  Φci,
+  Φcis,
+  Constructor(..),
+  Inductive(..),
+  applyConstructorIndices,
+  constructorCheckedType,
+  constructorCheckedType',
+  constructorRawType,
+  constructorRawType',
+  cpAnnotation,
+  cpBinder,
+  cpType,
+  inductiveFamilyType',
+  inductiveRawType,
+  inductiveRawType',
+  inductiveType,
+  inductiveType',
+  ipAnnotation,
+  ipBinder,
+  ipType,
+  quantifyConstructorParameters,
+  quantifyInductiveIndices,
+  quantifyInductiveParameters,
+  rawInductive,
   ) where
 
 import           Control.Lens

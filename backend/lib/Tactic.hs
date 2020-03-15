@@ -1,4 +1,4 @@
-{-# language UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Tactic
   ( Tactic(..)

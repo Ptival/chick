@@ -1,18 +1,18 @@
-
-module Parsing.Vernacular
-  ( definitionP
-  , vernacularP
+module Parsing.Vernacular(
+  definitionP,
+  vernacularP,
   ) where
 
-import           Control.Applicative
+import           Control.Applicative ( (<|>) )
+import           Data.Functor         ( ($>) )
 
-import qualified Definition as D
+import qualified Definition           as D
 import qualified DefinitionObjectKind as DOK
 import           Parsing
-import           Parsing.Types
 import           Parsing.Chick.Utils
 import           Parsing.Inductive
-import           Term.Raw as Raw
+import           Parsing.Types
+import           Term.Raw             as Raw
 import           Term.Term
 import           Vernacular
 
@@ -23,8 +23,8 @@ vernacularP =
 
 definitionP :: Parser (Vernacular Raw.Raw Variable)
 definitionP = do
-  k <- (rword "Definition" *> return DOK.Definition
-        <|> rword "Fixpoint" *> return DOK.Fixpoint)
+  k <- rword "Definition" $> DOK.Definition
+       <|> rword "Fixpoint" $> DOK.Fixpoint
   n <- variableP
   symbol ":"
   τ <- termP

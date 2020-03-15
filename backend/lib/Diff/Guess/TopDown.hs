@@ -9,8 +9,7 @@ module Diff.Guess.TopDown (
 import Control.Lens        ( Lens', makeLenses, over, set, view )
 import Control.Monad       ( forM_, when )
 import Control.Monad.Loops ( whileM_ )
-import Data.List           ( partition, sortBy, union )
-import Data.Ord            ( comparing )
+import Data.List           ( partition, sortOn, union )
 import Polysemy            ( Member, Sem )
 import Polysemy.Reader     ( Reader, ask, runReader )
 import Polysemy.State      ( State, get, modify, runState )
@@ -41,7 +40,7 @@ makeLenses ''TopDownState
 open ::
   Member (State TopDownState) r =>
   Node -> Lens' TopDownState HIList -> Sem r ()
-open t lens = forM_ (reverse $ children t) $ \ c -> do
+open t lens = forM_ (reverse $ children t) $ \ c ->
   modify $ over lens $ insert c
 
 pop ::
@@ -67,7 +66,7 @@ popHead lens = do
 push ::
   Member (State TopDownState) r =>
   Node -> Lens' TopDownState HIList -> Sem r ()
-push n lens = do
+push n lens =
   modify $ over lens $ insert n
 
 runTopDown :: ∀ r.
@@ -108,7 +107,7 @@ topDown = do
     l2 <- view topDownStateL2 <$> get
 
     if peekMax l1 /= peekMax l2
-      then do
+      then
       if peekMax l1 > peekMax l2
         then do
         -- trace "pop l1"
@@ -127,29 +126,28 @@ topDown = do
       forM_ (product h1 h2) $ \ (t1, t2) -> do
         let set1 = nodeAndDescendants root1
         let set2 = nodeAndDescendants root2
-        when (isomorphic t1 t2) $ do
+        when (isomorphic t1 t2) $
           -- trace "ISOMORPHIC!"
-          if (  any (\ tx -> isomorphic t1 tx && tx /= t2) set2
-             || any (\ tx -> isomorphic tx t2 && tx /= t1) set1
-             )
-            then do
+          if any (\ tx -> isomorphic t1 tx && tx /= t2) set2
+          || any (\ tx -> isomorphic tx t2 && tx /= t1) set1
+            then
             -- trace $ printf "Adding candidate mapping (%s, %s)" (show t1) (show t2)
             modify $ over topDownStateA $ (:) (t1, t2)
-            else do
+            else
             addIsomorphicDescendants t1 t2
       a <- view topDownStateA <$> get
       m <- view topDownStateM <$> get
-      let aum = union a m
+      let aum = a `union` m
       forM_ [ t1 | t1 <- h1
-                 , not (any ((==) t1 . fst) aum) ] $ \ t1 -> do
+                 , not (any ((==) t1 . fst) aum) ] $ \ t1 ->
         open t1 topDownStateL1
       forM_ [ t2 | t2 <- h2
-                 , not (any ((==) t2 . snd) aum) ] $ \ t2 -> do
+                 , not (any ((==) t2 . snd) aum) ] $ \ t2 ->
         open t2 topDownStateL2
 
   -- trace "Now sorting candidate mappings by dice"
   m <- view topDownStateM <$> get
-  modify $ over topDownStateA $ sortBy (comparing (parentDice m))
+  modify $ over topDownStateA $ sortOn (parentDice m)
 
   -- a <- view (topDownStateA @α) <$> get
   -- forM_ a $ \ (t1, t2) -> do
@@ -178,9 +176,9 @@ topDown = do
       -- trace $ printf "t1: %s" (preview . node $ t1)
       -- trace $ printf "t2: %s" (preview . node $ t2)
       -- trace $ printf "are %s" (show (st1, st2))
-      forM_ (product st1 st2) $ \ (n1, n2) -> do
+      forM_ (product st1 st2) $ \ (n1, n2) ->
         -- trace $ printf "Pondering: %s" (show (n1, n2))
-        when (isomorphic n1 n2) $ do
+        when (isomorphic n1 n2) $
           -- trace "Adding isomorphic descendants"
           modify $ over topDownStateM $ (:) (n1, n2)
 
@@ -203,4 +201,4 @@ topDown = do
     condition2 = do
       s :: TopDownState <- get
       let a = view topDownStateA s
-      return $ length a > 0
+      return $ not (null a)

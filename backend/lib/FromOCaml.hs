@@ -60,12 +60,12 @@ instance FromOCaml CoreTypeDesc (CoreType -> TermX () Variable) where
       case fromOCaml $ txt i of
       Nothing -> Term.UnsupportedOCaml . UnsupportedCoreType
       Just i' ->
-        const $ foldl (\ acc elt -> App () acc elt) (Var Nothing i') (map fromOCaml l)
+        const $ foldl (App ()) (Var Nothing i') (map fromOCaml l)
     PtypClass _ _ -> todo
     PtypAlias _ _ -> todo
     PtypPoly  _ _ -> todo
     PtypObject _ _ -> todo
-    PtypVariant _ _ _ -> todo
+    PtypVariant{} -> todo
     PtypPackage _ -> todo
     PtypExtension _ -> todo
 
@@ -81,12 +81,12 @@ instance FromOCaml ConstructorArguments [TermX () Variable] where
 instance FromOCaml
          ConstructorDeclaration
          (Inductive () Variable -> Constructor () Variable) where
-  fromOCaml (ConstructorDeclaration { pcdName, pcdArgs, pcdRes }) ind =
+  fromOCaml ConstructorDeclaration{..} ind =
     case pcdRes of
     Just _ -> error "TODO"
     Nothing -> Constructor
       { constructorInductive  = ind
-      , constructorName       = mkVariable $ txt $ pcdName
+      , constructorName       = mkVariable . txt $ pcdName
       -- OCaml constructors are uncurried
       , constructorParameters = [((), Binder Nothing, mkParameter pcdArgs)]
       , constructorIndices    = []
@@ -109,7 +109,7 @@ instance FromOCaml StructureItemDesc (StructureItem -> Vernacular () Variable) w
       PtypeVariant cs ->
         let cs' = map fromOCaml cs in
         let ind = Inductive.Inductive.Inductive
-                  { inductiveName         = mkVariable $ txt $ ptypeName
+                  { inductiveName         = mkVariable . txt $ ptypeName
                   , inductiveParameters   =
                     let fromParam (typ, _) =
                           case fromOCaml typ of
@@ -154,7 +154,7 @@ instance FromOCaml ExpressionDesc (Expression -> TermX () Variable) where
     case ocaml of
 
     PexpApply f as ->
-      const $ mkApps (fromOCaml f) (map ((const ()) *** fromOCaml) as)
+      const $ mkApps (fromOCaml f) (map (const () *** fromOCaml) as)
 
     PexpConstruct ctor maybeArgsExpr ->
       case maybeArgsExpr of
@@ -162,7 +162,7 @@ instance FromOCaml ExpressionDesc (Expression -> TermX () Variable) where
         case fromOCaml ctor of
         Nothing -> error "TODO"
         Just ctor' -> const $ Var Nothing ctor'
-      Just (Expression { pexpDesc = argsExpr }) ->
+      Just Expression{ pexpDesc = argsExpr } ->
         case argsExpr of
         PexpTuple args ->
           case fromOCaml ctor of
@@ -211,14 +211,14 @@ instance FromOCaml ExpressionDesc (Expression -> TermX () Variable) where
     _ -> error $ show ocaml
 
 instance FromOCaml Case (Branch () Variable) where
-  fromOCaml (Case { pcGuard, pcLHS, pcRHS }) =
+  fromOCaml Case{..} =
     let (ctor, args) = fromOCaml pcLHS in
     let guard = fromOCaml <$> pcGuard in
     let body = fromOCaml pcRHS in
     packBranch (ctor, args, GuardAndBody guard body)
 
 instance FromOCaml Pattern (Variable, [Binder Variable]) where
-  fromOCaml (Pattern { ppatDesc }) =
+  fromOCaml Pattern{..} =
     case ppatDesc of
     PpatConstruct constr maybeArgsPattern ->
       let ctor = case fromOCaml constr of
@@ -231,7 +231,8 @@ instance FromOCaml Pattern (Variable, [Binder Variable]) where
               let Pattern { ppatDesc = argsPpatDesc } = argsPattern in
               case argsPpatDesc of
               PpatTuple args' ->
-                let patternToBinder (Pattern { ppatDesc = innerPpatDesc }) = case innerPpatDesc of
+                let patternToBinder Pattern{ ppatDesc = innerPpatDesc } =
+                      case innerPpatDesc of
                       PpatVar v -> Binder (Just $ mkVariable $ fromOCaml v)
                       PpatAny -> Binder Nothing
                       _ -> error "TODO"

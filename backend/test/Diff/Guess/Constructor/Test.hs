@@ -31,14 +31,14 @@ guessNil :: IO (ΔC.Diff Raw.Raw)
 guessNil =
   let l0 = inductiveConstructors indList in
   let l1 = inductiveConstructors indList1 in
-  runM . traceToIO $ ΔGC.guess (l0 !! 0) (l1 !! 0)
+  runM . traceToIO $ ΔGC.guess (head l0) (head l1)
 
 guessCons :: IO (ΔC.Diff Raw.Raw)
 guessCons =
   let l0 = inductiveConstructors indList in
   let l1 = inductiveConstructors indList1 in
   do
-    putStrLn $ show $ l0 == l1
+    print (l0 == l1)
     runM . traceToIO $ ΔGC.guess (l0 !! 1) (l1 !! 1)
 
 -- testBench :: RepairTermBenchmark -> Assertion

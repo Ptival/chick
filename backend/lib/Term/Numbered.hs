@@ -1,8 +1,7 @@
-
 module Term.Numbered where
 
-import           DictMetaMap
-import qualified Term.Raw    as Raw
+-- import           DictMetaMap
+-- import qualified Term.Raw    as Raw
 import           Term.Term
 
 data Numbered

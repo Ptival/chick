@@ -2,23 +2,23 @@
 
 module Instantiable where
 
-import Control.Monad.Reader.Class
-import Control.Monad.State.Class
+import           Control.Monad.Reader.Class
+import           Control.Monad.State.Class
 
-import Inductive.Constructor
---import Term.Term
-import Term.TypeChecked         as TypeChecked
-import Typing.GlobalEnvironment
-import Typing.LocalContext
+import           Inductive.Inductive
+import qualified Term.TypeChecked           as C
+import           Term.Variable
+import           Typing.GlobalEnvironment
+import           Typing.LocalContext
 
 class Instantiable t where
   instantiate ::
-    ( MonadReader (GlobalEnvironment TypeChecked) m
-    , MonadState (LocalContext TypeChecked) m
-    ) => t -> m TypeChecked.Term
+    ( MonadReader (GlobalEnvironment ξ (C.Checked Variable)) m
+    , MonadState (LocalContext ξ (C.Checked Variable)) m
+    ) => t -> m (C.Term Variable)
 
-instance Instantiable TypeChecked.Term where
+instance Instantiable (C.Term Variable) where
   instantiate t = return t
 
-instance Instantiable (Constructor TypeChecked) where
-  instantiate (Constructor n as is) = _
+instance Instantiable (Constructor α (C.Checked Variable)) where
+  instantiate Constructor{..} = _

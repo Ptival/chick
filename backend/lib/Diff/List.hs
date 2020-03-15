@@ -52,11 +52,11 @@ instance ( PrettyPrintable l t
          , PrettyPrintable l δt
          ) => PrettyPrintable l (Diff t δt) where
   prettyDoc = \case
-    Insert t  δ -> Doc.fillSep [ "Insert",  go t,              go δ ]
-    Keep      δ -> Doc.fillSep [ "Keep",                       go δ ]
-    Modify δt δ -> Doc.fillSep [ "Modify",  go δt,             go δ ]
-    Permute p δ -> Doc.fillSep [ "Permute", (Doc.pretty $ show p), go δ ]
-    Remove    δ -> Doc.fillSep [ "Remove",                     go δ ]
+    Insert t  δ -> Doc.fillSep [ "Insert",  go t,                go δ ]
+    Keep      δ -> Doc.fillSep [ "Keep",                         go δ ]
+    Modify δt δ -> Doc.fillSep [ "Modify",  go δt,               go δ ]
+    Permute p δ -> Doc.fillSep [ "Permute", Doc.pretty (show p), go δ ]
+    Remove    δ -> Doc.fillSep [ "Remove",                       go δ ]
     Replace l   -> Doc.fillSep [ "Replace", Doc.encloseSep Doc.lbracket Doc.rbracket Doc.comma (map (prettyDoc @l) l) ]
     Same        -> "Same"
     where
@@ -79,12 +79,11 @@ patch ::
   -- PrettyPrintable l a =>
   -- PrettyPrintable l δa =>
   (a -> δa -> Sem r a) -> [a] -> Diff a δa -> Sem r [a]
-patch patchElem la δa =
+patch patchElem = go
   -- trace (printf "Diff.List/patch(l: %s, δ: %s)"
   --       (display . renderPrettyDefault . encloseSep lbracket rbracket comma $ map prettyDoc la)
   --       (prettyStr δa)
   --       ) >>
-  go la δa
   where
 
     failWith :: Member (Error String) r => String -> Sem r a
@@ -94,7 +93,7 @@ patch patchElem la δa =
 
       Same -> return l
 
-      Insert e δ -> go l δ >>= return . (e :)
+      Insert e δ -> (e :) <$> go l δ
 
       Modify δe δ -> case l of
         h : t -> do
@@ -110,7 +109,7 @@ patch patchElem la δa =
         else go (permute p l) δ
 
       Keep δ -> case l of
-        h : t -> go t δ >>= return . (h :)
+        h : t -> (h :) <$> go t δ
         _     -> failWith "Keep, empty list"
 
       Remove δ -> case l of

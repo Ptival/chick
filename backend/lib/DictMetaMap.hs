@@ -1,10 +1,9 @@
-
 module DictMetaMap where
 
-import Bound
-import Bound.Name
+-- import Bound
+-- import Bound.Name
 
-import Term.Term
+-- import Term.Term
 
 -- data DictMetaMap fξ fψ ξ ψ = DictMetaMap
 --   { doAnnot :: fξ (X_Annot ξ) -> fψ (X_Annot ψ)
