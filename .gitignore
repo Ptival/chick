@@ -2,6 +2,8 @@
 *.ho
 *.o
 chick.nix
+.envrc
 .gcroots/
 .stack-work/
 dist/
+dist-newstyle/

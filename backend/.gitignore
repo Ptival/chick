@@ -1,2 +1,3 @@
 /.envrc
 /.stack-work/
+/cabal.project.local
