@@ -1,4 +1,3 @@
-
 module Parsing.Script
   ( scriptP
   ) where

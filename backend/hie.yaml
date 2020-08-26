@@ -1,0 +1,8 @@
+cradle:
+  cabal:
+    - path: "./lib"
+      component: "lib:chick"
+    - path: "./test"
+      component: "test"
+    - path: "./dependencies/language-ocaml"
+      component: "language-ocaml"
