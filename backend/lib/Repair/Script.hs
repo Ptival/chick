@@ -116,17 +116,17 @@ withStateFromConstructors prefix ips δips cs δcs e =
 (assumed repaired) diff `δv` and modifies the global environment to accound for
 the effect in the vernacular command before and after changes. -}
 withStateFromVernacular ::
-  ( Member (Error String) r
-  , Member (State RepairState) r
-  , Member Trace r
-  ) => Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Sem r a -> Sem r a
+  Member (Error String) r =>
+  Member (State RepairState) r =>
+  Member Trace r =>
+  Vernacular Raw.Raw Variable -> ΔV.Diff Raw.Raw -> Sem r a -> Sem r a
 withStateFromVernacular v δv e = do
 
   trace $ printf "withStateFromVernacular (%s, %s)" (preview @'Chick v) (preview @'Chick δv)
 
   let
     exc :: Member (Error String) r => String -> Sem r a
-    exc reason = throw $ printf "Repair.Script/withStateFromVernacular: %s" reason
+    exc reason = throw @String $ printf "Repair.Script/withStateFromVernacular: %s" reason
 
   case (v, δv) of
 
@@ -195,7 +195,7 @@ repair script@(Script s) δs =
 
   let
     exc :: Member (Error String) r => String -> Sem r a
-    exc reason = throw $ printf "Repair.Script/repair: %s" reason in
+    exc reason = throw @String $ printf "Repair.Script/repair: %s" reason in
 
   case (s, δs) of
 

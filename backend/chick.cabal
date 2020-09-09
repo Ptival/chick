@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 626b011d6bbc190284fb07a7ed1cd163a993cfcd150a0b2c646a8b96114bd615
+-- hash: 0ef59126a859fe420be82666aae3a3920ef637a44f6c639a0cbe8adcdf7b9118
 
 name:           chick
 version:        0.1.0
@@ -146,7 +146,7 @@ library
   hs-source-dirs:
       lib
   default-extensions: BlockArguments ConstraintKinds DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs KindSignatures LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators UnicodeSyntax
-  ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
+  ghc-options: -Wall -Werror
   build-depends:
       GenericPretty >=1.2.2 && <1.3
     , MissingH >=1.4.2.0 && <1.5
@@ -203,7 +203,7 @@ executable chick-server
   hs-source-dirs:
       exec
   default-extensions: BlockArguments ConstraintKinds DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs KindSignatures LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators UnicodeSyntax
-  ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
+  ghc-options: -Wall -Werror
   build-depends:
       QuickCheck >=2.13.2 && <2.14
     , base >=4.13.0.0 && <4.14
@@ -245,7 +245,7 @@ test-suite test
   hs-source-dirs:
       test
   default-extensions: BlockArguments ConstraintKinds DataKinds DeriveGeneric DuplicateRecordFields FlexibleContexts GADTs KindSignatures LambdaCase MonoLocalBinds NamedFieldPuns RankNTypes RecordWildCards ScopedTypeVariables StandaloneDeriving TypeApplications TypeFamilies TypeOperators UnicodeSyntax
-  ghc-options: -fplugin=Polysemy.Plugin -Wall -Werror
+  ghc-options: -Wall -Werror
   build-depends:
       QuickCheck >=2.13.2 && <2.14
     , base >=4.13.0.0 && <4.14

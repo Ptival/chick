@@ -95,8 +95,10 @@ termHeight t = case termChildren t of
   [] -> 1 -- huh... why would they choose this...?
   c  -> 1 + maximum (map termHeight c)
 
-fresh :: (Member (State Int) r) => Sem r Int
-fresh = get <* modify (+ 1)
+fresh ::
+  Member (State Int) r =>
+  Sem r Int
+fresh = get <* modify (+ (1 :: Int))
 
 makeNode ::
   Member (State Int) r =>

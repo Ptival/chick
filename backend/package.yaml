@@ -27,7 +27,7 @@ dependencies:
   - bound           ^>= 2.0.1
   - data-default    ^>= 0.7.1.1
   - directory       ^>= 1.3.6.0
-  # - language-ocaml  ^>= 0.2.2
+  - language-ocaml  ^>= 0.2.2
   - megaparsec      ^>= 8.0
   - polysemy        ^>= 1.3.0.0
   - polysemy-plugin ^>= 0.2.5.0
@@ -49,7 +49,8 @@ executables:
       - chick
 
 ghc-options:
-  - -fplugin=Polysemy.Plugin
+  # temporarily disabled: currently breaks hie
+  # - -fplugin=Polysemy.Plugin
   - -Wall
   - -Werror
 
