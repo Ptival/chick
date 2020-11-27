@@ -1,18 +1,22 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 module Diff.Motive
-  ( δmkMotiveType
-  , δmkMotiveType'
-  ) where
+  ( δmkMotiveType,
+    δmkMotiveType',
+  )
+where
 
 import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
-import           Diff.ListFoldLeft
-import           Diff.ListFoldRight
+import Diff.ListFoldLeft
+    ( δListFoldMkAppBinders,
+      δListFoldMkAppVariables,
+      δListFoldMkPiBinders,
+      δListFoldLeft )
+import Diff.ListFoldRight ( δListFoldRight )
 import qualified Diff.Term as DT
-import           Inductive.Inductive
--- import           PrettyPrinting.PrettyPrintable
-import           Term.Term
+import Inductive.Inductive ( Inductive(Inductive), Φiis, Φips )
+import Term.Term ( Variable )
 
 δonInductiveParameter :: Φips α Variable -> DI.Δips α -> DT.Diff α -> DT.Diff α
 δonInductiveParameter = δListFoldLeft δListFoldMkAppVariables
@@ -28,15 +32,17 @@ import           Term.Term
 δmkMotiveType' ::
   -- PrettyPrintable α =>
   DA.Diff Variable ->
-  Φips α Variable -> DI.Δips α ->
-  Φiis α Variable -> DI.Δiis α ->
+  Φips α Variable ->
+  DI.Δips α ->
+  Φiis α Variable ->
+  DI.Δiis α ->
   DT.Diff α
 δmkMotiveType' δn ips δips iis δiis =
-  δonInductiveIndexOutside  iis δiis
-  $ (\ b -> DT.CpyPi b DA.Same DT.Same)
-  $ δonInductiveIndexInside iis δiis
-  $ δonInductiveParameter   ips δips
-  $ DT.CpyVar δn
+  δonInductiveIndexOutside iis δiis $
+    (\b -> DT.CpyPi b DA.Same DT.Same) $
+      δonInductiveIndexInside iis δiis $
+        δonInductiveParameter ips δips $
+          DT.CpyVar δn
 
 δmkMotiveType ::
   -- PrettyPrintable α =>

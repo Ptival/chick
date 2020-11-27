@@ -1,25 +1,44 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module PrettyPrinting.Chick.Binder
   (
-  ) where
+  )
+where
 
-import Data.Text.Prettyprint.Doc ()
-
-import Language (Language(Chick))
 import PrettyPrinting.Chick.Variable ()
+import PrettyPrinting.HasNonBindingPattern
+  ( HasNonBindingPattern (..),
+  )
 import PrettyPrinting.PrettyPrintable
-import Term.Binder
-import Term.Variable
+  ( PrettyPrintable (prettyDoc),
+  )
 import PrettyPrinting.PrettyPrintableUnannotated
+  ( PrettyPrintableUnannotated (prettyDocU),
+  )
+import Prettyprinter (Pretty (pretty))
+import Term.Binder (Binder (Binder))
+import Term.Variable (Variable)
 
-instance PrettyPrintable 'Chick ν => PrettyPrintable 'Chick (Binder ν) where
-  prettyDoc (Binder Nothing)  = "_"
-  prettyDoc (Binder (Just v)) = prettyDoc @'Chick v
+instance
+  forall l v.
+  ( HasNonBindingPattern l,
+    PrettyPrintable l v
+  ) =>
+  PrettyPrintable l (Binder v)
+  where
+  prettyDoc (Binder Nothing) = pretty (nonBindingPattern @l)
+  prettyDoc (Binder (Just v)) = prettyDoc @l v
 
-instance PrettyPrintableUnannotated 'Chick (Binder Variable) where
-  prettyDocU d = return $ prettyDoc @'Chick d
+instance
+  ( HasNonBindingPattern l,
+    PrettyPrintable l Variable
+  ) =>
+  PrettyPrintableUnannotated l (Binder Variable)
+  where
+  prettyDocU d = return $ prettyDoc @l d

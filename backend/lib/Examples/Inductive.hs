@@ -1,18 +1,20 @@
 module Examples.Inductive
-  ( inductives
-  ) where
+  ( inductives,
+  )
+where
 
-import           Inductive.Inductive
-import           Parsing.Unsafe
+import Inductive.Inductive ( Inductive )
+import Parsing.Unsafe ( unsafeParseInductive )
 import qualified StandardLibrary as STDLIB
 import qualified Term.Raw as Raw
-import           Term.Term
+import Term.Term ( Variable )
 
 inductives :: [Inductive Raw.Raw Variable]
-inductives = []
-  ++ STDLIB.inductives
-  ++ [ unsafeParseInductive . unlines $
-       [ "Inductive foo (a : A) (b :B) : Type :="
-       , "| constr : foo a b"
-       ]  
-     ]
+inductives =
+  []
+    ++ STDLIB.inductives
+    ++ [ unsafeParseInductive . unlines $
+           [ "Inductive foo (a : A) (b :B) : Type :=",
+             "| constr : foo a b"
+           ]
+       ]

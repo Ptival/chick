@@ -4,7 +4,7 @@
 
 module PrettyPrinting.Coq.Binder where
 
-import qualified Data.Text.Prettyprint.Doc      as Doc
+import qualified Prettyprinter      as Doc
 
 import           Language                       (Language(Coq))
 import           PrettyPrinting.PrettyPrintable

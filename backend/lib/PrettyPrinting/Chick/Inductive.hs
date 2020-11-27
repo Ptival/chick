@@ -9,7 +9,7 @@ module PrettyPrinting.Chick.Inductive where
 
 import           Control.Monad.Reader
 import           Data.Default
-import           Data.Text.Prettyprint.Doc
+import           Prettyprinter
 
 import           Inductive.Inductive
 import           Language (Language(Chick))

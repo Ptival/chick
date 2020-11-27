@@ -30,7 +30,7 @@ dependencies:
   - language-ocaml  ^>= 0.2.2
   - megaparsec      ^>= 8.0
   - polysemy        ^>= 1.3.0.0
-  - polysemy-plugin ^>= 0.2.5.0
+  # - polysemy-plugin ^>= 0.2.5.0
   - QuickCheck      ^>= 2.13.2
   - smallcheck      ^>= 1.1.5
   - string-qq       ^>= 0.0.4

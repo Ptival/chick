@@ -1,9 +1,10 @@
 module Language
-  ( defaultLanguage
-  , Language(..)
-  ) where
+  ( defaultLanguage,
+    Language (..),
+  )
+where
 
-import GHC.Generics
+import GHC.Generics (Generic)
 
 data Language
   = Chick

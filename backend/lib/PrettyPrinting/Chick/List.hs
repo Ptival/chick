@@ -6,7 +6,7 @@
 
 module PrettyPrinting.Chick.List where
 
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.GlobalDeclaration ()

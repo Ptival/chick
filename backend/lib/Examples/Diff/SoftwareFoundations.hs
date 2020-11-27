@@ -1,25 +1,29 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 module Examples.Diff.SoftwareFoundations
-  ( scriptBefore
-  , scriptAfter
-  ) where
+  ( scriptBefore,
+    scriptAfter,
+  )
+where
 
-import           Data.String.QQ
-import           Language (Language(Chick))
-import           Parsing.Unsafe
-import           PrettyPrinting.Chick ()
-import           PrettyPrinting.PrettyPrintableUnannotated
-import qualified Term.Raw as Raw
-import           Term.Term
-import           Script
+import Data.String.QQ (s)
+import Language (Language (Chick))
+import Parsing.Unsafe (unsafeParseScript)
+import PrettyPrinting.Chick ()
+import PrettyPrinting.PrettyPrintableUnannotated
+  ( PrettyPrintableUnannotated (prettyStrU),
+  )
+import Script (Script)
 import qualified StandardLibrary as SL
+import qualified Term.Raw as Raw
+import Term.Term (Variable)
 
 commonPrefix :: String
 commonPrefix =
-  prettyStrU @'Chick SL.indBool ++ ".\n" ++
-  prettyStrU @'Chick SL.indNat  ++ ".\n" ++
-  [s|
+  prettyStrU @ 'Chick SL.indBool ++ ".\n"
+    ++ prettyStrU @ 'Chick SL.indNat
+    ++ ".\n"
+    ++ [s|
 
 Fixpoint ifthenelse : ∀ (T : Type), bool → T → T → T := λ T i t e,
   match i with
@@ -62,20 +66,20 @@ Inductive ty : Type :=
 
 codeBefore :: String
 codeBefore =
-  commonPrefix ++
-  [s|
+  commonPrefix
+    ++ [s|
 Inductive tm : Type :=
   (* pure STLC *)
   | tvar : id → tm
   | tapp : tm → tm → tm
   | tabs : id → ty → ∀ (t0 : tm), tm.
   |]
-  ++ commonSuffix
+    ++ commonSuffix
 
 codeAfter :: String
 codeAfter =
   commonPrefix
-  ++ [s|
+    ++ [s|
 Inductive tm : Type :=
   (* pure STLC *)
   | tvar : id → tm
@@ -88,10 +92,11 @@ Inductive tm : Type :=
   | tmult : tm → tm → tm
   | tif0 : tm → tm → tm → tm.
   |]
-  ++ commonSuffix
+    ++ commonSuffix
 
 commonSuffix :: String
-commonSuffix = [s|
+commonSuffix =
+  [s|
 Fixpoint subst : id → tm → tm → tm := λ x s t ,
   match t with
   | tvar y =>

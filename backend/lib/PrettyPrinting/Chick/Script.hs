@@ -7,7 +7,7 @@ module PrettyPrinting.Chick.Script
   (
   ) where
 
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.Vernacular ()

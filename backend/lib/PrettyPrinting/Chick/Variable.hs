@@ -6,7 +6,7 @@ module PrettyPrinting.Chick.Variable
   (
   ) where
 
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 
 import Language (Language(Chick))
 import PrettyPrinting.PrettyPrintable

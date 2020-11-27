@@ -1,15 +1,25 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-
 module Diff.ConcatMap
-  ( module Diff.ListFold
-  , δconcatMap
-  , δconcatMap'
-  ) where
+  ( module Diff.ListFold,
+    δconcatMap,
+    δconcatMap',
+  )
+where
 
 import qualified Diff.List as DL
-import           Diff.ListFold
-import           Diff.ListFoldRight
+import Diff.ListFold
+  ( ΔListFold (..),
+    δListFoldConcatMap,
+    δListFoldConcatMap',
+    δListFoldMkAppBinders,
+    δListFoldMkAppTerms,
+    δListFoldMkAppVariables,
+    δListFoldMkPiGeneric,
+    δListFoldMkPiGenericMaybe,
+    δListFoldMkPiVariables,
+  )
+import Diff.ListFoldRight (δListFoldRight)
 
 δconcatMap ::
   (τ -> [b]) ->

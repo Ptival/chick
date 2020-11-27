@@ -7,7 +7,7 @@ module PrettyPrinting.Chick.Universe where
 
 import Control.Monad.Reader
 import Data.Default
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 
 import Language (Language(Chick))
 import PrettyPrinting.PrettyPrintable

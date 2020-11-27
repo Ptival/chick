@@ -1,15 +1,15 @@
 module Parsing.Utils
-  ( chainl1
-  , chainl1'
-  , chainl1try
-  , chainl1try'
-  , leftRecursive
-  ) where
+  ( chainl1,
+    chainl1',
+    chainl1try,
+    chainl1try',
+    leftRecursive,
+  )
+where
 
-import Control.Applicative
-import Text.Megaparsec
-
-import Parsing.Types
+import Control.Applicative (Alternative ((<|>)))
+import Parsing.Types (Parser)
+import Text.Megaparsec (MonadParsec (try), choice)
 
 parseRestOfOperation :: Monad m => m a -> m (b -> a -> b) -> (b -> m c) -> b -> m c
 parseRestOfOperation p op rest x = do
@@ -76,4 +76,4 @@ leftRecursive prefixes suffixes = choice $ map patchPrefix prefixes
       s <- suffixP
       r <- rest
       return $ r . s
-    rest = choice $ map patchSuffix suffixes ++ [ return id ]
+    rest = choice $ map patchSuffix suffixes ++ [return id]

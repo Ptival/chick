@@ -14,7 +14,7 @@ import           Control.Monad.Reader
 import           Control.Monad.Trans.Free
 import           Data.Bifunctor
 --import Data.Default
-import           Data.Text.Prettyprint.Doc
+import           Prettyprinter
 import           Prelude                                   hiding (or)
 --import Text.Printf
 

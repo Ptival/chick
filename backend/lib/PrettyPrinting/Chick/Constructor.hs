@@ -17,7 +17,7 @@ import           Language (Language(Chick))
 import           PrettyPrinting.PrettyPrintable
 import           PrettyPrinting.PrettyPrintableUnannotated
 import           Term.Term
-import           Data.Text.Prettyprint.Doc
+import           Prettyprinter
 
 instance PrettyPrintableUnannotated 'Chick (Constructor α Variable) where
   prettyDocU (Constructor (Inductive n ips _ _ _) cName cParams cIndices) = do

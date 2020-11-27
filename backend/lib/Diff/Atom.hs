@@ -10,7 +10,7 @@ module Diff.Atom
   ) where
 
 import Data.Aeson
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 import GHC.Generics
 import Polysemy                       ( Sem, run )
 

@@ -9,8 +9,8 @@ module PrettyPrinting.PrettyPrintableUnannotated (
 
 import Control.Monad.Reader
 import Data.Default
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.String
+import Prettyprinter
+import Prettyprinter.Render.String
 
 import Precedence
 import Language

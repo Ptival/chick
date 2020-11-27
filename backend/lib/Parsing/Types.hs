@@ -1,8 +1,9 @@
 module Parsing.Types
-  ( Parser
-  ) where
+  ( Parser,
+  )
+where
 
-import           Data.Void
-import           Text.Megaparsec
+import Data.Void (Void)
+import Text.Megaparsec (Parsec)
 
 type Parser = Parsec Void String

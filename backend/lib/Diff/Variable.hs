@@ -1,8 +1,9 @@
 module Diff.Variable
-  ( Diff(..)
-  ) where
+  ( Diff (..),
+  )
+where
 
-import Term.Variable
+import Term.Variable (Variable)
 
 data Diff
   = Same

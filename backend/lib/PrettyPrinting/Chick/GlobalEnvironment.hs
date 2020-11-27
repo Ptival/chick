@@ -8,7 +8,7 @@ module PrettyPrinting.Chick.GlobalEnvironment where
 
 import Control.Monad.Reader
 import Data.Default
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 
 import Language (Language(Chick))
 import PrettyPrinting.Chick.GlobalDeclaration ()

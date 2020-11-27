@@ -2,12 +2,16 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module PrettyPrinting.PrettyPrintable
-  ( PrettyPrintable(..)
-  ) where
+  ( PrettyPrintable (..),
+  )
+where
 
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.String
-
+import Prettyprinter
+  ( Doc,
+    defaultLayoutOptions,
+    layoutPretty,
+  )
+import Prettyprinter.Render.String (renderString)
 import Language (Language)
 
 class PrettyPrintable (l :: Language) t where
@@ -16,11 +20,11 @@ class PrettyPrintable (l :: Language) t where
   prettyStr = renderString . layoutPretty defaultLayoutOptions . prettyDoc @l
   preview :: t -> String
   preview t =
-    let s = prettyStr @l t in
-    let previewLength = 20 in
-      if length s <= previewLength
-      then s
-      else (++ "...") . take 20 $ s
+    let s = prettyStr @l t
+     in let previewLength = 20
+         in if length s <= previewLength
+              then s
+              else (++ "...") . take 20 $ s
 
 -- instance PrettyPrintable () where
 --   prettyDoc () = text "()"

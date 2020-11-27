@@ -125,7 +125,7 @@ mkEliminatorType' α n ips iis _ cs =
 
     discrimineeType =
         applyBinders iis
-      $ applyVariables ips
+      $ applyVariables (map (\(a, v, _) -> (a, v)) ips)
       $ Var Nothing n
 
     -- for now we only make the Type-motive, it's easy to make the Set and Prop ones too

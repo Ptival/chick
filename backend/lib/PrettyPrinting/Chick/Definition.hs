@@ -10,7 +10,7 @@ module PrettyPrinting.Chick.Definition
 
 import Control.Monad.Reader
 import Data.Default
-import Data.Text.Prettyprint.Doc
+import Prettyprinter
 
 import Definition
 import Language (Language(Chick))

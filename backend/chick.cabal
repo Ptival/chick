@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0ef59126a859fe420be82666aae3a3920ef637a44f6c639a0cbe8adcdf7b9118
+-- hash: cf72a5268816978f27cd4d6651389f3962469fa2123d2f3ca4d6b05459c2997d
 
 name:           chick
 version:        0.1.0
@@ -44,6 +44,7 @@ library
       Parsing.Unsafe
       Precedence
       PrettyPrinting.Chick
+      PrettyPrinting.HasNonBindingPattern
       PrettyPrinting.PrettyPrintable
       PrettyPrinting.PrettyPrintableUnannotated
       PrettyPrinting.Term
@@ -176,8 +177,7 @@ library
     , network >=3.1.1.1 && <3.2
     , parser-combinators >=1.2.1 && <1.3
     , polysemy >=1.3.0.0 && <1.4
-    , polysemy-plugin >=0.2.5.0 && <0.3
-    , prettyprinter >=1.6.1 && <1.7
+    , prettyprinter >= 1.7.0 && < 1.8
     , process >=1.6.8.0 && <1.7
     , random >=1.1 && <1.2
     , smallcheck >=1.1.5 && <1.2
@@ -215,7 +215,6 @@ executable chick-server
     , language-ocaml >=0.2.2 && <0.3
     , megaparsec >=8.0 && <8.1
     , polysemy >=1.3.0.0 && <1.4
-    , polysemy-plugin >=0.2.5.0 && <0.3
     , smallcheck >=1.1.5 && <1.2
     , string-qq >=0.0.4 && <0.1
     , tasty >=1.2.3 && <1.3
@@ -257,7 +256,6 @@ test-suite test
     , language-ocaml >=0.2.2 && <0.3
     , megaparsec >=8.0 && <8.1
     , polysemy >=1.3.0.0 && <1.4
-    , polysemy-plugin >=0.2.5.0 && <0.3
     , smallcheck >=1.1.5 && <1.2
     , string-qq >=0.0.4 && <0.1
     , tasty >=1.2.3 && <1.3

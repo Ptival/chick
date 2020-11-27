@@ -1,5 +1,7 @@
 cradle:
   cabal:
+    - path: "./exec"
+      component: "exe:chick-server"
     - path: "./lib"
       component: "lib:chick"
     - path: "./test"

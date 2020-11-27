@@ -1,7 +1,7 @@
 module PrettyPrinting.Utils where
 
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.String
+import Prettyprinter
+import Prettyprinter.Render.String
 
 import Precedence
 

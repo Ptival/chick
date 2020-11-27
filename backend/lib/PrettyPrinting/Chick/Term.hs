@@ -14,7 +14,7 @@ import           Bound.Name
 import           Control.Lens
 import           Control.Monad.Reader                      ( MonadReader, ask, runReader )
 import           Data.Default
-import qualified Data.Text.Prettyprint.Doc                 as Doc
+import qualified Prettyprinter                 as Doc
 
 import           Language                                  ( Language(Chick) )
 import           Precedence

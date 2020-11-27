@@ -2,7 +2,7 @@ module PrettyPrinting.OCaml.Declaration
   ( prettyDocU
   ) where
 
-import qualified Data.Text.Prettyprint.Doc                 as Doc
+import qualified Prettyprinter                 as Doc
 
 import           Inductive.Inductive
 import           Language

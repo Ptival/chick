@@ -3,17 +3,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Diff.Maybe
-  ( Diff(..)
-  , patch
-  -- , patchMaybe
-  ) where
+  ( Diff (..),
+    patch,
+    -- , patchMaybe
+  )
+where
 
-import Data.Aeson                     ( ToJSON )
-import GHC.Generics                   ( Generic )
-import Polysemy                       ( Member, Sem )
-import Polysemy.Error                 ( Error, throw )
-
+import Data.Aeson (ToJSON)
+import GHC.Generics (Generic)
+import Polysemy (Member, Sem)
+import Polysemy.Error (Error, throw)
 import PrettyPrinting.PrettyPrintable
+  ( PrettyPrintable (prettyDoc),
+  )
 
 data Diff e δe
   = Same
@@ -22,14 +24,19 @@ data Diff e δe
   | ModifyJust δe
   deriving (Eq, Generic, Show)
 
-instance ( ToJSON e
-         , ToJSON δe
-         ) => ToJSON (Diff e δe) where
+instance
+  ( ToJSON e,
+    ToJSON δe
+  ) =>
+  ToJSON (Diff e δe)
 
-instance ( PrettyPrintable l δe
-         ) => PrettyPrintable l (Diff e δe) where
-  prettyDoc Same             = "Same"
-  prettyDoc _                = "TODO: prettyprint Diff.Maybe"
+instance
+  ( PrettyPrintable l δe
+  ) =>
+  PrettyPrintable l (Diff e δe)
+  where
+  prettyDoc Same = "Same"
+  prettyDoc _ = "TODO: prettyprint Diff.Maybe"
 
 patch ::
   Member (Error String) r =>
@@ -38,13 +45,13 @@ patch ::
   Diff e δe ->
   Sem r (Maybe e)
 patch patchE me = \case
-  Same          -> return me
+  Same -> return me
   BecomeNothing -> return Nothing
   BecomeJust e' -> return $ Just e'
   ModifyJust δe ->
     case me of
-    Nothing -> throw ("[Diff.Maybe.patch] ModifyJust on Nothing" :: String)
-    Just e -> Just <$> patchE e δe
+      Nothing -> throw ("[Diff.Maybe.patch] ModifyJust on Nothing" :: String)
+      Just e -> Just <$> patchE e δe
 
 -- patchMaybe ::
 --   (l -> δl -> Maybe l) ->

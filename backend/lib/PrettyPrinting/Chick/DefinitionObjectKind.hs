@@ -8,7 +8,7 @@ module PrettyPrinting.Chick.DefinitionObjectKind where
 
 import Control.Monad.Reader (runReader)
 import Data.Default (def)
-import Data.Text.Prettyprint.Doc ()
+import Prettyprinter ()
 
 import DefinitionObjectKind
 import Language (Language(Chick))
