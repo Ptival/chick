@@ -18,7 +18,7 @@
     "bower": "^1.8.4",
     "chokidar-cli": "^1.2.0",
     "npm-run-all": "^4.1.2",
-    "pulp": "^12.0.1"
+    "pulp": "^15.0.0"
   },
   "scripts": {
     "all": "npm-run-all --parallel watch-browserify",
