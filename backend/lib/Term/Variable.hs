@@ -1,29 +1,29 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Term.Variable (
-  Variable,
-  mkVariable,
-  unVariable,
-  ) where
+module Term.Variable
+  ( Variable,
+    mkVariable,
+    unVariable,
+  )
+where
 
-import Data.Aeson
-import Data.String
-import GHC.Generics
-import Test.QuickCheck.Arbitrary
-import Test.QuickCheck.Gen
-import Test.SmallCheck.Series
+import Data.Aeson (ToJSON)
+import Data.String (IsString (..))
+import GHC.Generics (Generic)
+import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary))
+import Test.QuickCheck.Gen (choose)
+import Test.SmallCheck.Series (Serial (..), cons2)
 import Text.PrettyPrint.GenericPretty (Out)
 
-newtype Variable
-  = Variable { unVariable :: String }
-  deriving ( Eq, Generic, Out, Show )
+newtype Variable = Variable {unVariable :: String}
+  deriving (Eq, Generic, Out, Show)
 
 mkVariable :: String -> Variable
 mkVariable "_" = error "Trying to make an underscore variable"
-mkVariable s   = Variable s
+mkVariable s = Variable s
 
 instance Arbitrary Variable where
   arbitrary = do
@@ -36,4 +36,4 @@ instance IsString Variable where
 instance Monad m => Serial m Variable where
   series = mkVariable <$> cons2 (:)
 
-instance ToJSON Variable where
+instance ToJSON Variable

@@ -3,12 +3,12 @@ module Examples.Term
   )
 where
 
-import Examples.Inductive ( inductives )
-import Inductive.Eliminator ( mkEliminatorRawType )
-import Parsing.Unsafe ( unsafeParseTerm )
+import Examples.Inductive (inductives)
+import Inductive.Eliminator (mkEliminatorRawType)
+import Parsing.Unsafe (unsafeParseTerm)
 import qualified StandardLibrary as STDLIB
 import qualified Term.Raw as Raw
-import Term.Term ( Variable )
+import Term.Variable (Variable)
 
 terms :: [Raw.Term Variable]
 terms =

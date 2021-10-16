@@ -1,23 +1,26 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module PrettyPrinting.Chick.Vernacular where
 
-import Control.Monad.Reader
-import Data.Default
+import Control.Monad.Reader (runReader)
+import Data.Default (Default (def))
 -- import Prettyprinter
-import Language.OCaml.PrettyPrinter
 
-import Language (Language(Chick))
+import Language (Language (Chick))
+import Language.OCaml.PrettyPrinter (pretty)
 import PrettyPrinting.Chick.Definition ()
 import PrettyPrinting.Chick.Inductive ()
-import PrettyPrinting.Term ()
 import PrettyPrinting.PrettyPrintable
+  ( PrettyPrintable (prettyDoc),
+  )
 import PrettyPrinting.PrettyPrintableUnannotated
-import Term.Term
-import Vernacular
+  ( PrettyPrintableUnannotated (prettyDocU),
+  )
+import PrettyPrinting.Term ()
+import Term.Variable (Variable)
+import Vernacular (Vernacular (..))
 
 instance PrettyPrintableUnannotated 'Chick (Vernacular α Variable) where
   prettyDocU = \case

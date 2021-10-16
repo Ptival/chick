@@ -1,5 +1,5 @@
-
 module Term.AlphaEquivalence where
+
 {-
 import Term.AlphaRenaming
 import Term.Binder

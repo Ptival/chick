@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module DefinitionObjectKind
-  ( DefinitionObjectKind(..)
-  ) where
+  ( DefinitionObjectKind (..),
+  )
+where
 
 data DefinitionObjectKind
   = Definition

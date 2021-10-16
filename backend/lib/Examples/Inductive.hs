@@ -3,11 +3,11 @@ module Examples.Inductive
   )
 where
 
-import Inductive.Inductive ( Inductive )
-import Parsing.Unsafe ( unsafeParseInductive )
+import Inductive.Inductive (Inductive)
+import Parsing.Unsafe (unsafeParseInductive)
 import qualified StandardLibrary as STDLIB
 import qualified Term.Raw as Raw
-import Term.Term ( Variable )
+import Term.Variable ( Variable )
 
 inductives :: [Inductive Raw.Raw Variable]
 inductives =

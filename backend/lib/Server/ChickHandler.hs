@@ -2,49 +2,62 @@
 
 module Server.ChickHandler where
 
-import           Control.Lens                              ( over, view )
-import           Control.Monad.Except                      ( catchError, liftIO )
-import           Control.Monad.Loops                       ( whileM )
-import           Control.Monad.Representable.Reader        ( ask )
-import           Data.Aeson                                ( FromJSON, decode )
-import           Polysemy                                  ( runM )
-import           Polysemy.Trace                            ( traceToIO )
+import Control.Lens (over, view)
+import Control.Monad.Except (catchError, liftIO)
+import Control.Monad.Loops (whileM)
+import Control.Monad.Representable.Reader (ask)
+import Data.Aeson (FromJSON, decode)
 -- import qualified Data.ByteString.UTF8 as BSU
 -- import qualified Data.ByteString.Lazy as BSL
-import           Data.IORef                                ( atomicModifyIORef', readIORef )
-import qualified Data.IntMap                               as IM
-import qualified Data.Text                                 as T
-import           GHC.Generics
-import           Prelude                                   hiding ( init )
-import qualified Snap.Core                                 as Snap
-import           Snap.Extras.JSON                          ( writeJSON )
-import           Snap.Snaplet                              ( Handler, with )
-import           Snap.Snaplet.Session                      hiding ( touchSession )
-import           Snap.Snaplet.Session.SessionManager       (  )
-import           System.Directory                          ( doesFileExist )
-import qualified System.IO                                 as IO
-import           System.Process                            ( ProcessHandle, runInteractiveCommand )
-import           System.Random                             ( randomIO )
-import           Text.Megaparsec                           ( parseMaybe )
-import           Text.Printf                               ( printf )
-
-import qualified Diff.Guess.Script                         as ΔGS
-import qualified Language                                  ( Language(Chick) )
-import           Parsing.Script
-import           PrettyPrinting.PrettyPrintableUnannotated
-import           Repair.Benchmark
-import           Server.Chick
-import           Server.Session
+import Data.IORef (atomicModifyIORef', readIORef)
+import qualified Data.IntMap as IM
+import qualified Data.Text as T
+import qualified Diff.Guess.Script as ΔGS
+import GHC.Generics (Generic)
+import qualified Language (Language (Chick))
+import Parsing.Script (scriptP)
+import Polysemy (runM)
+import Polysemy.Trace (traceToStdout)
+import PrettyPrinting.PrettyPrintableUnannotated
+  ( PrettyPrintableUnannotated (prettyStrU),
+  )
+import Repair.Benchmark (repairScript)
+import Server.Chick
+  ( Chick,
+    GlobalState,
+    SessionState (SessionState),
+    gActiveSessions,
+    gNextSession,
+    lGlobRef,
+    lSession,
+  )
+import Server.Session (adjustSession, touchSession)
+import qualified Snap.Core as Snap
+import Snap.Extras.JSON (writeJSON)
+import Snap.Snaplet (Handler, with)
+import Snap.Snaplet.Session
+  ( getFromSession,
+    setInSession,
+    withSession,
+  )
+import Snap.Snaplet.Session.SessionManager ()
+import System.Directory (doesFileExist)
+import qualified System.IO as IO
+import System.Process (ProcessHandle, runInteractiveCommand)
+import System.Random (randomIO)
+import Text.Megaparsec (parseMaybe)
+import Text.Printf (printf)
+import Prelude hiding (init)
 
 type ChickHandler a = Handler Chick Chick a
 
 data GuessInput = GuessInput
-  { before :: String
-  , after  :: String
+  { before :: String,
+    after :: String
   }
   deriving (Generic)
 
-instance FromJSON GuessInput where
+instance FromJSON GuessInput
 
 chickGuessHandler :: ChickHandler ()
 chickGuessHandler = do
@@ -55,7 +68,7 @@ chickGuessHandler = do
       body <- Snap.readRequestBody bodyLength
       res <- case decode body of
         Nothing -> return $ Just "decode body failed"
-        Just GuessInput{..} ->
+        Just GuessInput {..} ->
           case (parseMaybe scriptP before, parseMaybe scriptP after) of
             (Just bef, Just aft) -> do
               liftIO $ do
@@ -63,18 +76,18 @@ chickGuessHandler = do
                 putStrLn $ prettyStrU @'Language.Chick bef
                 putStrLn "AFTER:"
                 putStrLn $ prettyStrU @'Language.Chick aft
-              δ <- liftIO $ runM $ traceToIO $ ΔGS.guess bef aft
+              δ <- liftIO $ runM $ traceToStdout $ ΔGS.guess bef aft
               liftIO $ putStrLn $ printf "GUESSED:\n%s" (show δ)
-              liftIO (runM . traceToIO $ repairScript bef δ) >>= \case
+              liftIO (runM . traceToStdout $ repairScript bef δ) >>= \case
                 Left e -> return $ Just e
                 Right patched ->
                   return $ Just $ prettyStrU @'Language.Chick patched
-                  -- ++ "\n(*"
-                  -- ++ show δ
-                  -- ++ "*)"
-            (Nothing, Just _)  ->
+            -- ++ "\n(*"
+            -- ++ show δ
+            -- ++ "*)"
+            (Nothing, Just _) ->
               return . Just $ "Parsing before failed"
-            (Just _,  Nothing) ->
+            (Just _, Nothing) ->
               return . Just $ "Parsing after  failed"
             (Nothing, Nothing) ->
               return . Just $ "Parsing before and after failed"
@@ -115,15 +128,14 @@ modifySessionState f = do
       return res
 
 getSessionState :: ChickHandler SessionState
-getSessionState = modifySessionState (\ s -> (s, s))
+getSessionState = modifySessionState (\s -> (s, s))
 
 insertSession :: Int -> SessionState -> GlobalState -> (GlobalState, ())
 insertSession mapKey s gs =
-  (
-    over gNextSession (+ 1)
-    . over gActiveSessions (IM.insert mapKey s)
-    $ gs
-  , ()
+  ( over gNextSession (+ 1)
+      . over gActiveSessions (IM.insert mapKey s)
+      $ gs,
+    ()
   )
 
 --logAction :: String -> String -> IO ()
@@ -136,8 +148,8 @@ getGitCommitHash = do
   let fileName = ".git/refs/heads/master"
   b <- doesFileExist fileName
   if b
-  then readFile fileName
-  else return "Commit # unavailable"
+    then readFile fileName
+    else return "Commit # unavailable"
 
 getSessionKey :: ChickHandler IM.Key
 getSessionKey = with lSession $ do
@@ -160,8 +172,8 @@ hWrite hi input = do
   putStrLn input
   catchError
     (IO.hPutStrLn hi input)
-    (\e ->
-      putStrLn $ "CATCH: Write failed with exception: " ++ show e
+    ( \e ->
+        putStrLn $ "CATCH: Write failed with exception: " ++ show e
     )
   return ()
 
@@ -174,12 +186,14 @@ hRead ho =
   -- putStrLn "Trying to read ho"
   whileM (IO.hReady ho) $ do
     -- putStrLn "Trying to read a line:"
-    l <- catchError
-      (IO.hGetLine ho)
-      (\e -> do
-        putStrLn $ "CATCH: Read failed with exception: " ++ show e
-        return ""
-      )
+    l <-
+      catchError
+        (IO.hGetLine ho)
+        ( \e -> do
+            putStrLn $ "CATCH: Read failed with exception: " ++ show e
+            return ""
+        )
     putStrLn $ "OUTPUT: " ++ l
     return l
-  -- putStrLn "Done"
+
+-- putStrLn "Done"

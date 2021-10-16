@@ -3,17 +3,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module PrettyPrinting.PrettyPrintableUnannotated (
-  PrettyPrintableUnannotated(..),
-  ) where
+module PrettyPrinting.PrettyPrintableUnannotated
+  ( PrettyPrintableUnannotated (..),
+  )
+where
 
-import Control.Monad.Reader
-import Data.Default
-import Prettyprinter
-import Prettyprinter.Render.String
-
-import Precedence
-import Language
+import Control.Monad.Reader (MonadReader, runReader)
+import Data.Default (Default (def))
+import Language (Language)
+import Precedence (PrecedenceTable)
+import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
+import Prettyprinter.Render.String (renderString)
 
 class PrettyPrintableUnannotated (l :: Language) t where
   prettyDocU :: (MonadReader PrecedenceTable m) => t -> m (Doc ())

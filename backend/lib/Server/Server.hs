@@ -17,7 +17,7 @@ import Network.Socket (socketPort)
 import qualified Server.Chick as Chick
 import Server.ChickHandler (ChickHandler, chickGuessHandler, getGitCommitHash)
 import Server.Session (isAlive, markStale)
-import qualified Snap as Snap
+import qualified Snap 
 import qualified Snap.Snaplet.Session as Snap
 import qualified Snap.Snaplet.Session.Backends.CookieSession as Snap
 import Snap.Snaplet.Session.SessionManager ()

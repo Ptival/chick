@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module StandardLibraryDiff
-  ( δBoolToNat
-  , δListToVec
-  , δNatToList
-  ) where
-
-import Text.Printf
+  ( δBoolToNat,
+    δListToVec,
+    δNatToList,
+  )
+where
 
 import qualified Diff.Atom as DA
 import qualified Diff.Constructor as DC
@@ -14,23 +13,22 @@ import qualified Diff.Inductive as DI
 import qualified Diff.List as DL
 import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
-import           Parsing
-import           Term.Term
-import qualified Term.Universe as U
+import Parsing (parseMaybeTerm)
 import qualified Term.Raw as Raw
+import Term.Term (TermX (App, Type, Var), Variable)
+import qualified Term.Universe as U
+import Text.Printf (printf)
 
 -- do not use `unsafeParseRaw` anywhere else!
 unsafeParseRaw :: String -> Raw.Term Variable
 unsafeParseRaw s =
   case parseMaybeTerm s of
     Nothing -> error $ printf "unsafeParseRaw: could not parse %s" s
-    Just t  -> t
+    Just t -> t
 
 δBoolToNat :: DI.Diff Raw.Raw
 δBoolToNat = DI.Modify δn δps δis DA.Same δcs
-
   where
-
     δn = DA.Replace "nat"
     δps = DL.Same
     δis = DL.Same
@@ -44,9 +42,7 @@ unsafeParseRaw s =
 
 δNatToList :: DI.Diff Raw.Raw
 δNatToList = DI.Modify δn δps δis DA.Same δcs
-
   where
-
     δn = DA.Replace "list"
     δps = DL.Insert ((), "A", Type U.Type) DL.Same
     δis = DL.Same
@@ -57,14 +53,12 @@ unsafeParseRaw s =
 
     δsuccToConsPs =
       DL.Insert ((), "x", "A")
-      . DL.Modify (D3.Modify DA.Same (DA.Replace "xs") (DT.Replace (unsafeParseRaw "list A")))
-      $ DL.Same
+        . DL.Modify (D3.Modify DA.Same (DA.Replace "xs") (DT.Replace (unsafeParseRaw "list A")))
+        $ DL.Same
 
 δListToVec :: DI.Diff Raw.Raw
 δListToVec = DI.Modify δn δps δis DA.Same δcs
-
   where
-
     δn = DA.Replace "Vec"
     δps = DL.Same
     δis = DL.Insert ((), "size", "nat") DL.Same
@@ -75,13 +69,16 @@ unsafeParseRaw s =
 
     δconsPs =
       DL.Keep
-      . DL.Insert ((), "n", "nat")
-      . DL.Modify
-      (D3.Modify DA.Same DA.Same
-        (DT.InsApp ()
-          (DT.CpyApp (DT.Replace "Vec") DT.Same)
-          (DT.Replace "n")
-        )
-      )
-      $ DL.Same
+        . DL.Insert ((), "n", "nat")
+        . DL.Modify
+          ( D3.Modify
+              DA.Same
+              DA.Same
+              ( DT.InsApp
+                  ()
+                  (DT.CpyApp (DT.Replace "Vec") DT.Same)
+                  (DT.Replace "n")
+              )
+          )
+        $ DL.Same
     δconsIs = DL.Insert ((), App () (Var Nothing "S") (Var Nothing "n")) DL.Same

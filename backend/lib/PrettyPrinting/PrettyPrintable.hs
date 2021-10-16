@@ -6,13 +6,13 @@ module PrettyPrinting.PrettyPrintable
   )
 where
 
+import Language (Language)
 import Prettyprinter
   ( Doc,
     defaultLayoutOptions,
     layoutPretty,
   )
 import Prettyprinter.Render.String (renderString)
-import Language (Language)
 
 class PrettyPrintable (l :: Language) t where
   prettyDoc :: t -> Doc ()

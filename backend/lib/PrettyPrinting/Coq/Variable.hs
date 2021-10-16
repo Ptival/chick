@@ -1,16 +1,15 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+-- {-# LANGUAGE MultiParamTypeClasses #-}
+-- {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{-# LANGUAGE MultiParamTypeClasses #-}
+-- module PrettyPrinting.Coq.Variable
+--   (
+--   )
+-- where
 
-module PrettyPrinting.Coq.Variable
-  (
-  ) where
+-- import Language (Language (Coq))
+-- import PrettyPrinting.PrettyPrintable
+-- import Term.Variable
+-- import Text.PrettyPrint.Annotated.WL
 
-import Text.PrettyPrint.Annotated.WL
-
-import Language (Language(Coq))
-import PrettyPrinting.PrettyPrintable
-import Term.Variable
-
-instance PrettyPrintable 'Coq Variable where
-  prettyDoc = text . unVariable
+-- instance PrettyPrintable 'Coq Variable where
+--   prettyDoc = text . unVariable

@@ -1,22 +1,30 @@
-module Typing.Utils (
-  (|||),
-  (^||),
-  (?||),
-  (!),
-  (~!),
-  (~!\),
-  ) where
+{-# LANGUAGE PostfixOperators #-}
 
-import           Data.Bifunctor
-import           Polysemy            ( Member, Sem )
-import           Polysemy.Error      ( Error, catch, throw )
+module Typing.Utils
+  ( (|||),
+    (^||),
+    (?||),
+    (!),
+    (~!),
+    (~!\),
+  )
+where
 
-import           Term.Term
-import qualified Term.TypeChecked    as C
-import qualified Term.TypeErrored    as E
-import           TypeCheckingFailure
+import Data.Bifunctor (Bifunctor (first))
+import Polysemy (Member, Sem)
+import Polysemy.Error (Error, catch, throw)
+import Term.Term
+  ( ScopedTerm,
+    TermX,
+    Variable,
+    abstractBinder,
+    unscopeTerm,
+  )
+import qualified Term.TypeChecked as C
+import qualified Term.TypeErrored as E
+import TypeCheckingFailure (TypeCheckingFailure (Unchecked))
 
-type ErrorTerm   = E.Term Variable
+type ErrorTerm = E.Term Variable
 
 (|||) :: Member (Error ErrorTerm) r => Sem r a -> (ErrorTerm -> ErrorTerm) -> Sem r a
 (|||) e f = e `catch` (throw . f)
@@ -38,5 +46,5 @@ type ErrorTerm   = E.Term Variable
 -- | Stands for "not checked lambda"
 (~!\) :: ScopedTerm (TermX ν) Variable -> ScopedTerm (TermX (E.Annotation Variable)) Variable
 (~!\) s =
-  let (b, t) = unscopeTerm s in
-  abstractBinder b ((~!) t)
+  let (b, t) = unscopeTerm s
+   in abstractBinder b (t ~!)

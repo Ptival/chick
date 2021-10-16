@@ -1,8 +1,6 @@
-
 module DictMetaMapId where
 
 import Data.Functor.Identity
-
 import DictMetaMap
 import Term.Term
 
@@ -12,14 +10,14 @@ metaMapId :: DictMetaMapId ξ ψ -> TermX ξ ν -> TermX ψ ν
 metaMapId d = go
   where
     go = \case
-      Annot a t τ     -> Annot (doAnnotId d a) (go t) (go τ)
-      App   a t1 t2   -> App   (doAppId   d a) (go t1) (go t2)
-      Hole  a         -> Hole  (doHoleId  d a)
-      Lam   a n t     -> Lam   (doLamId   d a) n (go t)
-      Let   a n t1 t2 -> Let   (doLetId   d a) n (go t1) (go t2)
-      Pi    a n τ1 τ2 -> Pi    (doPiId    d a) n (go τ1) (go τ2)
-      Type  a         -> Type  (doTypeId  d a)
-      Var   a x       -> Var   (doVarId   d a) x
+      Annot a t τ -> Annot (doAnnotId d a) (go t) (go τ)
+      App a t1 t2 -> App (doAppId d a) (go t1) (go t2)
+      Hole a -> Hole (doHoleId d a)
+      Lam a n t -> Lam (doLamId d a) n (go t)
+      Let a n t1 t2 -> Let (doLetId d a) n (go t1) (go t2)
+      Pi a n τ1 τ2 -> Pi (doPiId d a) n (go τ1) (go τ2)
+      Type a -> Type (doTypeId d a)
+      Var a x -> Var (doVarId d a) x
 
 {-
 dictMetaMapId ::

@@ -1,9 +1,13 @@
 module Server.Session where
 
-import Control.Lens
+import Control.Lens (over, set, view)
 import Data.IntMap (adjust)
-
 import Server.Chick
+  ( GlobalState,
+    SessionState,
+    gActiveSessions,
+    sAlive,
+  )
 
 isAlive :: SessionState -> Bool
 isAlive = view sAlive

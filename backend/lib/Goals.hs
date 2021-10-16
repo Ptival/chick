@@ -1,17 +1,18 @@
 module Goals
-  ( Goals(..)
-  ) where
+  ( Goals (..),
+  )
+where
 
-import Goal
-import Utils
+import Goal (Goal)
+-- import Utils (splitList)
 
 data Goals α ν = Goals
-  { focused   :: [Goal α ν]
-  , unfocused :: [([Goal α ν], [Goal α ν])]
+  { focused :: [Goal α ν],
+    unfocused :: [([Goal α ν], [Goal α ν])]
   }
 
-focus :: Int -> Goals α ν -> Maybe (Goals α ν)
-focus n (Goals f u) =
-  case splitList n f of
-    Nothing        -> Nothing
-    Just (l, x, r) -> Just (Goals [x] ((l, r):u))
+-- focus :: Int -> Goals α ν -> Maybe (Goals α ν)
+-- focus n (Goals f u) =
+--   case splitList n f of
+--     Nothing -> Nothing
+--     Just (l, x, r) -> Just (Goals [x] ((l, r) : u))

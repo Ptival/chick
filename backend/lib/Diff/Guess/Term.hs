@@ -1,45 +1,56 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-{-# LANGUAGE AllowAmbiguousTypes #-}
+module Diff.Guess.Term
+  ( Match (..),
+    algorithm,
+    guess,
+    guessδ,
+    makeNode,
+    matchPairs,
+    recommended,
+    traceGuessδ,
+    withNodeMapping,
+  )
+where
 
-module Diff.Guess.Term (
-  Match(..),
-  algorithm,
-  guess,
-  guessδ,
-  makeNode,
-  matchPairs,
-  recommended,
-  traceGuessδ,
-  withNodeMapping,
-  ) where
-
-import           Control.Lens                   ( _1, _2, _3, over, view )
-import           Control.Monad                  ( foldM, forM, when )
-import           Data.Function                  ( fix )
-import qualified Data.List                      as List
-import           Data.List.HT                   ( viewR )
-import           Data.Maybe                     ( mapMaybe )
-import           Polysemy                       ( Member, Sem, run, runM )
-import           Polysemy.Error                 ( runError )
-import           Polysemy.State                 ( State, get, modify, runState )
-import           Polysemy.Trace                 ( Trace, ignoreTrace, trace, traceToIO )
-import           Prelude                        hiding ( product )
-import           Text.Printf                    ( printf )
-
+import Control.Lens (over, view, _1, _2, _3)
+import Control.Monad (foldM, forM, when)
+import Data.Function (fix)
+import qualified Data.List as List
+import Data.List.HT (viewR)
+import Data.Maybe (mapMaybe)
 import qualified Diff.Atom as ΔA
-import           Diff.Guess.BottomUp
-import           Diff.Guess.Mapping
-import           Diff.Guess.TopDown
-import           Diff.Guess.Node
+import Diff.Guess.BottomUp (bottomUpStateM, runBottomUp)
+import Diff.Guess.Mapping (Mapping)
+import Diff.Guess.Node (Node (..), isomorphic)
+import Diff.Guess.TopDown (runTopDown, topDownStateM)
 import qualified Diff.Term as ΔT
-import           Diff.Utils
-import           Language                       (Language(Chick))
-import           PrettyPrinting.Chick           ()
-import           PrettyPrinting.PrettyPrintable
-import           Term.Term
-import qualified Term.Raw                       as Raw
-import           Utils
+import Diff.Utils (permute)
+import Language (Language (Chick))
+import Polysemy (Member, Sem, run, runM)
+import Polysemy.Error (runError)
+import Polysemy.State (State, get, modify, runState)
+import Polysemy.Trace (Trace, ignoreTrace, trace, traceToStdout)
+import PrettyPrinting.Chick ()
+import PrettyPrinting.PrettyPrintable
+  ( PrettyPrintable (prettyStr, preview),
+  )
+import qualified Term.Raw as Raw
+import Term.Term
+  ( Binder (Binder),
+    Branch,
+    GuardAndBody (branchBody),
+    TermX (..),
+    Variable,
+    mkVariable,
+    originalBinder,
+    unpackBranch,
+    unscopeTerm,
+  )
+import Text.Printf (printf)
+import Utils
+import Prelude hiding (product)
 
 -- FIXME: should I put guards in there too?
 branchChild :: Branch α Variable -> TermX α Variable
@@ -67,33 +78,33 @@ termChildren = go
   where
     go input = case input of
       Annot _ t τ -> [t, τ]
-      App{} ->
+      App {} ->
         case run $ runError (ΔT.extractApps input) of
-        Left (_ :: String) -> error "This should not happen"
-        Right (c, cs) -> c : map (view _2) cs
+          Left (_ :: String) -> error "This should not happen"
+          Right (c, cs) -> c : map (view _2) cs
       Hole _ -> []
       Lam _ _ ->
         case run $ runError (ΔT.extractLams input) of
-        Left (_ :: String) -> error "This should not happen"
-        Right (cs, c) ->
-          map (variableFromBinder . view _2) cs ++ [c]
+          Left (_ :: String) -> error "This should not happen"
+          Right (cs, c) ->
+            map (variableFromBinder . view _2) cs ++ [c]
       Let _ t1 bt2 -> [t1, t2] where (_, t2) = unscopeTerm bt2
       Match _ t bs -> t : map branchChild bs
-      Pi{} ->
+      Pi {} ->
         case run $ runError (ΔT.extractPis input) of
-        Left (_ :: String) -> error "This should not happen"
-        Right (cs, c) -> map (view _3) cs ++ [c]
+          Left (_ :: String) -> error "This should not happen"
+          Right (cs, c) -> map (view _3) cs ++ [c]
       Type _ -> []
       Var _ _ -> []
       UnsupportedOCaml _ -> []
     variableFromBinder (Binder b) = case b of
       Nothing -> Var Nothing (mkVariable "__FIXME_Diff.Guess.Term__")
-      Just v  -> Var Nothing v
+      Just v -> Var Nothing v
 
 termHeight :: TermX α Variable -> Int
 termHeight t = case termChildren t of
   [] -> 1 -- huh... why would they choose this...?
-  c  -> 1 + maximum (map termHeight c)
+  c -> 1 + maximum (map termHeight c)
 
 fresh ::
   Member (State Int) r =>
@@ -102,27 +113,34 @@ fresh = get <* modify (+ (1 :: Int))
 
 makeNode ::
   Member (State Int) r =>
-  Raw.Term Variable -> Sem r Node
+  Raw.Term Variable ->
+  Sem r Node
 makeNode t = ($ Nothing) <$> go t
   where
     go :: Member (State Int) r => Raw.Term Variable -> Sem r (Maybe Node -> Node)
     go t = do
       i <- fresh
       childrenGen <- mapM go (termChildren t)
-      return $ \ p -> fix $ \ n -> Node
-        { children   = map ($ Just n) childrenGen
-        , height     = termHeight t
-        , identifier = i
-        , node       = t
-        , parent     = p
-        }
+      return $ \p -> fix $ \n ->
+        Node
+          { children = map ($ Just n) childrenGen,
+            height = termHeight t,
+            identifier = i,
+            node = t,
+            parent = p
+          }
 
 algorithm ::
   ( Member Trace r
   ) =>
-  Int -> Double -> Int -> Node -> Node -> Sem r Mapping
+  Int ->
+  Double ->
+  Int ->
+  Node ->
+  Node ->
+  Sem r Mapping
 algorithm minHeight minDice _maxSize n1 n2 = do
-  s1 <- runTopDown  n1 n2 minHeight
+  s1 <- runTopDown n1 n2 minHeight
   let m1 = view topDownStateM s1
   s2 <- runBottomUp n1 n2 m1 minDice {- maxSize -}
   let m2 = view bottomUpStateM s2
@@ -131,13 +149,17 @@ algorithm minHeight minDice _maxSize n1 n2 = do
 recommended ::
   ( Member Trace r
   ) =>
-  Node -> Node -> Sem r Mapping
+  Node ->
+  Node ->
+  Sem r Mapping
 recommended = algorithm 0 0.0 100
 
 guess ::
   ( Member Trace r
   ) =>
-  Raw.Term Variable -> Raw.Term Variable -> Sem r (ΔT.Diff Raw.Raw)
+  Raw.Term Variable ->
+  Raw.Term Variable ->
+  Sem r (ΔT.Diff Raw.Raw)
 guess = withNodeMapping mkGuessδ
 
 {- For many functions we will want to take as input two terms, and compute
@@ -145,11 +167,13 @@ something based on the nodes of those terms and the mapping between those.
 -}
 withNodeMapping ::
   (Node -> Node -> Mapping -> a) ->
-  Raw.Term Variable -> Raw.Term Variable -> a
+  Raw.Term Variable ->
+  Raw.Term Variable ->
+  a
 withNodeMapping k t1 t2 =
-  let (n1, n2) = snd . run $ runState (0 :: Int) s in
-  let m = run $ ignoreTrace $ recommended n1 n2 in
-  k n1 n2 m
+  let (n1, n2) = snd . run $ runState (0 :: Int) s
+   in let m = run $ ignoreTrace $ recommended n1 n2
+       in k n1 n2 m
   where
     s = do
       n1 <- makeNode t1
@@ -161,14 +185,15 @@ guessδ t1 t2 = run . ignoreTrace $ guess t1 t2
 
 traceGuessδ ::
   Raw.Term Variable -> Raw.Term Variable -> IO (ΔT.Diff Raw.Raw)
-traceGuessδ = withNodeMapping $ \ n1 n2 m -> do
+traceGuessδ = withNodeMapping $ \n1 n2 m -> do
   putStrLn $ printf "MAPPING:\n%s\n" (show m)
-  runM $ traceToIO $ mkGuessδ n1 n2 m
+  runM $ traceToStdout $ mkGuessδ n1 n2 m
 
 unsafeSplitWhen :: (t -> Bool) -> [t] -> ([t], t, [t])
 unsafeSplitWhen _ [] = error "unsafeSplitWhen"
-unsafeSplitWhen p (h : t) | p h       = ([], h, t)
-                          | otherwise = over _1 ((:) h) $ unsafeSplitWhen p t
+unsafeSplitWhen p (h : t)
+  | p h = ([], h, t)
+  | otherwise = over _1 (h :) $ unsafeSplitWhen p t
 
 {- expandSpanning equals l1 l2 splits two lists, respectively, into (pre1,
 post1) and (pre2, post2) s.t. no element of pre1 has an equal element in post2,
@@ -180,22 +205,22 @@ expandSpanning (=) [a, b, c, d, e, f] [c, a, e, g] =
 -}
 
 expandSpanning :: (a -> b -> Bool) -> [a] -> [b] -> (([a], [a]), ([b], [b]))
-expandSpanning _ [] [] = (([], []), ([] ,[]))
+expandSpanning _ [] [] = (([], []), ([], []))
 expandSpanning _ [] l2 = (([], []), ([], l2))
 expandSpanning _ l1 [] = (([], l1), ([], []))
 expandSpanning equals (h1 : t1) (h2 : t2) = go ([h1], t1) ([h2], t2)
   where
     go s1@(pre1, post1) s2@(pre2, post2) =
       case List.find (isIn2 post2) pre1 of
-      Nothing ->
-        case List.find (isIn1 post1) pre2 of
-        Nothing -> (s1, s2)
-        Just e2 ->
-          let (l1, e1, r1) = unsafeSplitWhen (`equals` e2) post1 in
-          go (pre1 ++ l1 ++ [e1], r1) (pre2, post2)
-      Just e1 ->
-        let (l2, e2, r2) = unsafeSplitWhen (equals e1) post2 in
-        go (pre1, post1) (pre2 ++ l2 ++ [e2], r2)
+        Nothing ->
+          case List.find (isIn1 post1) pre2 of
+            Nothing -> (s1, s2)
+            Just e2 ->
+              let (l1, e1, r1) = unsafeSplitWhen (`equals` e2) post1
+               in go (pre1 ++ l1 ++ [e1], r1) (pre2, post2)
+        Just e1 ->
+          let (l2, e2, r2) = unsafeSplitWhen (equals e1) post2
+           in go (pre1, post1) (pre2 ++ l2 ++ [e2], r2)
     isIn1 l e = List.any (`equals` e) l
     isIn2 l e = List.any (equals e) l
 
@@ -218,18 +243,18 @@ r =  D X Y G Z A H F
 generatePermutation :: (a -> t -> Bool) -> [a] -> [t] -> [Int]
 generatePermutation equals l1 l2 =
   let replacements =
-        mapMaybe (\ e2 -> List.findIndex (`equals` e2) l1) l2
-  in go (zip l1 [0..]) replacements
+        mapMaybe (\e2 -> List.findIndex (`equals` e2) l1) l2
+   in go (zip l1 [0 ..]) replacements
   where
     go [] _ = []
     go ((e1, _) : l1) (r : rs) | List.any (equals e1) l2 = r : go l1 rs
     go ((_, p1) : l1) rs = p1 : go l1 rs
 
 data Match
-  = Matched        Node Node
-  | LeftUnmatched  Node
+  = Matched Node Node
+  | LeftUnmatched Node
   | RightUnmatched Node
-  | Permuted       [Int]
+  | Permuted [Int]
   deriving (Show)
 
 {- `matchPairs m l1 l2` takes a mapping between nodes, and two lists of nodes,
@@ -255,17 +280,17 @@ matchPairs m = go
   where
     equals e1 e2 = (e1, e2) `elem` m
     go [] [] = []
-    go (n1 : t1) [] = LeftUnmatched  n1 : go [] t1
+    go (n1 : t1) [] = LeftUnmatched n1 : go [] t1
     go [] (n2 : t2) = RightUnmatched n2 : go [] t2
     go l1@(n1 : t1) l2@(n2 : t2)
-      | (n1, n2) `elem` m         = Matched n1 n2 : go t1 t2
-      | List.any (matchesL n1) t2 && List.any (matchesR n2) t1
-      = let ((pre1, post1), (pre2, post2)) = expandSpanning equals l1 l2 in
-        let p = generatePermutation equals pre1 pre2 in
-        Permuted p : go (permute p pre1 ++ post1) (pre2 ++ post2)
+      | (n1, n2) `elem` m = Matched n1 n2 : go t1 t2
+      | List.any (matchesL n1) t2 && List.any (matchesR n2) t1 =
+        let ((pre1, post1), (pre2, post2)) = expandSpanning equals l1 l2
+         in let p = generatePermutation equals pre1 pre2
+             in Permuted p : go (permute p pre1 ++ post1) (pre2 ++ post2)
       | List.any (matchesL n1) t2 = RightUnmatched n2 : go l1 t2
       | List.any (matchesR n2) t1 = LeftUnmatched n1 : go t1 l2
-      | otherwise                 = LeftUnmatched n1 : RightUnmatched n2 : go t1 t2
+      | otherwise = LeftUnmatched n1 : RightUnmatched n2 : go t1 t2
     matchesL nL nR = (nL, nR) `elem` m
     matchesR nR nL = (nL, nR) `elem` m
 
@@ -276,57 +301,53 @@ data FoldAppsStatus
 
 mkGuessδ ::
   Member Trace r =>
-  Node -> Node -> Mapping -> Sem r (ΔT.Diff Raw.Raw)
+  Node ->
+  Node ->
+  Mapping ->
+  Sem r (ΔT.Diff Raw.Raw)
 mkGuessδ n1 n2 m = go n1 n2
-
   where
-
     go n1 n2 = do
-
       trace $ printf "Guessing δ for (%s, %s)" (preview @'Chick (node n1)) (preview @'Chick (node n2))
 
       if (n1, n2) `elem` m
         then
-        if isomorphic n1 n2
-          then do
-          trace "Matched and isomorphic!"
-          return ΔT.Same
-          else do
-          trace "Matched, but not isomorphic!"
-          case (node n1, node n2) of
+          if isomorphic n1 n2
+            then do
+              trace "Matched and isomorphic!"
+              return ΔT.Same
+            else do
+              trace "Matched, but not isomorphic!"
+              case (node n1, node n2) of
+                (App {}, App {}) -> do
+                  let pairs = matchPairs m (children n1) (children n2)
+                  trace $ printf "About to foldApps (%s, %s)" (show $ children n1) (show $ children n2)
+                  let pairsRest = case pairs of
+                        Matched _ _ : pairsRest -> pairsRest
+                        _ -> error $ printf "Couldn't extract pairsRest from: %s" (show pairs)
+                  (δ, _) <- foldM foldApps (id, NoPermutation) pairsRest
+                  return $ δ ΔT.Same
+                (Lam {}, Lam {}) -> do
+                  let pairs = matchPairs m (children n1) (children n2)
+                  (δ, _) <- foldM foldLams (id, (node n1, node n2)) pairs
+                  return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
 
-            (App{}, App{}) -> do
-              let pairs = matchPairs m (children n1) (children n2)
-              trace $ printf "About to foldApps (%s, %s)" (show $ children n1) (show $ children n2)
-              let pairsRest = case pairs of
-                    Matched _ _ : pairsRest -> pairsRest
-                    _ -> error $ printf "Couldn't extract pairsRest from: %s" (show pairs)
-              (δ, _) <- foldM foldApps (id, NoPermutation) pairsRest
-              return $ δ ΔT.Same
-
-            (Lam{}, Lam{}) -> do
-              let pairs = matchPairs m (children n1) (children n2)
-              (δ, _) <- foldM foldLams (id, (node n1, node n2)) pairs
-              return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
-
-            -- when we have two non-isomorphic Pis to match together,
-            -- we attempt to find a matching among the Pi-telescopes
-            (Pi{}, Pi{}) -> do
-              -- trace $ show $ node n1
-              -- trace $ show $ node n2
-              let pairs = matchPairs m (children n1) (children n2)
-              -- trace $ printf "PAIRS:\n%s" (show pairs)
-              (δ, _) <- foldM foldPis (id, (node n1, node n2)) pairs
-              return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
-
-            (_, _) -> error $ printf "TODO not isomorphic: (%s, %s)" (preview @'Chick (node n1)) (preview @'Chick (node n2))
+                -- when we have two non-isomorphic Pis to match together,
+                -- we attempt to find a matching among the Pi-telescopes
+                (Pi {}, Pi {}) -> do
+                  -- trace $ show $ node n1
+                  -- trace $ show $ node n2
+                  let pairs = matchPairs m (children n1) (children n2)
+                  -- trace $ printf "PAIRS:\n%s" (show pairs)
+                  (δ, _) <- foldM foldPis (id, (node n1, node n2)) pairs
+                  return $ δ ΔT.Same --(ΔT.Replace (Var Nothing (Variable "HERE")))
+                (_, _) -> error $ printf "TODO not isomorphic: (%s, %s)" (preview @'Chick (node n1)) (preview @'Chick (node n2))
         else do
-        trace "Unmatched"
-        case (node n1, children n1, node n2, children n2) of
-
-          (Pi _ _ _bτ2, _τs, Pi _α' _ _bτ2', _τs') -> do
-            trace $ show $ matchPairs m (children n1) (children n2)
-            error "FINISH ME"
+          trace "Unmatched"
+          case (node n1, children n1, node n2, children n2) of
+            (Pi _ _ _bτ2, _τs, Pi _α' _ _bτ2', _τs') -> do
+              trace $ show $ matchPairs m (children n1) (children n2)
+              error "FINISH ME"
             -- if containMatches m τ τ'
             --   then do
             --   δ1 <- go τ τ'
@@ -339,98 +360,92 @@ mkGuessδ n1 n2 m = go n1 n2
             --   δ2 <- go n1 τ2
             --   return $ ΔT.InsPi <$> Just α' <*> δ1 <*> Just (Binder Nothing) <*> δ2
 
-          (_, _, Pi{}, τs') -> do
+            (_, _, Pi {}, τs') -> do
+              δs' <- forM τs' (go n1)
+              case viewR δs' of
+                Nothing -> error "This should not happen"
+                Just (δs', δ') -> do
+                  -- Problem: τs' does not contain the name of the binders for each child
+                  -- Solution: extract them from (node n2)
+                  (πs, _) <- extractPis (node n2)
+                  when (length πs /= length δs') $ do
+                    trace $ printf "%s" (show $ map (prettyStr @'Chick) πs)
+                    trace $ printf "%s" (show δs')
+                    error "This is possibly odd, check if it happens"
+                  return $ foldr (\(δ, b) δs -> ΔT.InsPi () δ b δs) δ' (zip δs' (map (view _2) πs))
+            (Pi {}, _ : τ2 : _, Var _ _, _) -> do
+              δ <- go τ2 n2
+              return $ ΔT.RemovePi δ
+            (App {}, _, Var {}, _) -> return $ ΔT.Replace (node n2)
+            (Var {}, _, App {}, f' : args') ->
+              -- if the Var on the left has a match on the right, InsApp, else Replace
+              if node n1 == node f'
+                then do
+                  let δf = ΔT.Same
+                  δargs <- forM args' (go n1)
+                  return $ foldr (flip (ΔT.InsApp ())) δf δargs
+                else return $ ΔT.Replace (node n2)
+            -- no choice here
+            (Type _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
+            (Var _ _, _, Type _, _) -> return $ ΔT.Replace (node n2)
+            (Var _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
+            _ ->
+              error $ printf "TODO: (%s, %s) (%s, %s)" (preview @'Chick $ node n1) (preview @'Chick $ node n2) (show $ node n1) (show $ node n2)
 
-            δs' <- forM τs' (go n1)
-            case viewR δs' of
-              Nothing -> error "This should not happen"
-              Just (δs', δ') -> do
-                -- Problem: τs' does not contain the name of the binders for each child
-                -- Solution: extract them from (node n2)
-                (πs, _) <- extractPis (node n2)
-                when (length πs /= length δs') $ do
-                  trace $ printf "%s" (show $ map (prettyStr @'Chick) πs)
-                  trace $ printf "%s" (show δs')
-                  error "This is possibly odd, check if it happens"
-                return $ foldr (\ (δ, b) δs -> ΔT.InsPi () δ b δs) δ' (zip δs' (map (view _2) πs))
+    -- δs' <- forM τs' (go n1)
+    -- case viewR δs' of
+    --   Nothing -> error "This should not happen"
+    --   Just (δs', δ') -> do
+    --     trace $ printf "### InsPi ###"
+    --     return $ foldr (\ δ δs -> ΔT.InsPi () δ b δs) δ' δs'
 
-          (Pi{}, _ : τ2 : _, Var _ _, _) -> do
-            δ <- go τ2 n2
-            return $ ΔT.RemovePi δ
+    {-
+    Oh boy, this is annoyingly convoluted.
+    This one is not super intuitive.  A nested application sequence:
 
-          (App{}, _, Var{}, _) -> return $ ΔT.Replace (node n2)
-          (Var{}, _, App{}, f' : args') ->
-            -- if the Var on the left has a match on the right, InsApp, else Replace
-            if node n1 == node f'
-              then do
-              let δf = ΔT.Same
-              δargs <- forM args' (go n1)
-              return $ foldr (flip (ΔT.InsApp ())) δf δargs
-              else return $ ΔT.Replace (node n2)
+    (((((f b) y) c ) d) e)   --->   (((((f a) d) b) x) c)
 
-          -- no choice here
-          (Type _,  _, Var _ _, _) -> return $ ΔT.Replace (node n2)
-          (Var _ _, _, Type _,  _) -> return $ ΔT.Replace (node n2)
-          (Var _ _, _, Var _ _, _) -> return $ ΔT.Replace (node n2)
+    produces a matching:
 
-          _ ->
-            error $ printf "TODO: (%s, %s) (%s, %s)" (preview @'Chick $ node n1) (preview @'Chick $ node n2) (show $ node n1) (show $ node n2)
+    Matched f f, RightUnmatched a, Permute [3, 1, 0, 2], LeftUnmatched y,
+    Matched d d, Matched b b, RightUnmatched x, Matched c c, LeftUnmatched e
 
--- δs' <- forM τs' (go n1)
--- case viewR δs' of
---   Nothing -> error "This should not happen"
---   Just (δs', δ') -> do
---     trace $ printf "### InsPi ###"
---     return $ foldr (\ δ δs -> ΔT.InsPi () δ b δs) δ' δs'
+    which should yield diff:
 
-{-
-Oh boy, this is annoyingly convoluted.
-This one is not super intuitive.  A nested application sequence:
+    RemoveApp (e), PermuteApps [3, 1, 0, 2], CpyApp (c), InsApp x, CpyApp (b),
+    CpyApp (d), RemoveApp (y), InsApp a, Same (f)
 
-(((((f b) y) c ) d) e)   --->   (((((f a) d) b) x) c)
+    Process:
+    Matched f f             ->   Same          (probably done at setup time)
+    RightUnmatched a        ->   InsApp a
+    Permuted [3, 1, 0, 2]   ->                 <delayed [3, 1, 0, 2] length: 4>
+    Matched d d             ->   CpyApp (d)    <delayed [3, 1, 0, 2] length: 2>
+    LeftUnmatched y         ->   RemoveApp (y) <delayed [3, 1, 0, 2] length: 3>
+    Matched b b             ->   CpyApp (b)    <delayed [3, 1, 0, 2] length: 1>
+    RightUnmatched x        ->   InsApp x      <delayed [3, 1, 0, 2] length: 1>
+    Matched c c             ->   CpyApp (c)    <delayed [3, 1, 0, 2] length: 0>
+                                 PermuteApps [3, 1, 0, 2]
+    LeftUnmatched e         ->   RemoveApp (e)
 
-produces a matching:
+    -}
 
-Matched f f, RightUnmatched a, Permute [3, 1, 0, 2], LeftUnmatched y,
-Matched d d, Matched b b, RightUnmatched x, Matched c c, LeftUnmatched e
-
-which should yield diff:
-
-RemoveApp (e), PermuteApps [3, 1, 0, 2], CpyApp (c), InsApp x, CpyApp (b),
-CpyApp (d), RemoveApp (y), InsApp a, Same (f)
-
-Process:
-Matched f f             ->   Same          (probably done at setup time)
-RightUnmatched a        ->   InsApp a
-Permuted [3, 1, 0, 2]   ->                 <delayed [3, 1, 0, 2] length: 4>
-Matched d d             ->   CpyApp (d)    <delayed [3, 1, 0, 2] length: 2>
-LeftUnmatched y         ->   RemoveApp (y) <delayed [3, 1, 0, 2] length: 3>
-Matched b b             ->   CpyApp (b)    <delayed [3, 1, 0, 2] length: 1>
-RightUnmatched x        ->   InsApp x      <delayed [3, 1, 0, 2] length: 1>
-Matched c c             ->   CpyApp (c)    <delayed [3, 1, 0, 2] length: 0>
-                             PermuteApps [3, 1, 0, 2]
-LeftUnmatched e         ->   RemoveApp (e)
-
--}
-
--- TODO: this handling of (t, t') does not make sense in this context anymore
--- figure out whether we need them at all (for InsApp?)
+    -- TODO: this handling of (t, t') does not make sense in this context anymore
+    -- figure out whether we need them at all (for InsApp?)
     foldApps (δ, s) m = do
-
       trace $ printf "foldApps δ %s %s" (show m) (show s)
 
       (δ, s) <- case s of
         -- inject delayed permutation if needed
         NoPermutation ->
           case m of
-          Permuted p -> return (δ, DelayedPermutation p (length p))
-          _ -> return (δ, NoPermutation)
+            Permuted p -> return (δ, DelayedPermutation p (length p))
+            _ -> return (δ, NoPermutation)
         DelayedPermutation p 0 -> return (ΔT.PermutApps p . δ, NoPermutation)
         DelayedPermutation p d -> do
           let d' = case m of
-                RightUnmatched _ -> d     -- does not change count in original
-                LeftUnmatched _  -> d - 1
-                Matched _ _      -> d - 1
+                RightUnmatched _ -> d -- does not change count in original
+                LeftUnmatched _ -> d - 1
+                Matched _ _ -> d - 1
                 Permuted _ -> error "Permuception!"
           return (δ, DelayedPermutation p d')
 
@@ -443,7 +458,6 @@ LeftUnmatched e         ->   RemoveApp (e)
           δ2 <- go t t'
           return $ flip ΔT.CpyApp δ2 . δ
         Permuted _ -> return δ -- already injected a delayed permutation
-
       return (δ, s)
 
     foldLams (δ, (t, t')) = \case

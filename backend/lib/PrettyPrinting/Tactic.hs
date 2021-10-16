@@ -1,4 +1,3 @@
-
 module PrettyPrinting.Tactic where
 
 {-

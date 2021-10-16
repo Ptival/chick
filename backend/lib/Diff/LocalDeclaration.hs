@@ -11,17 +11,19 @@ where
 
 import qualified Diff.Atom as DA
 import qualified Diff.Term as DT
-import Diff.Utils ( throwExc )
+import Diff.Utils (throwExc)
 import Polysemy (Member, Sem)
 import Polysemy.Error (Error)
 import Polysemy.Trace (Trace)
 import PrettyPrinting.PrettyPrintable
-    ( PrettyPrintable(prettyDoc) )
+  ( PrettyPrintable (prettyDoc),
+  )
 import qualified Prettyprinter as Doc
-import Term.Binder ( Binder )
-import Term.Term ( Variable, TermX, Branch )
+import Term.Binder (Binder)
+import Term.Term (Branch, TermX, Variable)
 import Typing.LocalDeclaration
-    ( LocalDeclaration(LocalDef, LocalAssum) )
+  ( LocalDeclaration (LocalAssum, LocalDef),
+  )
 
 data Diff α
   = Same

@@ -11,10 +11,10 @@ where
 
 import Data.Default (Default)
 import qualified Diff.Atom as DA
-import Diff.ConcatMap (ΔListFold (..), δListFoldMkPiGenericMaybe)
 import qualified Diff.Constructor as DC
 import qualified Diff.Inductive as DI
 import qualified Diff.List as DL
+import Diff.ListFold (ΔListFold (..), δListFoldMkPiGenericMaybe)
 import Diff.ListFoldRight
   ( δListFoldRight,
   )

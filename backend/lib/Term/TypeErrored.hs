@@ -4,24 +4,26 @@
 -- {-# LANGUAGE UndecidableInstances #-}
 
 module Term.TypeErrored
-  ( Annotation
-  , Term
-  , Type
-  , TypeError
-  , annotateError
-  ) where
+  ( Annotation,
+    Term,
+    Type,
+    TypeError,
+    annotateError,
+  )
+where
 
-import Data.Bifunctor
-
-import qualified Term.Raw            as R
-import           Term.Term
-import qualified Term.TypeChecked    as C
-import           TypeCheckingFailure
+import Data.Bifunctor (Bifunctor (first))
+import qualified Term.Raw as R
+import Term.Term (TermX, annotateHead)
+import qualified Term.TypeChecked as C
+import TypeCheckingFailure (TypeCheckingFailure (Unchecked))
 
 type TypeError = TypeCheckingFailure R.Term
 
 type Annotation ν = (Either (TypeError ν) (C.Checked ν))
+
 type Term ν = TermX (Annotation ν) ν
+
 type Type ν = Term ν
 
 {-

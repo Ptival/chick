@@ -1,6 +1,7 @@
 module Diff.Guess.Mapping
-  ( Mapping
-  ) where
+  ( Mapping,
+  )
+where
 
 import Diff.Guess.Node (Node)
 

@@ -7,53 +7,95 @@ module Work where
 --import Bound.Name
 --import Bound.Scope
 --import Control.Monad
-import           Control.Monad.Cont
-import           Control.Monad.Except
-import           Control.Monad.Identity
-import           Control.Monad.Reader
-import           Control.Monad.Trans.Free
-import           Data.Bifunctor
+import Control.Monad.Cont (join, (>=>))
+import Control.Monad.Except
+  ( ExceptT,
+    MonadError (throwError),
+    runExceptT,
+  )
+import Control.Monad.Identity (Identity (runIdentity))
+import Control.Monad.Reader (MonadReader)
+import Control.Monad.Trans.Free
+  ( FreeF (..),
+    FreeT (runFreeT),
+    MonadFree (..),
+  )
+import Data.Bifunctor (Bifunctor (first))
 --import Data.Default
-import           Prettyprinter
-import           Prelude                                   hiding (or)
+
 --import Text.Printf
 
-import           Language
-import           Precedence
-import           PrettyPrinting.PrettyPrintableUnannotated
-import           PrettyPrinting.Term                       ()
-import           Term.Binder
-import           Typing.LocalContext
+import Language (Language (Chick))
+import Precedence (PrecedenceTable)
+import PrettyPrinting.PrettyPrintableUnannotated
+  ( PrettyPrintableUnannotated (prettyDocU),
+  )
+import PrettyPrinting.Term ()
+import Prettyprinter (Doc, fillSep)
+import Term.Binder (Binder (..))
 --import PrettyPrinting.Term
-import           Term.Raw                                  as Raw
-import           Term.Term
-import           Term.TypeChecked                          as TypeChecked
-import           Term.TypeErrored                          as TypeErrored
-import qualified Term.Universe                             as U
-import           TypeCheckingFailure
-import           Utils
+import Term.Raw as Raw (Term, Type, raw)
+import Term.Term
+  ( ScopedTerm,
+    TermX (App, Hole, Lam, Pi, Type, Var),
+    TypeX,
+    Variable,
+    abstractBinder,
+    substitute,
+    unscopeTerm,
+  )
+import Term.TypeChecked as TypeChecked
+  ( Checked (Checked),
+    Term,
+    typeOf,
+  )
+import Term.TypeErrored as TypeErrored
+  ( Term,
+    TypeError,
+    annotateError,
+  )
+import qualified Term.Universe as U
+import TypeCheckingFailure
+  ( TypeCheckingFailure
+      ( AppArgumentFailed,
+        AppFunctionFailed,
+        AppFunctionTypeFailed,
+        IncompatibleTypes,
+        NotAType,
+        SynthesizeLambda,
+        TODO,
+        Unchecked
+      ),
+  )
+import Typing.LocalContext
+  ( LocalContext,
+    addLocalAssum,
+    lookupType,
+  )
+import Utils (isPi, orElse, orElse')
+import Prelude hiding (or)
 
 type TypeCheckingTerm ν = Either (TypeErrored.Term ν) (TypeChecked.Term ν)
 
 data TypeCheckerF ν k
   = Check (LocalContext (Checked ν) ν) (Raw.Term ν) (Raw.Type ν) (TypeCheckingTerm ν -> k)
-  | Synth (LocalContext (Checked ν) ν) (Raw.Term ν)              (TypeCheckingTerm ν -> k)
+  | Synth (LocalContext (Checked ν) ν) (Raw.Term ν) (TypeCheckingTerm ν -> k)
   | Failure (TypeErrored.Term ν)
   | Success (TypeChecked.Term ν)
-  deriving ( Functor )
+  deriving (Functor)
 
 tcTrace ::
   (TypeCheckerF ν k -> TypeCheckerF ν k) -> TypeCheckerF ν k -> [TypeCheckerF ν k]
-tcTrace _    (Failure f) = [Failure f]
-tcTrace _    (Success s) = [Success s]
-tcTrace step w           = w : tcTrace step (step w)
+tcTrace _ (Failure f) = [Failure f]
+tcTrace _ (Success s) = [Success s]
+tcTrace step w = w : tcTrace step (step w)
 
 tc ::
   TypeCheckerF Variable (TCMonad Variable (TypeChecked.Term Variable)) ->
   Either (TypeErrored.Term Variable) (TypeChecked.Term Variable)
 tc (Failure f) = Left f
 tc (Success s) = Right s
-tc w           = tc (stepTypeCheckerF w)
+tc w = tc (stepTypeCheckerF w)
 
 {-
 tcStep ::
@@ -75,37 +117,42 @@ showContext = False
 
 prettyTypeCheckerF ::
   (MonadReader PrecedenceTable m) =>
-  TypeCheckerF Variable k -> m (Doc ())
+  TypeCheckerF Variable k ->
+  m (Doc ())
 prettyTypeCheckerF = \case
   Check _γ t τ _ -> do
     tDoc <- prettyDocU @'Chick t
     τDoc <- prettyDocU @'Chick τ
-    return $ fillSep
-      [ "Check"
-      , "γ ⊢"
-      , tDoc
-      , ":"
-      , τDoc
-      ]
+    return $
+      fillSep
+        [ "Check",
+          "γ ⊢",
+          tDoc,
+          ":",
+          τDoc
+        ]
   Synth _γ t _ -> do
     tDoc <- prettyDocU @'Chick t
-    return $ fillSep
-      [ "Synth"
-      , "γ ⊢"
-      , tDoc
-      ]
+    return $
+      fillSep
+        [ "Synth",
+          "γ ⊢",
+          tDoc
+        ]
   Failure f -> do
     fDoc <- prettyDocU @'Chick (raw f)
-    return $ fillSep
-      [ "Failure"
-      , fDoc
-      ]
+    return $
+      fillSep
+        [ "Failure",
+          fDoc
+        ]
   Success s -> do
     sDoc <- prettyDocU @'Chick (raw s)
-    return $ fillSep
-      [ "Success"
-      , sDoc
-      ]
+    return $
+      fillSep
+        [ "Success",
+          sDoc
+        ]
 
 {-
 instance Show (TypeCheckerF k) where
@@ -131,31 +178,41 @@ instance Functor TypeCheckerF where
 type TypeCheckerT ν = FreeT (TypeCheckerF ν)
 
 type MonadTypeCheck ν m =
-  ( MonadError (TypeErrored.Term ν) m
-  , MonadFree  (TypeCheckerF ν) m
+  ( MonadError (TypeErrored.Term ν) m,
+    MonadFree (TypeCheckerF ν) m
   )
 
 checkF ::
   MonadError e m =>
-  LocalContext (Checked ν) ν -> TermX ξ ν -> TermX ψ ν -> (TypeErrored.Term ν -> e) ->
+  LocalContext (Checked ν) ν ->
+  TermX ξ ν ->
+  TermX ψ ν ->
+  (TypeErrored.Term ν -> e) ->
   TypeCheckerF ν (m (TypeChecked.Term ν))
 checkF γ t τ h = Check γ (raw t) (raw τ) (either (throwError . h) return)
 
 checkM ::
   MonadTypeCheck ν m =>
-  LocalContext (Checked ν) ν -> TermX ξ ν -> TypeX ψ ν -> (TypeErrored.Term ν -> TypeErrored.Term ν) ->
+  LocalContext (Checked ν) ν ->
+  TermX ξ ν ->
+  TypeX ψ ν ->
+  (TypeErrored.Term ν -> TypeErrored.Term ν) ->
   m (TypeChecked.Term ν)
 checkM γ t τ h = wrap $ checkF γ t τ h
 
 synthF ::
   MonadError e m =>
-  LocalContext (Checked ν) ν -> TermX ξ ν -> (TypeErrored.Term ν -> e) ->
+  LocalContext (Checked ν) ν ->
+  TermX ξ ν ->
+  (TypeErrored.Term ν -> e) ->
   TypeCheckerF ν (m (TypeChecked.Term ν))
 synthF γ t h = Synth γ (raw t) (either (throwError . h) return)
 
 synthM ::
   MonadTypeCheck ν m =>
-  LocalContext (Checked ν) ν -> TermX ξ ν -> (TypeErrored.Term ν -> TypeErrored.Term ν) ->
+  LocalContext (Checked ν) ν ->
+  TermX ξ ν ->
+  (TypeErrored.Term ν -> TypeErrored.Term ν) ->
   m (TypeChecked.Term ν)
 synthM γ t h = wrap $ synthF γ t h
 
@@ -195,14 +252,15 @@ tryEither m l = cont $ meither m l
   ScopedTerm (TermX ξ) Variable ->
   ScopedTerm (TermX (Either (TypeError Variable) (TypeChecked.Checked Variable))) Variable
 (~!!) s =
-  let (b, t) = unscopeTerm s in
-  abstractBinder b ((~!) t)
+  let (b, t) = unscopeTerm s
+   in abstractBinder b ((~!) t)
 
 (!->) :: TypeChecked.Term ν -> TypeErrored.Term ν
 (!->) = first Right
 
-runFreeTypeCheckerT :: TypeCheckerT ν m a ->
-                      m (FreeF (TypeCheckerF ν) a (TypeCheckerT ν m a))
+runFreeTypeCheckerT ::
+  TypeCheckerT ν m a ->
+  m (FreeF (TypeCheckerF ν) a (TypeCheckerT ν m a))
 runFreeTypeCheckerT = runFreeT
 
 -- TypeCheckerT = FreeT TypeCheckerF
@@ -251,28 +309,37 @@ redβ = id
 matchBinders :: Eq ν => Binder ν -> Binder ν -> Maybe (Binder ν)
 matchBinders (Binder a) (Binder b) = case (a, b) of
   (Nothing, Nothing) -> Just (Binder Nothing)
-  (Just  _, Nothing) -> Just (Binder a)
-  (Nothing, Just  _) -> Just (Binder b)
+  (Just _, Nothing) -> Just (Binder a)
+  (Nothing, Just _) -> Just (Binder b)
   (Just va, Just vb) -> if va == vb then Just (Binder a) else Nothing
 
 runSynth' ::
   (MonadTypeCheck Variable m) =>
-  LocalContext (Checked Variable) Variable -> TermX ξ Variable -> m (TypeChecked.Term Variable)
+  LocalContext (Checked Variable) Variable ->
+  TermX ξ Variable ->
+  m (TypeChecked.Term Variable)
 runSynth' γ = \case
-
   App _ fun arg -> do
     -- synthesize a type for fun
-    sFun <- synthM γ fun
-           (\ fFun -> App (Left AppFunctionFailed) fFun ((~!) arg))
+    sFun <-
+      synthM
+        γ
+        fun
+        (\fFun -> App (Left AppFunctionFailed) fFun ((~!) arg))
     -- check that this type is a π-type : (binder : τIn) -> τOut binder
-    τFun <- typeOf sFun
-            `orElse` App (Left AppFunctionFailed) ((!->) sFun) ((~!) arg)
+    τFun <-
+      typeOf sFun
+        `orElse` App (Left AppFunctionFailed) ((!->) sFun) ((~!) arg)
     (_, τIn, bτOut) <-
       isPi τFun
-      `orElse` App (Left (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg)
+        `orElse` App (Left (AppFunctionTypeFailed (raw fun))) ((!->) sFun) ((~!) arg)
     -- check that arg has the type τIn
-    cArg <- checkM γ arg τIn
-            (App (Left AppArgumentFailed) ((!->) sFun))
+    cArg <-
+      checkM
+        γ
+        arg
+        τIn
+        (App (Left AppArgumentFailed) ((!->) sFun))
     -- perform substitution if needed
     --let n = name _ --bτOut
     let (b, τOut) = unscopeTerm bτOut
@@ -282,49 +349,52 @@ runSynth' γ = \case
         return $ App (Checked τOut') sFun cArg
       Nothing ->
         return $ App (Checked τOut) sFun cArg
-
   Var _ name ->
     case lookupType name γ of
-    Nothing -> throwError $ Var Nothing name
-    Just τ -> return τ
-
+      Nothing -> throwError $ Var Nothing name
+      Just τ -> return τ
   Pi _ τIn bτOut -> do
     let (b, τOut) = unscopeTerm bτOut
-    τIn' <- checkM γ τIn (Type U.Type)
-           (\ _τIn' -> error "TODO qwer")
+    τIn' <-
+      checkM
+        γ
+        τIn
+        (Type U.Type)
+        (\_τIn' -> error "TODO qwer")
     let γ' = addLocalAssum (b, τIn') γ
-    τOut' <- checkM γ' τOut (Type U.Type)
-            (\ _τOut' -> error "TODO adsf")
+    τOut' <-
+      checkM
+        γ'
+        τOut
+        (Type U.Type)
+        (\_τOut' -> error "TODO adsf")
     -- this is weird
     return $ Pi (Checked (Type U.Type)) τIn' (abstractBinder b τOut')
-
   Type _ -> return $ Type U.Type
-
   Lam _ bt -> throwError $ Lam (Left SynthesizeLambda) ((~!!) bt)
-
   term -> throwError $ (~!) term
 
 runCheck' ::
   (MonadTypeCheck Variable m) =>
-  LocalContext (Checked Variable) Variable -> TermX ξ Variable -> TermX ψ Variable -> m (TypeChecked.Term Variable)
+  LocalContext (Checked Variable) Variable ->
+  TermX ξ Variable ->
+  TermX ψ Variable ->
+  m (TypeChecked.Term Variable)
 runCheck' γ t τ = case t of
-
   Lam _ bt -> do
     let (bLam, tLam) = unscopeTerm bt
-    τ' <- checkM γ τ (Type U.Type)            (\ _τ' -> annotateError NotAType t)
+    τ' <- checkM γ τ (Type U.Type) (\_τ' -> annotateError NotAType t)
     (_, τIn, bτOut) <- isPi (redβ τ') `orElse` annotateError (error "TODO") t
     let (bOut, τOut) = unscopeTerm bτOut
-    _ <- matchBinders bLam bOut      `orElse` annotateError (error . show $ bOut) t
+    _ <- matchBinders bLam bOut `orElse` annotateError (error . show $ bOut) t
     let γ' = addLocalAssum (bLam, τIn) γ
-    tLam' <- checkM γ' tLam τOut              (\ _t' -> error "TODO")
+    tLam' <- checkM γ' tLam τOut (\_t' -> error "TODO")
     return $ Lam (Checked τ') (abstractBinder bLam tLam')
-
   Hole _ -> error "runCheck Hole"
-
   -- conversion rule
   _ -> do
-    t' <- synthM γ t             id
-    τ' <- typeOf t'    `orElse`  annotateError TODO t
+    t' <- synthM γ t id
+    τ' <- typeOf t' `orElse` annotateError TODO t
     () <- (τ' `eqβ` τ) `orElse'` annotateError IncompatibleTypes t
     return t'
 
@@ -332,14 +402,16 @@ runTypeCheckerF ::
   TypeCheckerF Variable (TypeCheckerT Variable (TCMonad Variable) (TypeChecked.Term Variable)) ->
   TCMonad Variable (TypeChecked.Term Variable)
 runTypeCheckerF ff = case ff of
-  Failure f     -> throwError f
-  Success s     -> return s
-  Synth γ t k   -> join $ runTypeCheckerT . k . Right <$> runSynth' γ t
+  Failure f -> throwError f
+  Success s -> return s
+  Synth γ t k -> join $ runTypeCheckerT . k . Right <$> runSynth' γ t
   Check γ t τ k -> join $ runTypeCheckerT . k . Right <$> runCheck' γ t τ
 
 runFreeF ::
-  FreeF (TypeCheckerF Variable) (TypeChecked.Term Variable)
-  (TypeCheckerT Variable (TCMonad Variable) (TypeChecked.Term Variable)) ->
+  FreeF
+    (TypeCheckerF Variable)
+    (TypeChecked.Term Variable)
+    (TypeCheckerT Variable (TCMonad Variable) (TypeChecked.Term Variable)) ->
   TCMonad Variable (TypeChecked.Term Variable)
 runFreeF = \case
   Pure pp -> return pp
@@ -354,14 +426,16 @@ runTypeCheckerF' ::
   TypeCheckerF Variable (TCMonad Variable (TypeChecked.Term Variable)) ->
   TCMonad Variable (TypeChecked.Term Variable)
 runTypeCheckerF' ff = case ff of
-  Failure f     -> throwError f
-  Success s     -> return s
-  Synth γ t k   -> join $ k . Right <$> runSynth' γ t
+  Failure f -> throwError f
+  Success s -> return s
+  Synth γ t k -> join $ k . Right <$> runSynth' γ t
   Check γ t τ k -> join $ k . Right <$> runCheck' γ t τ
 
 runFreeF' ::
-  FreeF (TypeCheckerF Variable) (TypeChecked.Term Variable)
-  (TCMonad Variable (TypeChecked.Term Variable)) ->
+  FreeF
+    (TypeCheckerF Variable)
+    (TypeChecked.Term Variable)
+    (TCMonad Variable (TypeChecked.Term Variable)) ->
   TCMonad Variable (TypeChecked.Term Variable)
 runFreeF' = \case
   Pure pp -> return pp
@@ -372,11 +446,11 @@ stepTypeCheckerF ::
   TypeCheckerF Variable (TCMonad Variable (TypeChecked.Term Variable))
 stepTypeCheckerF input =
   case runTypeCheck2 . runTypeCheckerF' $ input of
-  Left  l -> Failure l
-  Right r ->
-    case r of
-    Pure p -> Success p
-    Free f -> f
+    Left l -> Failure l
+    Right r ->
+      case r of
+        Pure p -> Success p
+        Free f -> f
 
 {-
 ExceptT ... FreeT ... Identity

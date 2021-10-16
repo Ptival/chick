@@ -1,19 +1,21 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Vernacular (
-  Vernacular(..),
-  ) where
-
-import GHC.Generics
-import Language.OCaml.Definitions.Parsing.ParseTree
+module Vernacular
+  ( Vernacular (..),
+  )
+where
 
 import qualified Definition as D
+import GHC.Generics (Generic)
 import qualified Inductive.Inductive as I
-import           Term.Term
+import Language.OCaml.Definitions.Parsing.ParseTree
+  ( StructureItem,
+  )
+import Term.Variable (Variable)
 
 data Vernacular α ν
-  = Definition       (D.Definition α ν)
-  | Inductive        (I.Inductive α ν)
+  = Definition (D.Definition α ν)
+  | Inductive (I.Inductive α ν)
   | UnsupportedOCaml StructureItem
   deriving (Generic, Show)
 

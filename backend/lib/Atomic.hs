@@ -9,12 +9,12 @@ module Atomic
   )
 where
 
-import Control.Monad.Except ( forM, MonadError(throwError) )
+import Control.Monad.Except (MonadError (throwError), forM)
 import Goal
 import qualified Inductive.Inductive as Inductive
 import Language (Language (Chick))
 import PrettyPrinting.Chick.Binder ()
-import PrettyPrinting.HasNonBindingPattern ( HasNonBindingPattern )
+import PrettyPrinting.HasNonBindingPattern (HasNonBindingPattern)
 import PrettyPrinting.PrettyPrintable
   ( PrettyPrintable (prettyDoc, prettyStr),
   )
@@ -34,7 +34,7 @@ import qualified Typing.LocalContext as LC
 import Typing.LocalDeclaration
   ( LocalDeclaration (LocalAssum, LocalDef),
   )
-import Utils ( isPi, orElse )
+import Utils (isPi, orElse)
 
 data Atomic ν
   = Admit
@@ -118,7 +118,7 @@ runAtomic ge a (Goal hyps concl) =
             runIntro τ1 t2 (\v τ -> LocalDef v τ t1) (mi, unBinder b)
           Pi _ τ1 bτ2 -> do
             let (b, τ2) = unscopeTerm bτ2
-            runIntro τ1 τ2 (\v e -> LocalAssum (Binder (Just v)) e) (mi, unBinder b)
+            runIntro τ1 τ2 (LocalAssum . Binder . Just) (mi, unBinder b)
           _ -> throwError "Head constructor does not allow introduction"
       where
         runIntro ::

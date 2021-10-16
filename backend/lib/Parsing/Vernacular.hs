@@ -13,7 +13,7 @@ import Parsing.Chick.Utils (rword, symbol)
 import Parsing.Inductive (inductiveP)
 import Parsing.Types (Parser)
 import Term.Raw as Raw (Raw)
-import Term.Term (Variable)
+import Term.Variable (Variable)
 import Vernacular (Vernacular (Definition, Inductive))
 
 vernacularP :: Parser (Vernacular Raw.Raw Variable)

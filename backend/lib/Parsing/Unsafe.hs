@@ -11,7 +11,7 @@ import Parsing.Inductive (inductiveP)
 import Parsing.Script (scriptP)
 import Script (Script)
 import qualified Term.Raw as Raw
-import Term.Term (Variable)
+import Term.Variable (Variable)
 import Text.Megaparsec (errorBundlePretty, parse)
 import Text.Printf (printf)
 

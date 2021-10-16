@@ -1,21 +1,23 @@
 module StandardLibraryDiff.Test where
 
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Trace
-
-import qualified Diff.Inductive                 as DI
-import           Inductive.Inductive
-import           Language
-import           PrettyPrinting.PrettyPrintable
-import           StandardLibrary
-import           StandardLibraryDiff
-import           Term.Term
+import qualified Diff.Inductive as DI
+import Inductive.Inductive
+import Language
+import Polysemy
+import Polysemy.Error
+import Polysemy.Trace
+import PrettyPrinting.PrettyPrintable
+import StandardLibrary
+import StandardLibraryDiff
+import Term.Term
 
 test ::
   PrettyPrintable 'Chick α =>
   Show α =>
-  Inductive α Variable -> DI.Diff α -> Inductive α Variable -> IO Bool
+  Inductive α Variable ->
+  DI.Diff α ->
+  Inductive α Variable ->
+  IO Bool
 test indFrom δind indTo =
   case run . ignoreTrace . runError $ DI.patch indFrom δind of
     Left e -> do

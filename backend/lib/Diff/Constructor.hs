@@ -20,14 +20,20 @@ import qualified Diff.Pair as D2
 import qualified Diff.Term as DT
 import qualified Diff.Triple as D3
 import Inductive.Inductive
-    ( Constructor(Constructor), Φcis, Φci, Φcps, Φcp )
+  ( Constructor (Constructor),
+    Φci,
+    Φcis,
+    Φcp,
+    Φcps,
+  )
 import Polysemy (Member, Sem)
 import Polysemy.Error (Error)
 import Polysemy.Trace (Trace)
 import PrettyPrinting.PrettyPrintable
-    ( PrettyPrintable(prettyDoc) )
+  ( PrettyPrintable (prettyDoc),
+  )
 import qualified Prettyprinter as Doc
-import Term.Term ( Variable, Binder, TypeX, TermX, Branch )
+import Term.Term (Binder, Branch, TermX, TypeX, Variable)
 
 type Δcn = DA.Diff Variable
 

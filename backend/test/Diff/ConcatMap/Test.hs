@@ -1,12 +1,12 @@
 module Diff.ConcatMap.Test where
 
-import           Polysemy
-import           Polysemy.Error
-import           Polysemy.Trace
+import qualified Diff.Atom as DA
+import Diff.ConcatMap
+import qualified Diff.List as DL
+import Polysemy
+import Polysemy.Error
+import Polysemy.Trace
 
-import qualified Diff.Atom      as DA
-import qualified Diff.List      as DL
-import           Diff.ConcatMap
 -- import           PrettyPrinting.PrettyPrintable
 
 input :: [Int]
@@ -18,10 +18,10 @@ f n = replicate n n
 δinput :: DL.Diff Int (DA.Diff Int)
 δinput =
   DL.Permute [2, 0, 3, 1]
-  . DL.Insert 1
-  . DL.nKeeps (length input)
-  . DL.Insert 6
-  $ DL.Same
+    . DL.Insert 1
+    . DL.nKeeps (length input)
+    . DL.Insert 6
+    $ DL.Same
 
 patchList :: [Int] -> DL.Diff Int (DA.Diff Int) -> IO (Either String [Int])
 patchList i δi = runM . ignoreTrace . runError $ DL.patch DA.patch i δi
@@ -32,8 +32,8 @@ patchList i δi = runM . ignoreTrace . runError $ DL.patch DA.patch i δi
 patchElem :: DA.Diff Int -> Int -> Maybe Int
 patchElem δi i =
   case (run . ignoreTrace . runError) (DA.patch i δi) of
-  Left  _ -> Nothing
-  Right r -> Just r
+    Left _ -> Nothing
+    Right r -> Just r
 
 test :: IO Bool
 test = do
@@ -56,12 +56,12 @@ test = do
               return False
             Right output'' ->
               if output' == output''
-              then do
-                print output''
-                return True
-              else do
-                putStrLn "Expected:"
-                print output'
-                putStrLn "Obtained:"
-                print output''
-                return False
+                then do
+                  print output''
+                  return True
+                else do
+                  putStrLn "Expected:"
+                  print output'
+                  putStrLn "Obtained:"
+                  print output''
+                  return False

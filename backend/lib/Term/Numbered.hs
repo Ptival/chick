@@ -2,11 +2,12 @@ module Term.Numbered where
 
 -- import           DictMetaMap
 -- import qualified Term.Raw    as Raw
-import           Term.Term
+import Term.Term
 
 data Numbered
 
 type Term = TermX Numbered
+
 type Type = Term
 
 type Numbering = Int

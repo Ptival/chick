@@ -1,4 +1,3 @@
-
 module Playground where
 
 import Control.Monad
@@ -38,7 +37,7 @@ test = do
   -- let task = checkF (LocalContext []) tId τId id
   let task = checkF (LocalContext []) tFlip τFlip id
   let trace = tcTrace stepTypeCheckerF task
-  forM_ trace $ \ item ->
+  forM_ trace $ \item ->
     putStrLn $ doc2String $ runReader (prettyTypeCheckerF item) def
 
 typeCheck :: TermX ξ Variable -> Maybe (TypeX ξ Variable) -> IO ()
@@ -48,14 +47,14 @@ typeCheck t mτ = do
   putStrLn $ prettyStrU @'Chick t
   case mτ of
     Nothing -> return ()
-    Just τ  -> do
+    Just τ -> do
       putStrLn "Against type:"
       putStrLn $ prettyStrU @'Chick τ
   let e = tc $ case mτ of
         Nothing -> synthF (LocalContext []) t id
-        Just τ  -> checkF (LocalContext []) t τ id
+        Just τ -> checkF (LocalContext []) t τ id
   case e of
-    Left  l -> do
+    Left l -> do
       putStrLn "Failed:"
       putStrLn $ prettyStrU @'Chick l
     Right r -> do

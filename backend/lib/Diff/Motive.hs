@@ -9,14 +9,15 @@ where
 import qualified Diff.Atom as DA
 import qualified Diff.Inductive as DI
 import Diff.ListFoldLeft
-    ( δListFoldMkAppBinders,
-      δListFoldMkAppVariables,
-      δListFoldMkPiBinders,
-      δListFoldLeft )
-import Diff.ListFoldRight ( δListFoldRight )
+  ( δListFoldLeft,
+    δListFoldMkAppBinders,
+    δListFoldMkAppVariables,
+    δListFoldMkPiBinders,
+  )
+import Diff.ListFoldRight (δListFoldRight)
 import qualified Diff.Term as DT
-import Inductive.Inductive ( Inductive(Inductive), Φiis, Φips )
-import Term.Term ( Variable )
+import Inductive.Inductive (Inductive (Inductive), Φiis, Φips)
+import Term.Variable (Variable)
 
 δonInductiveParameter :: Φips α Variable -> DI.Δips α -> DT.Diff α -> DT.Diff α
 δonInductiveParameter = δListFoldLeft δListFoldMkAppVariables

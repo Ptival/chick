@@ -23,7 +23,7 @@ import           Term.Binder
 import           Term.Term
 import qualified Term.TypeErrored as E
 import qualified Typing.LocalContext as LC
-
+ 
 type Term α    = TermX α Variable
 --type Checked = C.Term Variable
 type Ctxt α    = LC.LocalContext α Variable

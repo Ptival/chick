@@ -3,33 +3,35 @@
 
 module Examples where
 
-import           Control.Monad.Trans.Free
-import           Text.Megaparsec
-import           Text.PrettyPrint.GenericPretty (pp)
-
-import           Notations
-import           Parsing
+import Control.Monad.Trans.Free
+import Notations
+import Parsing
 -- import PrettyPrinting
-import qualified Term.Raw                       as Raw
+
 --import Term.AlphaEquivalence
-import           Term.Numbered                  as Numbered
-import qualified Term.TypeChecked               as C
-import qualified Term.TypeErrored               as E
-import           Work
+import Term.Numbered as Numbered
+import qualified Term.Raw as Raw
+import qualified Term.TypeChecked as C
+import qualified Term.TypeErrored as E
+import Text.Megaparsec
+import Text.PrettyPrint.GenericPretty (pp)
+import Work
 
 τFlip :: Raw.Type ν
-τFlip = π [ ("A", type'), ("B", type'), ("C", type') ] $
-     (var "A" ^-> var "B" ^-> var "C") ^->
-     (var "B" ^-> var "A" ^-> var "C")
+τFlip =
+  π [("A", type'), ("B", type'), ("C", type')] $
+    (var "A" ^-> var "B" ^-> var "C")
+      ^-> (var "B" ^-> var "A" ^-> var "C")
 
 tFlip :: Raw.Term ν
-tFlip = (^\) ["A", "B", "C", "f", "b", "a"] $
-        var "f" ^$ var "a" ^$ var "b"
+tFlip =
+  (^\) ["A", "B", "C", "f", "b", "a"] $
+    var "f" ^$ var "a" ^$ var "b"
 
 testing ::
   Either
-  (E.Term ν)
-  (FreeF (TypeCheckerF ν) (C.Term ν) (TCMonad ν (C.Term ν)))
+    (E.Term ν)
+    (FreeF (TypeCheckerF ν) (C.Term ν) (TCMonad ν (C.Term ν)))
 testing = runTypeCheck2 $ runCheck' [] tFlip τFlip
 
 trace :: [TypeCheckerF ν (TCMonad ν (C.Term ν))]
@@ -79,10 +81,8 @@ mainy = do
   pp $ parseMaybe termP " A →  B  → C " -- this should parse as:
   pp $ parseMaybe termP "(A →  B) → C "
   pp $ parseMaybe termP " A → (B  → C)" -- this
-
   pp $ parseMaybe termP " (x : A) →  B  → C " -- this should parse as:
   pp $ parseMaybe termP "((x : A) →  B) → C "
   pp $ parseMaybe termP " (x : A) → (B  → C)" -- this
-
   pp $ parseMaybe termP "(_ : A) →  B" -- this should parse as:
   pp $ parseMaybe termP "     A  →  B" -- this

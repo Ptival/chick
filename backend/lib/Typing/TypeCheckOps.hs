@@ -94,24 +94,24 @@ handleSynth t = case t of
     return $ Annot (C.Checked τ') t'' τ'
 
   App _ fun arg -> do
-    sFun            <- synth    fun      ||| \ fFun -> sadAppFun     fFun       ((~!) arg)
-    τFun            <- C.typeOf sFun     ^||           sadAppFun     ((!) sFun) ((~!) arg)
-    (_, τIn, bτOut) <- isPi     τFun     ^||           sadAppFunType ((!) sFun) ((~!) arg)
-    cArg            <- check    arg  τIn ||| \ fArg -> sadAppArg     ((!) sFun) fArg
+    sFun            <- synth    fun      ||| \ fFun -> sadAppFun     fFun     (arg ~!)
+    τFun            <- C.typeOf sFun     ^||           sadAppFun     (sFun !) (arg ~!)
+    (_, τIn, bτOut) <- isPi     τFun     ^||           sadAppFunType (sFun !) (arg ~!)
+    cArg            <- check    arg  τIn ||| \ fArg -> sadAppArg     (sFun !) fArg
     let (b, τOut) = unscopeTerm bτOut
     let τOut' = case unBinder b of
           Nothing -> τOut
           Just v  -> substitute v cArg τOut
     return $ App (C.Checked τOut') sFun cArg
 
-  Lam _ bt -> throwError $ Lam (Left SynthesizeLambda) ((~!\) bt)
+  Lam _ bt -> throwError $ Lam (Left SynthesizeLambda) (bt ~!\)
 
   Pi _ τIn bτOut -> do
     let (b, τOut) = unscopeTerm bτOut
-    τIn'  <- check τIn (Type U.Type) ||| \ fτIn  -> sadPiTODO fτIn       ((~!\) bτOut)
+    τIn'  <- check τIn (Type U.Type) ||| \ fτIn  -> sadPiTODO fτIn     (bτOut ~!\)
     τOut' <-
-      withAssumption b τIn' $ do
-      check τOut (Type U.Type)       ||| \ fτOut -> sadPiTODO ((!) τIn') (abstractBinder b fτOut)
+      withAssumption b τIn' $
+      check τOut (Type U.Type)       ||| \ fτOut -> sadPiTODO (τIn' !) (abstractBinder b fτOut)
     return $ Pi (C.Checked (Type U.Type)) τIn' (abstractBinder b τOut')
 
   Type _ -> pure $ Type U.Type

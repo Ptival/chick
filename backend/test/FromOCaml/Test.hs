@@ -1,25 +1,22 @@
-{-# OPTIONS_GHC -fno-warn-type-defaults #-}
-
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 module FromOCaml.Test where
 
 import Control.Monad
 import Data.String.QQ
-
-import Language.OCaml.Parser
-import Language.OCaml.PrettyPrinter
-import System.Directory
-import System.FilePath.Posix
-
 import FromOCaml
 import Language
+import Language.OCaml.Parser
+import Language.OCaml.PrettyPrinter
 import PrettyPrinting.PrettyPrintableUnannotated
 import Script
+import System.Directory
+import System.FilePath.Posix
 import Term.Term as Term
 
 testDirectory :: String
@@ -28,12 +25,14 @@ testDirectory = "test/FromOCaml/ocaml"
 getTestFiles :: IO [FilePath]
 getTestFiles = do
   l <- listDirectory testDirectory
-  return $ [ testDirectory ++ "/" ++ fileName
-           | fileName <- filter ((==) ".ml" . takeExtension) l
-           ]
+  return $
+    [ testDirectory ++ "/" ++ fileName
+      | fileName <- filter ((==) ".ml" . takeExtension) l
+    ]
 
 _testProgram :: String
-_testProgram = [s|
+_testProgram =
+  [s|
 type 'a list =
   | Nil
   | Cons of ('a * 'a list)
@@ -48,12 +47,12 @@ _prettyTest = prettyStrU @'Chick <$> _test
 main :: IO ()
 main = do
   list <- getTestFiles
-  forM_ list \ file -> do
+  forM_ list \file -> do
     contents <- readFile file
     putStrLn file
     -- putStrLn contents
     case parseImplementation contents of
-      Left  err -> putStrLn $ "ERR: " ++ show err
+      Left err -> putStrLn $ "ERR: " ++ show err
       Right ast -> do
         print (length ast)
-        forM_ ast \ item -> print (structureItemPP item)
+        forM_ ast \item -> print (structureItemPP item)

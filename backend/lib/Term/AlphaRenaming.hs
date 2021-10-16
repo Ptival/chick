@@ -1,9 +1,7 @@
-
 module Term.AlphaRenaming where
 
-import Bound.Term
-
-import Term.Term
+import Bound.Term (substituteVar)
+import Term.Term (TermX, Variable)
 
 αrename :: Variable -> Variable -> TermX ξ Variable -> TermX ξ Variable
 αrename = substituteVar

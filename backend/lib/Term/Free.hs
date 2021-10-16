@@ -1,10 +1,10 @@
-
 module Term.Free where
 
-import Data.Foldable
+import Data.Foldable (Foldable (toList))
 --import Data.List
 
-import Term.Term
+import Term.Term (TermX)
+
 --import Term.Binder
 --import Term.Variable
 

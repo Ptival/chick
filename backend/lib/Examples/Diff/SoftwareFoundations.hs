@@ -16,12 +16,12 @@ import PrettyPrinting.PrettyPrintableUnannotated
 import Script (Script)
 import qualified StandardLibrary as SL
 import qualified Term.Raw as Raw
-import Term.Term (Variable)
+import Term.Variable (Variable)
 
 commonPrefix :: String
 commonPrefix =
-  prettyStrU @ 'Chick SL.indBool ++ ".\n"
-    ++ prettyStrU @ 'Chick SL.indNat
+  prettyStrU @'Chick SL.indBool ++ ".\n"
+    ++ prettyStrU @'Chick SL.indNat
     ++ ".\n"
     ++ [s|
 

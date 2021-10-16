@@ -1,9 +1,7 @@
-
 module TypeCheckingFailure where
 
+import Term.Term (ScopedTerm, TermX (..))
 import Text.Printf (printf)
-
-import Term.Term (TermX(..), ScopedTerm)
 
 data TypeCheckingFailure t ν
   = AppArgumentFailed
@@ -14,9 +12,7 @@ data TypeCheckingFailure t ν
   | SynthesizeLambda
   | UnboundVariable ν
   | Unchecked
-
   | TODO -- this should be removed eventually
-
   deriving (Show)
 
 displayTypeCheckingFailure :: (Show ν, Show (t ν)) => TypeCheckingFailure t ν -> String
@@ -27,8 +23,8 @@ displayTypeCheckingFailure = \case
     "The function being applied did not type-check correctly"
   AppFunctionTypeFailed τFun ->
     printf
-    "The type synthesized for the function being applied is not a Π-type:\n%s"
-    (show τFun)
+      "The type synthesized for the function being applied is not a Π-type:\n%s"
+      (show τFun)
   IncompatibleTypes -> "TODO"
   NotAType -> "TODO"
   SynthesizeLambda -> "Cannot synthesize the type of an abstraction"
@@ -38,6 +34,7 @@ displayTypeCheckingFailure = \case
     "This term was not type-checked"
 
 type Sad t r ν = TermX (Either (TypeCheckingFailure t ν) r) ν
+
 type SadScope t r ν = ScopedTerm (TermX (Either (TypeCheckingFailure t ν) r)) ν
 
 sadAppArg :: Sad t r ν -> Sad t r ν -> Sad t r ν

@@ -227,7 +227,7 @@ patch term δterm =
 nCpy :: (Diff α -> Diff α) -> Int -> Diff α -> Diff α
 nCpy _ 0 base = base
 nCpy _ n _ | n < 0 = error "nCpy: n became negative!"
-nCpy f n base = f (nCpy f (n -1) base)
+nCpy f n base = f (nCpy f (n - 1) base)
 
 nCpyApps :: Int -> Diff α -> Diff α
 nCpyApps = nCpy (`CpyApp` Same)

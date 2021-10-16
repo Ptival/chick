@@ -1,20 +1,20 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Diff.Guess.Term.Test
-  ( unitTests
-  ) where
+  ( unitTests,
+  )
+where
 
-import           Test.Tasty
-import           Test.Tasty.HUnit
-
+import Diff.Guess.Node
+import Diff.Guess.Term
 import qualified Diff.Term as ΔT
-import           Diff.Guess.Node
-import           Diff.Guess.Term
-import           Language
-import           PrettyPrinting.PrettyPrintable
-import           Term.Term
+import Language
+import PrettyPrinting.PrettyPrintable
+import Repair.Benchmark
 import qualified Term.Raw as Raw
-import           Repair.Benchmark
+import Term.Term
+import Test.Tasty
+import Test.Tasty.HUnit
 
 _traceGuessδBench :: RepairTermBenchmark -> IO (ΔT.Diff Raw.Raw)
 _traceGuessδBench b = traceGuessδ (repairTermFromType b) (repairTermToType b)
@@ -24,8 +24,8 @@ guessδBench b = guessδ (repairTermFromType b) (repairTermToType b)
 
 testBench :: RepairTermBenchmark -> Assertion
 testBench b =
-  let g = guessδBench b in
-  ΔT.patchMaybe (repairTermFromType b) g @?= Just (repairTermToType b)
+  let g = guessδBench b
+   in ΔT.patchMaybe (repairTermFromType b) g @?= Just (repairTermToType b)
 
 testTerms :: String -> String -> IO (ΔT.Diff Raw.Raw)
 testTerms t1 t2 = do
@@ -44,17 +44,20 @@ _testFlippedArguments = do
     Just t2 -> putStrLn $ prettyStr @'Chick t2
 
 _term1 :: IO (ΔT.Diff Raw.Raw)
-_term1 = testTerms
-  "∀ (h : A) (t : list A), list A"
-  "∀ (h : A) (t : Vec A), Vec A"
+_term1 =
+  testTerms
+    "∀ (h : A) (t : list A), list A"
+    "∀ (h : A) (t : Vec A), Vec A"
 
 unitTests :: TestTree
-unitTests = testGroup "Diff.Guess.Term" $ []
-  ++ [testCase "bench1" $ testBench termBench1 ]
-  ++ [testCase "bench2" $ testBench termBench2 ]
-  ++ [testCase "bench3" $ testBench termBench3 ]
-  ++ [testCase "bench4" $ testBench termBench4 ]
-  ++ [testCase "bench5" $ testBench termBench5 ]
+unitTests =
+  testGroup "Diff.Guess.Term" $
+    []
+      ++ [testCase "bench1" $ testBench termBench1]
+      ++ [testCase "bench2" $ testBench termBench2]
+      ++ [testCase "bench3" $ testBench termBench3]
+      ++ [testCase "bench4" $ testBench termBench4]
+      ++ [testCase "bench5" $ testBench termBench5]
 
 _test :: IO ()
 _test = defaultMain unitTests
@@ -68,7 +71,7 @@ _testAnonymous = do
   return ()
 
 testMatchPairs :: Raw.Term Variable -> Raw.Term Variable -> IO [Match]
-testMatchPairs = withNodeMapping $ \ n1 n2 m -> do
+testMatchPairs = withNodeMapping $ \n1 n2 m -> do
   putStrLn $ show m
   let c1 = children n1
   let c2 = children n2

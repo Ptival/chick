@@ -1,10 +1,10 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module PrettyPrinting.Chick.Declaration
   (
-  ) where
+  )
+where
 
 -- import           Control.Monad.Reader
 -- import           Data.Default

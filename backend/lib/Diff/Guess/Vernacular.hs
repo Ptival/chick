@@ -1,22 +1,23 @@
-module Diff.Guess.Vernacular (
-  guess,
-  ) where
+module Diff.Guess.Vernacular
+  ( guess,
+  )
+where
 
-import           Polysemy       ( Member, Sem )
-import           Polysemy.Trace ( Trace )
-
-import qualified Definition     as D
+import qualified Definition as D
 import qualified Diff.Guess.Atom as ΔGA
 import qualified Diff.Guess.Inductive as ΔGI
 import qualified Diff.Guess.Term as ΔGT
 import qualified Diff.Vernacular as ΔV
-import qualified Term.Raw       as Raw
-import           Term.Variable
-import           Vernacular
+import Polysemy (Member, Sem)
+import Polysemy.Trace (Trace)
+import qualified Term.Raw as Raw
+import Term.Variable (Variable)
+import Vernacular (Vernacular (Definition, Inductive))
 
 guess ::
   Member Trace r =>
-  Vernacular Raw.Raw Variable -> Vernacular Raw.Raw Variable ->
+  Vernacular Raw.Raw Variable ->
+  Vernacular Raw.Raw Variable ->
   Sem r (ΔV.Diff Raw.Raw)
 guess (Definition d1) (Definition d2) = do
   δk <- ΔGA.guess (D.definitionKind d1) (D.definitionKind d2)

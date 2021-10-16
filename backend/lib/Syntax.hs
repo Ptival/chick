@@ -6,24 +6,24 @@ module Syntax where
 import Control.Applicative
 import Control.Applicative.Free
 import Data.Functor.Free
+import Parsing (identifier, rword, symbol)
+import Term.Binder
+import Term.Term
+import Term.Variable
 import Text.Megaparsec
 import Text.Megaparsec.String
 import Text.PrettyPrint.Annotated.WL
 
-import Parsing                       ( identifier, rword, symbol )
-import Term.Binder
-import Term.Term
-import Term.Variable
-
 data Syntax τ a where
-  Capture :: Free (Syntax τ) a                          -> Syntax τ a
-  Either  :: [Free (Syntax τ) a] -> [Free (Syntax τ) b] -> Syntax τ (Either a b)
-  Keyword :: String                                     -> Syntax τ ()
-  Next    ::                                               Syntax τ τ
-  Raw     :: Parser a                                   -> Syntax τ a
-  Self    ::                                               Syntax τ τ
-  Top     ::                                               Syntax τ τ
-  Try     :: [Free (Syntax τ) a]                        -> Syntax τ a
+  Capture :: Free (Syntax τ) a -> Syntax τ a
+  Either :: [Free (Syntax τ) a] -> [Free (Syntax τ) b] -> Syntax τ (Either a b)
+  Keyword :: String -> Syntax τ ()
+  Next :: Syntax τ τ
+  Raw :: Parser a -> Syntax τ a
+  Self :: Syntax τ τ
+  Top :: Syntax τ τ
+  Try :: [Free (Syntax τ) a] -> Syntax τ a
+
 -- THIS IS NOT A FUNCTOR
 
 -- either' :: Ap (Syntax τ) a -> Ap (Syntax τ) b -> Ap (Syntax τ) (Either a b)
@@ -45,9 +45,9 @@ data Syntax τ a where
 -- top = liftAp $ Top
 
 data ParserLabels τ = ParserLabels
-  { topP  :: Parser τ
-  , selfP :: Parser τ
-  , nextP :: Parser τ
+  { topP :: Parser τ,
+    selfP :: Parser τ,
+    nextP :: Parser τ
   }
   deriving (Functor)
 
@@ -57,8 +57,8 @@ newtype ModularParser τ a = ModularParser
   deriving (Functor)
 
 instance Applicative (ModularParser τ) where
-  pure v = ModularParser $ \ _ -> pure v
-  ff <*> fv = ModularParser $ \ labels ->
+  pure v = ModularParser $ \_ -> pure v
+  ff <*> fv = ModularParser $ \labels ->
     (unModularParser ff labels) <*> (unModularParser fv labels)
 
 data IntPair = IntPair Int Int
@@ -80,12 +80,12 @@ variableSyntax = Variable <$> _
 
 letSyntax :: [Syntax t (Binder Variable, t, t)]
 letSyntax =
-  [ Keyword "let"
-  , Capture binderSyntax
-  -- TODO: "="
-  , Capture Top
-  , Keyword "in"
-  , Capture Self
+  [ Keyword "let",
+    Capture binderSyntax,
+    -- TODO: "="
+    Capture Top,
+    Keyword "in",
+    Capture Self
   ]
 
 -- letSyntax :: Ap (Syntax t) (Binder Variable, t, t)
@@ -99,16 +99,16 @@ letSyntax =
 --   return (b, t1, t2)
 
 interpretSyntaxAsParser :: Syntax τ a -> ModularParser τ a
-interpretSyntaxAsParser syn = ModularParser $ \ labels@ParserLabels{..} -> case syn of
+interpretSyntaxAsParser syn = ModularParser $ \labels@ParserLabels {..} -> case syn of
   Either a b -> (Left <$> runpack a labels) <|> (Right <$> runpack b labels)
-  Keyword s  -> rword s
-  Next       -> nextP
-  Raw p      -> p
-  Self       -> selfP
-  Top        -> topP
-  Try p      -> try (runpack p labels)
+  Keyword s -> rword s
+  Next -> nextP
+  Raw p -> p
+  Self -> selfP
+  Top -> topP
+  Try p -> try (runpack p labels)
   where
-    unpack  p ls = unModularParser (interpretSyntaxAsParser p) ls
+    unpack p ls = unModularParser (interpretSyntaxAsParser p) ls
     runpack p ls = unModularParser (runSyntaxAsParser p) ls
 
 runSyntaxAsParser :: Ap (Syntax τ) a -> ModularParser τ a
@@ -121,16 +121,16 @@ interpretSyntaxAsPrinter :: Syntax τ a -> a -> Doc ()
 interpretSyntaxAsPrinter syn input = case syn of
   Either a b ->
     case input of
-      Left  l -> runSyntaxAsPrinter a l
+      Left l -> runSyntaxAsPrinter a l
       Right r -> _
-  Keyword s  -> _
-  Next       -> _
-  Raw p      -> _
-  Self       -> _
-  Top        -> _
-  Try p      -> _
+  Keyword s -> _
+  Next -> _
+  Raw p -> _
+  Self -> _
+  Top -> _
+  Try p -> _
   where
-    unpack  p ls = unModularParser (interpretSyntaxAsParser p) ls
+    unpack p ls = unModularParser (interpretSyntaxAsParser p) ls
     runpack p ls = unModularParser (runSyntaxAsParser p) ls
 
 runSyntaxAsPrinter :: Ap (Syntax τ) a -> a -> Doc ()

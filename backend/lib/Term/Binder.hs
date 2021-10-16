@@ -12,12 +12,12 @@ where
 import Data.Aeson (ToJSON)
 import Data.String (IsString (..))
 import GHC.Generics (Generic)
+import Prettyprinter ()
 import Term.Variable (Variable, mkVariable)
 import Test.QuickCheck.Arbitrary (Arbitrary (..))
 import Test.QuickCheck.Gen (frequency)
 import Test.SmallCheck.Series (Serial)
 import Text.PrettyPrint.GenericPretty (Out)
-import Prettyprinter ()
 
 newtype Binder ν = Binder {unBinder :: Maybe ν}
   deriving (Eq, Generic, Out, Serial m, Show)

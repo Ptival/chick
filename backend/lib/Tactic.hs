@@ -1,20 +1,20 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Tactic
-  ( Tactic(..)
-  , runTactic
-  ) where
-
-import Control.Monad.Except
-import Prelude
-import Text.PrettyPrint.Annotated.WL
+  ( Tactic (..),
+    runTactic,
+  )
+where
 
 import Atomic
+import Control.Monad.Except
 import Goal
 import PrettyPrinting.PrettyPrintable
 import Term.TypeChecked as TypeChecked
 import Term.Variable
+import Text.PrettyPrint.Annotated.WL
 import Typing.GlobalEnvironment
+import Prelude
 
 data Tactic ν
   = Atomic (Atomic ν)
@@ -26,9 +26,9 @@ instance PrettyPrintable ν => PrettyPrintable (Tactic ν) where
     Atomic a -> prettyDoc a
     Semicolon a b ->
       fillCat
-        [ prettyDoc a
-        , text "; "
-        , prettyDoc b
+        [ prettyDoc a,
+          text "; ",
+          prettyDoc b
         ]
 
 -- decomposeTactic :: Tactic ν -> (Atomic ν, [Tactic ν])
@@ -40,7 +40,9 @@ instance PrettyPrintable ν => PrettyPrintable (Tactic ν) where
 runTactic ::
   MonadError String m =>
   GlobalEnvironment (Checked Variable) Variable ->
-  Tactic Variable -> Goal (Checked Variable) Variable -> m [Goal (Checked Variable) Variable]
+  Tactic Variable ->
+  Goal (Checked Variable) Variable ->
+  m [Goal (Checked Variable) Variable]
 runTactic ge t goal =
   case t of
     Atomic a -> runAtomic ge a goal

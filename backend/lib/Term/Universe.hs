@@ -1,9 +1,10 @@
 module Term.Universe
-  ( Universe(..)
-  ) where
+  ( Universe (..),
+  )
+where
 
-import Data.Aeson
-import GHC.Generics
+import Data.Aeson (ToJSON)
+import GHC.Generics (Generic)
 
 data Universe
   = Prop
@@ -11,4 +12,4 @@ data Universe
   | Type
   deriving (Eq, Generic, Show)
 
-instance ToJSON Universe where
+instance ToJSON Universe

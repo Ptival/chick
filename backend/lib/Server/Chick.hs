@@ -12,7 +12,7 @@ import System.Process (ProcessHandle)
 
 type Handles = (Handle, Handle, Handle, ProcessHandle)
 
-data SessionState = SessionState
+newtype SessionState = SessionState
   { _sAlive :: Bool -- True while the session is alive
   }
 

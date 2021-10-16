@@ -1,16 +1,17 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module PrettyPrinting.Chick.Variable
   (
-  ) where
+  )
+where
 
-import Prettyprinter
-
-import Language (Language(Chick))
+import Language (Language (Chick))
 import PrettyPrinting.PrettyPrintable
-import Term.Variable
+  ( PrettyPrintable (prettyDoc),
+  )
+import Prettyprinter (Pretty (pretty))
+import Term.Variable (Variable (..))
 
 instance PrettyPrintable 'Chick Variable where
   prettyDoc = pretty . unVariable

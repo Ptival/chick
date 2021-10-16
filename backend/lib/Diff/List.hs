@@ -126,8 +126,8 @@ patch patchElem = go
 
 nKeeps :: Int -> Diff τ δτ -> Diff τ δτ
 nKeeps 0 = id
-nKeeps n = Keep . nKeeps (n -1)
+nKeeps n = Keep . nKeeps (n - 1)
 
 nRemoves :: Int -> Diff τ δτ -> Diff τ δτ
 nRemoves 0 = id
-nRemoves n = Remove . nRemoves (n -1)
+nRemoves n = Remove . nRemoves (n - 1)

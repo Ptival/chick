@@ -1,12 +1,11 @@
 module Term.Fresh where
 
-import Data.List
-
-import Term.Free
-import Term.Term
+import Data.List (union, (\\))
+import Term.Free (freeVars)
+import Term.Term (TermX, Variable, mkVariable)
 
 freshNames :: [String]
-freshNames = [ (c:s) | s <- ("":freshNames), c <- ['a'..'z'] ]
+freshNames = [c : s | s <- "" : freshNames, c <- ['a' .. 'z']]
 
 freshVariables :: [Variable]
 freshVariables = map mkVariable freshNames
