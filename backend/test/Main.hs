@@ -18,6 +18,7 @@ import Language
 import Notations
 import Parsing
 import qualified Parsing.Inductive.Test
+import qualified Parsing.Test
 import Precedence
 import PrettyPrinting.PrettyPrintable
 import PrettyPrinting.Term ()
@@ -52,6 +53,7 @@ tests =
           -- ++ [TF.unitTests]
           ++ [Diff.Guess.Term.Test.unitTests]
           ++ [Inductive.Inductive.Test.unitTests]
+          ++ [Parsing.Test.unitTests]
           ++ [Parsing.Inductive.Test.unitTests],
       localOption (SmallCheckDepth 3) $
         testGroup "(checked by SmallCheck)" [],

@@ -1,0 +1,6 @@
+packages:
+  ./backend
+  ./backend/dependencies/language-ocaml
+
+coverage: true
+tests: true

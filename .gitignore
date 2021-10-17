@@ -2,8 +2,13 @@
 *.ho
 *.o
 chick.nix
+.direnv/
 .envrc
 .gcroots/
 .stack-work/
+.vscode/
 dist/
 dist-newstyle/
+default.nix
+make-default.nix
+shell.nix

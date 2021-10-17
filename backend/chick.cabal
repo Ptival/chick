@@ -213,9 +213,10 @@ executable chick-server
   main-is:        Main.hs
   other-modules:  Paths_chick
 
-test-suite test
+test-suite chick-tests
   import:         common-options
   build-depends:
+    , bound
     , chick
     , tasty
     , tasty-hunit
@@ -234,6 +235,7 @@ test-suite test
     Diff.Motive.Test
     Inductive.Eliminator.Test
     Inductive.Inductive.Test
+    Parsing.Test
     Parsing.Inductive.Test
     StandardLibraryDiff.Test
     Term.Term.Test

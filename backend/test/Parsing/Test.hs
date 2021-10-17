@@ -6,12 +6,12 @@ module Parsing.Test
   )
 where
 
-import Bound.Name
-import Data.Maybe
-import Parsing
-import Term.Term
-import Test.Tasty
-import Test.Tasty.HUnit
+-- import Bound.Name
+import Data.Maybe (isJust)
+import Parsing (parseMaybeTerm)
+-- import Term.Term
+import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty.HUnit (testCase, (@?))
 
 group :: String
 group = "Parsing"
@@ -40,8 +40,9 @@ unitTests =
 main :: IO ()
 main = defaultMain unitTests
 
-testingBinders = do
-  let Just v = parseMaybeTerm "bar"
-  let bτ2 = abstractName (\v -> if v == "foo" then Just "foo" else Nothing) v
-  -- let Just (Pi α τ1 bτ2) = parseMaybeTerm "∀ (foo : Foo), bar"
-  putStrLn $ show bτ2
+-- testingBinders :: IO ()
+-- testingBinders = do
+--   let Just v = parseMaybeTerm "bar"
+--   let bτ2 = abstractName (\v -> if v == "foo" then Just "foo" else Nothing) v
+--   -- let Just (Pi α τ1 bτ2) = parseMaybeTerm "∀ (foo : Foo), bar"
+--   print bτ2

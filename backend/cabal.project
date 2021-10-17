@@ -1,3 +1,0 @@
-packages:
-  ./chick.cabal
-  ./dependencies/language-ocaml
