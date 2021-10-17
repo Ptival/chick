@@ -30,6 +30,5 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
-      - run: cabal update
       - run: cabal build chick
       - run: cabal test chick-tests
